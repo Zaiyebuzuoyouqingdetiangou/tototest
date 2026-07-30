@@ -121,7 +121,7 @@ toto[data-rabbit-mirror="true"] summary {
 
 
 
-/* 1.1.0-beta.14.6-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
+/* 1.1.0-beta.14.8-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
 [data-rabbit-mirror-tool-entry-host] {
   all: initial !important;
   display: inline-flex !important;
@@ -372,10 +372,41 @@ toto[data-rabbit-mirror="true"] summary {
 .rabbit-mirror-token-meter-note { color: #77685b !important; opacity: 1 !important; font-size: 11px !important; }
 
 
-/* RabbitMirror message-level external presentation (test). */
-[data-rabbit-mirror-external-source="true"]{display:flex;justify-content:flex-end;margin:6px 0 2px;position:relative;z-index:2}
-[data-rabbit-mirror-external-launcher="true"]{appearance:none;border:1px solid color-mix(in srgb,var(--rm-external-accent,var(--SmartThemeBorderColor)) 68%,transparent);background:color-mix(in srgb,var(--rm-external-accent,var(--SmartThemeBlurTintColor)) 24%,var(--SmartThemeBlurTintColor));color:var(--SmartThemeBodyColor);border-radius:999px;padding:5px 11px;min-height:28px;cursor:pointer;font:inherit;font-size:12px;box-shadow:0 3px 12px rgba(0,0,0,.12)}
-[data-rabbit-mirror-external-panel="true"]{position:fixed;inset:0;z-index:2147482500;display:flex;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
-[data-rabbit-mirror-external-panel="true"][hidden]{display:none!important}.rabbit-mirror-external-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.rabbit-mirror-external-window{position:relative;width:min(720px,96vw);max-height:92dvh;overflow:auto;border-radius:18px;padding:14px;background:color-mix(in srgb,var(--rm-external-accent,var(--SmartThemeBlurTintColor)) 16%,var(--SmartThemeBlurTintColor));border:1px solid color-mix(in srgb,var(--rm-external-accent,var(--SmartThemeBorderColor)) 58%,transparent);box-shadow:0 24px 80px rgba(0,0,0,.45)}
-.rabbit-mirror-external-content>details{margin:0!important}.rabbit-mirror-external-close{position:sticky;top:0;float:right;z-index:20;appearance:none;border:0;border-radius:999px;width:30px;height:30px;display:grid;place-items:center;background:rgba(0,0,0,.55);color:#fff;font-size:22px;line-height:1;cursor:pointer;margin:0 0 5px 8px}.rabbit-mirror-external-open{overflow:hidden!important}
+/* RabbitMirror message-level native details external presentation (test). */
+[data-rabbit-mirror-external-source="true"]{
+  display:block;
+  width:100%;
+  margin:6px 0 8px;
+  position:relative;
+  z-index:3;
+}
+[data-rabbit-mirror-external-source="true"] > details{
+  display:block;
+  width:100%;
+  max-width:100%;
+  margin:0!important;
+  box-sizing:border-box;
+}
+[data-rabbit-mirror-external-source="true"] > details > summary{
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.rabbit-mirror-external-placeholder{
+  border:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.28));
+  border-radius:10px;
+  background:var(--SmartThemeBlurTintColor,rgba(127,127,127,.08));
+  color:var(--SmartThemeBodyColor,inherit);
+  overflow:hidden;
+}
+.rabbit-mirror-external-placeholder > summary{
+  padding:8px 11px;
+  font-weight:600;
+}
+.rabbit-mirror-external-placeholder-body{
+  padding:8px 11px 11px;
+  border-top:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.2));
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  font-size:12px;
+  line-height:1.55;
+}

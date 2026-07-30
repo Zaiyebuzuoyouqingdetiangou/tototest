@@ -1,17 +1,34 @@
-## 1.1.0-beta.14.6-test
+# 1.1.0-beta.14.8-test
+
+- 外置兔子镜恢复为与正文内一致的原生 `<details><summary>【兔子镜：标题】</summary>` 折叠形态，仅改变挂载位置。
+- 移除外置状态栏中的时间、角色信息、图标与二次开关，不再包裹额外主题 UI；兔子镜继续使用自身背景与配色。
+- 外置运行时仅在“独立 API”或“跟随当前 API + 外置”模式下安装；正文内模式不安装聊天区观察器或宿主事件监听。
+- MutationObserver 改为 120ms 去抖的消息级增量同步，忽略 RabbitMirror 自己新增的外置节点与工具入口，不再每次 DOM 变化扫描整段聊天。
+- 宿主 eventSource 回调保存引用并在模式切换/停用/热更新时逐一解除；新增全局 cleanup，防止多版本热更新后监听累积。
+- `syncMessages` 每轮只读取一次独立输出缓存；普通插件面板开关不再触发 RabbitMirror 全聊天重建。
+
+## 1.1.0-beta.14.8-test
+
+- 独立 API 外置兔子镜改为消息底部状态栏式折叠面板，不再使用右侧胶囊或全屏模态框。
+- 修复入口同时绑定自身监听与 document 捕获委托导致一次点击被连续开关、表现为无法展开的问题。
+- 状态栏和展开面板根据兔子镜实际背景色提取主题色，并自动选择可读前景色。
+- API 地址输入允许数字 IP、端口和无协议地址；数字地址无协议时默认按 HTTP 处理。
+- 浏览器直连因混合内容、CORS 或证书失败时，自动尝试 SillyTavern `/proxy/` 同源代理；代理不可用时显示具体配置提示。
+
+## 1.1.0-beta.14.8-test
 - 外置兔子镜入口改为每条消息/Swipe 单实例，修复生成中与成功入口重复堆叠。
 - 外置入口改为完整构建后一次性插入，并清理同来源残留实例。
 - 增加按钮自身点击监听与 document 捕获委托双保险，适配 SillyTavern 重绘/克隆。
 - MutationObserver 改为微任务去抖并增加同步重入保护。
 
-# 1.1.0-beta.14.6-test
+# 1.1.0-beta.14.8-test
 
 - 修复独立 API 请求已成功但前端误判“兔子镜生成失败”的响应解析问题。
 - 兼容 OpenAI content 字符串/数组、Responses output、Gemini candidates.parts、Anthropic content、SSE/NDJSON 与纯文本返回。
 - 接受完整裸 `<details>` 兔子镜，不再强制服务商必须保留 `<toto>` 外壳。
 - 对空正文、非完整兔子镜与输出截断分别显示更准确的失败原因和 finish_reason。
 
-# RabbitMirror 1.1.0-beta.14.6-test
+# RabbitMirror 1.1.0-beta.14.8-test
 
 - 测试仓新增“维修兔自动巡逻（测试）”本地开关，默认关闭。
 - 开启时只对之后新生成或重新生成的兔子镜自动尝试一次高置信安全修复。
@@ -156,7 +173,7 @@
 - 从设置页移除重复的全链路诊断入口；维修兔菜单内的诊断功能继续保留。
 - 生成 Prompt、母本预算和正常每轮注入逻辑均未增加。
 
-## 1.1.0-beta.14.6-test
+## 1.1.0-beta.14.8-test
 - Added mutually exclusive RabbitMirror generation modes: follow the current API, or use a separately configured OpenAI-compatible API/model.
 - Independent mode clears the current-model RabbitMirror injection and automatically generates one message-level external RabbitMirror after an assistant response.
 - Added model-list retrieval, connection testing, fixed model selection, temperature and maximum-output controls.

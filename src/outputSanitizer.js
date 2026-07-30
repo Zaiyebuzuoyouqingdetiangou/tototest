@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h6t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h6t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h8t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h8t';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h6t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h6t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h6t';
+} from './feedbackCat.js?rmv=1.1.0b14h8t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h8t';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h8t';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.6-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.8-test';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -121,6 +121,7 @@ function isCurrentRuntime() {
 }
 // Cached SillyTavern script module. In module builds, chat is not guaranteed to be exposed on globalThis.
 let hostScriptModule = null;
+let outputHostSubscriptions = [];
 
 // 0.32.68: 新增源码恢复链：在 TH/高亮插件生成代码壳后，直接用原始消息的清洗副本瞬时重绘当前显示层；不写回 mes/swipe/display_text；
 // 0.32.67: 一次性交互诊断升级为兔子镜总诊断，可检查交互、代码块、纯文字源码、显示源与触发链；急救逻辑保持不变；
@@ -14786,7 +14787,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.72-test';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.74-test';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -15581,16 +15582,14 @@ function removeFeedbackCatsInChatDom() {
     closeFeedbackCatMenu();
 }
 
-function installMaintenanceRabbitsInChatDom() {
-    if (!isCurrentRuntime()) return;
-    const chatRoot = getChatRoot();
-    if (!chatRoot) return;
+function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } = {}) {
+    if (!isCurrentRuntime() || !scope?.querySelectorAll) return;
     const maintenanceEnabled = isMaintenanceRabbitEnabled();
     const feedbackEnabled = isFeedbackCatEnabled();
-    if (!maintenanceEnabled) removeMaintenanceRabbitsInChatDom();
-    if (!feedbackEnabled) removeFeedbackCatsInChatDom();
+    if (allowGlobalRemoval && !maintenanceEnabled) removeMaintenanceRabbitsInChatDom();
+    if (allowGlobalRemoval && !feedbackEnabled) removeFeedbackCatsInChatDom();
 
-    getRenderedRabbitMirrorInteractionRoots(chatRoot).forEach(root => {
+    getRenderedRabbitMirrorInteractionRoots(scope).forEach(root => {
         if (!isInsideChatMessage(root)) return;
         try {
             installNestedDetailsReplacementContainment(root);
@@ -15615,6 +15614,12 @@ function installMaintenanceRabbitsInChatDom() {
         }
     });
     if (feedbackEnabled) updateFeedbackCatButtonTitles();
+}
+
+function installMaintenanceRabbitsInChatDom() {
+    const chatRoot = getChatRoot();
+    if (!chatRoot) return;
+    installMaintenanceRabbitsInScope(chatRoot, { allowGlobalRemoval: true });
 }
 
 export function refreshMaintenanceRabbits() {
@@ -17352,6 +17357,7 @@ function messageUsesDistinctDisplaySource(message) {
 let chatInstallObserver = null;
 let observedChatInstallRoot = null;
 let chatInstallDebounceTimer = 0;
+const pendingObservedMessageRoots = new Set();
 let toolEntryDelegationRoot = null;
 let toolEntryDelegatedClickHandler = null;
 let toolEntryDelegatedPointerHandler = null;
@@ -17480,12 +17486,19 @@ function scheduleMaintenanceRabbitInstall() {
     }
 }
 
-function scheduleObservedChatInstall() {
-    if (!isCurrentRuntime() || chatInstallDebounceTimer) return;
+function scheduleObservedChatInstall(messageRoots = []) {
+    if (!isCurrentRuntime()) return;
+    for (const root of messageRoots) if (root?.isConnected) pendingObservedMessageRoots.add(root);
+    if (chatInstallDebounceTimer) return;
     chatInstallDebounceTimer = setTimeout(() => {
         chatInstallDebounceTimer = 0;
-        installMaintenanceRabbitsInChatDom();
-    }, 80);
+        const roots = [...pendingObservedMessageRoots];
+        pendingObservedMessageRoots.clear();
+        for (const root of roots) {
+            try { installMaintenanceRabbitsInScope(root); }
+            catch (error) { console.debug('[RabbitMirror] scoped tool install skipped:', error); }
+        }
+    }, 120);
 }
 
 function removeToolEntryDelegation() {
@@ -17535,22 +17548,41 @@ function installChatMutationObserver() {
     chatInstallObserver?.disconnect?.();
     observedChatInstallRoot = chatRoot;
     chatInstallObserver = new MutationObserver(mutations => {
-        const relevant = mutations.some(mutation => {
+        const messageRoots = new Set();
+        for (const mutation of mutations) {
+            const targetElement = mutation.target?.nodeType === 1 ? mutation.target : mutation.target?.parentElement;
+            if (targetElement?.closest?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) continue;
+
             if (mutation.type === 'attributes') {
-                const target = mutation.target;
-                return !!target?.closest?.('.mes, .mes_text, details, toto');
+                if (!targetElement?.matches?.('toto, details, summary')) continue;
+                const message = targetElement.closest?.('.mes, [mesid]');
+                if (message) messageRoots.add(message);
+                continue;
             }
             if (mutation.type === 'characterData') {
-                return mutation.target?.parentElement?.matches?.('style') === true;
+                if (targetElement?.matches?.('style')) {
+                    const message = targetElement.closest?.('.mes, [mesid]');
+                    if (message) messageRoots.add(message);
+                }
+                continue;
             }
-            if (mutation.type === 'childList' && mutation.target?.matches?.('style')) return true;
             const nodes = [...(mutation.addedNodes || []), ...(mutation.removedNodes || [])];
-            return nodes.some(node => node?.nodeType === 1 && (
-                node.matches?.(`toto, details, summary, style, .mes, .mes_text, [${FEEDBACK_CAT_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)
-                || node.querySelector?.('toto, details, summary, style')
-            ));
-        });
-        if (relevant) scheduleObservedChatInstall();
+            const relevant = nodes.some(node => {
+                if (node?.nodeType !== 1) return false;
+                if (node.matches?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) return false;
+                return node.matches?.('toto, details, summary, style, .mes, .mes_text')
+                    || !!node.querySelector?.('toto, details, summary, style');
+            });
+            if (!relevant && !mutation.target?.matches?.('style')) continue;
+            const message = targetElement?.closest?.('.mes, [mesid]');
+            if (message) messageRoots.add(message);
+            for (const node of nodes) {
+                const element = node?.nodeType === 1 ? node : null;
+                const ownMessage = element?.matches?.('.mes, [mesid]') ? element : element?.closest?.('.mes, [mesid]');
+                if (ownMessage) messageRoots.add(ownMessage);
+            }
+        }
+        if (messageRoots.size) scheduleObservedChatInstall(messageRoots);
     });
     chatInstallObserver.observe(chatRoot, {
         childList: true,
@@ -17573,8 +17605,18 @@ function installChatRootReadyObserver() {
     observer.observe(document.body, { childList: true, subtree: true });
 }
 
+function unsubscribeOutputHostEvents() {
+    for (const { eventSource, eventName, handler } of outputHostSubscriptions) {
+        try { eventSource?.off?.(eventName, handler); } catch {}
+    }
+    outputHostSubscriptions = [];
+}
+
 export async function initOutputSanitizer() {
     if (!isCurrentRuntime()) return;
+    try { globalThis.__rabbitMirrorOutputSanitizerCleanup?.(); } catch {}
+    globalThis.__rabbitMirrorOutputSanitizerCleanup = destroyOutputSanitizer;
+    unsubscribeOutputHostEvents();
     ensureFeedbackCatRuntimeStyle();
     initializeMaintenanceAutoSafeStartupGuard();
     // DOM 安装链不依赖宿主事件模块是否成功导入：即使热重载或宿主事件名变化，
@@ -17601,10 +17643,12 @@ export async function initOutputSanitizer() {
                 eventTypes.MESSAGE_EDITED,
             ].filter(Boolean);
             for (const eventName of [...new Set(installEvents)]) {
-                eventSource.on(eventName, () => {
+                const handler = () => {
                     installChatMutationObserver();
                     scheduleMaintenanceRabbitInstall();
-                });
+                };
+                eventSource.on(eventName, handler);
+                outputHostSubscriptions.push({ eventSource, eventName, handler });
             }
         }
         console.debug('[RabbitMirror] output sanitizer initialized (maintenance rabbit + feedback cat)');
@@ -17615,6 +17659,7 @@ export async function initOutputSanitizer() {
 
 
 export function destroyOutputSanitizer() {
+    unsubscribeOutputHostEvents();
     chatInstallObserver?.disconnect?.();
     chatInstallObserver = null;
     removeToolEntryDelegation();
@@ -17623,6 +17668,7 @@ export function destroyOutputSanitizer() {
         clearTimeout(chatInstallDebounceTimer);
         chatInstallDebounceTimer = 0;
     }
+    pendingObservedMessageRoots.clear();
     for (const timer of maintenanceInstallTimers) clearTimeout(timer);
     maintenanceInstallTimers.clear();
     cancelMaintenanceAutoSafeTimers();
@@ -17633,4 +17679,5 @@ export function destroyOutputSanitizer() {
     closeMaintenanceRabbitMenu();
     closeFeedbackCatMenu();
     document?.getElementById?.(FEEDBACK_CAT_RUNTIME_STYLE_ID)?.remove?.();
+    if (globalThis.__rabbitMirrorOutputSanitizerCleanup === destroyOutputSanitizer) delete globalThis.__rabbitMirrorOutputSanitizerCleanup;
 }
