@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h11t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h11t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h12t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h12t';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h11t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h11t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h11t';
+} from './feedbackCat.js?rmv=1.1.0b14h12t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h12t';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h12t';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.11-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.12-test';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -13999,10 +13999,31 @@ function showFeedbackCatMenu(root, button, draft = null) {
     return true;
 }
 
+function rabbitMirrorExternalGenerationState(root) {
+    return String(root?.closest?.('[data-rabbit-mirror-external-source]')?.getAttribute?.('data-rm-state') || '');
+}
+
+function rabbitMirrorExternalGenerationNotice(root, kind = 'maintenance') {
+    const state = rabbitMirrorExternalGenerationState(root);
+    if (state === 'loading') {
+        const message = kind === 'feedback'
+            ? '兔子镜仍在生成中，挨打猫会在生成完成后启用。'
+            : '兔子镜仍在生成中，请稍候。';
+        globalThis.toastr?.info?.(message);
+        return true;
+    }
+    if (state === 'error' && kind === 'maintenance') {
+        globalThis.toastr?.warning?.('独立 API 生成失败，维修兔无法修复请求错误；失败原因已显示在兔子镜内。');
+        return true;
+    }
+    return false;
+}
+
 function handleFeedbackCatClick(event, root, button) {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation?.();
+    if (rabbitMirrorExternalGenerationNotice(root, 'feedback')) return;
     showFeedbackCatMenu(root, button);
 }
 
@@ -14787,7 +14808,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.77-test';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.78-test';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -15456,6 +15477,7 @@ function handleMaintenanceRabbitClick(event, root, button) {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation?.();
+    if (rabbitMirrorExternalGenerationNotice(root, 'maintenance')) return;
     showMaintenanceRabbitMenu(root, button);
 }
 
@@ -15548,9 +15570,24 @@ function ensureMaintenanceRabbitButton(root, summary, host) {
     current.setAttribute(MAINTENANCE_RABBIT_ATTR, 'true');
     current.setAttribute(RUNTIME_VERSION_ATTR, RUNTIME_VERSION);
     if (current.parentElement !== host) host.appendChild(current);
-    const state = current.getAttribute(MAINTENANCE_STATE_ATTR) || MAINTENANCE_STATES.idle;
-    const reason = current.getAttribute(MAINTENANCE_REASON_ATTR) || '';
-    setMaintenanceRabbitState(current, state, reason);
+    const externalState = rabbitMirrorExternalGenerationState(root);
+    if (externalState === 'loading') {
+        setMaintenanceRabbitState(current, MAINTENANCE_STATES.checking, '兔子镜正在生成中');
+        current.setAttribute('data-rabbit-mirror-external-waiting', 'true');
+    } else if (externalState === 'error') {
+        setMaintenanceRabbitState(current, MAINTENANCE_STATES.unknown, '独立 API 生成失败；失败原因已显示在兔子镜内');
+        current.removeAttribute('data-rabbit-mirror-external-waiting');
+    } else {
+        const wasWaiting = current.hasAttribute('data-rabbit-mirror-external-waiting');
+        current.removeAttribute('data-rabbit-mirror-external-waiting');
+        if (wasWaiting) {
+            setMaintenanceRabbitState(current, MAINTENANCE_STATES.idle, '兔子镜生成完成，可点击巡逻');
+        } else {
+            const state = current.getAttribute(MAINTENANCE_STATE_ATTR) || MAINTENANCE_STATES.idle;
+            const reason = current.getAttribute(MAINTENANCE_REASON_ATTR) || '';
+            setMaintenanceRabbitState(current, state, reason);
+        }
+    }
     return current;
 }
 
@@ -15564,8 +15601,13 @@ function ensureFeedbackCatButton(root, summary, host) {
     current.setAttribute(FEEDBACK_CAT_ATTR, 'true');
     current.setAttribute(RUNTIME_VERSION_ATTR, RUNTIME_VERSION);
     current.textContent = '🐈';
-    current.title = feedbackCatButtonTitle();
+    const externalState = rabbitMirrorExternalGenerationState(root);
+    current.title = externalState === 'loading'
+        ? '挨打猫：兔子镜正在生成中，生成完成后可反馈'
+        : feedbackCatButtonTitle();
     current.setAttribute('aria-label', current.title);
+    if (externalState === 'loading') current.setAttribute('data-rabbit-mirror-external-waiting', 'true');
+    else current.removeAttribute('data-rabbit-mirror-external-waiting');
     if (current.parentElement !== host) host.appendChild(current);
     normalizeRabbitMirrorToolButton(current);
     return current;
@@ -15631,7 +15673,9 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } 
             try {
                 installMaintenanceRabbitForRoot(root);
                 const maintenanceButton = root.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`);
-                if (maintenanceButton) scheduleMaintenanceAutoSafeForRoot(root, maintenanceButton);
+                if (maintenanceButton && rabbitMirrorExternalGenerationState(root) !== 'loading') {
+                    scheduleMaintenanceAutoSafeForRoot(root, maintenanceButton);
+                }
             } catch (error) {
                 console.debug('[RabbitMirror] maintenance rabbit install recovered for one mirror:', error);
             }
@@ -15659,6 +15703,11 @@ export function refreshMaintenanceRabbits() {
 
 export function refreshFeedbackCats() {
     installMaintenanceRabbitsInChatDom();
+}
+
+export function refreshRabbitMirrorToolsInScope(scope) {
+    if (!scope?.querySelectorAll) return;
+    installMaintenanceRabbitsInScope(scope);
 }
 
 

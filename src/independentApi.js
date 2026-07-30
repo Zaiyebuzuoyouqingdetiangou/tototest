@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h11t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h11t';
-import { cleanRabbitMirrorOutput } from './outputSanitizer.js?rmv=1.1.0b14h11t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h12t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h12t';
+import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h12t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.11-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.12-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -236,11 +236,39 @@ function extractReadyDetails(html=''){
  template.innerHTML=String(html||'').trim();
  return template.content.querySelector('details') || null;
 }
+function externalToolHost(details){
+ return details?.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]') || null;
+}
+function ensureExternalTools(host){
+ if(!host?.isConnected) return;
+ try{ refreshRabbitMirrorToolsInScope(host); }catch(error){ console.debug('[RabbitMirror] external tool preparation skipped:',error); }
+}
+function transferExternalTools(fromDetails,toDetails){
+ const tools=externalToolHost(fromDetails);
+ const summary=toDetails?.querySelector?.(':scope > summary');
+ if(tools&&summary) summary.appendChild(tools);
+}
+function setPlaceholderSummary(details,text){
+ const summary=details?.querySelector?.(':scope > summary');
+ if(!summary) return;
+ let label=summary.querySelector?.(':scope > [data-rabbit-mirror-external-summary-label]');
+ if(!label){
+   label=document.createElement('span');
+   label.setAttribute('data-rabbit-mirror-external-summary-label','true');
+   const tools=externalToolHost(details);
+   for(const node of [...summary.childNodes]) if(node!==tools) node.remove();
+   summary.insertBefore(label,tools||null);
+ }
+ label.textContent=text;
+}
 function fallbackExternalDetails(state,text=''){
  const details=document.createElement('details');
  details.className='rabbit-mirror-external-placeholder';
  const summary=document.createElement('summary');
- summary.textContent=state==='loading'?'【兔子镜：生成中……】':'【兔子镜：生成失败】';
+ const label=document.createElement('span');
+ label.setAttribute('data-rabbit-mirror-external-summary-label','true');
+ label.textContent=state==='loading'?'【兔子镜：正在生成中……】':'【兔子镜：生成失败】';
+ summary.append(label);
  details.append(summary);
  if(text){
    const body=document.createElement('div');
@@ -250,6 +278,7 @@ function fallbackExternalDetails(state,text=''){
  }
  return details;
 }
+
 function buildExternalHost(key,html,state,source){
  const host=document.createElement('div');
  host.setAttribute(SOURCE_ATTR,'true');
@@ -267,18 +296,59 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
  const body=externalInsertTarget(el); if(!body) return null;
  const same=matchingExternalHosts(el,key,source);
  let host=same[0] || externalHosts(el).find(node=>node.dataset.rmSource===source) || null;
- if(host && host.dataset.rmKey===key && host.dataset.rmState===state){
-   const current=host.querySelector(':scope > details');
-   if(state!=='ready' || current){ removeDuplicateExternalHosts(el,host,source); return host; }
+ if(!host){
+   host=buildExternalHost(key,html,state,source);
+   body.insertAdjacentElement('afterend',host);
+   removeDuplicateExternalHosts(el,host,source);
+   ensureExternalTools(host);
+   return host;
  }
- const wasOpen=!!host?.querySelector?.(':scope > details[open]');
- const next=buildExternalHost(key,html,state,source);
- if(host?.isConnected) host.replaceWith(next);
- else body.insertAdjacentElement('afterend',next);
- removeDuplicateExternalHosts(el,next,source);
- if(wasOpen && state==='ready') next.querySelector(':scope > details')?.setAttribute('open','');
- return next;
+ removeDuplicateExternalHosts(el,host,source);
+ const current=host.querySelector(':scope > details');
+ const wasOpen=!!current?.hasAttribute?.('open');
+ host.dataset.rmKey=key;
+ host.dataset.rmSource=source;
+ host.dataset.rmState=state;
+ if(state==='ready'){
+   const nextDetails=extractReadyDetails(html);
+   if(!nextDetails){
+     host.dataset.rmState='error';
+     const fallback=current || fallbackExternalDetails('error','');
+     if(!current) host.append(fallback);
+     setPlaceholderSummary(fallback,'【兔子镜：生成失败】');
+     let bodyNode=fallback.querySelector(':scope > .rabbit-mirror-external-placeholder-body');
+     if(!bodyNode){ bodyNode=document.createElement('div'); bodyNode.className='rabbit-mirror-external-placeholder-body'; fallback.append(bodyNode); }
+     bodyNode.textContent='独立 API 已返回内容，但没有找到完整的兔子镜 <details>。';
+     ensureExternalTools(host);
+     return host;
+   }
+   nextDetails.removeAttribute('open');
+   nextDetails.setAttribute('data-rabbit-mirror-external-details','true');
+   if(current) transferExternalTools(current,nextDetails);
+   if(current?.isConnected) current.replaceWith(nextDetails); else host.append(nextDetails);
+   if(wasOpen) nextDetails.setAttribute('open','');
+   ensureExternalTools(host);
+   return host;
+ }
+ let details=current;
+ if(details && !details.classList?.contains('rabbit-mirror-external-placeholder')){
+   const placeholder=fallbackExternalDetails(state,html);
+   transferExternalTools(details,placeholder);
+   details.replaceWith(placeholder);
+   details=placeholder;
+ }
+ if(!details){ details=fallbackExternalDetails(state,html); host.append(details); }
+ details.setAttribute('data-rabbit-mirror-external-details','true');
+ setPlaceholderSummary(details,state==='loading'?'【兔子镜：正在生成中……】':'【兔子镜：生成失败】');
+ let bodyNode=details.querySelector(':scope > .rabbit-mirror-external-placeholder-body');
+ if(html){
+   if(!bodyNode){ bodyNode=document.createElement('div'); bodyNode.className='rabbit-mirror-external-placeholder-body'; details.append(bodyNode); }
+   bodyNode.textContent=html;
+ } else bodyNode?.remove?.();
+ ensureExternalTools(host);
+ return host;
 }
+
 async function generateFor(index,msg,force=false){
  const ctx=getContext(); const key=recordKey(ctx,index,msg); const st=getSettings();
  if(st.enabled===false || st.autoRabbitMirrorInjection===false || st.generationSource!=='independent') return;

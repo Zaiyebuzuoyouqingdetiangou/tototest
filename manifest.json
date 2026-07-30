@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・生成方式切换・维修兔 v1.77-test）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・生成方式切换・维修兔 v1.78-test）",
   "loading_order": 99,
-  "js": "index.js?rmv=1.1.0b14h11t",
-  "css": "style.css?rmv=1.1.0b14h11t",
+  "js": "index.js?rmv=1.1.0b14h12t",
+  "css": "style.css?rmv=1.1.0b14h12t",
   "author": "Toto",
-  "version": "1.1.0-beta.14.11-test",
+  "version": "1.1.0-beta.14.12-test",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "RabbitMirror test build with mutually exclusive generation modes: follow the current API (inline or external presentation), or use a separately configured OpenAI-compatible API/model that receives the current chat text, available reasoning, character card, Persona, world-book/author-note context and produces one message-level external RabbitMirror. Independent mode removes RabbitMirror prompt injection from the current API. Includes safe auto-patrol test; no fixed prompt is added when independent mode is selected for the current API."
+  "description": "RabbitMirror test build with mutually exclusive generation modes: follow the current API (inline or external presentation), or use a separately configured OpenAI-compatible API/model that receives the current chat text, available reasoning, character card, Persona, world-book/author-note context and produces one message-level external RabbitMirror. Independent mode removes RabbitMirror prompt injection from the current API. Includes safe auto-patrol test. Independent external generation now creates one native RabbitMirror details shell immediately with maintenance rabbit and feedback cat present from the loading state, then updates the same message-level shell in place on success or failure. No fixed prompt is added to the current API in independent mode."
 }
