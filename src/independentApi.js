@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h12t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h12t';
-import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h12t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h13t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h13t';
+import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h13t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.12-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.13-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -11,6 +11,8 @@ let generationTimers = new Set();
 let observer = null;
 let syncRunning = false;
 const pending = new Map();
+let externalActionListenerInstalled = false;
+let externalActionBusy = false;
 
 function currentRuntime(){ return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION; }
 function readStore(){ try { const v=JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); return v&&typeof v==='object'?v:{}; } catch { return {}; } }
@@ -261,6 +263,37 @@ function setPlaceholderSummary(details,text){
  }
  label.textContent=text;
 }
+function externalErrorActions(){
+ const actions=document.createElement('div');
+ actions.className='rabbit-mirror-external-error-actions';
+ const retry=document.createElement('button');
+ retry.type='button'; retry.className='menu_button rabbit-mirror-external-error-action';
+ retry.setAttribute('data-rabbit-mirror-external-action','retry');
+ retry.textContent='重新生成';
+ const test=document.createElement('button');
+ test.type='button'; test.className='menu_button rabbit-mirror-external-error-action';
+ test.setAttribute('data-rabbit-mirror-external-action','test-api');
+ test.textContent='检测 API';
+ actions.append(retry,test);
+ return actions;
+}
+function renderExternalErrorBody(details,text='',statusText=''){
+ if(!details) return null;
+ let body=details.querySelector(':scope > .rabbit-mirror-external-placeholder-body');
+ if(!body){ body=document.createElement('div'); body.className='rabbit-mirror-external-placeholder-body'; details.append(body); }
+ body.replaceChildren();
+ const message=document.createElement('div');
+ message.className='rabbit-mirror-external-error-message';
+ message.textContent=String(text||'独立 API 生成失败。');
+ const status=document.createElement('div');
+ status.className='rabbit-mirror-external-api-test-status';
+ status.setAttribute('data-rabbit-mirror-external-api-test-status','true');
+ status.textContent=String(statusText||'');
+ if(!statusText) status.hidden=true;
+ body.append(message,status,externalErrorActions());
+ details.setAttribute('open','');
+ return body;
+}
 function fallbackExternalDetails(state,text=''){
  const details=document.createElement('details');
  details.className='rabbit-mirror-external-placeholder';
@@ -270,7 +303,8 @@ function fallbackExternalDetails(state,text=''){
  label.textContent=state==='loading'?'【兔子镜：正在生成中……】':'【兔子镜：生成失败】';
  summary.append(label);
  details.append(summary);
- if(text){
+ if(state==='error') renderExternalErrorBody(details,text);
+ else if(text){
    const body=document.createElement('div');
    body.className='rabbit-mirror-external-placeholder-body';
    body.textContent=text;
@@ -316,9 +350,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
      const fallback=current || fallbackExternalDetails('error','');
      if(!current) host.append(fallback);
      setPlaceholderSummary(fallback,'【兔子镜：生成失败】');
-     let bodyNode=fallback.querySelector(':scope > .rabbit-mirror-external-placeholder-body');
-     if(!bodyNode){ bodyNode=document.createElement('div'); bodyNode.className='rabbit-mirror-external-placeholder-body'; fallback.append(bodyNode); }
-     bodyNode.textContent='独立 API 已返回内容，但没有找到完整的兔子镜 <details>。';
+     renderExternalErrorBody(fallback,'独立 API 已返回内容，但没有找到完整的兔子镜 <details>。');
      ensureExternalTools(host);
      return host;
    }
@@ -341,7 +373,8 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
  details.setAttribute('data-rabbit-mirror-external-details','true');
  setPlaceholderSummary(details,state==='loading'?'【兔子镜：正在生成中……】':'【兔子镜：生成失败】');
  let bodyNode=details.querySelector(':scope > .rabbit-mirror-external-placeholder-body');
- if(html){
+ if(state==='error') renderExternalErrorBody(details,html);
+ else if(html){
    if(!bodyNode){ bodyNode=document.createElement('div'); bodyNode.className='rabbit-mirror-external-placeholder-body'; details.append(bodyNode); }
    bodyNode.textContent=html;
  } else bodyNode?.remove?.();
@@ -367,6 +400,81 @@ async function generateFor(index,msg,force=false){
    ensureExternalUi(el,key,String(err?.message||err),'error');
  }).finally(()=>pending.delete(key));
  pending.set(key,task); await task;
+}
+function setExternalErrorActionState(host,busy,statusText=''){
+ const buttons=[...(host?.querySelectorAll?.('[data-rabbit-mirror-external-action]')||[])];
+ for(const button of buttons){ button.disabled=!!busy; button.setAttribute('aria-busy',busy?'true':'false'); }
+ const status=host?.querySelector?.('[data-rabbit-mirror-external-api-test-status]');
+ if(status){ status.hidden=!statusText; status.textContent=String(statusText||''); status.dataset.state=busy?'loading':''; }
+}
+async function diagnoseIndependentApi(){
+ const st=getSettings();
+ if(!st.independentApiBaseUrl) throw new Error('尚未填写独立 API 地址');
+ if(!st.independentApiModel) throw new Error('尚未选择独立 API 模型');
+ let modelNote='';
+ try{
+   const models=await fetchIndependentModels();
+   modelNote=models.includes(st.independentApiModel)
+     ? `模型列表连接成功，已找到 ${st.independentApiModel}`
+     : `模型列表连接成功，但列表中未找到当前模型 ${st.independentApiModel}`;
+ }catch(error){
+   modelNote=`模型列表检测未通过：${String(error?.message||error)}`;
+ }
+ const systemPrompt='你正在执行 API 连接检测。严格只回复 OK。';
+ const userPrompt='请回复 OK。';
+ const {response,result,profile,attempts}=await requestIndependentCompletion(st,systemPrompt,userPrompt);
+ if(!response?.ok){
+   const tried=attempts.map(item=>`${item.profile}(HTTP ${item.status})`).join(' → ');
+   throw new Error(`${modelNote}；生成接口检测失败：HTTP ${response?.status||'未知'}${result?.raw?` · ${String(result.raw).slice(0,180)}`:''}${tried?`；尝试：${tried}`:''}`);
+ }
+ const parsed=String(result?.text||'').trim();
+ const proxy=response.__rabbitMirrorProxy?'，经 SillyTavern 代理':'';
+ return `${modelNote}；生成接口检测成功${proxy}，参数模式：${profile}${parsed?`，返回：${parsed.slice(0,80)}`:'，但未解析到文本'}`;
+}
+function messageIndexForExternalHost(host){
+ const mes=host?.closest?.('.mes[mesid], [mesid].mes, [mesid]');
+ const index=Number(mes?.getAttribute?.('mesid'));
+ return Number.isInteger(index)&&index>=0?index:null;
+}
+async function handleExternalActionClick(event){
+ const button=event?.target?.closest?.('[data-rabbit-mirror-external-action]');
+ if(!button) return;
+ const host=button.closest(`[${SOURCE_ATTR}]`);
+ if(!host || host.dataset.rmSource!=='independent' || host.dataset.rmState!=='error') return;
+ event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation?.();
+ if(externalActionBusy) return;
+ const action=button.getAttribute('data-rabbit-mirror-external-action');
+ if(action==='retry'){
+   const index=messageIndexForExternalHost(host); const ctx=getContext(); const msg=index===null?null:ctx.chat?.[index];
+   if(index===null || !msg || msg.is_user){ globalThis.toastr?.error?.('无法定位这条回复，不能重新生成兔子镜。'); return; }
+   setExternalErrorActionState(host,true,'正在重新生成兔子镜……');
+   await generateFor(index,msg,true);
+   return;
+ }
+ if(action==='test-api'){
+   externalActionBusy=true;
+   setExternalErrorActionState(host,true,'正在检测模型列表和生成接口……');
+   try{
+     const result=await diagnoseIndependentApi();
+     setExternalErrorActionState(host,false,result);
+     const status=host.querySelector?.('[data-rabbit-mirror-external-api-test-status]'); if(status) status.dataset.state='success';
+   }catch(error){
+     const message=`检测失败：${String(error?.message||error)}`;
+     setExternalErrorActionState(host,false,message);
+     const status=host.querySelector?.('[data-rabbit-mirror-external-api-test-status]'); if(status) status.dataset.state='error';
+   }finally{ externalActionBusy=false; }
+ }
+}
+function installExternalActionDelegation(){
+ if(externalActionListenerInstalled) return;
+ document.addEventListener('click',handleExternalActionClick,true);
+ externalActionListenerInstalled=true;
+}
+function removeExternalActionDelegation(){
+ if(!externalActionListenerInstalled) return;
+ document.removeEventListener('click',handleExternalActionClick,true);
+ externalActionListenerInstalled=false;
+ externalActionBusy=false;
 }
 function externalizeFollowMirror(index,msg){
  const st=getSettings(); if(st.generationSource!=='follow'||st.followDisplayMode!=='external') return;
@@ -516,11 +624,12 @@ export async function initIndependentRabbitMirror(){
  if(!currentRuntime()) return;
  try{ globalThis.__rabbitMirrorIndependentCleanup?.(); }catch{}
  globalThis.__rabbitMirrorIndependentCleanup=destroyIndependentRabbitMirror;
+ installExternalActionDelegation();
  await reconfigureRuntime();
 }
 export function destroyIndependentRabbitMirror(){
  for(const t of generationTimers) clearTimeout(t); generationTimers.clear();
- disconnectObserver(); unsubscribeHostEvents();
+ disconnectObserver(); unsubscribeHostEvents(); removeExternalActionDelegation();
  syncRunning=false; pending.clear();
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(host=>restoreFollowInline(host.closest('.mes')));
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());

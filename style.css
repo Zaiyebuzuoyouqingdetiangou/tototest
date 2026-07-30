@@ -121,7 +121,7 @@ toto[data-rabbit-mirror="true"] summary {
 
 
 
-/* 1.1.0-beta.14.12-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
+/* 1.1.0-beta.14.13-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
 [data-rabbit-mirror-tool-entry-host] {
   all: initial !important;
   display: inline-flex !important;
@@ -409,4 +409,36 @@ toto[data-rabbit-mirror="true"] summary {
   overflow-wrap:anywhere;
   font-size:12px;
   line-height:1.55;
+}
+
+.rabbit-mirror-external-error-message{
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  line-height:1.55;
+}
+.rabbit-mirror-external-api-test-status{
+  margin-top:10px;
+  padding:8px 10px;
+  border-radius:8px;
+  font-size:.88em;
+  line-height:1.5;
+  background:color-mix(in srgb, currentColor 8%, transparent);
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+.rabbit-mirror-external-api-test-status[data-state="success"]{ opacity:.9; }
+.rabbit-mirror-external-api-test-status[data-state="error"]{ font-weight:600; }
+.rabbit-mirror-external-error-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:12px;
+}
+.rabbit-mirror-external-error-action{
+  min-width:96px;
+  touch-action:manipulation;
+}
+.rabbit-mirror-external-error-action[disabled]{
+  opacity:.55;
+  pointer-events:none;
 }
