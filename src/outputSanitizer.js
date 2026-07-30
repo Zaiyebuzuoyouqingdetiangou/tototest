@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h9t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h9t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h10t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h10t';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h9t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h9t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h9t';
+} from './feedbackCat.js?rmv=1.1.0b14h10t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h10t';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h10t';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.9-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.10-test';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9594,7 +9594,7 @@ const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_MENU_ATTR = 'data-rabbit-mirror-maintenance-menu';
 const MAINTENANCE_AUTO_SAFE_ATTR = 'data-rabbit-mirror-auto-safe-maintenance';
 const MAINTENANCE_AUTO_SAFE_RESULT_ATTR = 'data-rabbit-mirror-auto-safe-result';
-const MAINTENANCE_AUTO_SAFE_VERSION = 'safe-v1';
+const MAINTENANCE_AUTO_SAFE_VERSION = 'safe-v2-state-preserving';
 const FEEDBACK_CAT_ATTR = 'data-rabbit-mirror-feedback-cat';
 const FEEDBACK_CAT_MENU_ATTR = 'data-rabbit-mirror-feedback-cat-menu';
 const SELECTION_ONLY_FALLBACK_ATTR = 'data-rabbit-mirror-selection-only-fallback';
@@ -14787,7 +14787,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.75-test';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.76-test';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -15179,8 +15179,36 @@ function maintenanceAutoSafeCountAttribute(root, attribute) {
     return Number.parseInt(root?.getAttribute?.(attribute) || '0', 10) || 0;
 }
 
+
+function captureMaintenanceAutoSafeUiState(root) {
+    if (!root?.querySelectorAll) return null;
+    return {
+        controls: [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')].map(control => ({
+            control,
+            checked: !!control.checked,
+            defaultChecked: !!control.defaultChecked,
+        })),
+        details: [...root.querySelectorAll('details')].map(details => ({ details, open: !!details.open })),
+    };
+}
+
+function restoreMaintenanceAutoSafeUiState(snapshot) {
+    if (!snapshot) return;
+    for (const item of snapshot.controls || []) {
+        if (!item.control?.isConnected) continue;
+        // 自动巡逻只允许补结构，不得替用户选择、取消或切换任何状态。
+        item.control.checked = item.checked;
+        item.control.defaultChecked = item.defaultChecked;
+    }
+    for (const item of snapshot.details || []) {
+        if (!item.details?.isConnected) continue;
+        item.details.open = item.open;
+    }
+}
+
 function runMaintenanceSafeAutomaticRepairs(root, button) {
     if (!root?.isConnected || !button?.isConnected) return { repaired: 0, modules: [] };
+    const uiStateSnapshot = captureMaintenanceAutoSafeUiState(root);
     const modules = [];
     const add = (id, count) => {
         const value = Math.max(0, Number(count) || 0);
@@ -15188,7 +15216,7 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
         return value;
     };
     let repaired = 0;
-    setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '自动巡逻：正在执行高置信安全修复');
+    setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '自动巡逻：正在执行不改变展开状态的安全修复');
 
     try {
         const beforeScoped = root.dataset?.rabbitMirrorInteractionScoped === 'true';
@@ -15204,13 +15232,12 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
         console.debug('[RabbitMirror] auto-safe ID/radio repair skipped:', error);
     }
 
+    // 自动模式只运行不会显隐正文、不会写入当前选择状态的结构型模块。
+    // focus-within / cross-parent / :has() 等视觉状态桥接仍保留给手动维修，
+    // 避免误判时把所有第二层内容提前展开或锁死交互。
     const safeInstallers = [
         ['radio-reset-local-scope', installRawMessageRadioResetProgramRescue],
         ['missing-checked-control-class', installMissingCheckedSubjectClassRescue],
-        ['focus-within-persistent', installFocusWithinPersistentFallback],
-        ['cross-parent-checked', installCrossParentCheckedRuleFallback],
-        ['checked-has-local-state', installCheckedHasStateFallback],
-        ['detached-checked-has', installDetachedCheckedHasFallback],
         ['webkit-3d-flip-compat', installWebKit3DFlipRescue],
     ];
     for (const [id, installer] of safeInstallers) {
@@ -15221,12 +15248,16 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
         }
     }
 
+    // 无论模块内部发生什么，自动巡逻结束时都恢复用户原有的 checked/open 状态。
+    restoreMaintenanceAutoSafeUiState(uiStateSnapshot);
+
     const inspection = inspectMaintenanceRabbit(root);
     const payload = {
         version: MAINTENANCE_AUTO_SAFE_VERSION,
         runtime: RUNTIME_VERSION,
         repaired,
         modules,
+        statePreserved: true,
         remaining: maintenanceFindingSnapshot(inspection.findings || []),
     };
     root.setAttribute(MAINTENANCE_AUTO_SAFE_ATTR, repaired > 0 ? 'repaired' : 'checked');
@@ -15235,9 +15266,9 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
 
     if ((inspection.findings || []).length) {
         const prefix = repaired > 0 ? `已自动完成 ${repaired} 项安全修复；` : '未命中可自动处理的安全项；';
-        setMaintenanceRabbitState(button, MAINTENANCE_STATES.repairable, `${prefix}仍需手动确认：${maintenanceFindingReason(inspection.findings || [])}`);
+        setMaintenanceRabbitState(button, MAINTENANCE_STATES.repairable, `${prefix}当前展开状态未改变；仍需手动确认：${maintenanceFindingReason(inspection.findings || [])}`);
     } else if (repaired > 0) {
-        setMaintenanceRabbitState(button, MAINTENANCE_STATES.healthy, `已自动完成 ${repaired} 项安全修复：${modules.map(item => item.id).join('、')}`);
+        setMaintenanceRabbitState(button, MAINTENANCE_STATES.healthy, `已自动完成 ${repaired} 项安全修复，未改变当前展开状态：${modules.map(item => item.id).join('、')}`);
     } else {
         setMaintenanceRabbitState(button, inspection.state, inspection.reason || '自动巡逻未发现需要安全修复的问题');
     }

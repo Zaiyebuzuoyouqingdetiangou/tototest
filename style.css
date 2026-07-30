@@ -121,7 +121,7 @@ toto[data-rabbit-mirror="true"] summary {
 
 
 
-/* 1.1.0-beta.14.9-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
+/* 1.1.0-beta.14.10-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
 [data-rabbit-mirror-tool-entry-host] {
   all: initial !important;
   display: inline-flex !important;

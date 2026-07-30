@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h9t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h9t';
-import { cleanRabbitMirrorOutput } from './outputSanitizer.js?rmv=1.1.0b14h9t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h10t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h10t';
+import { cleanRabbitMirrorOutput } from './outputSanitizer.js?rmv=1.1.0b14h10t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.9-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.10-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
