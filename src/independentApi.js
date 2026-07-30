@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h13t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h13t';
-import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h13t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h14t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h14t';
+import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h14t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.13-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.14-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -88,7 +88,23 @@ async function fetchIndependentUrl(url,options={}){
   }
  }
 }
-export async function fetchIndependentModels(){ const st=getSettings(); const url=endpoint(st.independentApiBaseUrl,'/models'); if(!url) throw new Error('请先填写 API 地址'); const r=await fetchIndependentUrl(url,{headers:headers(st)}); if(!r.ok) throw new Error(`模型列表请求失败：HTTP ${r.status}`); const j=await r.json(); return (Array.isArray(j?.data)?j.data:Array.isArray(j)?j:[]).map(x=>typeof x==='string'?x:x?.id).filter(Boolean).sort(); }
+export async function fetchIndependentModels(){
+ const st=getSettings();
+ const url=endpoint(st.independentApiBaseUrl,'/models');
+ if(!url) throw new Error('请先填写 API 地址');
+ let r;
+ try{
+  // 模型列表只允许浏览器直连。这里禁止自动回退到 SillyTavern /proxy/，
+  // 避免开启访问认证的酒馆弹出新的 Basic Auth 登录框。
+  r=await fetch(url,{headers:headers(st)});
+ }catch(error){
+  const why=directBlockedHint(url);
+  throw new Error(`${why}；模型列表直连失败：${error?.message||error}。为避免触发酒馆登录验证，拉取模型不会自动使用 SillyTavern 代理。`);
+ }
+ if(!r.ok) throw new Error(`模型列表请求失败：HTTP ${r.status}`);
+ const j=await r.json();
+ return (Array.isArray(j?.data)?j.data:Array.isArray(j)?j:[]).map(x=>typeof x==='string'?x:x?.id).filter(Boolean).sort();
+}
 export async function testIndependentConnection(){ const models=await fetchIndependentModels(); return {ok:true,models}; }
 function textFromContent(value){
  if(typeof value==='string') return value;
