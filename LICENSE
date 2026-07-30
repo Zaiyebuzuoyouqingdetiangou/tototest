@@ -1,0 +1,32 @@
+RabbitMirror Limited Personal Use License
+Version 1.0 — 2026
+
+Copyright © 2026 Toto / Zaiyebuzuoyouqingdetiangou. All rights reserved.
+
+本软件的源代码公开可见，但本软件不是开源软件。除本许可证明确授予的权利外，作者保留全部权利。
+
+一、允许
+1. 下载并安装未经修改的 RabbitMirror；
+2. 在 SillyTavern 中用于个人、非商业用途；
+3. 为同一使用者的个人安装、备份或设备迁移保留未经修改的副本。
+
+二、未经作者事先书面许可，禁止
+1. 修改、改编、翻译、反编译、拆分或制作衍生版本；
+2. 提取、复制或移植全部或部分源代码、规则、母本、素材或实现逻辑用于其他项目；
+3. 转载、重新打包、重新发布、提供镜像下载、转售或以其他方式向第三方分发；
+4. 将全部或部分内容整合到其他插件、软件、服务、模型提示词库或商业产品；
+5. 将本软件用于收费服务、商业服务、广告、转售或其他营利活动；
+6. 删除、隐藏或修改作者署名、版权声明或许可证说明；
+7. 使用 RabbitMirror 名称、标识或近似名称使他人误认为衍生项目获得作者认可。
+
+三、公开仓库与平台功能
+公开查看、下载或通过代码托管平台的技术功能生成副本，不构成对修改、再分发、整合或商业使用的授权。任何超出第一条范围的使用均须取得作者书面许可。
+
+四、终止
+违反本许可证时，所授予的有限使用权自动终止。终止后应停止使用并删除未经许可制作或分发的副本。
+
+五、免责声明
+本软件按“现状”提供，不作任何明示或默示保证。作者不对因安装、使用、兼容性问题、数据丢失或其他原因造成的损失承担责任。
+
+English summary (the Chinese terms above control in case of inconsistency):
+RabbitMirror is source-available but not open-source. Personal, non-commercial installation and use of unmodified copies are permitted. Modification, derivative works, code extraction, redistribution, repackaging, integration into other projects, and commercial use are prohibited without prior written permission.

@@ -1,0 +1,17 @@
+{
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・生成方式切换・维修兔 v1.70-test）",
+  "loading_order": 99,
+  "js": "index.js?rmv=1.1.0b14h4t",
+  "css": "style.css?rmv=1.1.0b14h4t",
+  "author": "Toto",
+  "version": "1.1.0-beta.14.4-test",
+  "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
+  "auto_update": false,
+  "generate_interceptor": "rabbitMirrorGenerateInterceptor",
+  "minimum_client_version": "1.13.0",
+  "hooks": {
+    "disable": "onDisable",
+    "clean": "onClean"
+  },
+  "description": "RabbitMirror test build with mutually exclusive generation modes: follow the current API (inline or external presentation), or use a separately configured OpenAI-compatible API/model that receives the current chat text, available reasoning, character card, Persona, world-book/author-note context and produces one message-level external RabbitMirror. Independent mode removes RabbitMirror prompt injection from the current API. Includes safe auto-patrol test; no fixed prompt is added when independent mode is selected for the current API."
+}
