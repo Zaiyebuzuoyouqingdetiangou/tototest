@@ -1,14 +1,14 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.1.0b14h14t';
-import { clearLastCombo } from './storage.js?rmv=1.1.0b14h14t';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.1.0b14h14t';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.1.0b14h14t';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.1.0b14h14t';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.1.0b14h14t';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.1.0b14h14t';
-import { fetchIndependentModels, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.1.0b14h14t';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.1.0b14h18t';
+import { clearLastCombo } from './storage.js?rmv=1.1.0b14h18t';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.1.0b14h18t';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.1.0b14h18t';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.1.0b14h18t';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.1.0b14h18t';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.1.0b14h18t';
+import { fetchIndependentModels, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.1.0b14h18t';
 
-const SETTINGS_UI_VERSION = '1.1.0-beta.14.14-test';
-const RUNTIME_VERSION = '1.1.0-beta.14.14-test';
+const SETTINGS_UI_VERSION = '1.1.0-beta.14.18-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.18-test';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -187,7 +187,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[TEST・生成方式切换・维修兔 v1.80-test]</span></b><span class="rabbit-mirror-toto-watermark">Toto Beta v1.1</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[TEST・生成方式切换・维修兔 v1.84-test]</span></b><span class="rabbit-mirror-toto-watermark">Toto Beta v1.1</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -350,7 +350,10 @@ export function initRabbitMirrorUI() {
     });
     $('input[name="rh_follow_display"]').on('change', e => { updateSettings({ followDisplayMode: e.target.value === 'external' ? 'external' : 'inline' }); refreshRabbitMirrorGenerationMode(); });
     const saveIndependentFields = () => updateSettings({ independentApiBaseUrl: $('#rh_independent_base').val(), independentApiKey: $('#rh_independent_key').val(), independentApiModel: $('#rh_independent_model').val(), independentApiTemperature: Number($('#rh_independent_temperature').val()) || 0.8, independentApiMaxTokens: Number($('#rh_independent_max_tokens').val()) || 5000 });
-    $('#rh_independent_base, #rh_independent_key, #rh_independent_model, #rh_independent_temperature, #rh_independent_max_tokens').on('change input', saveIndependentFields);
+    // Do not serialize the whole extension settings object on every mobile input event.
+    // Safari may emit repeated input/autofill events as the drawer opens, which made the UI stutter.
+    $('#rh_independent_base, #rh_independent_key').on('change blur', saveIndependentFields);
+    $('#rh_independent_model, #rh_independent_temperature, #rh_independent_max_tokens').on('change', saveIndependentFields);
     $('#rh_independent_models').on('click', async () => { saveIndependentFields(); try { const models=await fetchIndependentModels(); const current=getSettings().independentApiModel; $('#rh_independent_model').html(models.map(id=>`<option value="${escapeHtml(id)}">${escapeHtml(id)}</option>`).join('') || '<option value="">没有返回模型</option>'); if(current&&models.includes(current)) $('#rh_independent_model').val(current); else if(models[0]) { $('#rh_independent_model').val(models[0]); updateSettings({independentApiModel:models[0]}); } toastr?.success?.(`已拉取 ${models.length} 个模型`); } catch(error) { toastr?.error?.(String(error?.message||error)); } });
     $('#rh_independent_test').on('click', async () => { saveIndependentFields(); try { const result=await testIndependentConnection(); toastr?.success?.(`连接成功；可用模型 ${result.models.length} 个`); } catch(error) { toastr?.error?.(String(error?.message||error)); } });
 
@@ -452,8 +455,10 @@ export function initRabbitMirrorUI() {
         clearRabbitMirrorPrompt('manual');
         toastr?.success?.('已清空当前兔子镜注入');
     });
+    // Memory-provider discovery can be expensive on mobile. Never rescan merely because
+    // the settings drawer was mounted/opened; scan only from the explicit button.
     if (settings.memoryScanEnabled || (settings.memoryProviderIds || []).length) {
-        setTimeout(() => renderMemoryScanResults(scanMemoryPlugins()), 180);
+        $('#rh_memory_scan_results').html('<div style="padding:8px 0;opacity:.68;font-size:11px;line-height:1.45;">已保存资料来源设置。需要刷新列表时请点击“扫描可用资料来源”。</div>');
     }
 
     $('#rh_reset').on('click', () => {

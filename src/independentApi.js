@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h14t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h14t';
-import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h14t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h18t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h18t';
+import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h18t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.14-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.18-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -63,45 +63,50 @@ function directBlockedHint(url=''){
  }catch{}
  return '浏览器可能因 CORS、证书或网络策略阻止了直连';
 }
-async function proxyRequestHeaders(){
+const BRIDGE_ENDPOINT='/api/plugins/rabbitmirror-independent-api/fetch';
+async function serverRequestHeaders(){
  try{
   const fn=hostModule?.getRequestHeaders || globalThis.SillyTavern?.getContext?.()?.getRequestHeaders;
-  if(typeof fn==='function') return {...fn(), 'Content-Type':'application/json'};
+  if(typeof fn==='function') return {...fn(),'Content-Type':'application/json'};
   const mod=hostModule || await import('../../../../../script.js');
   hostModule=mod;
-  return {...(mod?.getRequestHeaders?.()||{}), 'Content-Type':'application/json'};
+  return {...(mod?.getRequestHeaders?.()||{}),'Content-Type':'application/json'};
  }catch{return {'Content-Type':'application/json'};}
 }
 async function fetchIndependentUrl(url,options={}){
- try{ return await fetch(url,options); }
- catch(directError){
-  const proxyUrl=`/proxy/${encodeURIComponent(url)}`;
-  try{
-   const proxyOptions={...options,headers:{...(await proxyRequestHeaders()),...(options.headers||{})}};
-   const proxied=await fetch(proxyUrl,proxyOptions);
-   if(proxied.status===404) throw new Error('SillyTavern CORS 代理未开启');
-   proxied.__rabbitMirrorProxy=true;
-   return proxied;
-  }catch(proxyError){
-   const why=directBlockedHint(url);
-   throw new Error(`${why}；直连失败：${directError?.message||directError}；代理失败：${proxyError?.message||proxyError}。请为 API 配置可用的 HTTPS 域名，或在 SillyTavern config.yaml 中安全开启 enableCorsProxy。`);
-  }
+ const method=String(options.method||'GET').toUpperCase();
+ const apiKey=String(options.headers?.Authorization||'').replace(/^Bearer\s+/i,'');
+ let bridgeResponse;
+ try{
+  bridgeResponse=await fetch(BRIDGE_ENDPOINT,{
+   method:'POST',
+   credentials:'same-origin',
+   headers:await serverRequestHeaders(),
+   body:JSON.stringify({url,method,apiKey,body:options.body??null}),
+  });
+ }catch(error){
+  throw new Error(`RabbitMirror 服务端桥接请求失败：${error?.message||error}`);
  }
+ if(bridgeResponse.status===404){
+  throw new Error('RabbitMirror 服务端桥接插件未安装或未启用。请把配套插件放入 SillyTavern/plugins，并在 config.yaml 开启 enableServerPlugins 后重启酒馆。');
+ }
+ let envelope=null;
+ try{ envelope=await bridgeResponse.json(); }catch{}
+ if(!bridgeResponse.ok || !envelope || typeof envelope.status!=='number'){
+  const detail=envelope?.error||envelope?.message||`HTTP ${bridgeResponse.status}`;
+  throw new Error(`RabbitMirror 服务端桥接异常：${detail}`);
+ }
+ const responseHeaders=new Headers();
+ if(envelope.contentType) responseHeaders.set('content-type',String(envelope.contentType));
+ responseHeaders.set('x-rabbitmirror-bridge','server-plugin');
+ return new Response(String(envelope.body??''),{status:envelope.status,statusText:String(envelope.statusText||''),headers:responseHeaders});
 }
 export async function fetchIndependentModels(){
  const st=getSettings();
  const url=endpoint(st.independentApiBaseUrl,'/models');
  if(!url) throw new Error('请先填写 API 地址');
- let r;
- try{
-  // 模型列表只允许浏览器直连。这里禁止自动回退到 SillyTavern /proxy/，
-  // 避免开启访问认证的酒馆弹出新的 Basic Auth 登录框。
-  r=await fetch(url,{headers:headers(st)});
- }catch(error){
-  const why=directBlockedHint(url);
-  throw new Error(`${why}；模型列表直连失败：${error?.message||error}。为避免触发酒馆登录验证，拉取模型不会自动使用 SillyTavern 代理。`);
- }
- if(!r.ok) throw new Error(`模型列表请求失败：HTTP ${r.status}`);
+ const r=await fetchIndependentUrl(url,{method:'GET',headers:headers(st)});
+ if(!r.ok){ const detail=await r.text().catch(()=> ''); throw new Error(`模型列表请求失败：HTTP ${r.status}${detail?` · ${detail.slice(0,180)}`:''}`); }
  const j=await r.json();
  return (Array.isArray(j?.data)?j.data:Array.isArray(j)?j:[]).map(x=>typeof x==='string'?x:x?.id).filter(Boolean).sort();
 }
@@ -249,6 +254,32 @@ function removeDuplicateExternalHosts(el,keep=null,source=''){
 function externalInsertTarget(el){
  return messageBody(el);
 }
+function placeExternalHost(el,host){
+ const body=externalInsertTarget(el);
+ if(!body||!host) return false;
+ host.classList.add('rabbit-mirror-external-host');
+ const parent=body.parentElement;
+ if(!parent) return false;
+ if(host.parentElement!==parent || body.nextElementSibling!==host) parent.insertBefore(host,body.nextSibling);
+ return true;
+}
+function markExternalDetails(details,key,source){
+ if(!details) return details;
+ details.setAttribute('data-rabbit-mirror-external-details','true');
+ details.dataset.rabbitMirrorExternalOwner=String(key||'');
+ details.dataset.rabbitMirrorExternalSource=String(source||'independent');
+ return details;
+}
+function recoverEscapedExternalDetails(el,host,key,source){
+ if(!el||!host) return null;
+ const escaped=[...(el.querySelectorAll?.('details[data-rabbit-mirror-external-details="true"]')||[])].find(details=>{
+  if(details.closest?.(`[${SOURCE_ATTR}]`)===host) return false;
+  return details.dataset.rabbitMirrorExternalOwner===String(key||'')
+   && details.dataset.rabbitMirrorExternalSource===String(source||'independent');
+ });
+ if(escaped) host.append(escaped);
+ return escaped||null;
+}
 function extractReadyDetails(html=''){
  const template=document.createElement('template');
  template.innerHTML=String(html||'').trim();
@@ -332,13 +363,14 @@ function fallbackExternalDetails(state,text=''){
 function buildExternalHost(key,html,state,source){
  const host=document.createElement('div');
  host.setAttribute(SOURCE_ATTR,'true');
+ host.className='rabbit-mirror-external-host';
  host.dataset.rmKey=key;
  host.dataset.rmSource=source;
  host.dataset.rmState=state;
  const details=state==='ready' ? extractReadyDetails(html) : fallbackExternalDetails(state,html);
  if(!details) return buildExternalHost(key,'独立 API 已返回内容，但没有找到完整的兔子镜 <details>。','error',source);
  details.removeAttribute('open');
- details.setAttribute('data-rabbit-mirror-external-details','true');
+ markExternalDetails(details,key,source);
  host.append(details);
  return host;
 }
@@ -348,13 +380,15 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
  let host=same[0] || externalHosts(el).find(node=>node.dataset.rmSource===source) || null;
  if(!host){
    host=buildExternalHost(key,html,state,source);
-   body.insertAdjacentElement('afterend',host);
+   placeExternalHost(el,host);
    removeDuplicateExternalHosts(el,host,source);
    ensureExternalTools(host);
    return host;
  }
+ placeExternalHost(el,host);
  removeDuplicateExternalHosts(el,host,source);
- const current=host.querySelector(':scope > details');
+ let current=host.querySelector(':scope > details');
+ if(!current) current=recoverEscapedExternalDetails(el,host,key,source);
  const wasOpen=!!current?.hasAttribute?.('open');
  host.dataset.rmKey=key;
  host.dataset.rmSource=source;
@@ -371,11 +405,12 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
      return host;
    }
    nextDetails.removeAttribute('open');
-   nextDetails.setAttribute('data-rabbit-mirror-external-details','true');
+   markExternalDetails(nextDetails,key,source);
    if(current) transferExternalTools(current,nextDetails);
    if(current?.isConnected) current.replaceWith(nextDetails); else host.append(nextDetails);
    if(wasOpen) nextDetails.setAttribute('open','');
    ensureExternalTools(host);
+   placeExternalHost(el,host);
    return host;
  }
  let details=current;
@@ -386,7 +421,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
    details=placeholder;
  }
  if(!details){ details=fallbackExternalDetails(state,html); host.append(details); }
- details.setAttribute('data-rabbit-mirror-external-details','true');
+ markExternalDetails(details,key,source);
  setPlaceholderSummary(details,state==='loading'?'【兔子镜：正在生成中……】':'【兔子镜：生成失败】');
  let bodyNode=details.querySelector(':scope > .rabbit-mirror-external-placeholder-body');
  if(state==='error') renderExternalErrorBody(details,html);
@@ -395,6 +430,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
    bodyNode.textContent=html;
  } else bodyNode?.remove?.();
  ensureExternalTools(host);
+ placeExternalHost(el,host);
  return host;
 }
 
@@ -444,8 +480,7 @@ async function diagnoseIndependentApi(){
    throw new Error(`${modelNote}；生成接口检测失败：HTTP ${response?.status||'未知'}${result?.raw?` · ${String(result.raw).slice(0,180)}`:''}${tried?`；尝试：${tried}`:''}`);
  }
  const parsed=String(result?.text||'').trim();
- const proxy=response.__rabbitMirrorProxy?'，经 SillyTavern 代理':'';
- return `${modelNote}；生成接口检测成功${proxy}，参数模式：${profile}${parsed?`，返回：${parsed.slice(0,80)}`:'，但未解析到文本'}`;
+ return `${modelNote}；生成接口检测成功，参数模式：${profile}${parsed?`，返回：${parsed.slice(0,80)}`:'，但未解析到文本'}`;
 }
 function messageIndexForExternalHost(host){
  const mes=host?.closest?.('.mes[mesid], [mesid].mes, [mesid]');

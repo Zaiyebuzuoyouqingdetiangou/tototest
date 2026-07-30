@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h14t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h14t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h18t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h18t';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h14t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h14t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h14t';
+} from './feedbackCat.js?rmv=1.1.0b14h18t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h18t';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h18t';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.14-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.18-test';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -14808,7 +14808,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.80-test';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.84-test';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
