@@ -1,4 +1,31 @@
-## 1.1.0-beta.14.14-test
+## 1.1.0-beta.14.18-test
+
+- 独立 API 的加载、成功与失败状态现在始终锁定在同一个消息级外置宿主中。
+- 成功内容只替换外置宿主内部的 details；即使酒馆重绘或其他扫描器尝试移动节点，也会按所有权标记恢复到 `.mes_text` 外侧。
+- 不改独立 API 服务端桥接、Prompt、点菜、Token、维修兔或挨打猫业务逻辑。
+
+## 1.1.0-beta.14.18-test
+
+- 独立 API 模型列表、连接检测与正式生成统一改走 RabbitMirror 服务端桥接插件。
+- 不再依赖浏览器 CORS，也不再访问 SillyTavern 通用 `/proxy/`。
+- 新增配套 `server-plugin-rabbitmirror-independent-api`，路由为 `/api/plugins/rabbitmirror-independent-api/fetch`。
+- 服务端桥接插件缺失时给出明确安装提示，不再静默回退到错误连接方式。
+
+# RabbitMirror Changelog
+
+## 1.1.0-beta.14.18-test
+- Independent API requests are now direct-only across model fetch, generation, retry and diagnostics.
+- Removed every automatic SillyTavern `/proxy/` fallback that could trigger an HTTP Basic Auth credential dialog.
+- Browser requests explicitly omit same-site credentials; direct CORS/TLS/network failures are reported without touching the protected Tavern route.
+
+# 1.1.0-beta.14.18-test
+
+- Fixed settings drawer stutter on mobile: removed automatic memory-provider scanning when the UI mounts or opens.
+- Independent API fields no longer save the full extension settings object on every `input`/autofill event; text credentials save on change/blur and selectors/numbers save on change.
+- Added layout/paint containment for settings sections and disabled the summary arrow transition on mobile.
+- No generation, Prompt, picker, token, RabbitMirror output, independent API request, maintenance rabbit, or feedback cat behavior changed.
+
+## 1.1.0-beta.14.18-test
 
 - 模型列表拉取改为仅浏览器直连，不再在直连失败时自动访问 SillyTavern `/proxy/`。
 - 避免启用酒馆访问认证时，点击“拉取模型”触发新的账号密码登录弹窗。

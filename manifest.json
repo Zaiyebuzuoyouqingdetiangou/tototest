@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・生成方式切换・维修兔 v1.80-test）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・生成方式切换・维修兔 v1.84-test）",
   "loading_order": 99,
-  "js": "index.js?rmv=1.1.0b14h14t",
-  "css": "style.css?rmv=1.1.0b14h14t",
+  "js": "index.js?rmv=1.1.0b14h18t",
+  "css": "style.css?rmv=1.1.0b14h18t",
   "author": "Toto",
-  "version": "1.1.0-beta.14.14-test",
+  "version": "1.1.0-beta.14.18-test",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "RabbitMirror test build with mutually exclusive generation modes and safe auto-patrol. Independent API mode creates one native external RabbitMirror details shell from the loading state with maintenance rabbit and feedback cat present. Failed independent generations now retain the same shell and provide message-scoped Retry Generation and Test API actions; Test API checks both model listing and a minimal real completion request, while Retry uses the current message and Swipe. No fixed prompt is added to the current API in independent mode."
+  "description": "RabbitMirror test build with mutually exclusive generation modes and safe auto-patrol. Independent API mode creates one native external RabbitMirror details shell from the loading state with maintenance rabbit and feedback cat present. Failed independent generations now retain the same shell and provide message-scoped Retry Generation and Test API actions; Test API checks both model listing and a minimal real completion request, while Retry uses the current message and Swipe. No fixed prompt is added to the current API in independent mode. Settings UI performance hotfix: no automatic memory-provider rescan on drawer mount, no full settings save on each mobile input/autofill event, and mobile layout/paint containment for collapsed sections."
 }

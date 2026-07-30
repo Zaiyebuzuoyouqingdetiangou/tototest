@@ -1,0 +1,21 @@
+RabbitMirror 独立 API 服务端桥接安装
+
+1. 将“server-plugin-rabbitmirror-independent-api”整个文件夹复制到：
+   SillyTavern/plugins/server-plugin-rabbitmirror-independent-api
+
+2. 编辑 SillyTavern 根目录 config.yaml：
+   enableServerPlugins: true
+
+3. 完整重启 SillyTavern 服务。
+
+4. 浏览器打开：
+   https://你的酒馆域名/api/plugins/rabbitmirror-independent-api/health
+   正常时会返回包含 "ok": true 的 JSON。
+
+5. 再安装/更新 RabbitMirror 前端扩展并完整刷新页面。
+
+说明：
+- 模型列表、测试连接和正式生成统一经此服务端路由转发。
+- 不使用浏览器跨域直连。
+- 不使用 SillyTavern 通用 /proxy/。
+- 不会因副 API 请求触发新的酒馆 Basic Auth 登录框。

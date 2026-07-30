@@ -1,4 +1,8 @@
-## 1.1.0-beta.14.14-test
+## 独立 API 服务端桥接（beta.14.17-test）
+
+独立 API 现通过配套 SillyTavern Server Plugin 转发。安装前端扩展后，还必须把 `server-plugin-rabbitmirror-independent-api` 放入 SillyTavern 的 `plugins` 目录，设置 `enableServerPlugins: true` 并重启服务器。详细步骤见 `SERVER-BRIDGE-INSTALL.txt`。
+
+## 1.1.0-beta.14.18-test
 
 - 独立 API 生成失败时，在同一个外置折叠兔子镜中显示“重新生成”和“检测 API”。
 - “重新生成”按当前消息、当前 Swipe 和当前独立 API 设置原位重试，不新增第二个入口。
@@ -6,14 +10,14 @@
 - 按钮仅在失败状态出现；加载中和成功状态不显示，不影响维修兔、挨打猫、自动巡逻、Prompt 或 Token。
 
 
-## 1.1.0-beta.14.14-test
+## 1.1.0-beta.14.18-test
 
 - 独立 API 开始请求时立即创建原生外置 `<details>`：`【兔子镜：正在生成中……】`。
 - 占位标题从第一帧起同步安装维修兔与挨打猫，不再等待生成结束或 MutationObserver 后挂载。
 - 生成成功时保留同一工具节点，并在同一消息级外置宿主内原位切换为实际兔子镜；失败时同一折叠节点原位显示错误。
 - 生成期间点击维修兔或挨打猫只显示等待提示，不执行维修、自动巡逻或反馈提交。
 - 不修改独立 API Prompt、美化母本、正文、Swipe、`display_text` 或 Token 逻辑。
-> 测试版本：1.1.0-beta.14.14-test（原生外置折叠兔子镜、独立 API 与失败重试检测）
+> 测试版本：1.1.0-beta.14.18-test（原生外置折叠兔子镜、独立 API 与失败重试检测）
 
 # RabbitMirror 兔子镜 — Beta v1.1
 
@@ -40,7 +44,7 @@ RabbitMirror 是一个用于 SillyTavern 的互动小剧场扩展。它会根据
 - 动态视觉场景；
 - 共同回忆资料来源：可在需要时生成回忆杀；
 - 挨打猫：用于纠正兔子镜的美化效果；
-- 维修兔 v1.80-test：检查和修复显示、排版及交互问题，包括原 CSS 引用唯一缺失 checked 控制类时的高置信恢复；
+- 维修兔 v1.84-test：检查和修复显示、排版及交互问题，包括原 CSS 引用唯一缺失 checked 控制类时的高置信恢复；
 - 测试功能“维修兔自动巡逻”：默认关闭；开启后只对后续新生成／重新生成的兔子镜执行一次高置信本地交互修复，布局与结构问题仍需手动确认；
 - 每轮 RabbitMirror 注入字符数与 Token 估算；
 - 手机 Safari / WebView 的交互、裁切与 3D 翻面兼容补救。

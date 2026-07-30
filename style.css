@@ -1,3 +1,21 @@
+
+/* 1.1.0-beta.14.18-test: settings drawer mobile performance containment. */
+.rabbit-mirror-settings {
+    contain: layout style !important;
+}
+.rabbit-mirror-settings .rabbit-mirror-section:not([open]) > .rabbit-mirror-section-content {
+    display: none !important;
+}
+.rabbit-mirror-settings .rabbit-mirror-section-content,
+.rabbit-mirror-settings .rabbit-mirror-token-meter {
+    contain: layout paint style !important;
+}
+@media (max-width: 900px) {
+    .rabbit-mirror-settings .rabbit-mirror-section > summary::after {
+        transition: none !important;
+    }
+}
+
 /* 0.33.8 TEST：小小维修兔 v1.7 完整登记旧急救库，并新增纯文字恢复入口。 */
 .rabbit-mirror-settings .inline-drawer-content {
     padding: 10px;
@@ -121,7 +139,7 @@ toto[data-rabbit-mirror="true"] summary {
 
 
 
-/* 1.1.0-beta.14.14-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
+/* 1.1.0-beta.14.18-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
 [data-rabbit-mirror-tool-entry-host] {
   all: initial !important;
   display: inline-flex !important;
@@ -442,3 +460,7 @@ toto[data-rabbit-mirror="true"] summary {
   opacity:.55;
   pointer-events:none;
 }
+
+/* 1.1.0-beta.14.18-test: keep independent RabbitMirror in its message-level external host. */
+.rabbit-mirror-external-host[data-rm-source="independent"]{display:block;position:relative;width:100%;box-sizing:border-box;contain:layout style;}
+.rabbit-mirror-external-host[data-rm-source="independent"] > details[data-rabbit-mirror-external-details="true"]{display:block;width:100%;box-sizing:border-box;}
