@@ -4,7 +4,7 @@ const FEEDBACK_STORAGE_KEY = 'rabbit_mirror_theater:feedback_cat:v1';
 const FEEDBACK_PENDING_KEY = 'rabbit_mirror_theater:feedback_cat_pending:v2';
 const FEEDBACK_METADATA_KEY = 'rabbit_mirror_theater_feedback_cat_v2';
 const FEEDBACK_PROMPT_KEY = 'rabbit_mirror_theater:feedback_cat_prompt';
-const RUNTIME_VERSION = '1.1.0-beta.14.5-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.6-test';
 const VALID_ROUNDS = new Set([1, 3, 10]);
 const VALID_TYPES = new Set(['color', 'structure', 'overall', 'interaction', 'language', 'custom']);
 

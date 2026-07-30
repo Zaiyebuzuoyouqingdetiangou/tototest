@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h5t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h5t';
-import { cleanRabbitMirrorOutput } from './outputSanitizer.js?rmv=1.1.0b14h5t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h6t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h6t';
+import { cleanRabbitMirrorOutput } from './outputSanitizer.js?rmv=1.1.0b14h6t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.5-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.6-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const LAUNCHER_ATTR = 'data-rabbit-mirror-external-launcher';
 const PANEL_ATTR = 'data-rabbit-mirror-external-panel';
@@ -12,6 +12,8 @@ let generationTimers = new Set();
 let observer = null;
 let delegatedRoot = null;
 let delegatedHandler = null;
+let syncQueued = false;
+let syncRunning = false;
 const pending = new Map();
 
 function currentRuntime(){ return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION; }
@@ -131,24 +133,81 @@ async function callIndependentApi(ctx,index,msg){
  return inner;
 }
 function dominantColor(node){ const candidates=[node,...node.querySelectorAll('div,section,article,details')].slice(0,12); for(const el of candidates){ const s=getComputedStyle(el); const c=s.backgroundColor; if(c && c!=='rgba(0, 0, 0, 0)' && c!=='transparent') return c; } return 'var(--SmartThemeBlurTintColor, rgba(30,30,30,.92))'; }
-function ensureExternalUi(el,key,html,state='ready',source='independent'){
- const body=messageBody(el); if(!body) return;
- let host=el.querySelector(`:scope > [${SOURCE_ATTR}]`) || [...el.querySelectorAll(`[${SOURCE_ATTR}]`)].find(node=>node.dataset.rmKey===key);
- if(host && host.dataset.rmKey===key && host.dataset.rmState===state && (state!=='ready' || host.querySelector('.rabbit-mirror-external-content')?.childElementCount)) return;
- if(!host){ host=document.createElement('div'); host.setAttribute(SOURCE_ATTR,'true'); body.insertAdjacentElement('afterend',host); }
- host.dataset.rmKey=key; host.dataset.rmSource=source; host.dataset.rmState=state;
- host.innerHTML='';
- const launcher=document.createElement('button'); launcher.type='button'; launcher.setAttribute(LAUNCHER_ATTR,'true'); launcher.dataset.rmKey=key; launcher.textContent=state==='loading'?'兔子镜生成中…':state==='error'?'兔子镜生成失败':'兔子镜';
- const panel=document.createElement('div'); panel.setAttribute(PANEL_ATTR,'true'); panel.hidden=true;
+function externalHosts(el){
+ if(!el?.querySelectorAll) return [];
+ return [...el.querySelectorAll(`[${SOURCE_ATTR}]`)];
+}
+function matchingExternalHosts(el,key,source){
+ return externalHosts(el).filter(node => (!key || node.dataset.rmKey===key) && (!source || node.dataset.rmSource===source));
+}
+function removeDuplicateExternalHosts(el,keep=null,source=''){
+ for(const node of externalHosts(el)){
+   if(node===keep) continue;
+   if(source && node.dataset.rmSource!==source) continue;
+   node.remove();
+ }
+}
+function buildExternalHost(key,html,state,source){
+ const host=document.createElement('div');
+ host.setAttribute(SOURCE_ATTR,'true');
+ host.dataset.rmKey=key;
+ host.dataset.rmSource=source;
+ host.dataset.rmState=state;
+ const launcher=document.createElement('button');
+ launcher.type='button';
+ launcher.setAttribute(LAUNCHER_ATTR,'true');
+ launcher.dataset.rmKey=key;
+ launcher.textContent=state==='loading'?'兔子镜生成中…':state==='error'?'兔子镜生成失败':'兔子镜';
+ const panel=document.createElement('div');
+ panel.setAttribute(PANEL_ATTR,'true');
+ panel.hidden=true;
  panel.innerHTML=`<div class="rabbit-mirror-external-backdrop" data-rm-external-close="true"></div><div class="rabbit-mirror-external-window"><button type="button" class="rabbit-mirror-external-close" data-rm-external-close="true" aria-label="关闭">×</button><div class="rabbit-mirror-external-content"></div></div>`;
  const content=panel.querySelector('.rabbit-mirror-external-content');
- if(state==='ready'){ content.innerHTML=html; queueMicrotask(()=>{ const mirror=content.querySelector('details')||content.firstElementChild; const color=mirror?dominantColor(mirror):''; launcher.style.setProperty('--rm-external-accent',color); panel.style.setProperty('--rm-external-accent',color); }); }
+ if(state==='ready') content.innerHTML=html;
  else content.textContent=html||launcher.textContent;
+ launcher.addEventListener('click',event=>{ event.preventDefault(); event.stopPropagation(); openPanel(launcher); },false);
+ panel.addEventListener('click',event=>{ const close=event.target.closest?.('[data-rm-external-close]'); if(!close) return; event.preventDefault(); event.stopPropagation(); closePanel(close); },false);
  host.append(launcher,panel);
+ if(state==='ready') queueMicrotask(()=>{ if(!host.isConnected) return; const mirror=content.querySelector('details')||content.firstElementChild; const color=mirror?dominantColor(mirror):''; launcher.style.setProperty('--rm-external-accent',color); panel.style.setProperty('--rm-external-accent',color); });
+ return host;
 }
-function openPanel(button){ const host=button.closest(`[${SOURCE_ATTR}]`); const panel=host?.querySelector(`[${PANEL_ATTR}]`); if(panel){ panel.hidden=false; document.body.classList.add('rabbit-mirror-external-open'); } }
-function closePanel(node){ const panel=node.closest(`[${PANEL_ATTR}]`); if(panel){ panel.hidden=true; if(!document.querySelector(`[${PANEL_ATTR}]:not([hidden])`)) document.body.classList.remove('rabbit-mirror-external-open'); } }
-function installDelegation(){ const root=document.querySelector('#chat'); if(!root||delegatedRoot===root) return; if(delegatedRoot&&delegatedHandler) delegatedRoot.removeEventListener('click',delegatedHandler,true); delegatedRoot=root; delegatedHandler=e=>{ const close=e.target.closest?.('[data-rm-external-close]'); if(close){e.preventDefault();e.stopPropagation();closePanel(close);return;} const b=e.target.closest?.(`[${LAUNCHER_ATTR}]`); if(b){e.preventDefault();e.stopPropagation();openPanel(b);} }; root.addEventListener('click',delegatedHandler,true); }
+function ensureExternalUi(el,key,html,state='ready',source='independent'){
+ const body=messageBody(el); if(!body) return null;
+ const same=matchingExternalHosts(el,key,source);
+ let host=same[0] || externalHosts(el).find(node=>node.dataset.rmSource===source) || null;
+ if(host && host.dataset.rmKey===key && host.dataset.rmState===state && (state!=='ready' || host.querySelector('.rabbit-mirror-external-content')?.childElementCount)){
+   removeDuplicateExternalHosts(el,host,source);
+   return host;
+ }
+ const next=buildExternalHost(key,html,state,source);
+ if(host?.isConnected) host.replaceWith(next);
+ else body.insertAdjacentElement('afterend',next);
+ removeDuplicateExternalHosts(el,next,source);
+ return next;
+}
+function openPanel(button){
+ const host=button?.closest?.(`[${SOURCE_ATTR}]`);
+ const panel=host?.querySelector?.(`[${PANEL_ATTR}]`);
+ if(!panel) return false;
+ panel.hidden=false;
+ panel.removeAttribute('hidden');
+ document.body?.classList?.add('rabbit-mirror-external-open');
+ return true;
+}
+function closePanel(node){ const panel=node?.closest?.(`[${PANEL_ATTR}]`); if(panel){ panel.hidden=true; panel.setAttribute('hidden',''); if(!document.querySelector(`[${PANEL_ATTR}]:not([hidden])`)) document.body?.classList?.remove('rabbit-mirror-external-open'); } }
+function installDelegation(){
+ const root=document;
+ if(delegatedRoot===root && delegatedHandler) return;
+ if(delegatedRoot&&delegatedHandler) delegatedRoot.removeEventListener('click',delegatedHandler,true);
+ delegatedRoot=root;
+ delegatedHandler=e=>{
+   const close=e.target.closest?.('[data-rm-external-close]');
+   if(close){e.preventDefault();e.stopPropagation();closePanel(close);return;}
+   const b=e.target.closest?.(`[${LAUNCHER_ATTR}]`);
+   if(b){e.preventDefault();e.stopPropagation();openPanel(b);}
+ };
+ root.addEventListener('click',delegatedHandler,true);
+}
 async function generateFor(index,msg,force=false){
  const ctx=getContext(); const key=recordKey(ctx,index,msg); const st=getSettings(); if(st.enabled===false || st.autoRabbitMirrorInjection===false || st.generationSource!=='independent') return;
  const el=messageElement(index); if(!el) return; const store=readStore(); if(store[key]?.html&&!force){ensureExternalUi(el,key,store[key].html,'ready');return;}
@@ -157,9 +216,35 @@ async function generateFor(index,msg,force=false){
 }
 function externalizeFollowMirror(index,msg){ const st=getSettings(); if(st.generationSource!=='follow'||st.followDisplayMode!=='external') return; const el=messageElement(index); const body=messageBody(el); if(!body) return; const mirror=[...body.querySelectorAll('toto > details, details[data-rabbit-mirror-css-scope], details')].find(d=>/兔子镜/.test(d.querySelector(':scope > summary')?.textContent||'')); if(!mirror||mirror.closest(`[${PANEL_ATTR}]`)) return; const ctx=getContext(); const key=`follow:${recordKey(ctx,index,msg)}`; const wrapper=document.createElement('div'); wrapper.append(mirror); ensureExternalUi(el,key,wrapper.innerHTML,'ready','follow'); mirror.remove(); }
 function restoreFollowInline(el){ const host=el?.querySelector?.(`[${SOURCE_ATTR}][data-rm-source="follow"]`); if(!host) return; const content=host.querySelector('.rabbit-mirror-external-content'); const mirror=content?.querySelector?.('details'); const body=messageBody(el); if(mirror&&body) body.append(mirror); host.remove(); }
-function syncAll(){ if(!currentRuntime()) return; installDelegation(); const ctx=getContext(); const st=getSettings(); for(const {m,i} of assistantMessages(ctx)){ const el=messageElement(i); if(!el) continue; if(st.enabled===false || st.autoRabbitMirrorInjection===false){ el.querySelectorAll(`[${SOURCE_ATTR}]`).forEach(n=>n.remove()); continue; } if(st.generationSource==='independent') { el.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(n=>n.remove()); const key=recordKey(ctx,i,m); const saved=readStore()[key]; if(saved?.html) ensureExternalUi(el,key,saved.html,'ready'); } else { el.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove()); if(st.followDisplayMode==='external') externalizeFollowMirror(i,m); else restoreFollowInline(el); } }
+function syncAll(){
+ if(!currentRuntime() || syncRunning) return;
+ syncRunning=true;
+ try{
+   installDelegation();
+   const ctx=getContext(); const st=getSettings();
+   for(const {m,i} of assistantMessages(ctx)){
+     const el=messageElement(i); if(!el) continue;
+     if(st.enabled===false || st.autoRabbitMirrorInjection===false){ externalHosts(el).forEach(n=>n.remove()); continue; }
+     if(st.generationSource==='independent'){
+       externalHosts(el).filter(n=>n.dataset.rmSource==='follow').forEach(n=>n.remove());
+       const key=recordKey(ctx,i,m); const saved=readStore()[key];
+       const independentHosts=externalHosts(el).filter(n=>n.dataset.rmSource==='independent');
+       const keep=independentHosts.find(n=>n.dataset.rmKey===key) || independentHosts[0] || null;
+       for(const node of independentHosts){ if(node!==keep) node.remove(); }
+       if(saved?.html) ensureExternalUi(el,key,saved.html,'ready');
+     } else {
+       externalHosts(el).filter(n=>n.dataset.rmSource==='independent').forEach(n=>n.remove());
+       if(st.followDisplayMode==='external') externalizeFollowMirror(i,m); else restoreFollowInline(el);
+     }
+   }
+ } finally { syncRunning=false; }
+}
+function queueSyncAll(){
+ if(syncQueued) return;
+ syncQueued=true;
+ queueMicrotask(()=>{ syncQueued=false; syncAll(); });
 }
 function scheduleLatest(){ for(const t of generationTimers) clearTimeout(t); generationTimers.clear(); for(const delay of [250,900,1800]){ const t=setTimeout(()=>{generationTimers.delete(t); const ctx=getContext(); const list=assistantMessages(ctx); const last=list.at(-1); if(!last)return; const st=getSettings(); if(st.enabled===false || st.autoRabbitMirrorInjection===false) return; if(st.generationSource==='independent') generateFor(last.i,last.m); else if(st.followDisplayMode==='external') externalizeFollowMirror(last.i,last.m); },delay); generationTimers.add(t); } }
 export function refreshRabbitMirrorGenerationMode(){ syncAll(); scheduleLatest(); }
-export async function initIndependentRabbitMirror(){ if(!currentRuntime()) return; installDelegation(); syncAll(); try{ hostModule=await import('../../../../../script.js'); const es=hostModule?.eventSource, et=hostModule?.event_types||{}; const events=[et.GENERATION_ENDED,et.GENERATION_STOPPED,et.MESSAGE_RECEIVED,et.CHARACTER_MESSAGE_RENDERED,et.MESSAGE_SWIPED,et.MESSAGE_UPDATED,et.CHAT_CHANGED].filter(Boolean); for(const ev of new Set(events)) es?.on?.(ev,()=>{syncAll();scheduleLatest();}); }catch(e){console.warn('[RabbitMirror] independent host events unavailable',e);} if(typeof MutationObserver!=='undefined'){ const chat=document.querySelector('#chat'); if(chat){ observer=new MutationObserver(()=>{installDelegation();syncAll();}); observer.observe(chat,{childList:true,subtree:true}); } } }
-export function destroyIndependentRabbitMirror(){ for(const t of generationTimers) clearTimeout(t); generationTimers.clear(); observer?.disconnect?.(); observer=null; if(delegatedRoot&&delegatedHandler) delegatedRoot.removeEventListener('click',delegatedHandler,true); delegatedRoot=null; delegatedHandler=null; pending.clear(); document.querySelectorAll(`[${SOURCE_ATTR}], [${PANEL_ATTR}]`).forEach(n=>n.remove()); document.body?.classList?.remove('rabbit-mirror-external-open'); }
+export async function initIndependentRabbitMirror(){ if(!currentRuntime()) return; installDelegation(); syncAll(); try{ hostModule=await import('../../../../../script.js'); const es=hostModule?.eventSource, et=hostModule?.event_types||{}; const events=[et.GENERATION_ENDED,et.GENERATION_STOPPED,et.MESSAGE_RECEIVED,et.CHARACTER_MESSAGE_RENDERED,et.MESSAGE_SWIPED,et.MESSAGE_UPDATED,et.CHAT_CHANGED].filter(Boolean); for(const ev of new Set(events)) es?.on?.(ev,()=>{syncAll();scheduleLatest();}); }catch(e){console.warn('[RabbitMirror] independent host events unavailable',e);} if(typeof MutationObserver!=='undefined'){ const chat=document.querySelector('#chat'); if(chat){ observer=new MutationObserver(()=>{installDelegation();queueSyncAll();}); observer.observe(chat,{childList:true,subtree:true}); } } }
+export function destroyIndependentRabbitMirror(){ for(const t of generationTimers) clearTimeout(t); generationTimers.clear(); observer?.disconnect?.(); observer=null; if(delegatedRoot&&delegatedHandler) delegatedRoot.removeEventListener('click',delegatedHandler,true); delegatedRoot=null; delegatedHandler=null; syncQueued=false; syncRunning=false; pending.clear(); document.querySelectorAll(`[${SOURCE_ATTR}], [${PANEL_ATTR}]`).forEach(n=>n.remove()); document.body?.classList?.remove('rabbit-mirror-external-open'); }

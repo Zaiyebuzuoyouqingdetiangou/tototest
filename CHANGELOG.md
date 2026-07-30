@@ -1,11 +1,17 @@
-# 1.1.0-beta.14.5-test
+## 1.1.0-beta.14.6-test
+- 外置兔子镜入口改为每条消息/Swipe 单实例，修复生成中与成功入口重复堆叠。
+- 外置入口改为完整构建后一次性插入，并清理同来源残留实例。
+- 增加按钮自身点击监听与 document 捕获委托双保险，适配 SillyTavern 重绘/克隆。
+- MutationObserver 改为微任务去抖并增加同步重入保护。
+
+# 1.1.0-beta.14.6-test
 
 - 修复独立 API 请求已成功但前端误判“兔子镜生成失败”的响应解析问题。
 - 兼容 OpenAI content 字符串/数组、Responses output、Gemini candidates.parts、Anthropic content、SSE/NDJSON 与纯文本返回。
 - 接受完整裸 `<details>` 兔子镜，不再强制服务商必须保留 `<toto>` 外壳。
 - 对空正文、非完整兔子镜与输出截断分别显示更准确的失败原因和 finish_reason。
 
-# RabbitMirror 1.1.0-beta.14.5-test
+# RabbitMirror 1.1.0-beta.14.6-test
 
 - 测试仓新增“维修兔自动巡逻（测试）”本地开关，默认关闭。
 - 开启时只对之后新生成或重新生成的兔子镜自动尝试一次高置信安全修复。
@@ -150,7 +156,7 @@
 - 从设置页移除重复的全链路诊断入口；维修兔菜单内的诊断功能继续保留。
 - 生成 Prompt、母本预算和正常每轮注入逻辑均未增加。
 
-## 1.1.0-beta.14.5-test
+## 1.1.0-beta.14.6-test
 - Added mutually exclusive RabbitMirror generation modes: follow the current API, or use a separately configured OpenAI-compatible API/model.
 - Independent mode clears the current-model RabbitMirror injection and automatically generates one message-level external RabbitMirror after an assistant response.
 - Added model-list retrieval, connection testing, fixed model selection, temperature and maximum-output controls.
