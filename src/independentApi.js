@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h42t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h42t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h42t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h45t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h45t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h45t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.42-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.45-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -25,6 +25,13 @@ const pending = new Map();
 let feedbackActionListenerInstalled = false;
 const orphanExternalHostTimers = new Map();
 const messageSourceRevisions = new Map();
+const GLOBAL_FLIGHT_KEY = '__rabbitMirrorIndependentFlightsV2';
+function globalFlights(){
+ const current=globalThis[GLOBAL_FLIGHT_KEY];
+ if(current&&typeof current.get==='function') return current;
+ const created=new Map(); globalThis[GLOBAL_FLIGHT_KEY]=created; return created;
+}
+function flightIdentity(slot,sourceHash=''){ return `${String(slot||'')}\u0000${String(sourceHash||'')}`; }
 
 function currentRuntime(){ return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION; }
 function readStore(){ try { const v=JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); return v&&typeof v==='object'?v:{}; } catch { return {}; } }
@@ -432,6 +439,13 @@ function externalInsertTarget(el){
 function independentDisplayMode(){
  return getSettings().independentDisplayMode==='external_then_inline' ? 'external_then_inline' : 'external';
 }
+let lastIndependentDisplayMode=independentDisplayMode();
+function consumeIndependentDisplayModeChange(){
+ const next=independentDisplayMode();
+ const changed=next!==lastIndependentDisplayMode;
+ lastIndependentDisplayMode=next;
+ return changed;
+}
 function independentPlacementForState(state='ready'){
  return state==='ready' && independentDisplayMode()==='external_then_inline' ? 'inline' : 'external';
 }
@@ -783,10 +797,67 @@ function buildExternalHost(key,html,state,source){
  host.append(details);
  return host;
 }
+function usableReadyDetails(details){
+ if(!details || details.tagName!=='DETAILS') return false;
+ const summary=details.querySelector?.(':scope > summary');
+ if(!summary || !String(summary.textContent||'').trim()) return false;
+ const meaningful=[...details.children].some(node=>node!==summary && !['STYLE','SCRIPT'].includes(node.tagName));
+ return meaningful || String(details.innerHTML||'').length>120;
+}
+function rebuildCollapsedReadyHost(el,host,key,source,html,sourceHash=''){
+ if(!host || !html) return host;
+ const current=host.querySelector?.(':scope > details');
+ if(usableReadyDetails(current)) return host;
+ const next=extractReadyDetails(html);
+ if(!usableReadyDetails(next)) return host;
+ const wasOpen=!!current?.hasAttribute?.('open');
+ markExternalDetails(next,key,source);
+ if(wasOpen) next.setAttribute('open',''); else next.removeAttribute('open');
+ current?.replaceWith?.(next) || host.append(next);
+ host.dataset.rmState='ready';
+ if(sourceHash) host.dataset.rmSourceHash=String(sourceHash);
+ ensureExternalTools(host);
+ return host;
+}
+function collapseDuplicateIdentityHosts(el,key,source='independent',sourceHash=''){
+ const currentChat=chatKey(getContext());
+ const local=externalHosts(el).filter(node=>node.dataset.rmSource===source);
+ // Display-mode changes used to leave the old pure-external host behind while
+ // creating a second inline host. Include every same-key host from the current
+ // chat, even when an older build failed to stamp the latest owner placement.
+ const byIdentity=allExternalHosts().filter(node=>
+  node.dataset.rmSource===source
+  && String(node.dataset.rmKey||'')===String(key||'')
+  && (!node.dataset.rmOwnerChat || node.dataset.rmOwnerChat===currentChat)
+ );
+ const candidates=[...new Set([...local,...byIdentity])];
+ if(candidates.length<2) return candidates[0]||null;
+ const score=node=>{
+  let n=0;
+  if(node.dataset.rmKey===key) n+=8;
+  if(sourceHash && node.dataset.rmSourceHash===sourceHash) n+=6;
+  if(node.dataset.rmState==='ready') n+=4;
+  if(usableReadyDetails(node.querySelector?.(':scope > details'))) n+=4;
+  if(!node.hidden) n+=1;
+  return n;
+ };
+ candidates.sort((a,b)=>score(b)-score(a));
+ const keep=candidates[0];
+ for(const node of candidates.slice(1)){
+  const details=node.querySelector?.(':scope > details');
+  if(!usableReadyDetails(keep.querySelector?.(':scope > details')) && usableReadyDetails(details)) keep.replaceChildren(details);
+  node.remove();
+ }
+ return keep;
+}
 function ensureExternalUi(el,key,html,state='ready',source='independent',sourceHash=''){
  const body=externalInsertTarget(el); if(!body) return null;
+ const reconciled=collapseDuplicateIdentityHosts(el,key,source,sourceHash);
  const same=matchingExternalHosts(el,key,source);
- let host=same[0] || externalHosts(el).find(node=>node.dataset.rmSource===source) || null;
+ // Reuse the existing host across pure-external <-> external-then-inline mode
+ // switches. A mode change is a DOM move only; it must never allocate another
+ // shell or trigger a second independent generation.
+ let host=same[0] || reconciled || externalHosts(el).find(node=>node.dataset.rmSource===source) || null;
  if(!host){
    const escaped=[...(el.querySelectorAll?.('details[data-rabbit-mirror-external-details="true"]')||[])].find(details=>
     details.dataset.rabbitMirrorExternalSource===String(source||'independent')
@@ -860,33 +931,41 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
 }
 
 function scheduleMessageGeneration(index,delay=260,sourceAware=false){
- const firstTimer=setTimeout(()=>{
-   followupGenerationTimers.delete(firstTimer);
+ const startedAt=Date.now();
+ let stableSince=0;
+ let lastHash='';
+ let lastRevision=-1;
+ const poll=()=>{
    if(!currentRuntime() || runtimeMode()!=='independent') return;
-   const first=currentGenerationIdentity(index);
-   if(!first) return;
-   if(!sourceAware){ void generateFor(index,first.msg,false,false); return; }
-   // Regeneration can emit an early "generation ended" after the reasoning pass,
-   // before the visible answer starts. Poll the actual selected message source and
-   // require a continuous quiet window before launching the independent API.
-   let stableSince=Date.now();
-   let lastHash=first.sourceHash;
-   let lastRevision=first.revision;
-   const poll=()=>{
-     if(!currentRuntime() || runtimeMode()!=='independent') return;
-     const live=currentGenerationIdentity(index);
-     if(!live) return;
-     if(live.sourceHash!==lastHash || live.revision!==lastRevision){
-       lastHash=live.sourceHash; lastRevision=live.revision; stableSince=Date.now();
+   const live=currentGenerationIdentity(index);
+   // During正文重说 SillyTavern can briefly remove or replace the selected message.
+   // A missing identity must not permanently consume the only generation trigger.
+   if(!live){
+     if(Date.now()-startedAt<30000){
+       const next=setTimeout(()=>{ followupGenerationTimers.delete(next); poll(); },420);
+       followupGenerationTimers.add(next);
      }
-     if(Date.now()-stableSince>=2600){
-       const text=String(live.msg?.mes||'').replace(/<[^>]+>/g,' ').trim();
-       if(text.length<12){ stableSince=Date.now(); }
-       else { void generateFor(index,live.msg,false,true); return; }
-     }
+     return;
+   }
+   if(!sourceAware){ void generateFor(index,live.msg,false,false); return; }
+   if(live.sourceHash!==lastHash || live.revision!==lastRevision){
+     lastHash=live.sourceHash;
+     lastRevision=live.revision;
+     stableSince=Date.now();
+   }
+   const text=String(live.msg?.mes||'').replace(/<[^>]+>/g,' ').trim();
+   if(text.length>=12 && stableSince && Date.now()-stableSince>=2600){
+     void generateFor(index,live.msg,false,true);
+     return;
+   }
+   if(text.length<12) stableSince=Date.now();
+   if(Date.now()-startedAt<30000){
      const next=setTimeout(()=>{ followupGenerationTimers.delete(next); poll(); },420);
      followupGenerationTimers.add(next);
-   };
+   }
+ };
+ const firstTimer=setTimeout(()=>{
+   followupGenerationTimers.delete(firstTimer);
    poll();
  },delay);
  followupGenerationTimers.add(firstTimer);
@@ -911,20 +990,28 @@ async function generateFor(index,msg,force=false,sourceAware=false){
  if(saved?.html&&!force){
    const savedSourceHash=String(saved.sourceHash||'');
    if((savedSourceHash && savedSourceHash===sourceHash) || (!savedSourceHash && !sourceAware)){
-     ensureExternalUi(el,key,saved.html,'ready','independent',savedSourceHash||sourceHash); return;
+     const restored=ensureExternalUi(el,key,saved.html,'ready','independent',savedSourceHash||sourceHash); rebuildCollapsedReadyHost(el,restored,key,'independent',saved.html,savedSourceHash||sourceHash); return;
    }
    removeRecordsForSlot(store,slot); writeStore(store); store=readStore();
  }
  const existing=pending.get(slot);
  if(existing && existing.sourceHash===sourceHash && existing.revision===revision) return existing.task;
- if(force){ removeRecordsForSlot(store,slot); writeStore(store); }
+ const flightKey=flightIdentity(slot,sourceHash);
+ const shared=globalFlights().get(flightKey);
+ if(shared?.task && !force) return shared.task;
+ if(force){
+  removeRecordsForSlot(store,slot); writeStore(store);
+  for(const [id,value] of globalFlights()) if(String(id).startsWith(`${slot}\u0000`)) value.cancelled=true;
+ }
+ collapseDuplicateIdentityHosts(el,key,'independent',sourceHash);
  ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
  const runId=++generationSequence;
  let stale=false;
+ const flight={task:null,runId,key,slot,sourceHash,revision,cancelled:false};
  const task=callIndependentApi(ctx,index,msg).then(html=>{
    const live=currentGenerationIdentity(index);
    const active=pending.get(slot);
-   if(!live || live.slot!==slot || live.key!==key || live.sourceHash!==sourceHash || live.revision!==revision || active?.runId!==runId || active?.revision!==revision){ stale=true; return; }
+   if(!live || live.slot!==slot || live.key!==key || live.sourceHash!==sourceHash || live.revision!==revision || active?.runId!==runId || active?.revision!==revision || flight.cancelled || globalFlights().get(flightKey)!==flight){ stale=true; return; }
    const completed={html,sourceHash,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION};
    appendHistoryEntry(slot,completed);
    const next=readStore(); saveRecordForSlot(next,slot,completed);
@@ -934,13 +1021,15 @@ async function generateFor(index,msg,force=false,sourceAware=false){
  }).catch(err=>{
    const live=currentGenerationIdentity(index);
    const active=pending.get(slot);
-   if(!live || live.slot!==slot || live.key!==key || live.sourceHash!==sourceHash || live.revision!==revision || active?.runId!==runId || active?.revision!==revision){ stale=true; return; }
+   if(!live || live.slot!==slot || live.key!==key || live.sourceHash!==sourceHash || live.revision!==revision || active?.runId!==runId || active?.revision!==revision || flight.cancelled || globalFlights().get(flightKey)!==flight){ stale=true; return; }
    console.error('[RabbitMirror] independent generation failed',err);
    const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
  }).finally(()=>{
    if(pending.get(slot)?.runId===runId) pending.delete(slot);
+   if(globalFlights().get(flightKey)===flight) globalFlights().delete(flightKey);
    if(stale) scheduleMessageGeneration(index,320,true);
  });
+ flight.task=task; globalFlights().set(flightKey,flight);
  pending.set(slot,{task,runId,key,sourceHash,revision});
  await task;
 }
@@ -1066,6 +1155,7 @@ function syncMessages(indices=null){
  syncRunning=true;
  try{
    const ctx=getContext(); const st=getSettings(); const mode=runtimeMode(); const store=mode==='independent'?readStore():null;
+   const displayModeChanged=mode==='independent' ? consumeIndependentDisplayModeChange() : false;
    const allowed=indices instanceof Set?indices:null;
    let storeChanged=false;
    for(const {m,i} of assistantMessages(ctx)){
@@ -1078,8 +1168,12 @@ function syncMessages(indices=null){
        const key=recordKey(ctx,i,m); const slot=observed.slot; const sourceHash=observed.sourceHash;
        let saved=findSavedRecord(store,slot);
        const savedSourceHash=String(saved?.sourceHash||'');
+       const keep=collapseDuplicateIdentityHosts(el,key,'independent',sourceHash);
+       if(displayModeChanged && keep){
+         // Switching display mode only relocates the one existing mirror.
+         placeExternalHost(el,keep,keep.dataset.rmKey||key,'independent');
+       }
        const independentHosts=externalHosts(el).filter(n=>n.dataset.rmSource==='independent');
-       const keep=independentHosts.find(n=>n.dataset.rmKey===key) || independentHosts[0] || null;
        for(const node of independentHosts){ if(node!==keep) node.remove(); }
 
        // Never repaint an old mirror over a newly regenerated/swiped正文. A
@@ -1098,7 +1192,7 @@ function syncMessages(indices=null){
        }
        if(saved?.html && (!savedSourceHash || savedSourceHash===sourceHash)){
          const host=ensureExternalUi(el,key,saved.html,'ready','independent',savedSourceHash||sourceHash);
-         if(host){ host.hidden=false; delete host.dataset.rmAwaitingFreshSource; }
+         if(host){ rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,savedSourceHash||sourceHash); host.hidden=false; delete host.dataset.rmAwaitingFreshSource; }
        } else if(keep && !hostIsStale){
          placeExternalHost(el,keep,keep.dataset.rmKey||key,'independent');
          refreshExistingExternalDetails(keep,key,'independent');
@@ -1186,7 +1280,10 @@ function scheduleLatest(delay=520,sourceAware=false){
    latestGenerationTimer=null;
    const ctx=getContext(); const list=assistantMessages(ctx); const last=list.at(-1); if(!last)return;
    const current=runtimeMode();
-   if(current==='independent') void generateFor(last.i,last.m,false,sourceAware);
+   if(current==='independent'){
+     if(sourceAware) scheduleMessageGeneration(last.i,0,true);
+     else void generateFor(last.i,last.m,false,false);
+   }
    else if(current==='follow-external') externalizeFollowMirror(last.i,last.m);
  },delay);
 }

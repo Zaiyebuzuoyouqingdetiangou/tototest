@@ -31,7 +31,7 @@
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details[data-rabbit-mirror-external-details="true"] > summary{
   box-sizing:border-box !important; margin:0 !important; padding:11px 14px !important;
 }
-/* 1.1.0-beta.14.42-test: settings drawer mobile performance containment. */
+/* 1.1.0-beta.14.45-test: settings drawer mobile performance containment. */
 .rabbit-mirror-settings {
     contain: layout style !important;
 }
@@ -171,7 +171,7 @@ toto[data-rabbit-mirror="true"] summary {
 
 
 
-/* 1.1.0-beta.14.42-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
+/* 1.1.0-beta.14.45-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
 [data-rabbit-mirror-tool-entry-host] {
   all: initial !important;
   display: inline-flex !important;
@@ -587,4 +587,16 @@ toto[data-rabbit-mirror="true"] summary {
  .rabbit-mirror-history-body{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);}
  .rabbit-mirror-history-list{flex-direction:row;border-right:0;border-bottom:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.20));overflow-x:auto;overflow-y:hidden;}
  .rabbit-mirror-history-list button{flex:0 0 min(210px,72vw);}
+}
+
+/* beta.14.45: never let a migrated/restored independent mirror collapse into a zero-height line. */
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"]{
+  min-height:52px !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details[data-rabbit-mirror-external-details="true"]{
+  min-height:50px !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details[data-rabbit-mirror-external-details="true"] > summary{
+  min-height:50px !important;
+  display:list-item !important;
 }
