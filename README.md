@@ -25,7 +25,7 @@
 - 生成成功时保留同一工具节点，并在同一消息级外置宿主内原位切换为实际兔子镜；失败时同一折叠节点原位显示错误。
 - 生成期间点击维修兔或挨打猫只显示等待提示，不执行维修、自动巡逻或反馈提交。
 - 不修改独立 API Prompt、美化母本、正文、Swipe、`display_text` 或 Token 逻辑。
-> 测试版本：1.1.0-beta.14.26-test（原生外置折叠兔子镜、独立 API 与失败重试检测）
+> 测试版本：1.1.0-beta.14.27-test（原生外置折叠兔子镜、独立 API 与失败重试检测）
 
 # RabbitMirror 兔子镜 — Beta v1.1
 
@@ -119,3 +119,8 @@ This test build offers two mutually exclusive modes. “Follow current API” ke
 ## beta.14.26 独立宿主隔离
 
 独立 API 生成的兔子镜使用 `#chat` 下的消息级 sibling shell：每条助手消息／每个 Swipe 各自保留一个外部模块。它不嵌入正文、状态栏或其他插件容器；生成中、成功和失败只更新同一 shell 的内部内容。
+
+
+## beta.14.27 外置模块视觉回调
+
+独立 API 兔子镜仍使用与消息结构隔离的 sibling shell，但外置宽度跟随对应消息正文区域，不再铺满聊天视口。shell 自身永久保留边框、圆角和背景，生成中、成功、失败及折叠状态不会退化成无边框标题。

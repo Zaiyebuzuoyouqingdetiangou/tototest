@@ -1,3 +1,9 @@
+# RabbitMirror 1.1.0-beta.14.27-test
+
+- 保留 beta.14.26 的 message-sibling 隔离宿主，但外置模块宽度改为跟随所属消息的 `.mes_text` 实际矩形，恢复此前舒适的左右留白，不再铺满整个 `#chat`。
+- 外置 shell 自身提供持续存在的边框、圆角与背景；loading、ready、error 以及折叠／展开状态均使用同一有框模块，不再在生成完成后退化为无边框标题。
+- 生成结果、Prompt、美化母本、点菜、Token、自动维修业务规则和 `userRequestOverrideRules.js` 未修改。
+
 # RabbitMirror 1.1.0-beta.14.26-test
 
 - 独立 API 兔子镜改为 `#chat` 下、整条消息之后的专属 sibling shell，不再挂入 `.mes_text`、状态栏或其他插件容器。
