@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h24t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h24t';
-import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h24t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h25t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h25t';
+import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h25t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.24-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.25-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -28,7 +28,24 @@ function getContext(){ try { return globalThis.SillyTavern?.getContext?.() || {}
 function chatKey(ctx){ const meta=ctx.chatMetadata||globalThis.chat_metadata||{}; return String(meta.chat_id||meta.chatId||meta.file_name||ctx.characterId||ctx.groupId||'chat'); }
 function swipeId(msg){ return Number(msg?.swipe_id ?? msg?.swipeId ?? 0) || 0; }
 function messageSlotKey(ctx,index,msg){ return `${chatKey(ctx)}:${index}:${swipeId(msg)}`; }
-function recordKey(ctx,index,msg){ return `${messageSlotKey(ctx,index,msg)}:${hashText(msg?.mes||'')}`; }
+function recordKey(ctx,index,msg){ return messageSlotKey(ctx,index,msg); }
+function findSavedRecord(store,slot){
+ const exact=store?.[slot];
+ if(exact?.html) return exact;
+ const prefix=`${slot}:`;
+ let best=null;
+ for(const [key,value] of Object.entries(store||{})){
+  if(!key.startsWith(prefix) || !value?.html) continue;
+  if(!best || Number(value.ts||0)>Number(best.ts||0)) best=value;
+ }
+ return best;
+}
+function saveRecordForSlot(store,slot,value){
+ const prefix=`${slot}:`;
+ for(const key of Object.keys(store||{})){ if(key===slot || key.startsWith(prefix)) delete store[key]; }
+ store[slot]=value;
+ return store;
+}
 function messageElement(index){ return document.querySelector(`#chat .mes[mesid="${index}"], #chat [mesid="${index}"].mes, #chat [mesid="${index}"]`); }
 function messageBody(el){ return el?.querySelector?.('.mes_text') || el; }
 function assistantMessages(ctx){ const chat=Array.isArray(ctx.chat)?ctx.chat:[]; return chat.map((m,i)=>({m,i})).filter(x=>!x.m?.is_user && typeof x.m?.mes==='string'); }
@@ -320,11 +337,12 @@ function placeExternalHost(el,host){
  // Once the host is connected, never reinsert it merely because the generated
  // details or tool buttons changed. Re-insertion was able to move a completed
  // mirror behind later-rendered status-bar nodes.
- if(host.isConnected && host.dataset.rmExternalPlacementEstablished==='true') return true;
  const parent=body.parentElement;
  if(!parent) return false;
- if(host.parentElement!==parent || body.nextElementSibling!==host) parent.insertBefore(host,body.nextSibling);
+ const correctlyPlaced=host.parentElement===parent && body.nextElementSibling===host;
+ if(!correctlyPlaced) parent.insertBefore(host,body.nextSibling);
  host.dataset.rmExternalPlacementEstablished='true';
+ host.dataset.rmExternalOwnerMessage=String(el.getAttribute?.('mesid')||'');
  return true;
 }
 function markExternalDetails(details,key,source){
@@ -344,10 +362,54 @@ function recoverEscapedExternalDetails(el,host,key,source){
  if(escaped) host.append(escaped);
  return escaped||null;
 }
+function repatriateExternalDetails(el,host,key,source){
+ if(!el||!host) return null;
+ const escaped=[...(el.querySelectorAll?.('details[data-rabbit-mirror-external-details="true"]')||[])].filter(details=>{
+  if(details.closest?.(`[${SOURCE_ATTR}]`)===host) return false;
+  return details.dataset.rabbitMirrorExternalSource===String(source||'independent')
+   && (!details.dataset.rabbitMirrorExternalOwner || details.dataset.rabbitMirrorExternalOwner===String(key||''));
+ });
+ if(!escaped.length) return host.querySelector(':scope > details');
+ let current=host.querySelector(':scope > details');
+ for(const details of escaped){
+  markExternalDetails(details,key,source);
+  if(!current){ host.append(details); current=details; }
+  else if(details!==current) details.remove();
+ }
+ return current;
+}
+function repairMalformedLabelMarkup(html=''){
+ return String(html||'')
+  .replace(/<\s*labelfor\s*=\s*/gi,'<label for=')
+  .replace(/<\s*labelclass\s*=\s*/gi,'<label class=')
+  .replace(/<\s*labelid\s*=\s*/gi,'<label id=')
+  .replace(/<\s*labelstyle\s*=\s*/gi,'<label style=')
+  .replace(/<\s*\/\s*labelfor\s*>/gi,'</label>')
+  .replace(/<\s*\/\s*labelclass\s*>/gi,'</label>')
+  .replace(/<\s*\/\s*labelid\s*>/gi,'</label>')
+  .replace(/<\s*\/\s*labelstyle\s*>/gi,'</label>');
+}
+function repairLabelTargets(root){
+ if(!root?.querySelectorAll) return 0;
+ const inputs=[...root.querySelectorAll('input[id], select[id], textarea[id], button[id]')];
+ let changed=0;
+ for(const label of root.querySelectorAll('label[for]')){
+  const target=String(label.getAttribute('for')||'').trim();
+  if(!target) continue;
+  const exact=inputs.find(input=>input.id===target);
+  if(exact) continue;
+  const suffix=`-${target}`;
+  const matches=inputs.filter(input=>String(input.id||'').endsWith(suffix));
+  if(matches.length===1){ label.setAttribute('for',matches[0].id); changed++; }
+ }
+ return changed;
+}
 function extractReadyDetails(html=''){
  const template=document.createElement('template');
- template.innerHTML=String(html||'').trim();
- return template.content.querySelector('details') || null;
+ template.innerHTML=repairMalformedLabelMarkup(String(html||'').trim());
+ const details=template.content.querySelector('details') || null;
+ if(details) repairLabelTargets(details);
+ return details;
 }
 function externalToolHost(details){
  return details?.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]') || null;
@@ -473,7 +535,18 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
  const same=matchingExternalHosts(el,key,source);
  let host=same[0] || externalHosts(el).find(node=>node.dataset.rmSource===source) || null;
  if(!host){
-   host=buildExternalHost(key,html,state,source);
+   const escaped=[...(el.querySelectorAll?.('details[data-rabbit-mirror-external-details="true"]')||[])].find(details=>
+    details.dataset.rabbitMirrorExternalSource===String(source||'independent')
+    && (!details.dataset.rabbitMirrorExternalOwner || details.dataset.rabbitMirrorExternalOwner===String(key||''))
+   );
+   host=document.createElement('div');
+   host.setAttribute(SOURCE_ATTR,'true');
+   host.className='rabbit-mirror-external-host';
+   host.dataset.rmKey=key;
+   host.dataset.rmSource=source;
+   host.dataset.rmState=state;
+   if(escaped){ markExternalDetails(escaped,key,source); host.append(escaped); }
+   else host=buildExternalHost(key,html,state,source);
    placeExternalHost(el,host);
    removeDuplicateExternalHosts(el,host,source);
    ensureExternalTools(host);
@@ -481,7 +554,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
  }
  placeExternalHost(el,host);
  removeDuplicateExternalHosts(el,host,source);
- let current=host.querySelector(':scope > details');
+ let current=repatriateExternalDetails(el,host,key,source);
  if(!current) current=recoverEscapedExternalDetails(el,host,key,source);
  const wasOpen=!!current?.hasAttribute?.('open');
  host.dataset.rmKey=key;
@@ -548,7 +621,8 @@ async function generateFor(index,msg,force=false){
  if(st.enabled===false || st.autoRabbitMirrorInjection===false || st.generationSource!=='independent') return;
  const el=messageElement(index); if(!el) return;
  const store=readStore();
- if(store[key]?.html&&!force){ensureExternalUi(el,key,store[key].html,'ready');return;}
+ const saved=findSavedRecord(store,slot);
+ if(saved?.html&&!force){ensureExternalUi(el,key,saved.html,'ready');return;}
  const existing=pending.get(slot);
  if(existing) return existing.task;
  ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading');
@@ -558,7 +632,7 @@ async function generateFor(index,msg,force=false){
    const live=currentGenerationIdentity(index);
    const active=pending.get(slot);
    if(!live || live.slot!==slot || live.key!==key || active?.runId!==runId){ stale=true; return; }
-   const next=readStore(); next[key]={html,ts:Date.now(),model:st.independentApiModel};
+   const next=readStore(); saveRecordForSlot(next,slot,{html,ts:Date.now(),model:st.independentApiModel});
    const keys=Object.keys(next).sort((a,b)=>(next[b]?.ts||0)-(next[a]?.ts||0));
    for(const k of keys.slice(120)) delete next[k];
    writeStore(next); ensureExternalUi(el,key,html,'ready');
@@ -699,7 +773,7 @@ function syncMessages(indices=null){
      if(mode==='off') { externalHosts(el).forEach(n=>n.remove()); continue; }
      if(mode==='independent'){
        externalHosts(el).filter(n=>n.dataset.rmSource==='follow').forEach(n=>n.remove());
-       const key=recordKey(ctx,i,m); const saved=store?.[key];
+       const key=recordKey(ctx,i,m); const slot=messageSlotKey(ctx,i,m); const saved=findSavedRecord(store,slot);
        const independentHosts=externalHosts(el).filter(n=>n.dataset.rmSource==='independent');
        const keep=independentHosts.find(n=>n.dataset.rmKey===key) || independentHosts[0] || null;
        for(const node of independentHosts){ if(node!==keep) node.remove(); }
