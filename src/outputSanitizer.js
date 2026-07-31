@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h29t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h29t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h30t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h30t';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h29t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h29t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h29t';
+} from './feedbackCat.js?rmv=1.1.0b14h30t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h30t';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h30t';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.29-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.30-test';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9577,6 +9577,10 @@ function scopeRabbitMirrorInteractionIds(toto, { installRescue = true } = {}) {
     return { scopedIdCount: state.idMap.size, radioGroupCount: restoredRadioGroupCount };
 }
 
+export function isolateRabbitMirrorInteractionIds(root) {
+    return scopeRabbitMirrorInteractionIds(root, { installRescue: false });
+}
+
 function getRenderedRabbitMirrorInteractionRoots(root) {
     if (!root?.querySelectorAll) return [];
     const candidates = new Set(root.querySelectorAll(MIRROR_TOTO_SELECTOR));
@@ -14822,7 +14826,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.95-test';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.96-test';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -16552,8 +16556,34 @@ function needsPlainTextCssRescue(text) {
     return /(?:^|[;{])\s*--[^\s:;{}]+\s*:|var\s*\(/i.test(source);
 }
 
+const MALFORMED_HTML_TAG_NAMES = '(?:div|span|label|section|article|button|input|select|textarea|details|summary|h[1-6]|p|a|img|svg|path|g|ul|ol|li|table|thead|tbody|tfoot|tr|td|th|form|fieldset|legend)';
+const MALFORMED_HTML_ATTR_NAMES = '(?:class|id|style|for|href|src|type|role|name|value|title|tabindex|checked|disabled|selected|multiple|placeholder|aria-[\\w-]+|data-[\\w-]+)';
+
+export function repairMalformedRabbitMirrorMarkup(htmlText = '') {
+    let html = String(htmlText || '');
+    const duplicateClosing = new RegExp(
+        `<\\s*\\/\\s*(${MALFORMED_HTML_TAG_NAMES})(${MALFORMED_HTML_ATTR_NAMES})\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s>]+)\\s*>\\s*<\\s*\\/\\s*\\1\\s*>`,
+        'gi',
+    );
+    const malformedOpening = new RegExp(
+        `<\\s*(${MALFORMED_HTML_TAG_NAMES})(${MALFORMED_HTML_ATTR_NAMES})(?=\\s*=)`,
+        'gi',
+    );
+    const malformedClosing = new RegExp(
+        `<\\s*\\/\\s*(${MALFORMED_HTML_TAG_NAMES})(?:${MALFORMED_HTML_ATTR_NAMES})(?:\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s>]+))?\\s*>`,
+        'gi',
+    );
+
+    // 模型偶尔把“标签名 + 第一个属性”粘在一起，例如 <divclass=...>、<labelfor=...>。
+    // 先折叠“损坏闭标签 + 重复标准闭标签”，避免修复后多关一层容器。
+    html = html.replace(duplicateClosing, '</$1>');
+    html = html.replace(malformedOpening, '<$1 $2');
+    html = html.replace(malformedClosing, '</$1>');
+    return html;
+}
+
 export function rescuePlainTextRabbitMirrorOutput(responseText = '') {
-    let text = normalizeMirrorAttribute(String(responseText || ''));
+    let text = repairMalformedRabbitMirrorMarkup(normalizeMirrorAttribute(String(responseText || '')));
     text = repairPlainTextCssInHtml(text);
     text = text.replace(TOTO_BLOCK_RE, block => compactTotoBlock(block));
     return text.trim();
@@ -16858,6 +16888,79 @@ function buildRabbitMirrorClassMap(cssTexts, classPrefix) {
     return map;
 }
 
+function collectRabbitMirrorKeyframeNames(cssTexts) {
+    const names = new Set();
+    const pattern = /@(?:-webkit-)?keyframes\s+(?:(["'])([^"']+)\1|([^\s{]+))/gi;
+    for (const cssText of cssTexts || []) {
+        pattern.lastIndex = 0;
+        let match;
+        while ((match = pattern.exec(String(cssText || '')))) {
+            const name = String(match[2] || match[3] || '').trim();
+            if (name) names.add(name);
+        }
+    }
+    pattern.lastIndex = 0;
+    return names;
+}
+
+function buildRabbitMirrorKeyframeMap(cssTexts, scopeToken) {
+    const map = new Map();
+    const prefix = `rmkf-${String(scopeToken || '').replace(/^rmcss-/i, '')}-`;
+    for (const name of collectRabbitMirrorKeyframeNames(cssTexts)) {
+        if (!name || name.startsWith(prefix)) {
+            map.set(name, name);
+            continue;
+        }
+        const identifierSafe = /^-?[_a-zA-Z][\w-]*$/.test(name);
+        const safeName = identifierSafe
+            ? name
+            : `animation-${hashInteractionSignature(name).slice(0, 7)}`;
+        map.set(name, `${prefix}${safeName}`);
+    }
+    return map;
+}
+
+function rewriteRabbitMirrorAnimationNameTokens(valueText, keyframeMap) {
+    let value = String(valueText || '');
+    if (!keyframeMap?.size) return value;
+    for (const [oldName, newName] of keyframeMap.entries()) {
+        if (!oldName || oldName === newName) continue;
+        const escaped = escapeRegExp(oldName);
+        value = value
+            .replace(new RegExp(`(["'])${escaped}\\1`, 'g'), `$1${newName}$1`)
+            .replace(new RegExp(`(^|[^\\w-])${escaped}(?![\\w-])`, 'g'), `$1${newName}`);
+    }
+    return value;
+}
+
+function rewriteRabbitMirrorAnimationDeclarations(cssText, keyframeMap) {
+    if (!keyframeMap?.size) return String(cssText || '');
+    return String(cssText || '').replace(
+        /(^|[;{])(\s*(?:-webkit-)?animation(?:-name)?\s*:\s*)([^;{}]*)(?=;|}|$)/gi,
+        (match, boundary, property, value) => `${boundary}${property}${rewriteRabbitMirrorAnimationNameTokens(value, keyframeMap)}`,
+    );
+}
+
+function rewriteRabbitMirrorKeyframeDefinitions(cssText, keyframeMap) {
+    if (!keyframeMap?.size) return String(cssText || '');
+    return String(cssText || '').replace(
+        /(@(?:-webkit-)?keyframes\s+)(?:(["'])([^"']+)\2|([^\s{]+))/gi,
+        (match, prefix, quote, quotedName, bareName) => {
+            const oldName = String(quotedName || bareName || '').trim();
+            const newName = keyframeMap.get(oldName) || oldName;
+            return quote ? `${prefix}${quote}${newName}${quote}` : `${prefix}${newName}`;
+        },
+    );
+}
+
+function rewriteRabbitMirrorInlineAnimationStyles(htmlText, keyframeMap) {
+    if (!keyframeMap?.size) return String(htmlText || '');
+    return String(htmlText || '').replace(/\sstyle\s*=\s*(["'])([\s\S]*?)\1/gi, (match, quote, styleText) => {
+        const rewritten = rewriteRabbitMirrorAnimationDeclarations(styleText, keyframeMap);
+        return ` style=${quote}${rewritten}${quote}`;
+    });
+}
+
 function scopeRabbitMirrorSelectorList(selectorText, scopeSelector, classMap, checkedStateIds) {
     return splitCssSelectorList(selectorText).map((rawSelector) => {
         // 部分宿主 CSS 作用域解析链会在原始资源解析受扰后，于 checkbox/radio 的 #id
@@ -16875,8 +16978,10 @@ function scopeRabbitMirrorSelectorList(selectorText, scopeSelector, classMap, ch
     }).join(',');
 }
 
-function scopeRabbitMirrorCssText(cssText, scopeSelector, classMap, checkedStateIds) {
-    return transformCssRuleList(cssText, prelude => scopeRabbitMirrorSelectorList(prelude, scopeSelector, classMap, checkedStateIds));
+function scopeRabbitMirrorCssText(cssText, scopeSelector, classMap, checkedStateIds, keyframeMap) {
+    const scoped = transformCssRuleList(cssText, prelude => scopeRabbitMirrorSelectorList(prelude, scopeSelector, classMap, checkedStateIds));
+    const definitionsRewritten = rewriteRabbitMirrorKeyframeDefinitions(scoped, keyframeMap);
+    return rewriteRabbitMirrorAnimationDeclarations(definitionsRewritten, keyframeMap);
 }
 
 function rewriteRabbitMirrorClassAttributes(htmlText, classMap) {
@@ -16889,11 +16994,12 @@ function rewriteRabbitMirrorClassAttributes(htmlText, classMap) {
 }
 
 export function compactTotoBlock(block) {
-    const preparedScope = prepareRabbitMirrorCssScope(normalizeMirrorAttribute(stripCodeBlockTriggers(block)));
+    const preparedScope = prepareRabbitMirrorCssScope(repairMalformedRabbitMirrorMarkup(normalizeMirrorAttribute(stripCodeBlockTriggers(block))));
     let html = preparedScope.html;
     const rawStyleTexts = [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)]
         .map(match => stripCssComments(String(match[1] || '').replace(/<br\s*\/?>/gi, '')));
     const classMap = buildRabbitMirrorClassMap(rawStyleTexts, preparedScope.classPrefix);
+    const keyframeMap = buildRabbitMirrorKeyframeMap(rawStyleTexts, preparedScope.scopeToken);
     const checkedStateIds = collectRabbitMirrorCheckedStateIds(rawStyleTexts);
     const styleSlots = [];
 
@@ -16915,7 +17021,7 @@ export function compactTotoBlock(block) {
                 const commentStripped = stripCssComments(css);
                 const svgDataUriNormalized = normalizeQuotedCssSvgDataUris(commentStripped);
                 const repairedCss = repairMalformedCssDeclarations(svgDataUriNormalized);
-                const scopedCss = scopeRabbitMirrorCssText(repairedCss, preparedScope.scopeSelector, classMap, checkedStateIds);
+                const scopedCss = scopeRabbitMirrorCssText(repairedCss, preparedScope.scopeSelector, classMap, checkedStateIds, keyframeMap);
                 return `${openTag}${scopedCss}${closeTag}`;
             },
         ));
@@ -16952,8 +17058,10 @@ export function compactTotoBlock(block) {
         .join('')
         .trim();
 
-    // 5. 将当前兔子镜本地 CSS 使用的 class 改成逐镜唯一名称，阻断旧消息同名样式串入。
+    // 5. 将当前兔子镜本地 CSS 使用的 class 与动画名改成逐镜唯一名称，
+    // 阻断旧消息同名样式或 @keyframes 串入；只改 style 属性中的 animation 声明。
     html = rewriteRabbitMirrorClassAttributes(html, classMap);
+    html = rewriteRabbitMirrorInlineAnimationStyles(html, keyframeMap);
 
     // 6. 还原 <style>。
     styleSlots.forEach((style, index) => {
@@ -16972,7 +17080,7 @@ export function compactTotoBlock(block) {
 }
 
 export function cleanRabbitMirrorOutput(responseText = '') {
-    let text = normalizeMirrorAttribute(stripHtmlComments(String(responseText || '')))
+    let text = repairMalformedRabbitMirrorMarkup(normalizeMirrorAttribute(stripHtmlComments(String(responseText || ''))))
         .replace(/[\u200B\u200C\u200D\uFEFF]/g, '')
         .replace(/\r\n?/g, '\n')
         .trim();

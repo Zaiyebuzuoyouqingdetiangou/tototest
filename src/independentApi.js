@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h29t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h29t';
-import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h29t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h30t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h30t';
+import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h30t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.29-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.30-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -454,15 +454,7 @@ function repatriateExternalDetails(el,host,key,source){
  return current;
 }
 function repairMalformedLabelMarkup(html=''){
- return String(html||'')
-  .replace(/<\s*labelfor\s*=\s*/gi,'<label for=')
-  .replace(/<\s*labelclass\s*=\s*/gi,'<label class=')
-  .replace(/<\s*labelid\s*=\s*/gi,'<label id=')
-  .replace(/<\s*labelstyle\s*=\s*/gi,'<label style=')
-  .replace(/<\s*\/\s*labelfor\s*>/gi,'</label>')
-  .replace(/<\s*\/\s*labelclass\s*>/gi,'</label>')
-  .replace(/<\s*\/\s*labelid\s*>/gi,'</label>')
-  .replace(/<\s*\/\s*labelstyle\s*>/gi,'</label>');
+ return repairMalformedRabbitMirrorMarkup(String(html||''));
 }
 function repairLabelTargets(root){
  if(!root?.querySelectorAll) return 0;
@@ -481,9 +473,13 @@ function repairLabelTargets(root){
 }
 function extractReadyDetails(html=''){
  const template=document.createElement('template');
- template.innerHTML=repairMalformedLabelMarkup(String(html||'').trim());
+ const normalized=cleanRabbitMirrorOutput(repairMalformedLabelMarkup(String(html||'').trim()));
+ template.innerHTML=normalized;
  const details=template.content.querySelector('details') || null;
- if(details) repairLabelTargets(details);
+ if(details){
+  repairLabelTargets(details);
+  isolateRabbitMirrorInteractionIds(details);
+ }
  return details;
 }
 function externalToolHost(details){
