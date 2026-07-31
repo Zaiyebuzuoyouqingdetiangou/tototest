@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h37t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h37t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h39t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h39t';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h37t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h37t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h37t';
+} from './feedbackCat.js?rmv=1.1.0b14h39t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h39t';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h39t';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.37-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.39-test';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9597,12 +9597,13 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 }
 
 
-// beta.14.35: one-shot frame palette extraction for both main-API and independent-API mirrors.
-// Only the outer RabbitMirror <details>/<summary> and independent shell receive variables.
-// Generated descendants, media queries, animation, grid/flex and message source are untouched.
+// beta.14.38: conservative one-shot frame accent for both main-API and independent-API mirrors.
+// Preserve any frame authored by the model. Only plain/default outer frames receive a subtle accent
+// sampled from the mirror's outermost visual surface; descendants and their own CSS remain untouched.
 const AUTO_FRAME_ATTR = 'data-rabbit-mirror-auto-frame';
 const AUTO_FRAME_VERSION_ATTR = 'data-rabbit-mirror-auto-frame-version';
 const AUTO_FRAME_SOURCE_ATTR = 'data-rabbit-mirror-auto-frame-source';
+const AUTO_FRAME_PRESERVED_ATTR = 'data-rabbit-mirror-auto-frame-preserved';
 
 function clampAutoFrameChannel(value) {
     return Math.max(0, Math.min(255, Math.round(Number(value) || 0)));
@@ -9694,10 +9695,6 @@ function blendAutoFrameColor(color, target, ratio) {
     };
 }
 
-function autoFrameRgb(color) {
-    return `rgb(${color.r} ${color.g} ${color.b})`;
-}
-
 function autoFrameRgba(color, alpha) {
     return `rgba(${color.r}, ${color.g}, ${color.b}, ${Math.max(0, Math.min(1, alpha)).toFixed(3)})`;
 }
@@ -9710,32 +9707,29 @@ function autoFrameOuterDetails(root) {
     return [...(root.querySelectorAll?.('details') || [])].find(isRabbitMirrorDetails) || null;
 }
 
-function autoFrameCandidateElements(details) {
-    const candidates = [];
-    const queue = [];
-    const excluded = 'summary, style, script, template, input, textarea, select, option, [data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-menu], [data-rabbit-mirror-feedback-cat-menu]';
-    for (const child of [...(details?.children || [])]) {
-        if (child.matches?.(excluded)) continue;
-        queue.push({ element: child, depth: 0 });
-    }
-    const seen = new Set();
-    while (queue.length && candidates.length < 80) {
-        const item = queue.shift();
-        const element = item?.element;
-        if (!element || seen.has(element)) continue;
-        seen.add(element);
-        if (element.matches?.('details') && element !== details) continue;
-        candidates.push(item);
-        if (item.depth >= 4) continue;
-        for (const child of [...(element.children || [])]) {
-            if (child.matches?.(excluded)) continue;
-            queue.push({ element: child, depth: item.depth + 1 });
-        }
-    }
-    return candidates;
+function clearRabbitMirrorAutoFrameTheme(target) {
+    if (!target?.style) return;
+    for (const name of [
+        '--rm-auto-frame-base',
+        '--rm-auto-frame-summary',
+        '--rm-auto-frame-border',
+        '--rm-auto-frame-surface',
+        '--rm-auto-frame-text',
+        '--rm-auto-frame-shadow',
+    ]) target.style.removeProperty(name);
+    target.removeAttribute(AUTO_FRAME_ATTR);
+    target.removeAttribute(AUTO_FRAME_SOURCE_ATTR);
 }
 
-function readAutoFrameCandidate(element, depth = 0) {
+function hasAuthoredRabbitMirrorOuterFrame(details) {
+    const summary = details?.querySelector?.(':scope > summary');
+    const authoredProps = /(?:^|;)\s*(?:background(?:-color|-image)?|border(?:-[^:;]+)?|box-shadow|outline|color)\s*:/i;
+    const detailsStyle = String(details?.getAttribute?.('style') || '');
+    const summaryStyle = String(summary?.getAttribute?.('style') || '');
+    return authoredProps.test(detailsStyle) || authoredProps.test(summaryStyle);
+}
+
+function readAutoFrameCandidate(element, source, score) {
     let style = null;
     try { style = getComputedStyle(element); } catch { return null; }
     if (!style) return null;
@@ -9743,56 +9737,73 @@ function readAutoFrameCandidate(element, depth = 0) {
     const gradient = style.backgroundImage && style.backgroundImage !== 'none'
         ? mixAutoFrameColors(autoFrameColorTokens(style.backgroundImage))
         : null;
-    const colors = [];
-    if (solid?.a >= 0.12) colors.push(solid);
-    if (gradient) colors.push(gradient);
-    const color = mixAutoFrameColors(colors);
+    const color = mixAutoFrameColors([gradient, solid]);
     if (!color) return null;
-    const className = String(element.className || '').toLowerCase();
     const chroma = (Math.max(color.r, color.g, color.b) - Math.min(color.r, color.g, color.b)) / 255;
-    let score = (gradient ? 16 : 0) + (solid?.a >= 0.12 ? 6 : 0) + chroma * 8 - depth * 1.3;
-    if (depth === 0) score += 2.5;
-    if (/(?:wrapper|container|card|scene|scenery|visual|screen|window|app|stage|panel)/.test(className)) score += 2.5;
-    if (/(?:text|copy|desc|content|body|rules|feedback)/.test(className) && depth > 0) score -= 2;
-    return { color, score, source: gradient ? 'gradient' : 'background' };
+    return { color, score: score + chroma * 2, source };
 }
 
 function extractRabbitMirrorAutoFrameColor(details) {
-    let best = null;
-    for (const { element, depth } of autoFrameCandidateElements(details)) {
-        const candidate = readAutoFrameCandidate(element, depth);
-        if (!candidate) continue;
-        if (!best || candidate.score > best.score) best = candidate;
-    }
-    if (best) return best;
-    const own = readAutoFrameCandidate(details, 1);
-    if (own) return own;
-    return { color: { r: 112, g: 126, b: 154, a: 1 }, score: 0, source: 'fallback' };
+    // Prefer the actual outer surface. Do not search deep content panels: a warm inner card must not
+    // recolor a dark outer mirror frame, which was the beta.14.35 regression.
+    const candidates = [];
+    const own = readAutoFrameCandidate(details, 'outer-details', 100);
+    if (own) candidates.push(own);
+
+    const excluded = 'summary, style, script, template, input, textarea, select, option, [data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-menu], [data-rabbit-mirror-feedback-cat-menu]';
+    const directChildren = [...(details?.children || [])].filter(child => !child.matches?.(excluded));
+    directChildren.slice(0, 5).forEach((child, index) => {
+        const direct = readAutoFrameCandidate(child, `direct-${index}`, 80 - index * 4);
+        if (direct) candidates.push(direct);
+        const firstVisual = [...(child.children || [])].find(grandchild => !grandchild.matches?.(excluded));
+        if (firstVisual) {
+            const nested = readAutoFrameCandidate(firstVisual, `direct-${index}-first`, 54 - index * 4);
+            if (nested) candidates.push(nested);
+        }
+    });
+
+    return candidates.sort((a, b) => b.score - a.score)[0] || null;
 }
 
-function writeRabbitMirrorAutoFrameVariables(target, palette) {
+function currentAutoFrameSummaryBase(details) {
+    const summary = details?.querySelector?.(':scope > summary');
+    try {
+        const color = parseAutoFrameCssColor(summary ? getComputedStyle(summary).backgroundColor : '');
+        if (color?.a >= 0.12) return color;
+    } catch { /* ignore */ }
+    const luminance = autoFrameRelativeLuminance({ r: 245, g: 246, b: 248 });
+    return luminance >= 0 ? { r: 245, g: 246, b: 248, a: 1 } : { r: 245, g: 246, b: 248, a: 1 };
+}
+
+function writeRabbitMirrorAutoFrameVariables(target, palette, details) {
     if (!target?.style || !palette?.color) return;
     const base = palette.color;
     const luminance = autoFrameRelativeLuminance(base);
-    const summary = luminance > 0.78
-        ? blendAutoFrameColor(base, { r: 0, g: 0, b: 0 }, 0.10)
-        : luminance < 0.10
-            ? blendAutoFrameColor(base, { r: 255, g: 255, b: 255 }, 0.10)
-            : base;
-    const border = luminance > 0.62
-        ? blendAutoFrameColor(base, { r: 0, g: 0, b: 0 }, 0.28)
-        : blendAutoFrameColor(base, { r: 255, g: 255, b: 255 }, 0.22);
-    const summaryLuminance = autoFrameRelativeLuminance(summary);
-    const text = summaryLuminance > 0.48 ? 'rgb(24 29 40)' : 'rgb(246 248 252)';
-    target.style.setProperty('--rm-auto-frame-base', autoFrameRgb(base));
-    target.style.setProperty('--rm-auto-frame-summary', autoFrameRgb(summary));
-    target.style.setProperty('--rm-auto-frame-border', autoFrameRgba(border, 0.86));
-    target.style.setProperty('--rm-auto-frame-surface', autoFrameRgba(base, luminance < 0.2 ? 0.16 : 0.11));
-    target.style.setProperty('--rm-auto-frame-text', text);
-    target.style.setProperty('--rm-auto-frame-shadow', autoFrameRgba(base, 0.22));
+    const lightTarget = { r: 255, g: 255, b: 255 };
+    const darkTarget = { r: 8, g: 10, b: 16 };
+    // Keep the original rounded white-frame language, but dye the whole frame with a softened
+    // version of the mirror's own outer background. Dark mirrors stay recognizably dark; light
+    // mirrors stay airy. Only plugin-owned/default frames use these variables.
+    const surface = luminance < 0.22
+        ? blendAutoFrameColor(base, darkTarget, 0.18)
+        : blendAutoFrameColor(base, lightTarget, luminance > 0.72 ? 0.46 : 0.30);
+    const summary = luminance < 0.22
+        ? blendAutoFrameColor(base, darkTarget, 0.06)
+        : blendAutoFrameColor(base, lightTarget, luminance > 0.72 ? 0.32 : 0.18);
+    const border = luminance < 0.22
+        ? blendAutoFrameColor(base, lightTarget, 0.20)
+        : blendAutoFrameColor(base, darkTarget, 0.16);
+    const text = autoFrameRelativeLuminance(summary) < 0.42 ? { r: 248, g: 249, b: 252 } : { r: 28, g: 31, b: 38 };
+    target.style.setProperty('--rm-auto-frame-base', autoFrameRgba(base, 1));
+    target.style.setProperty('--rm-auto-frame-surface', autoFrameRgba(surface, 0.97));
+    target.style.setProperty('--rm-auto-frame-summary', autoFrameRgba(summary, 0.98));
+    target.style.setProperty('--rm-auto-frame-border', autoFrameRgba(border, 0.78));
+    target.style.setProperty('--rm-auto-frame-text', autoFrameRgba(text, 0.98));
+    target.style.setProperty('--rm-auto-frame-shadow', autoFrameRgba(border, luminance < 0.22 ? 0.22 : 0.14));
     target.setAttribute(AUTO_FRAME_ATTR, 'true');
     target.setAttribute(AUTO_FRAME_VERSION_ATTR, RUNTIME_VERSION);
     target.setAttribute(AUTO_FRAME_SOURCE_ATTR, palette.source || 'computed');
+    target.removeAttribute(AUTO_FRAME_PRESERVED_ATTR);
 }
 
 function applyRabbitMirrorAutoFrameTheme(root, force = false) {
@@ -9800,13 +9811,37 @@ function applyRabbitMirrorAutoFrameTheme(root, force = false) {
     if (!details || !isInsideChatMessage(details)) return false;
     if (details.classList?.contains('rabbit-mirror-external-placeholder')) return false;
     if (!force && details.getAttribute(AUTO_FRAME_VERSION_ATTR) === RUNTIME_VERSION) return false;
-    const palette = extractRabbitMirrorAutoFrameColor(details);
-    writeRabbitMirrorAutoFrameVariables(details, palette);
+
     const shell = details.closest?.('.rabbit-mirror-external-shell[data-rm-source="independent"]');
-    if (shell) writeRabbitMirrorAutoFrameVariables(shell, palette);
+    const authored = hasAuthoredRabbitMirrorOuterFrame(details);
+    const palette = extractRabbitMirrorAutoFrameColor(details);
+    if (authored) {
+        // Preserve the model-authored details exactly. The surrounding plugin-owned white rounded
+        // shell may still be dyed so main/secondary mirrors share the requested framed appearance.
+        clearRabbitMirrorAutoFrameTheme(details);
+        details.setAttribute(AUTO_FRAME_VERSION_ATTR, RUNTIME_VERSION);
+        details.setAttribute(AUTO_FRAME_PRESERVED_ATTR, 'authored');
+        if (shell && palette) writeRabbitMirrorAutoFrameVariables(shell, palette, details);
+        else if (shell) {
+            clearRabbitMirrorAutoFrameTheme(shell);
+            shell.setAttribute(AUTO_FRAME_VERSION_ATTR, RUNTIME_VERSION);
+            shell.setAttribute(AUTO_FRAME_PRESERVED_ATTR, 'no-color');
+        }
+        return true;
+    }
+
+    if (!palette) {
+        clearRabbitMirrorAutoFrameTheme(details);
+        if (shell) clearRabbitMirrorAutoFrameTheme(shell);
+        details.setAttribute(AUTO_FRAME_VERSION_ATTR, RUNTIME_VERSION);
+        details.setAttribute(AUTO_FRAME_PRESERVED_ATTR, 'no-color');
+        return false;
+    }
+
+    writeRabbitMirrorAutoFrameVariables(details, palette, details);
+    if (shell) writeRabbitMirrorAutoFrameVariables(shell, palette, details);
     return true;
 }
-
 
 
 // 一次性兔子镜总诊断：用户启动后点击一条异常消息。
@@ -9826,6 +9861,8 @@ const MAINTENANCE_AUTO_SAFE_VERSION = 'safe-v2-state-preserving';
 const FEEDBACK_CAT_ATTR = 'data-rabbit-mirror-feedback-cat';
 const RESAY_ATTR = 'data-rabbit-mirror-resay';
 const FEEDBACK_CAT_MENU_ATTR = 'data-rabbit-mirror-feedback-cat-menu';
+const FEEDBACK_RESAY_EVENT = 'rabbitmirror:resay';
+const FEEDBACK_HISTORY_EVENT = 'rabbitmirror:history';
 const SELECTION_ONLY_FALLBACK_ATTR = 'data-rabbit-mirror-selection-only-fallback';
 const SELECTION_ONLY_PLACEHOLDER_ATTR = 'data-rabbit-mirror-selection-only-placeholder';
 const SELECTION_ONLY_SOURCE_ATTR = 'data-rabbit-mirror-selection-only-source';
@@ -14146,6 +14183,12 @@ function showFeedbackCatMenu(root, button, draft = null) {
         : lastReceipt
             ? `<div class="rabbit-mirror-feedback-cat-status">当前没有生效中的反馈。</div>${receiptLine}`
             : '<div class="rabbit-mirror-feedback-cat-status">可同时选择多项；关闭而未提交不会影响后续生成。</div>';
+    const independentActions = root?.closest?.('[data-rabbit-mirror-external-source]')?.getAttribute?.('data-rm-source') === 'independent'
+        ? `<div class="rabbit-mirror-feedback-cat-actions rabbit-mirror-feedback-cat-mirror-actions">
+            <button type="button" data-rm-feedback-action="resay">↻ 重说</button>
+            <button type="button" data-rm-feedback-action="history">◷ 兔子镜历史</button>
+          </div>`
+        : '';
     panel.innerHTML = `
       <div class="rabbit-mirror-feedback-cat-menu-title">🐈‍⬛ 挨打猫</div>
       ${status}
@@ -14162,6 +14205,7 @@ function showFeedbackCatMenu(root, button, draft = null) {
         <button type="button" data-rm-feedback-action="submit">提交反馈</button>
       </div>
       ${active ? '<button type="button" data-rm-feedback-action="clear-active">不打了，清除当前生效反馈</button>' : ''}
+      ${independentActions}
       <button type="button" data-rm-feedback-action="close">取消</button>`;
     const textarea = panel.querySelector('.rabbit-mirror-feedback-cat-custom-inline');
     textarea.value = customText;
@@ -14220,6 +14264,13 @@ function showFeedbackCatMenu(root, button, draft = null) {
             updateFeedbackCatButtonTitles();
             closeFeedbackCatMenu();
             globalThis.toastr?.success?.('挨打猫已经忘掉当前反馈。');
+            return;
+        }
+        if (action === 'resay' || action === 'history') {
+            const detail = { root, handled: false };
+            document.dispatchEvent(new CustomEvent(action === 'resay' ? FEEDBACK_RESAY_EVENT : FEEDBACK_HISTORY_EVENT, { detail }));
+            closeFeedbackCatMenu();
+            if (!detail.handled) globalThis.toastr?.warning?.('当前兔子镜不支持这项操作。');
             return;
         }
         closeFeedbackCatMenu();
@@ -15038,7 +15089,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.02-test';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.04-test';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -15661,7 +15712,6 @@ function showMaintenanceRabbitMenu(root, button) {
       <button type="button" data-rm-maintenance-action="style">🎨 样子不对</button>
       <button type="button" data-rm-maintenance-action="all">🔧 全部试试（强制维修）</button>
       <button type="button" data-rm-maintenance-action="diagnostic">📋 生成全链路诊断</button>
-      <button type="button" data-rm-maintenance-action="delete">🗑️ 强制删除兔子镜</button>
       <button type="button" data-rm-maintenance-action="close">关闭</button>`;
     document.body.appendChild(panel);
     const rect = button.getBoundingClientRect();
@@ -15684,17 +15734,6 @@ function showMaintenanceRabbitMenu(root, button) {
         }
         if (action === 'diagnostic') {
             triggerDiagnosticForMaintenanceRoot(root);
-            return;
-        }
-        if (action === 'delete') {
-            const detail = { root, handled: false };
-            document.dispatchEvent(new CustomEvent('rabbitmirror:force-delete', { detail }));
-            if (!detail.handled) {
-                const externalHost = root.closest?.('[data-rabbit-mirror-external-source]');
-                if (externalHost) externalHost.remove();
-                else root.remove?.();
-            }
-            globalThis.toastr?.success?.('兔子镜已删除');
             return;
         }
         runMaintenanceUserRepair(root, button, action);

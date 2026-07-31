@@ -1,15 +1,18 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h37t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h37t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h37t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h39t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h39t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h39t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.37-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.39-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
 const EXTERNAL_SHELL_ATTR = 'data-rabbit-mirror-external-shell';
 const INLINE_ANCHOR_ATTR = 'data-rabbit-mirror-independent-inline-anchor';
 const RESAY_ATTR = 'data-rabbit-mirror-resay';
-const FORCE_DELETE_EVENT = 'rabbitmirror:force-delete';
+const RESAY_EVENT = 'rabbitmirror:resay';
+const HISTORY_EVENT = 'rabbitmirror:history';
+const HISTORY_STORE_KEY = 'rabbit_mirror_independent_history_v1';
+const HISTORY_PANEL_ATTR = 'data-rabbit-mirror-history-panel';
 let hostModule = null;
 let latestGenerationTimer = null;
 let followupGenerationTimers = new Set();
@@ -22,12 +25,69 @@ const pending = new Map();
 let externalActionListenerInstalled = false;
 let externalActionWindowPointerHandler = null;
 let externalActionWindowClickHandler = null;
-let forceDeleteListenerInstalled = false;
+let feedbackActionListenerInstalled = false;
 const orphanExternalHostTimers = new Map();
 
 function currentRuntime(){ return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION; }
 function readStore(){ try { const v=JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); return v&&typeof v==='object'?v:{}; } catch { return {}; } }
 function writeStore(v){ try { localStorage.setItem(STORE_KEY, JSON.stringify(v)); } catch {} }
+function emptyHistoryStore(){ return {version:1,slots:{}}; }
+function readHistoryStore(){
+ try{
+  const parsed=JSON.parse(localStorage.getItem(HISTORY_STORE_KEY)||'null');
+  if(parsed&&typeof parsed==='object'&&parsed.slots&&typeof parsed.slots==='object') return parsed;
+ }catch{}
+ return emptyHistoryStore();
+}
+function writeHistoryStore(value){
+ const normalized=value&&typeof value==='object'?value:emptyHistoryStore();
+ try{ localStorage.setItem(HISTORY_STORE_KEY,JSON.stringify(normalized)); return true; }
+ catch{
+  try{
+   const all=[];
+   for(const [slot,entries] of Object.entries(normalized.slots||{})) for(const entry of Array.isArray(entries)?entries:[]) all.push({slot,entry});
+   all.sort((a,b)=>Number(b.entry?.ts||0)-Number(a.entry?.ts||0));
+   const keep=new Set(all.slice(0,30).map(item=>`${item.slot}\u0000${item.entry?.id||item.entry?.ts||''}`));
+   for(const [slot,entries] of Object.entries(normalized.slots||{})){
+    normalized.slots[slot]=(Array.isArray(entries)?entries:[]).filter(entry=>keep.has(`${slot}\u0000${entry?.id||entry?.ts||''}`));
+    if(!normalized.slots[slot].length) delete normalized.slots[slot];
+   }
+   localStorage.setItem(HISTORY_STORE_KEY,JSON.stringify(normalized)); return true;
+  }catch{return false;}
+ }
+}
+function normalizeHistoryEntry(value){
+ if(!value?.html) return null;
+ const html=String(value.html||'');
+ return {
+  id:String(value.id||hashText(html)), html, sourceHash:String(value.sourceHash||''),
+  ts:Number(value.ts||Date.now()), model:String(value.model||''), runtime:String(value.runtime||RUNTIME_VERSION),
+ };
+}
+function appendHistoryEntry(slot,value){
+ const entry=normalizeHistoryEntry(value); if(!slot||!entry) return null;
+ const store=readHistoryStore(); const list=Array.isArray(store.slots[slot])?store.slots[slot]:[];
+ const deduped=list.filter(item=>String(item?.id||'')!==entry.id);
+ deduped.push(entry); store.slots[slot]=deduped.slice(-10);
+ const flattened=[];
+ for(const [key,entries] of Object.entries(store.slots)) for(const item of entries) flattened.push({key,item});
+ flattened.sort((a,b)=>Number(b.item?.ts||0)-Number(a.item?.ts||0));
+ const allowed=new Set(flattened.slice(0,70).map(({key,item})=>`${key}\u0000${item?.id||''}`));
+ for(const [key,entries] of Object.entries(store.slots)){
+  store.slots[key]=entries.filter(item=>allowed.has(`${key}\u0000${item?.id||''}`));
+  if(!store.slots[key].length) delete store.slots[key];
+ }
+ writeHistoryStore(store); return entry;
+}
+function historyEntriesForSlot(slot){
+ const list=readHistoryStore().slots?.[slot];
+ return (Array.isArray(list)?list:[]).map(normalizeHistoryEntry).filter(Boolean).sort((a,b)=>Number(b.ts||0)-Number(a.ts||0));
+}
+function migrateLegacyDeletedRecords(){
+ const store=readStore(); let changed=false;
+ for(const [key,value] of Object.entries(store)) if(value?.deleted){ delete store[key]; changed=true; }
+ if(changed) writeStore(store);
+}
 function readApiProfileStore(){ try { const v=JSON.parse(localStorage.getItem(API_PROFILE_STORE_KEY)||'{}'); return v&&typeof v==='object'?v:{}; } catch { return {}; } }
 function writeApiProfileStore(v){ try { localStorage.setItem(API_PROFILE_STORE_KEY,JSON.stringify(v)); } catch {} }
 function apiProfileKey(st){ return `${normalizeBase(st?.independentApiBaseUrl||'')}|${String(st?.independentApiModel||'')}`; }
@@ -41,11 +101,11 @@ function messageSlotKey(ctx,index,msg){ return `${chatKey(ctx)}:${index}:${swipe
 function recordKey(ctx,index,msg){ return messageSlotKey(ctx,index,msg); }
 function findSavedRecord(store,slot){
  const exact=store?.[slot];
- if(exact?.html || exact?.deleted) return exact;
+ if(exact?.html) return exact;
  const prefix=`${slot}:`;
  let best=null;
  for(const [key,value] of Object.entries(store||{})){
-  if(!key.startsWith(prefix) || !(value?.html || value?.deleted)) continue;
+  if(!key.startsWith(prefix) || !value?.html) continue;
   if(!best || Number(value.ts||0)>Number(best.ts||0)) best=value;
  }
  return best;
@@ -837,7 +897,6 @@ async function generateFor(index,msg,force=false,sourceAware=false){
  const el=messageElement(index); if(!el) return;
  let store=readStore();
  const saved=findSavedRecord(store,slot);
- if(saved?.deleted&&!force){ externalHosts(el).filter(n=>n.dataset.rmSource==='independent').forEach(n=>n.remove()); removeEmptyInlineAnchors(el); return; }
  if(saved?.html&&!force){
    const savedSourceHash=String(saved.sourceHash||'');
    if(!sourceAware || (savedSourceHash && savedSourceHash===sourceHash)){ ensureExternalUi(el,key,saved.html,'ready'); return; }
@@ -853,7 +912,9 @@ async function generateFor(index,msg,force=false,sourceAware=false){
    const live=currentGenerationIdentity(index);
    const active=pending.get(slot);
    if(!live || live.slot!==slot || live.key!==key || live.sourceHash!==sourceHash || active?.runId!==runId){ stale=true; return; }
-   const next=readStore(); saveRecordForSlot(next,slot,{html,sourceHash,ts:Date.now(),model:st.independentApiModel});
+   const completed={html,sourceHash,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION};
+   appendHistoryEntry(slot,completed);
+   const next=readStore(); saveRecordForSlot(next,slot,completed);
    const keys=Object.keys(next).sort((a,b)=>(next[b]?.ts||0)-(next[a]?.ts||0));
    for(const k of keys.slice(120)) delete next[k];
    writeStore(next); const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,html,'ready');
@@ -948,41 +1009,90 @@ async function handleExternalActionClick(event){
    bindExternalActionButtons(host);
  }
 }
-function forceDeleteIndependentMirror(root){
+function independentHostForRoot(root){
  const host=root?.matches?.(`[${SOURCE_ATTR}]`) ? root : root?.closest?.(`[${SOURCE_ATTR}]`);
- if(!host || host.dataset.rmSource!=='independent') return false;
- const index=messageIndexForExternalHost(host);
- if(index===null) return false;
- const ctx=getContext();
- const ownerChat=String(host.dataset.rmOwnerChat||chatKey(ctx));
- const ownerSwipe=String(host.dataset.rmOwnerSwipe||swipeId(ctx.chat?.[index]));
- const slot=`${ownerChat}:${index}:${ownerSwipe}`;
- if(slot){
-  const store=readStore();
-  removeRecordsForSlot(store,slot);
-  store[slot]={deleted:true,ts:Date.now()};
-  writeStore(store);
-  pending.delete(slot);
- }
- const parent=host.parentElement;
- host.remove();
- if(parent?.hasAttribute?.(INLINE_ANCHOR_ATTR) && !parent.querySelector?.(`[${SOURCE_ATTR}]`)) parent.remove();
+ return host?.dataset?.rmSource==='independent' ? host : null;
+}
+function independentSlotForHost(host){
+ const index=messageIndexForExternalHost(host); if(index===null) return null;
+ const ctx=getContext(); const msg=ctx.chat?.[index]; if(!msg||msg.is_user) return null;
+ return {ctx,msg,index,slot:messageSlotKey(ctx,index,msg),key:recordKey(ctx,index,msg)};
+}
+function closeIndependentHistoryPanel(){
+ document.querySelectorAll?.(`[${HISTORY_PANEL_ATTR}]`)?.forEach(panel=>panel.remove());
+}
+function historyDateLabel(value){
+ const date=new Date(Number(value||0));
+ return Number.isFinite(date.getTime()) ? date.toLocaleString([], {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+}
+function historyPreviewDetails(entry){
+ const details=extractReadyDetails(entry?.html||''); if(!details) return null;
+ details.removeAttribute('data-rabbit-mirror-external-details');
+ details.removeAttribute('data-rabbit-mirror-external-owner');
+ details.removeAttribute('data-rabbit-mirror-external-source');
+ details.setAttribute('open','');
+ details.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
+ try{ isolateRabbitMirrorInteractionIds(details); }catch{}
+ return details;
+}
+function showIndependentHistory(root){
+ const host=independentHostForRoot(root); const identity=independentSlotForHost(host);
+ if(!host||!identity) return false;
+ const current=findSavedRecord(readStore(),identity.slot);
+ if(current?.html) appendHistoryEntry(identity.slot,current);
+ const entries=historyEntriesForSlot(identity.slot);
+ closeIndependentHistoryPanel();
+ if(!entries.length){ globalThis.toastr?.info?.('这条回复还没有兔子镜历史。'); return true; }
+ const overlay=document.createElement('div');
+ overlay.className='rabbit-mirror-history-overlay'; overlay.setAttribute(HISTORY_PANEL_ATTR,'true');
+ overlay.innerHTML=`<section class="rabbit-mirror-history-dialog" role="dialog" aria-modal="true" aria-label="兔子镜历史">
+  <header class="rabbit-mirror-history-header"><strong>兔子镜历史</strong><button type="button" data-rm-history-close="true" aria-label="关闭">×</button></header>
+  <div class="rabbit-mirror-history-body"><nav class="rabbit-mirror-history-list" aria-label="历史版本"></nav><div class="rabbit-mirror-history-preview"></div></div>
+ </section>`;
+ const list=overlay.querySelector('.rabbit-mirror-history-list');
+ const preview=overlay.querySelector('.rabbit-mirror-history-preview');
+ const render=(entry,button)=>{
+  list.querySelectorAll('button').forEach(item=>item.classList.toggle('is-active',item===button));
+  preview.replaceChildren(); const details=historyPreviewDetails(entry);
+  if(details) preview.append(details); else preview.textContent='这版兔子镜无法预览。';
+ };
+ entries.forEach((entry,index)=>{
+  const button=document.createElement('button'); button.type='button';
+  const number=entries.length-index; const model=entry.model?` · ${entry.model}`:'';
+  button.textContent=`第 ${number} 版 · ${historyDateLabel(entry.ts)}${model}`;
+  button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();render(entry,button);},true);
+  list.append(button); if(index===0) queueMicrotask(()=>render(entry,button));
+ });
+ overlay.addEventListener('click',event=>{
+  if(event.target===overlay || event.target?.closest?.('[data-rm-history-close="true"]')){ event.preventDefault(); closeIndependentHistoryPanel(); }
+ },true);
+ document.body.append(overlay); return true;
+}
+function resayIndependentMirror(root){
+ const host=independentHostForRoot(root); const identity=independentSlotForHost(host);
+ if(!host||!identity) return false;
+ const saved=findSavedRecord(readStore(),identity.slot); if(saved?.html) appendHistoryEntry(identity.slot,saved);
+ void generateFor(identity.index,identity.msg,true,true);
+ globalThis.toastr?.info?.('正在重说这面兔子镜……');
  return true;
 }
-function handleForceDeleteEvent(event){
- const detail=event?.detail;
- if(!detail || typeof detail!=='object') return;
- if(forceDeleteIndependentMirror(detail.root)) detail.handled=true;
+function handleFeedbackMirrorActionEvent(event){
+ const detail=event?.detail; if(!detail||typeof detail!=='object') return;
+ if(event.type===RESAY_EVENT){ if(resayIndependentMirror(detail.root)) detail.handled=true; return; }
+ if(event.type===HISTORY_EVENT){ if(showIndependentHistory(detail.root)) detail.handled=true; }
 }
-function installForceDeleteListener(){
- if(forceDeleteListenerInstalled) return;
- document.addEventListener(FORCE_DELETE_EVENT,handleForceDeleteEvent);
- forceDeleteListenerInstalled=true;
+function installFeedbackMirrorActionListeners(){
+ if(feedbackActionListenerInstalled) return;
+ document.addEventListener(RESAY_EVENT,handleFeedbackMirrorActionEvent);
+ document.addEventListener(HISTORY_EVENT,handleFeedbackMirrorActionEvent);
+ feedbackActionListenerInstalled=true;
 }
-function removeForceDeleteListener(){
- if(!forceDeleteListenerInstalled) return;
- document.removeEventListener(FORCE_DELETE_EVENT,handleForceDeleteEvent);
- forceDeleteListenerInstalled=false;
+function removeFeedbackMirrorActionListeners(){
+ if(!feedbackActionListenerInstalled) return;
+ document.removeEventListener(RESAY_EVENT,handleFeedbackMirrorActionEvent);
+ document.removeEventListener(HISTORY_EVENT,handleFeedbackMirrorActionEvent);
+ feedbackActionListenerInstalled=false;
+ closeIndependentHistoryPanel();
 }
 function installExternalActionDelegation(){
  if(externalActionListenerInstalled) return;
@@ -1067,7 +1177,6 @@ function syncMessages(indices=null){
        externalHosts(el).filter(n=>n.dataset.rmSource==='follow').forEach(n=>n.remove());
        const key=recordKey(ctx,i,m); const slot=messageSlotKey(ctx,i,m); const saved=findSavedRecord(store,slot);
        const independentHosts=externalHosts(el).filter(n=>n.dataset.rmSource==='independent');
-       if(saved?.deleted){ independentHosts.forEach(n=>n.remove()); removeEmptyInlineAnchors(el); continue; }
        const keep=independentHosts.find(n=>n.dataset.rmKey===key) || independentHosts[0] || null;
        for(const node of independentHosts){ if(node!==keep) node.remove(); }
        if(saved?.html) ensureExternalUi(el,key,saved.html,'ready');
@@ -1262,13 +1371,14 @@ export async function initIndependentRabbitMirror(){
  try{ globalThis.__rabbitMirrorIndependentCleanup?.(); }catch{}
  globalThis.__rabbitMirrorIndependentCleanup=destroyIndependentRabbitMirror;
  installExternalActionDelegation();
- installForceDeleteListener();
+ migrateLegacyDeletedRecords();
+ installFeedbackMirrorActionListeners();
  installExternalGeometryListeners();
  await reconfigureRuntime();
 }
 export function destroyIndependentRabbitMirror(){
  clearScheduledGeneration();
- disconnectObserver(); unsubscribeHostEvents(); removeExternalActionDelegation(); removeForceDeleteListener(); removeExternalGeometryListeners();
+ disconnectObserver(); unsubscribeHostEvents(); removeExternalActionDelegation(); removeFeedbackMirrorActionListeners(); removeExternalGeometryListeners();
  syncRunning=false; pending.clear(); preparedReadyHtmlCache.clear();
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(host=>restoreFollowInline(host));
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());
