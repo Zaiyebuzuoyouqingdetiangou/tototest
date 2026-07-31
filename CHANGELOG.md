@@ -1,17 +1,23 @@
-## 1.1.0-beta.14.21-test
+## 1.1.0-beta.14.22-test
+
+- 独立 API 生成改为流式优先，避免长时间无首字节导致反向代理 HTTP 524。
+- API 检测使用 32 Token 极小请求，降低等待时间与消耗。
+- 524/HTML 网关错误不再整页显示，改为明确的超时摘要。
+
+## 1.1.0-beta.14.22-test
 
 - 修复独立 API 失败弹窗中“检测 API／重新生成”在手机端点击无反应。
 - 失败操作委托从 document 捕获层提升到 window 捕获层，先于维修兔／挨打猫的文档级拦截处理。
 - 不改变独立 API 请求、Prompt、外置宿主或自动维修逻辑。
 
-# 1.1.0-beta.14.21-test
+# 1.1.0-beta.14.22-test
 
 - 修复手机端高频循环：聊天工具观察器仅监听结构插入，不再监听 class/style/hidden/characterData。
 - 外置兔子镜内部 DOM 与工具节点变化不再触发维修兔/挨打猫重新扫描。
 - 独立 API 观察器忽略移除节点与自身外置宿主变化，避免宿主校正与工具安装互相触发。
 - 宿主事件引起的全聊天工具扫描合并为单次 180ms 去抖。
 
-## 1.1.0-beta.14.21-test
+## 1.1.0-beta.14.22-test
 
 - 撤销必须额外安装 RabbitMirror Server Plugin 的方案。
 - 模型列表、测试连接、失败检测、重新生成和正式生成统一复用 SillyTavern 内置 `/api/backends/chat-completions/status` 与 `/api/backends/chat-completions/generate`。
@@ -19,13 +25,13 @@
 - 不使用浏览器跨域直连、通用 `/proxy/` 或 `enableServerPlugins`，只安装一个前端 ZIP 即可。
 - 保留 beta.14.18 的外置宿主锁定、自动维修状态保持、维修兔与挨打猫逻辑。
 
-## 1.1.0-beta.14.21-test
+## 1.1.0-beta.14.22-test
 
 - 独立 API 的加载、成功与失败状态现在始终锁定在同一个消息级外置宿主中。
 - 成功内容只替换外置宿主内部的 details；即使酒馆重绘或其他扫描器尝试移动节点，也会按所有权标记恢复到 `.mes_text` 外侧。
 - 不改独立 API 服务端桥接、Prompt、点菜、Token、维修兔或挨打猫业务逻辑。
 
-## 1.1.0-beta.14.21-test
+## 1.1.0-beta.14.22-test
 
 - 独立 API 模型列表、连接检测与正式生成统一改走 RabbitMirror 服务端桥接插件。
 - 不再依赖浏览器 CORS，也不再访问 SillyTavern 通用 `/proxy/`。
@@ -34,19 +40,19 @@
 
 # RabbitMirror Changelog
 
-## 1.1.0-beta.14.21-test
+## 1.1.0-beta.14.22-test
 - Independent API requests are now direct-only across model fetch, generation, retry and diagnostics.
 - Removed every automatic SillyTavern `/proxy/` fallback that could trigger an HTTP Basic Auth credential dialog.
 - Browser requests explicitly omit same-site credentials; direct CORS/TLS/network failures are reported without touching the protected Tavern route.
 
-# 1.1.0-beta.14.21-test
+# 1.1.0-beta.14.22-test
 
 - Fixed settings drawer stutter on mobile: removed automatic memory-provider scanning when the UI mounts or opens.
 - Independent API fields no longer save the full extension settings object on every `input`/autofill event; text credentials save on change/blur and selectors/numbers save on change.
 - Added layout/paint containment for settings sections and disabled the summary arrow transition on mobile.
 - No generation, Prompt, picker, token, RabbitMirror output, independent API request, maintenance rabbit, or feedback cat behavior changed.
 
-## 1.1.0-beta.14.21-test
+## 1.1.0-beta.14.22-test
 
 - 模型列表拉取改为仅浏览器直连，不再在直连失败时自动访问 SillyTavern `/proxy/`。
 - 避免启用酒馆访问认证时，点击“拉取模型”触发新的账号密码登录弹窗。
