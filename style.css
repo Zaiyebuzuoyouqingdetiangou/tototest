@@ -1,5 +1,5 @@
 
-/* 1.1.0-beta.14.27-test: settings drawer mobile performance containment. */
+/* 1.1.0-beta.14.29-test: settings drawer mobile performance containment. */
 .rabbit-mirror-settings {
     contain: layout style !important;
 }
@@ -139,7 +139,7 @@ toto[data-rabbit-mirror="true"] summary {
 
 
 
-/* 1.1.0-beta.14.27-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
+/* 1.1.0-beta.14.29-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
 [data-rabbit-mirror-tool-entry-host] {
   all: initial !important;
   display: inline-flex !important;
@@ -461,20 +461,21 @@ toto[data-rabbit-mirror="true"] summary {
   pointer-events:none;
 }
 
-/* beta.14.27: isolated message-sibling shell with the previous comfortable width and a persistent framed module. */
+/* beta.14.28: stable comfortable external width.
+ * Do not copy .mes_text width: that value is transient on mobile and changes
+ * when status bars, avatars or other extensions alter the message layout.
+ * The preferred visual target is the consistently centered width shown by the
+ * user's reference screenshots, while keeping the shell as an isolated sibling. */
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"]{
   display:block !important;
   position:relative !important;
   isolation:isolate !important;
-  width:auto !important;
-  max-width:none !important;
+  width:clamp(300px,84%,620px) !important;
+  max-width:calc(100% - 20px) !important;
   min-width:0 !important;
   box-sizing:border-box !important;
   align-self:auto !important;
-  margin-top:10px !important;
-  margin-right:var(--rm-external-inline-end, 14px) !important;
-  margin-bottom:14px !important;
-  margin-left:var(--rm-external-inline-start, 14px) !important;
+  margin:10px auto 14px !important;
   padding:0 !important;
   border:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.30)) !important;
   border-radius:12px !important;
@@ -497,6 +498,10 @@ toto[data-rabbit-mirror="true"] summary {
   background:transparent !important;
   overflow:visible !important;
 }
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details[data-rabbit-mirror-external-details="true"] > :not(summary):not(style):not(script){
+  max-width:100% !important;
+  box-sizing:border-box !important;
+}
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details.rabbit-mirror-external-placeholder{
   border:0 !important;
   border-radius:0 !important;
@@ -513,6 +518,33 @@ toto[data-rabbit-mirror="true"] summary {
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details[data-rabbit-mirror-external-details="true"][open] > summary{
   border-bottom:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.22)) !important;
+}
+@media (max-width:360px){
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"]{
+    width:calc(100% - 24px) !important;
+    max-width:none !important;
+  }
+}
+/* beta.14.29: only the independent external shell changes width by viewport.
+ * These selectors never target inline/follow-current mirrors or generated
+ * RabbitMirror descendants, so their own responsive CSS remains untouched. */
+@media (min-width:641px) and (max-width:1199px){
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"]{
+    width:78% !important;
+    max-width:min(760px,calc(100% - 32px)) !important;
+  }
+}
+@media (min-width:1200px) and (max-width:1799px){
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"]{
+    width:72% !important;
+    max-width:min(860px,calc(100% - 40px)) !important;
+  }
+}
+@media (min-width:1800px){
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"]{
+    width:64% !important;
+    max-width:min(920px,calc(100% - 48px)) !important;
+  }
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details.rabbit-mirror-external-placeholder > .rabbit-mirror-external-placeholder-body{
   border-top:0 !important;
