@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・状态机收口・维修兔 v2.08-test）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・副 API隔离与后台续跑・维修兔 v2.09-test）",
   "loading_order": 99,
-  "js": "index.js?rmv=1.1.0b14h48t",
-  "css": "style.css?rmv=1.1.0b14h48t",
+  "js": "index.js?rmv=1.1.0b14h49t",
+  "css": "style.css?rmv=1.1.0b14h49t",
   "author": "Toto",
-  "version": "1.1.0-beta.14.48-test",
+  "version": "1.1.0-beta.14.49-test",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "RabbitMirror beta.14.48 state-machine consolidation. Stable body+reasoning gating, abortable single-flight requests, one host per reply, direct feedback-cat resay/history ownership, reversible DOM-node repairs, byte-bounded local history, and complete listener cleanup."
+  "description": "副 API兔子镜与正文硬隔离；修复后台切换续跑、空壳拒收和独立配色冷却。"
 }

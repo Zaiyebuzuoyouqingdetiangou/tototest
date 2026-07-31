@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h48t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h48t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h49t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h49t';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h48t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h48t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h48t';
+} from './feedbackCat.js?rmv=1.1.0b14h49t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h49t';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h49t';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.48-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.49-test';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -13112,7 +13112,14 @@ function patrolMaintenanceRabbit(root, button) {
 }
 
 function findLiveMaintenanceRoot(root, summaryText = '', messageIndex = -1) {
-    if (root?.isConnected) return root;
+    if (root?.isConnected) return exactIndependentMaintenanceRoot(root);
+    const independentHost = independentMaintenanceHost(root);
+    const ownerKey = String(independentHost?.dataset?.rmKey || root?.dataset?.rabbitMirrorExternalOwner || '');
+    if (ownerKey) {
+        const exact = [...(document.querySelectorAll?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]') || [])]
+            .find(host => String(host.dataset?.rmKey || '') === ownerKey);
+        if (exact) return exact.querySelector?.(':scope > details') || exact;
+    }
     const messageElement = messageIndex >= 0 ? getRenderedMessageElement(messageIndex) : null;
     if (!messageElement) return null;
     const candidates = getRenderedRabbitMirrorInteractionRoots(messageElement);
@@ -13633,9 +13640,10 @@ function installMaintenanceSourceTruncationNotice(root, inspection) {
     title.style.cssText = 'font-weight:700;margin-bottom:6px;';
     title.textContent = inspection?.full?.rawCssTruncated ? '原始输出已截断' : '原始输出为空壳';
     const message = document.createElement('div');
+    const independent = isIndependentMaintenanceRoot(root);
     message.textContent = inspection?.full?.rawCssTruncated
-        ? '这条兔子镜在 <style> 中途结束，正文没有出现在原始源码中，无法从现有内容恢复。请重新生成这条消息。'
-        : '这条兔子镜的原始源码没有可显示的正文主体，无法凭空恢复缺失内容。请重新生成这条消息。';
+        ? (independent ? '副 API 输出在 <style> 中途结束，镜面正文没有生成，无法从现有内容恢复。请使用挨打猫“重说”。' : '这条兔子镜在 <style> 中途结束，正文没有出现在原始源码中，无法从现有内容恢复。请重新生成这条消息。')
+        : (independent ? '副 API 返回的是空壳兔子镜，维修兔不会借用聊天正文补写。请使用挨打猫“重说”。' : '这条兔子镜的原始源码没有可显示的正文主体，无法凭空恢复缺失内容。请重新生成这条消息。');
     const detail = document.createElement('div');
     detail.style.cssText = 'margin-top:8px;font-size:.88em;opacity:.72;';
     detail.textContent = '维修兔仅显示此说明，不会改写聊天原文。';
@@ -13647,7 +13655,46 @@ function installMaintenanceSourceTruncationNotice(root, inspection) {
     return true;
 }
 
+function independentMaintenanceHost(root){
+ if(!root?.closest && !root?.matches) return null;
+ const direct=root.matches?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]')?root:null;
+ return direct || root.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]') || null;
+}
+function isIndependentMaintenanceRoot(root){
+ if(independentMaintenanceHost(root)) return true;
+ const details=root?.matches?.('details')?root:root?.querySelector?.('details');
+ return String(details?.dataset?.rabbitMirrorExternalSource||'')==='independent';
+}
+function exactIndependentMaintenanceRoot(root){
+ const host=independentMaintenanceHost(root);
+ return host?.querySelector?.(':scope > details') || host || root;
+}
+function independentMaintenanceRootHasBody(root){
+ const details=exactIndependentMaintenanceRoot(root)?.matches?.('details')
+  ? exactIndependentMaintenanceRoot(root)
+  : exactIndependentMaintenanceRoot(root)?.querySelector?.('details');
+ if(!details) return false;
+ const summary=details.querySelector?.(':scope > summary');
+ return [...(details.childNodes||[])].some(node=>{
+  if(node===summary) return false;
+  if(node.nodeType===3) return !!String(node.textContent||'').trim();
+  if(node.nodeType!==1 || ['STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node.tagName)) return false;
+  if(node.matches?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-source-truncation-notice]')) return false;
+  if(node.hidden || String(node.getAttribute?.('aria-hidden')||'').toLowerCase()==='true') return false;
+  return !!(String(node.textContent||'').trim() || node.children?.length || node.matches?.('img,svg,canvas,video,audio,input,button,select,textarea,table,ul,ol,section,article,main,figure,form'));
+ });
+}
 function repairMaintenanceMessageSource(root, inspection) {
+    if (isIndependentMaintenanceRoot(root)) {
+        const blank = !independentMaintenanceRootHasBody(root);
+        const localInspection = blank
+            ? { ...inspection, full: { ...(inspection?.full || {}), rawSourceBodyMissing: true } }
+            : inspection;
+        const noticeShown = blank ? installMaintenanceSourceTruncationNotice(root, localInspection) : false;
+        return { changed: false, noticeShown, unrecoverable: blank, index: getMessageIndexFromMirrorNode(root), reason: blank
+            ? '副 API返回的是空壳兔子镜；维修兔已保持正文不变，请使用挨打猫“重说”。'
+            : '副 API兔子镜与正文完全隔离；维修兔只处理当前镜面 DOM，不会读取、重绘或改写正文。' };
+    }
     const index = getMessageIndexFromMirrorNode(root);
     if (index < 0) return { changed: false, index, reason: '无法识别所属消息' };
     const host = hostScriptModule || globalThis;
@@ -14941,7 +14988,8 @@ function installMaintenanceMobileLayoutRescue(root) {
 
 function maintenanceUserRepairInspection(root, mode) {
     const inspection = inspectMaintenanceRabbit(root);
-    if (mode === 'source' || mode === 'code' || mode === 'plainText' || mode === 'all') {
+    const independent = isIndependentMaintenanceRoot(root);
+    if (!independent && (mode === 'source' || mode === 'code' || mode === 'plainText' || mode === 'all')) {
         inspection.full = { ...inspection.full, sourceCandidate: true };
         inspection.code = { ...inspection.code, needsSanitize: true, strictWhole: true };
     }
@@ -14954,7 +15002,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.08-test';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.09-test';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -15080,13 +15128,16 @@ function runMaintenanceRescueModule(module, context, result) {
 function runMaintenanceLegacyRescueLibrary(root, mode = 'all') {
     const result = createMaintenanceLibraryResult(mode);
     if (!root?.isConnected) return result;
-    const messageScope = root.closest?.('[data-rabbit-mirror-external-shell], [data-rabbit-mirror-external-source], .mes, [mesid], [data-message-id], [data-messageid]') || root;
-    const liveRoots = getRenderedRabbitMirrorInteractionRoots(messageScope);
-    // 排版／内容显示专项只处理用户点击的当前兔子镜，不能顺带重排同条消息中的其他镜面。
-    const targets = mode === 'text' ? [root] : (liveRoots.length ? liveRoots : [root]);
+    const independent = isIndependentMaintenanceRoot(root);
+    const messageScope = independent
+        ? exactIndependentMaintenanceRoot(root)
+        : (root.closest?.('[data-rabbit-mirror-external-shell], [data-rabbit-mirror-external-source], .mes, [mesid], [data-message-id], [data-messageid]') || root);
+    const liveRoots = independent ? [exactIndependentMaintenanceRoot(root)] : getRenderedRabbitMirrorInteractionRoots(messageScope);
+    // 副 API镜面永远只维修自己；不能让任何全局源码／DOM急救器扫到聊天正文。
+    const targets = independent ? [exactIndependentMaintenanceRoot(root)] : (mode === 'text' ? [root] : (liveRoots.length ? liveRoots : [root]));
 
     for (const module of MAINTENANCE_RESCUE_LIBRARY) {
-        if (!module.modes.includes(mode)) {
+        if (!module.modes.includes(mode) || (independent && ['code-block-dom', 'plain-text-dom', 'rendered-details-dom'].includes(module.id))) {
             result.skipped.push(module.id);
             continue;
         }
@@ -15585,7 +15636,7 @@ function showMaintenanceRabbitMenu(root, button) {
       <button type="button" data-rm-maintenance-action="text">📱 排版不适配／内容显示不全</button>
       <button type="button" data-rm-maintenance-action="source">📄 空白或显示代码、纯文字</button>
       <button type="button" data-rm-maintenance-action="style">🎨 样子不对</button>
-      <button type="button" data-rm-maintenance-action="all">🔧 全部试试（强制维修）</button>
+      <button type="button" data-rm-maintenance-action="all">🔧 全部试试（仅当前兔子镜）</button>
       <button type="button" data-rm-maintenance-action="restore-before" ${maintenancePreRepairSnapshots.has(maintenanceSnapshotKey(root)) ? '' : 'disabled'}>↩️ 返回修复前</button>
       <button type="button" data-rm-maintenance-action="diagnostic">📋 生成全链路诊断</button>
       <button type="button" data-rm-maintenance-action="close">关闭</button>`;
