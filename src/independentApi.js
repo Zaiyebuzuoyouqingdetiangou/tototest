@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h18t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h18t';
-import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h18t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h19t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h19t';
+import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h19t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.18-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.19-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -63,7 +63,8 @@ function directBlockedHint(url=''){
  }catch{}
  return '浏览器可能因 CORS、证书或网络策略阻止了直连';
 }
-const BRIDGE_ENDPOINT='/api/plugins/rabbitmirror-independent-api/fetch';
+const ST_CUSTOM_STATUS_ENDPOINT='/api/backends/chat-completions/status';
+const ST_CUSTOM_GENERATE_ENDPOINT='/api/backends/chat-completions/generate';
 async function serverRequestHeaders(){
  try{
   const fn=hostModule?.getRequestHeaders || globalThis.SillyTavern?.getContext?.()?.getRequestHeaders;
@@ -73,33 +74,70 @@ async function serverRequestHeaders(){
   return {...(mod?.getRequestHeaders?.()||{}),'Content-Type':'application/json'};
  }catch{return {'Content-Type':'application/json'};}
 }
+function customHeaderYaml(options={}){
+ const raw=options?.headers && typeof options.headers==='object' ? options.headers : {};
+ const headers={};
+ for(const [key,value] of Object.entries(raw)){
+  if(value===undefined||value===null||String(value)==='') continue;
+  if(String(key).toLowerCase()==='content-type') continue;
+  headers[String(key)]=String(value);
+ }
+ return JSON.stringify(headers);
+}
+function customApiBaseFromUrl(url=''){
+ const normalized=String(url||'').replace(/\/+$/,'');
+ return normalized
+  .replace(/\/models$/i,'')
+  .replace(/\/chat\/completions$/i,'')
+  .replace(/\/responses$/i,'')
+  .replace(/\/+$/,'');
+}
 async function fetchIndependentUrl(url,options={}){
  const method=String(options.method||'GET').toUpperCase();
- const apiKey=String(options.headers?.Authorization||'').replace(/^Bearer\s+/i,'');
- let bridgeResponse;
+ const customUrl=customApiBaseFromUrl(url);
+ if(!customUrl) throw new Error('独立 API 地址无效');
+ const requestHeaders=await serverRequestHeaders();
+ const custom_include_headers=customHeaderYaml(options);
  try{
-  bridgeResponse=await fetch(BRIDGE_ENDPOINT,{
-   method:'POST',
-   credentials:'same-origin',
-   headers:await serverRequestHeaders(),
-   body:JSON.stringify({url,method,apiKey,body:options.body??null}),
+  if(method==='GET' && /\/models(?:\?|$)/i.test(String(url))){
+   return await fetch(ST_CUSTOM_STATUS_ENDPOINT,{
+    method:'POST',
+    credentials:'same-origin',
+    headers:requestHeaders,
+    cache:'no-cache',
+    body:JSON.stringify({
+     chat_completion_source:'custom',
+     custom_url:customUrl,
+     custom_include_headers,
+    }),
+   });
+  }
+  if(method==='POST' && /\/chat\/completions(?:\?|$)/i.test(String(url))){
+   let remoteBody={};
+   try{ remoteBody=typeof options.body==='string'?JSON.parse(options.body):({...options.body}); }catch{}
+   const body={
+    ...remoteBody,
+    chat_completion_source:'custom',
+    custom_url:customUrl,
+    custom_include_headers,
+    custom_include_body:'',
+    custom_exclude_body:'',
+    stream:false,
+   };
+   return await fetch(ST_CUSTOM_GENERATE_ENDPOINT,{
+    method:'POST',
+    credentials:'same-origin',
+    headers:requestHeaders,
+    body:JSON.stringify(body),
+   });
+  }
+  return new Response(JSON.stringify({error:{message:'当前 SillyTavern 内置自定义接口只支持 /models 与 /chat/completions'}}),{
+   status:404,
+   headers:{'content-type':'application/json'},
   });
  }catch(error){
-  throw new Error(`RabbitMirror 服务端桥接请求失败：${error?.message||error}`);
+  throw new Error(`SillyTavern 内置副 API 通道请求失败：${error?.message||error}`);
  }
- if(bridgeResponse.status===404){
-  throw new Error('RabbitMirror 服务端桥接插件未安装或未启用。请把配套插件放入 SillyTavern/plugins，并在 config.yaml 开启 enableServerPlugins 后重启酒馆。');
- }
- let envelope=null;
- try{ envelope=await bridgeResponse.json(); }catch{}
- if(!bridgeResponse.ok || !envelope || typeof envelope.status!=='number'){
-  const detail=envelope?.error||envelope?.message||`HTTP ${bridgeResponse.status}`;
-  throw new Error(`RabbitMirror 服务端桥接异常：${detail}`);
- }
- const responseHeaders=new Headers();
- if(envelope.contentType) responseHeaders.set('content-type',String(envelope.contentType));
- responseHeaders.set('x-rabbitmirror-bridge','server-plugin');
- return new Response(String(envelope.body??''),{status:envelope.status,statusText:String(envelope.statusText||''),headers:responseHeaders});
 }
 export async function fetchIndependentModels(){
  const st=getSettings();
@@ -188,11 +226,9 @@ function independentRequestProfiles(st,systemPrompt,userPrompt){
   chat_user_only_full:{kind:'chat',body:{model,messages:userOnly,temperature,max_tokens:maxTokens,stream:false}},
   chat_user_only_completion:{kind:'chat',body:{model,messages:userOnly,temperature,max_completion_tokens:maxTokens,stream:false}},
   chat_user_only_minimal:{kind:'chat',body:{model,messages:userOnly}},
-  responses_text:{kind:'responses',body:{model,input:`${systemPrompt}\n\n${userPrompt}`,max_output_tokens:maxTokens}},
-  responses_minimal:{kind:'responses',body:{model,input:`${systemPrompt}\n\n${userPrompt}`}},
  };
  const remembered=getRememberedApiProfile(st);
- const order=[remembered,'chat_system_user_full','chat_system_user_completion','chat_system_user_minimal','chat_user_only_full','chat_user_only_completion','chat_user_only_minimal','responses_text','responses_minimal'].filter(Boolean);
+ const order=[remembered,'chat_system_user_full','chat_system_user_completion','chat_system_user_minimal','chat_user_only_full','chat_user_only_completion','chat_user_only_minimal'].filter(Boolean);
  return [...new Set(order)].map(name=>({name,...profiles[name]})).filter(x=>x.body&&x.kind);
 }
 function retryableParameterError(status,result){

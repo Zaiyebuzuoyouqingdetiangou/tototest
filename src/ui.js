@@ -1,14 +1,14 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.1.0b14h18t';
-import { clearLastCombo } from './storage.js?rmv=1.1.0b14h18t';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.1.0b14h18t';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.1.0b14h18t';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.1.0b14h18t';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.1.0b14h18t';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.1.0b14h18t';
-import { fetchIndependentModels, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.1.0b14h18t';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.1.0b14h19t';
+import { clearLastCombo } from './storage.js?rmv=1.1.0b14h19t';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.1.0b14h19t';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.1.0b14h19t';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.1.0b14h19t';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.1.0b14h19t';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.1.0b14h19t';
+import { fetchIndependentModels, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.1.0b14h19t';
 
-const SETTINGS_UI_VERSION = '1.1.0-beta.14.18-test';
-const RUNTIME_VERSION = '1.1.0-beta.14.18-test';
+const SETTINGS_UI_VERSION = '1.1.0-beta.14.19-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.19-test';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -187,7 +187,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[TEST・生成方式切换・维修兔 v1.84-test]</span></b><span class="rabbit-mirror-toto-watermark">Toto Beta v1.1</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[TEST・生成方式切换・维修兔 v1.85-test]</span></b><span class="rabbit-mirror-toto-watermark">Toto Beta v1.1</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -220,7 +220,7 @@ export function initRabbitMirrorUI() {
               <label>温度 <input id="rh_independent_temperature" class="text_pole" type="number" min="0" max="2" step="0.1" style="width:82px;"></label>
               <label>最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
             </div>
-            <div style="opacity:.66;font-size:11px;line-height:1.45;">API Key 仅保存在当前 SillyTavern 浏览器设置中。独立接口需允许当前酒馆页面访问；若服务端禁止浏览器跨域，请在接口侧开放 CORS 或使用同域中转。</div>
+            <div style="opacity:.66;font-size:11px;line-height:1.45;">API Key 仅保存在当前 SillyTavern 浏览器设置中。模型列表、连接检测与生成会通过 SillyTavern 自带的“自定义 Chat Completions”后端通道请求，不需要另装服务端插件，也不受浏览器 CORS 限制。</div>
           </div>
         </div>
       </details>
