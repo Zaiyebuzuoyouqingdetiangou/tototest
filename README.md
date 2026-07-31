@@ -25,7 +25,7 @@
 - 生成成功时保留同一工具节点，并在同一消息级外置宿主内原位切换为实际兔子镜；失败时同一折叠节点原位显示错误。
 - 生成期间点击维修兔或挨打猫只显示等待提示，不执行维修、自动巡逻或反馈提交。
 - 不修改独立 API Prompt、美化母本、正文、Swipe、`display_text` 或 Token 逻辑。
-> 测试版本：1.1.0-beta.14.29-test（原生外置折叠兔子镜、独立 API 与失败重试检测）
+> 测试版本：1.1.0-beta.14.30-test（原生外置折叠兔子镜、独立 API 与失败重试检测）
 
 # RabbitMirror 兔子镜 — Beta v1.1
 
@@ -52,7 +52,7 @@ RabbitMirror 是一个用于 SillyTavern 的互动小剧场扩展。它会根据
 - 动态视觉场景；
 - 共同回忆资料来源：可在需要时生成回忆杀；
 - 挨打猫：用于纠正兔子镜的美化效果；
-- 维修兔 v1.91-test：检查和修复显示、排版及交互问题，包括原 CSS 引用唯一缺失 checked 控制类时的高置信恢复；
+- 维修兔 v1.96-test：检查和修复显示、排版及交互问题，包括原 CSS 引用唯一缺失 checked 控制类时的高置信恢复；
 - 测试功能“维修兔自动巡逻”：默认关闭；开启后只对后续新生成／重新生成的兔子镜执行一次高置信本地交互修复，布局与结构问题仍需手动确认；
 - 每轮 RabbitMirror 注入字符数与 Token 估算；
 - 手机 Safari / WebView 的交互、裁切与 3D 翻面兼容补救。
@@ -121,6 +121,13 @@ This test build offers two mutually exclusive modes. “Follow current API” ke
 独立 API 生成的兔子镜使用 `#chat` 下的消息级 sibling shell：每条助手消息／每个 Swipe 各自保留一个外部模块。它不嵌入正文、状态栏或其他插件容器；生成中、成功和失败只更新同一 shell 的内部内容。
 
 
+
+## beta.14.30 动画与交互命名隔离
+
+- 每面兔子镜的 `@keyframes`、`@-webkit-keyframes`、`animation` 与 `animation-name` 在渲染时改写为逐镜唯一名称，避免后生成的外置兔子镜覆盖旧镜动画。
+- 独立 API 外置兔子镜在挂载前自动隔离 checkbox/radio/SVG 等本地 ID，并同步 label、CSS、ARIA、href 与 url(#id) 引用，避免多条永久外置兔子镜之间串联。
+- 修复 `<divclass>`、`<labelclass>`、`<labelfor>` 等标签名与首属性粘连，以及对应损坏闭标签。
+- 外置宽度、内置自适配、Prompt、点菜、Token 与副 API 请求链不变。
 
 ## beta.14.29 跨设备外置宽度
 

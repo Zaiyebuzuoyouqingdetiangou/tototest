@@ -1,4 +1,11 @@
-# RabbitMirror 1.1.0-beta.14.29-test
+# RabbitMirror 1.1.0-beta.14.30-test
+
+## beta.14.30 — 动画、交互 ID 与损坏标签隔离
+
+- 为每面兔子镜生成逐镜唯一的 keyframe 名称，并同步改写 style 块与 inline style 的 animation 引用，阻断多条永久外置兔子镜之间的全局动画名覆盖。
+- 独立 API 结果在进入外置宿主前执行纯结构 ID 隔离，不启动额外交互兜底；同步 label、CSS、ARIA、href、SVG url(#id) 与 radio name。
+- 增加通用的首属性粘连标签修复，覆盖 `<divclass>`、`<labelclass>`、`<labelfor>` 等及其损坏闭标签。
+- 外置宿主宽度、内置模式、Prompt、Token、点菜和 API 请求策略未改。
 
 ## beta.14.29 — 外置宿主跨设备宽度适配
 
