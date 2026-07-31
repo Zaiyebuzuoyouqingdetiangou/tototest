@@ -19,7 +19,8 @@ export const defaultSettings = Object.freeze({
     independentApiKey: '',
     independentApiModel: '',
     independentApiTemperature: 0.8,
-    independentApiMaxTokens: 5000,
+    independentApiMaxTokens: 12000,
+    independentDisplayMode: 'external',
     samplingMode: 'classic',
     rawPolicy: 'balanced',
     showCot: false,
@@ -65,11 +66,12 @@ export function getSettings() {
     }
     if (!['follow', 'independent'].includes(settings.generationSource)) settings.generationSource = 'follow';
     if (!['inline', 'external'].includes(settings.followDisplayMode)) settings.followDisplayMode = 'inline';
+    if (!['external', 'external_then_inline'].includes(settings.independentDisplayMode)) settings.independentDisplayMode = 'external';
     settings.independentApiBaseUrl = String(settings.independentApiBaseUrl || '').trim();
     settings.independentApiKey = String(settings.independentApiKey || '').trim();
     settings.independentApiModel = String(settings.independentApiModel || '').trim();
     settings.independentApiTemperature = Math.max(0, Math.min(2, Number(settings.independentApiTemperature) || 0.8));
-    settings.independentApiMaxTokens = Math.max(512, Math.min(32000, Number(settings.independentApiMaxTokens) || 5000));
+    settings.independentApiMaxTokens = Math.max(512, Math.min(32000, Number(settings.independentApiMaxTokens) || 12000));
 
     if (settings.showCot === undefined && settings.showWonderland !== undefined) {
         settings.showCot = !!settings.showWonderland;

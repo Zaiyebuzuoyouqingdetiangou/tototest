@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h30t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h30t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h33t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h33t';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h30t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h30t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h30t';
+} from './feedbackCat.js?rmv=1.1.0b14h33t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h33t';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h33t';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.30-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.33-test';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -63,7 +63,8 @@ function ensureFeedbackCatRuntimeStyle() {
     isolation: isolate !important;
 }
 [${TOOL_ENTRY_HOST_ATTR}] > button[${MAINTENANCE_RABBIT_ATTR}],
-[${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}] {
+[${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}],
+[${TOOL_ENTRY_HOST_ATTR}] > button[data-rabbit-mirror-resay] {
     all: initial !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -106,6 +107,8 @@ function ensureFeedbackCatRuntimeStyle() {
 }
 [${TOOL_ENTRY_HOST_ATTR}] > button[${MAINTENANCE_RABBIT_ATTR}]::before,
 [${TOOL_ENTRY_HOST_ATTR}] > button[${MAINTENANCE_RABBIT_ATTR}]::after,
+[${TOOL_ENTRY_HOST_ATTR}] > button[data-rabbit-mirror-resay]::before,
+[${TOOL_ENTRY_HOST_ATTR}] > button[data-rabbit-mirror-resay]::after,
 [${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}]::before,
 [${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}]::after {
     content: none !important;
@@ -5726,7 +5729,7 @@ function getRabbitMirrorSummaryText(root) {
     if (!summary) return '';
     const clone = summary.cloneNode?.(true);
     if (clone?.querySelectorAll) {
-        clone.querySelectorAll(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`).forEach(node => node.remove());
+        clone.querySelectorAll(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`).forEach(node => node.remove());
     }
     return String((clone || summary).textContent || '')
         .replace(/\s+/g, ' ')
@@ -9613,6 +9616,7 @@ const MAINTENANCE_AUTO_SAFE_ATTR = 'data-rabbit-mirror-auto-safe-maintenance';
 const MAINTENANCE_AUTO_SAFE_RESULT_ATTR = 'data-rabbit-mirror-auto-safe-result';
 const MAINTENANCE_AUTO_SAFE_VERSION = 'safe-v2-state-preserving';
 const FEEDBACK_CAT_ATTR = 'data-rabbit-mirror-feedback-cat';
+const RESAY_ATTR = 'data-rabbit-mirror-resay';
 const FEEDBACK_CAT_MENU_ATTR = 'data-rabbit-mirror-feedback-cat-menu';
 const SELECTION_ONLY_FALLBACK_ATTR = 'data-rabbit-mirror-selection-only-fallback';
 const SELECTION_ONLY_PLACEHOLDER_ATTR = 'data-rabbit-mirror-selection-only-placeholder';
@@ -9956,7 +9960,7 @@ function diagnosticMessageBody(root) {
 
 function diagnosticIsInternalUiNode(node) {
     if (!node) return false;
-    if (node.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return true;
+    if (node.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return true;
     return !!node.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`);
 }
 
@@ -10503,7 +10507,7 @@ ${styleTexts}`;
     const renderedBodyElementCount = primaryDetails ? [...(primaryDetails.children || [])].filter(child => {
         const tag = String(child?.tagName || '').toLowerCase();
         if (!tag || tag === 'summary' || tag === 'style' || tag === 'script' || tag === 'br') return false;
-        if (child.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`) || child.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)) return false;
+        if (child.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`) || child.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)) return false;
         if (tag === 'p' && !String(child.textContent || '').trim() && !child.children?.length) return false;
         return true;
     }).length : 0;
@@ -11404,7 +11408,7 @@ function fillInChoiceHasExistingControl(root) {
         .some(element => {
             if (outerSummary && (element === outerSummary || outerSummary.contains?.(element))) return false;
             if (element === outerDetails) return false;
-            if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return false;
+            if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return false;
             return true;
         });
 }
@@ -11764,7 +11768,7 @@ function structuredStaticDisclosureHasExistingInteraction(root) {
     ].join(',');
     return diagnosticQueryContentAll(root, selector).some(element => {
         if (outerSummary && (element === outerSummary || outerSummary.contains?.(element))) return false;
-        if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return false;
+        if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return false;
         return true;
     });
 }
@@ -12403,7 +12407,7 @@ function maintenanceReachableInteractionEvidence(root, routeSummary, checkedDept
     const contentInteractiveElementCount = diagnosticQueryContentAll(root, interactiveSelector)
         .filter(element => {
             if (outerSummary && (element === outerSummary || outerSummary.contains?.(element))) return false;
-            if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return false;
+            if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return false;
             return true;
         }).length;
 
@@ -14112,7 +14116,7 @@ function maintenanceMobileLayoutIsInternal(element) {
     if (!element?.matches) return true;
     if (element.matches('style,script,link,meta,br,summary')) return true;
     if (element.closest?.(`[${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return true;
-    if (element.matches(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return true;
+    if (element.matches(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return true;
     if (element.matches(`[${MOBILE_INLINE_ANNOTATION_ORIGINAL_ATTR}], [${MOBILE_INLINE_ANNOTATION_MIRROR_ATTR}]`)) return true;
     return false;
 }
@@ -14826,7 +14830,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.96-test';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.99-test';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -15449,6 +15453,7 @@ function showMaintenanceRabbitMenu(root, button) {
       <button type="button" data-rm-maintenance-action="style">🎨 样子不对</button>
       <button type="button" data-rm-maintenance-action="all">🔧 全部试试（强制维修）</button>
       <button type="button" data-rm-maintenance-action="diagnostic">📋 生成全链路诊断</button>
+      <button type="button" data-rm-maintenance-action="delete">🗑️ 强制删除兔子镜</button>
       <button type="button" data-rm-maintenance-action="close">关闭</button>`;
     document.body.appendChild(panel);
     const rect = button.getBoundingClientRect();
@@ -15471,6 +15476,17 @@ function showMaintenanceRabbitMenu(root, button) {
         }
         if (action === 'diagnostic') {
             triggerDiagnosticForMaintenanceRoot(root);
+            return;
+        }
+        if (action === 'delete') {
+            const detail = { root, handled: false };
+            document.dispatchEvent(new CustomEvent('rabbitmirror:force-delete', { detail }));
+            if (!detail.handled) {
+                const externalHost = root.closest?.('[data-rabbit-mirror-external-source]');
+                if (externalHost) externalHost.remove();
+                else root.remove?.();
+            }
+            globalThis.toastr?.success?.('兔子镜已删除');
             return;
         }
         runMaintenanceUserRepair(root, button, action);
@@ -15656,7 +15672,7 @@ function installFeedbackCatForRoot(root) {
 
 function removeEmptyRabbitMirrorToolHosts(chatRoot = getChatRoot()) {
     chatRoot?.querySelectorAll?.(`[${TOOL_ENTRY_HOST_ATTR}]`)?.forEach(host => {
-        if (!host.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`)) host.remove();
+        if (!host.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RESAY_ATTR}]`)) host.remove();
     });
 }
 
@@ -16882,8 +16898,18 @@ function collectRabbitMirrorCssClasses(cssTexts) {
 function buildRabbitMirrorClassMap(cssTexts, classPrefix) {
     const map = new Map();
     for (const className of collectRabbitMirrorCssClasses(cssTexts)) {
-        if (!className || className.startsWith(classPrefix)) map.set(className, className);
-        else map.set(className, `${classPrefix}${className}`);
+        if (!className) continue;
+        if (className.startsWith(classPrefix)) {
+            map.set(className, className);
+            // 旧缓存可能已经把 CSS selector 加上逐镜前缀，但损坏的
+            // <divclass="rm-..."> 在此前版本中没有被修成同一个 class。
+            // 为当前 scope 的已前缀 class 补一条“原始后缀 → 已前缀 class”别名，
+            // 只用于重清理旧缓存，不会改变新生成兔子镜的正常 class 映射。
+            const legacyClassName = className.slice(classPrefix.length);
+            if (legacyClassName && !map.has(legacyClassName)) map.set(legacyClassName, className);
+        } else {
+            map.set(className, `${classPrefix}${className}`);
+        }
     }
     return map;
 }

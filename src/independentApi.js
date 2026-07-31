@@ -1,12 +1,15 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h30t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h30t';
-import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h30t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h33t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h33t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h33t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.30-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.33-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
 const EXTERNAL_SHELL_ATTR = 'data-rabbit-mirror-external-shell';
+const INLINE_ANCHOR_ATTR = 'data-rabbit-mirror-independent-inline-anchor';
+const RESAY_ATTR = 'data-rabbit-mirror-resay';
+const FORCE_DELETE_EVENT = 'rabbitmirror:force-delete';
 let hostModule = null;
 let latestGenerationTimer = null;
 let followupGenerationTimers = new Set();
@@ -17,6 +20,8 @@ let externalGeometryFrame = 0;
 let externalGeometryListenersInstalled = false;
 const pending = new Map();
 let externalActionListenerInstalled = false;
+let forceDeleteListenerInstalled = false;
+const orphanExternalHostTimers = new Map();
 
 function currentRuntime(){ return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION; }
 function readStore(){ try { const v=JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); return v&&typeof v==='object'?v:{}; } catch { return {}; } }
@@ -34,18 +39,22 @@ function messageSlotKey(ctx,index,msg){ return `${chatKey(ctx)}:${index}:${swipe
 function recordKey(ctx,index,msg){ return messageSlotKey(ctx,index,msg); }
 function findSavedRecord(store,slot){
  const exact=store?.[slot];
- if(exact?.html) return exact;
+ if(exact?.html || exact?.deleted) return exact;
  const prefix=`${slot}:`;
  let best=null;
  for(const [key,value] of Object.entries(store||{})){
-  if(!key.startsWith(prefix) || !value?.html) continue;
+  if(!key.startsWith(prefix) || !(value?.html || value?.deleted)) continue;
   if(!best || Number(value.ts||0)>Number(best.ts||0)) best=value;
  }
  return best;
 }
-function saveRecordForSlot(store,slot,value){
+function removeRecordsForSlot(store,slot){
  const prefix=`${slot}:`;
  for(const key of Object.keys(store||{})){ if(key===slot || key.startsWith(prefix)) delete store[key]; }
+ return store;
+}
+function saveRecordForSlot(store,slot,value){
+ removeRecordsForSlot(store,slot);
  store[slot]=value;
  return store;
 }
@@ -237,7 +246,7 @@ function extractMirrorInner(raw){
 function responseFinishReason(payload){ return String(payload?.choices?.[0]?.finish_reason ?? payload?.stop_reason ?? payload?.candidates?.[0]?.finishReason ?? '').trim(); }
 function independentRequestProfiles(st,systemPrompt,userPrompt,options={}){
  const model=st.independentApiModel;
- const maxTokens=Number(options.maxTokens ?? st.independentApiMaxTokens)||5000;
+ const maxTokens=Number(options.maxTokens ?? st.independentApiMaxTokens)||12000;
  const temperature=Number.isFinite(Number(options.temperature ?? st.independentApiTemperature))?Number(options.temperature ?? st.independentApiTemperature):0.8;
  const stream=options.stream!==false;
  const systemUser=[{role:'system',content:systemPrompt},{role:'user',content:userPrompt}];
@@ -307,7 +316,7 @@ async function callIndependentApi(ctx,index,msg){
  const inner=extractMirrorInner(raw);
  if(!inner){
    const finish=responseFinishReason(result.payload);
-   const configuredMax=Number(st.independentApiMaxTokens)||5000;
+   const configuredMax=Number(st.independentApiMaxTokens)||12000;
    if(/length|max_tokens|MAX_TOKENS/i.test(finish)){
      const recommendation=configuredMax<8192?'；建议把“最大输出”提高到至少 8192 后重新生成':'';
      throw new Error(`独立 API 已返回内容，但兔子镜在输出完成前被截断（finish_reason: ${finish}）。当前最大输出设置：${configuredMax}${recommendation}；参数模式：${profile}`);
@@ -347,6 +356,29 @@ function removeDuplicateExternalHosts(el,keep=null,source=''){
 function externalInsertTarget(el){
  return el;
 }
+function independentDisplayMode(){
+ return getSettings().independentDisplayMode==='external_then_inline' ? 'external_then_inline' : 'external';
+}
+function independentPlacementForState(state='ready'){
+ return state==='ready' && independentDisplayMode()==='external_then_inline' ? 'inline' : 'external';
+}
+function inlineAnchorForMessage(el,create=false){
+ const body=messageBody(el);
+ if(!body) return null;
+ let anchor=[...(body.querySelectorAll?.(`:scope > [${INLINE_ANCHOR_ATTR}]`)||[])][0] || null;
+ if(!anchor && create){
+  anchor=document.createElement('div');
+  anchor.setAttribute(INLINE_ANCHOR_ATTR,'true');
+  anchor.dataset.rmOwnerMesid=externalOwnerMesid(el);
+  body.append(anchor);
+ }
+ return anchor;
+}
+function removeEmptyInlineAnchors(scope=document){
+ scope?.querySelectorAll?.(`[${INLINE_ANCHOR_ATTR}]`)?.forEach(anchor=>{
+  if(!anchor.querySelector?.(`[${SOURCE_ATTR}]`)) anchor.remove();
+ });
+}
 function stampExternalHostOwnership(el,host,key='',source='independent'){
  if(!el||!host) return;
  const ctx=getContext();
@@ -377,19 +409,52 @@ function syncExternalHostGeometry(el,host){
 function scheduleExternalHostGeometry(el,host){
  syncExternalHostGeometry(el,host);
 }
+function clearOrphanExternalHostTimer(mesid=''){
+ const id=String(mesid||'');
+ const timer=orphanExternalHostTimers.get(id);
+ if(timer) clearTimeout(timer);
+ orphanExternalHostTimers.delete(id);
+}
+function externalHostAppearsBeforeOwner(el,host){
+ if(!el||!host||host.parentElement!==el.parentElement) return true;
+ try{
+   return !!(host.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+ }catch{
+   return host.nextElementSibling===el;
+ }
+}
 function placeExternalHost(el,host,key='',source='independent'){
  if(!el||!host) return false;
+ stampExternalHostOwnership(el,host,key,source);
+ const previousParent=host.parentElement;
+ const desired=source==='independent' ? independentPlacementForState(host.dataset.rmState||'ready') : 'external';
+ if(desired==='inline'){
+  const anchor=inlineAnchorForMessage(el,true);
+  if(!anchor) return false;
+  if(host.parentElement!==anchor) anchor.append(host);
+  host.dataset.rmPlacement='inline';
+  host.dataset.rmExternalPlacementEstablished='true';
+  host.hidden=false;
+  delete host.dataset.rmAwaitingOwner;
+  clearOrphanExternalHostTimer(externalOwnerMesid(el));
+  syncExternalHostGeometry(el,host);
+  if(previousParent?.hasAttribute?.(INLINE_ANCHOR_ATTR) && previousParent!==anchor && !previousParent.querySelector?.(`[${SOURCE_ATTR}]`)) previousParent.remove();
+  return true;
+ }
  const parent=el.parentElement;
  if(!parent) return false;
- stampExternalHostOwnership(el,host,key,source);
- // Keep the shell as a sibling of the whole message. Width is controlled by
- // stable #chat-relative CSS rather than by the message's live layout.
- const alreadySibling=host.parentElement===parent && !el.contains(host);
- if(!alreadySibling || host.dataset.rmExternalPlacementEstablished!=='true'){
-   parent.insertBefore(host,el.nextSibling);
- }
+ host.dataset.rmPlacement='external';
+ const needsReanchor = host.parentElement!==parent
+   || el.contains(host)
+   || externalHostAppearsBeforeOwner(el,host)
+   || host.dataset.rmExternalPlacementEstablished!=='true';
+ if(needsReanchor) parent.insertBefore(host,el.nextSibling);
  host.dataset.rmExternalPlacementEstablished='true';
+ host.hidden=false;
+ delete host.dataset.rmAwaitingOwner;
+ clearOrphanExternalHostTimer(externalOwnerMesid(el));
  scheduleExternalHostGeometry(el,host);
+ if(previousParent?.hasAttribute?.(INLINE_ANCHOR_ATTR) && !previousParent.querySelector?.(`[${SOURCE_ATTR}]`)) previousParent.remove();
  return true;
 }
 function messageElementForExternalHost(host){
@@ -399,6 +464,32 @@ function messageElementForExternalHost(host){
    if(direct) return direct;
  }
  return host?.closest?.('.mes[mesid], [mesid].mes, [mesid]') || null;
+}
+function externalHostsOwnedByMesid(mesid=''){
+ const id=String(mesid||'');
+ const currentChat=chatKey(getContext());
+ return allExternalHosts().filter(host=>{
+   const owner=String(host.dataset.rmOwnerMesid||host.dataset.rmExternalOwnerMessage||'');
+   const ownerChat=String(host.dataset.rmOwnerChat||'');
+   return owner===id && (!ownerChat || ownerChat===currentChat);
+ });
+}
+function markExternalHostsAwaitingOwner(mesid=''){
+ const id=String(mesid||'');
+ if(!id || messageElement(Number(id))) return;
+ const hosts=externalHostsOwnedByMesid(id);
+ if(!hosts.length) return;
+ for(const host of hosts){
+   host.hidden=true;
+   host.dataset.rmAwaitingOwner='true';
+ }
+ clearOrphanExternalHostTimer(id);
+ const timer=setTimeout(()=>{
+   orphanExternalHostTimers.delete(id);
+   if(messageElement(Number(id))) return;
+   for(const host of externalHostsOwnedByMesid(id)) host.remove();
+ },1800);
+ orphanExternalHostTimers.set(id,timer);
 }
 function refreshExternalHostGeometry(){
  // Stable comfort width is CSS-only; orientation changes do not sample any
@@ -453,8 +544,32 @@ function repatriateExternalDetails(el,host,key,source){
  }
  return current;
 }
+const INDEPENDENT_SANITIZER_ATTR='data-rabbit-mirror-independent-sanitizer-version';
+const preparedReadyHtmlCache=new Map();
 function repairMalformedLabelMarkup(html=''){
  return repairMalformedRabbitMirrorMarkup(String(html||''));
+}
+function cachePreparedReadyHtml(key,value){
+ preparedReadyHtmlCache.set(key,value);
+ while(preparedReadyHtmlCache.size>80){
+  const oldest=preparedReadyHtmlCache.keys().next().value;
+  preparedReadyHtmlCache.delete(oldest);
+ }
+ return value;
+}
+function prepareIndependentReadyHtml(html=''){
+ const source=String(html||'').trim();
+ const cacheKey=`${RUNTIME_VERSION}:${source.length}:${hashText(source)}`;
+ if(preparedReadyHtmlCache.has(cacheKey)) return preparedReadyHtmlCache.get(cacheKey);
+ const repaired=repairMalformedLabelMarkup(source);
+ const cleaned=cleanRabbitMirrorOutput(repaired);
+ // 独立 API 的成功结果本来就必须是一段完整 <details>。这里不再依赖
+ // “是否像完整 HTML 作品”的启发式判断；即使是旧缓存、较短内容或已经
+ // 带 data-rabbit-mirror-css-scope 的 DOM，也强制再走一次逐镜 class / keyframe 清理。
+ const prepared=/<details\b/i.test(cleaned)
+  ? compactTotoBlock(cleaned)
+  : cleaned;
+ return cachePreparedReadyHtml(cacheKey,prepared);
 }
 function repairLabelTargets(root){
  if(!root?.querySelectorAll) return 0;
@@ -473,21 +588,69 @@ function repairLabelTargets(root){
 }
 function extractReadyDetails(html=''){
  const template=document.createElement('template');
- const normalized=cleanRabbitMirrorOutput(repairMalformedLabelMarkup(String(html||'').trim()));
- template.innerHTML=normalized;
+ template.innerHTML=prepareIndependentReadyHtml(html);
  const details=template.content.querySelector('details') || null;
  if(details){
   repairLabelTargets(details);
   isolateRabbitMirrorInteractionIds(details);
+  details.setAttribute(INDEPENDENT_SANITIZER_ATTR,RUNTIME_VERSION);
  }
  return details;
+}
+function refreshExistingExternalDetails(host,key,source='independent'){
+ if(!host?.isConnected || host.dataset.rmState!=='ready') return null;
+ const current=host.querySelector(':scope > details');
+ if(!current || current.getAttribute(INDEPENDENT_SANITIZER_ATTR)===RUNTIME_VERSION) return current;
+ const clone=current.cloneNode(true);
+ clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
+ const next=extractReadyDetails(clone.outerHTML);
+ if(!next) return current;
+ const wasOpen=current.hasAttribute('open');
+ markExternalDetails(next,key,source);
+ transferExternalTools(current,next);
+ current.replaceWith(next);
+ if(wasOpen) next.setAttribute('open','');
+ return next;
 }
 function externalToolHost(details){
  return details?.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]') || null;
 }
+function ensureIndependentResayButton(host){
+ if(!host?.isConnected || host.dataset.rmSource!=='independent') return null;
+ const details=host.querySelector?.(':scope > details');
+ const summary=details?.querySelector?.(':scope > summary');
+ if(!summary) return null;
+ let tools=externalToolHost(details);
+ if(!tools){
+  tools=document.createElement('span');
+  tools.setAttribute('data-rabbit-mirror-tool-entry-host','true');
+  tools.setAttribute('role','group');
+  tools.setAttribute('aria-label','兔子镜工具');
+  summary.append(tools);
+ }
+ let button=tools.querySelector?.(`[${RESAY_ATTR}]`);
+ if(!button){
+  button=document.createElement('button');
+  button.type='button';
+  button.className='rabbit-mirror-resay';
+  button.setAttribute(RESAY_ATTR,'true');
+  button.setAttribute('data-rabbit-mirror-external-action','retry');
+  button.textContent='↻';
+  const feedback=tools.querySelector?.('[data-rabbit-mirror-feedback-cat]');
+  if(feedback) tools.insertBefore(button,feedback); else tools.append(button);
+ }
+ const loading=host.dataset.rmState==='loading';
+ button.disabled=loading;
+ button.title=loading?'兔子镜正在生成中':'重说兔子镜';
+ button.setAttribute('aria-label',button.title);
+ button.setAttribute('aria-disabled',loading?'true':'false');
+ bindExternalActionButton(button);
+ return button;
+}
 function ensureExternalTools(host){
  if(!host?.isConnected) return;
  try{ refreshRabbitMirrorToolsInScope(host); }catch(error){ console.debug('[RabbitMirror] external tool preparation skipped:',error); }
+ ensureIndependentResayButton(host);
 }
 function transferExternalTools(fromDetails,toDetails){
  const tools=externalToolHost(fromDetails);
@@ -626,19 +789,20 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
    ensureExternalTools(host);
    return host;
  }
+ host.dataset.rmKey=key;
+ host.dataset.rmSource=source;
+ host.dataset.rmState=state;
  placeExternalHost(el,host,key,source);
  removeDuplicateExternalHosts(el,host,source);
  let current=repatriateExternalDetails(el,host,key,source);
  if(!current) current=recoverEscapedExternalDetails(el,host,key,source);
  const wasOpen=!!current?.hasAttribute?.('open');
- host.dataset.rmKey=key;
- host.dataset.rmSource=source;
- host.dataset.rmState=state;
  host.__rabbitMirrorIndependentSource = state==='ready' ? String(html||'') : '';
  if(state==='ready'){
    const nextDetails=extractReadyDetails(html);
    if(!nextDetails){
      host.dataset.rmState='error';
+     placeExternalHost(el,host,key,source);
      const fallback=current || fallbackExternalDetails('error','');
      if(!current) host.append(fallback);
      setPlaceholderSummary(fallback,'【兔子镜：生成失败】');
@@ -693,11 +857,13 @@ async function generateFor(index,msg,force=false){
  const ctx=getContext(); const key=recordKey(ctx,index,msg); const slot=messageSlotKey(ctx,index,msg); const st=getSettings();
  if(st.enabled===false || st.autoRabbitMirrorInjection===false || st.generationSource!=='independent') return;
  const el=messageElement(index); if(!el) return;
- const store=readStore();
+ let store=readStore();
  const saved=findSavedRecord(store,slot);
+ if(saved?.deleted&&!force){ externalHosts(el).filter(n=>n.dataset.rmSource==='independent').forEach(n=>n.remove()); removeEmptyInlineAnchors(el); return; }
  if(saved?.html&&!force){ensureExternalUi(el,key,saved.html,'ready');return;}
  const existing=pending.get(slot);
  if(existing) return existing.task;
+ if(force){ removeRecordsForSlot(store,slot); writeStore(store); }
  ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading');
  const runId=++generationSequence;
  let stale=false;
@@ -708,13 +874,13 @@ async function generateFor(index,msg,force=false){
    const next=readStore(); saveRecordForSlot(next,slot,{html,ts:Date.now(),model:st.independentApiModel});
    const keys=Object.keys(next).sort((a,b)=>(next[b]?.ts||0)-(next[a]?.ts||0));
    for(const k of keys.slice(120)) delete next[k];
-   writeStore(next); ensureExternalUi(el,key,html,'ready');
+   writeStore(next); const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,html,'ready');
  }).catch(err=>{
    const live=currentGenerationIdentity(index);
    const active=pending.get(slot);
    if(!live || live.slot!==slot || live.key!==key || active?.runId!==runId){ stale=true; return; }
    console.error('[RabbitMirror] independent generation failed',err);
-   ensureExternalUi(el,key,String(err?.message||err),'error');
+   const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,String(err?.message||err),'error');
  }).finally(()=>{
    if(pending.get(slot)?.runId===runId) pending.delete(slot);
    if(stale) scheduleMessageGeneration(index,320);
@@ -764,10 +930,12 @@ async function handleExternalActionClick(event){
  const button=externalActionButtonFromEvent(event);
  if(!button) return;
  const host=button.closest(`[${SOURCE_ATTR}]`);
- if(!host || host.dataset.rmSource!=='independent' || host.dataset.rmState!=='error') return;
+ if(!host || host.dataset.rmSource!=='independent') return;
+ const action=button.getAttribute('data-rabbit-mirror-external-action');
+ if(action==='retry' && host.dataset.rmState==='loading') return;
+ if(action==='test-api' && host.dataset.rmState!=='error') return;
  event.preventDefault?.(); event.stopPropagation?.(); event.stopImmediatePropagation?.();
  if(host.dataset.rmExternalActionBusy==='true') return;
- const action=button.getAttribute('data-rabbit-mirror-external-action');
  host.dataset.rmExternalActionBusy='true';
  try{
    if(action==='retry'){
@@ -797,6 +965,42 @@ async function handleExternalActionClick(event){
    delete host.dataset.rmExternalActionBusy;
    bindExternalActionButtons(host);
  }
+}
+function forceDeleteIndependentMirror(root){
+ const host=root?.matches?.(`[${SOURCE_ATTR}]`) ? root : root?.closest?.(`[${SOURCE_ATTR}]`);
+ if(!host || host.dataset.rmSource!=='independent') return false;
+ const index=messageIndexForExternalHost(host);
+ if(index===null) return false;
+ const ctx=getContext();
+ const ownerChat=String(host.dataset.rmOwnerChat||chatKey(ctx));
+ const ownerSwipe=String(host.dataset.rmOwnerSwipe||swipeId(ctx.chat?.[index]));
+ const slot=`${ownerChat}:${index}:${ownerSwipe}`;
+ if(slot){
+  const store=readStore();
+  removeRecordsForSlot(store,slot);
+  store[slot]={deleted:true,ts:Date.now()};
+  writeStore(store);
+  pending.delete(slot);
+ }
+ const parent=host.parentElement;
+ host.remove();
+ if(parent?.hasAttribute?.(INLINE_ANCHOR_ATTR) && !parent.querySelector?.(`[${SOURCE_ATTR}]`)) parent.remove();
+ return true;
+}
+function handleForceDeleteEvent(event){
+ const detail=event?.detail;
+ if(!detail || typeof detail!=='object') return;
+ if(forceDeleteIndependentMirror(detail.root)) detail.handled=true;
+}
+function installForceDeleteListener(){
+ if(forceDeleteListenerInstalled) return;
+ document.addEventListener(FORCE_DELETE_EVENT,handleForceDeleteEvent);
+ forceDeleteListenerInstalled=true;
+}
+function removeForceDeleteListener(){
+ if(!forceDeleteListenerInstalled) return;
+ document.removeEventListener(FORCE_DELETE_EVENT,handleForceDeleteEvent);
+ forceDeleteListenerInstalled=false;
 }
 function installExternalActionDelegation(){
  if(externalActionListenerInstalled) return;
@@ -854,9 +1058,14 @@ function syncMessages(indices=null){
        externalHosts(el).filter(n=>n.dataset.rmSource==='follow').forEach(n=>n.remove());
        const key=recordKey(ctx,i,m); const slot=messageSlotKey(ctx,i,m); const saved=findSavedRecord(store,slot);
        const independentHosts=externalHosts(el).filter(n=>n.dataset.rmSource==='independent');
+       if(saved?.deleted){ independentHosts.forEach(n=>n.remove()); removeEmptyInlineAnchors(el); continue; }
        const keep=independentHosts.find(n=>n.dataset.rmKey===key) || independentHosts[0] || null;
        for(const node of independentHosts){ if(node!==keep) node.remove(); }
        if(saved?.html) ensureExternalUi(el,key,saved.html,'ready');
+       else if(keep){
+         placeExternalHost(el,keep,keep.dataset.rmKey||key,'independent');
+         refreshExistingExternalDetails(keep,key,'independent');
+       }
      } else {
        externalHosts(el).filter(n=>n.dataset.rmSource==='independent').forEach(n=>n.remove());
        if(mode==='follow-external') externalizeFollowMirror(i,m); else restoreFollowInline(el);
@@ -889,13 +1098,31 @@ function nodeMessageIndex(node){
  const id=Number(mes?.getAttribute?.('mesid'));
  return Number.isInteger(id)&&id>=0?id:null;
 }
+function removedMutationIndices(records){
+ const found=new Set();
+ for(const rec of records){
+   for(const node of [...(rec.removedNodes||[])]){
+     const el=node?.nodeType===1?node:null;
+     if(!el || el.matches?.(`[${SOURCE_ATTR}]`) || el.closest?.(`[${SOURCE_ATTR}]`)) continue;
+     const roots=[];
+     if(el.matches?.('.mes[mesid], [mesid].mes, [mesid]')) roots.push(el);
+     roots.push(...(el.querySelectorAll?.('.mes[mesid], [mesid].mes, [mesid]')||[]));
+     for(const root of roots){
+       const id=Number(root.getAttribute?.('mesid'));
+       if(Number.isInteger(id)&&id>=0) found.add(id);
+     }
+   }
+ }
+ return found;
+}
 function relevantMutationIndices(records){
  const found=new Set();
  for(const rec of records){
    const target=rec.target?.nodeType===1?rec.target:rec.target?.parentElement;
    if(target?.closest?.(`[${SOURCE_ATTR}], [data-rabbit-mirror-tool-entry-host]`)) continue;
-   // Only added structural content can create a new mirror candidate. Removed nodes and
-   // RabbitMirror's own external host/tool changes must not schedule another sync pass.
+   // Added message structures can create or replace the current owner node.
+   // Removed owners are handled separately so their shell is hidden during the
+   // short regeneration gap instead of floating above the replacement message.
    for(const node of [...(rec.addedNodes||[])]){
      const el=node?.nodeType===1?node:null;
      if(!el) continue;
@@ -930,13 +1157,24 @@ function unsubscribeHostEvents(){
  for(const {es,event,handler} of hostSubscriptions){ try{ es?.off?.(event,handler); }catch{} }
  hostSubscriptions=[];
 }
-function disconnectObserver(){ observer?.disconnect?.(); observer=null; if(syncTimer){clearTimeout(syncTimer);syncTimer=null;} queuedIndices.clear(); }
+function disconnectObserver(){
+ observer?.disconnect?.(); observer=null;
+ if(syncTimer){clearTimeout(syncTimer);syncTimer=null;}
+ queuedIndices.clear();
+ for(const timer of orphanExternalHostTimers.values()) clearTimeout(timer);
+ orphanExternalHostTimers.clear();
+}
 function installObserverIfNeeded(){
  disconnectObserver();
  const mode=runtimeMode(); if(mode==='off'||mode==='inline'||typeof MutationObserver==='undefined') return;
  const chat=document.querySelector('#chat'); if(!chat) return;
  observer=new MutationObserver(records=>{
+   const removed=removedMutationIndices(records);
+   for(const id of removed){
+     if(!messageElement(id)) markExternalHostsAwaitingOwner(id);
+   }
    const indices=relevantMutationIndices(records);
+   for(const id of removed) indices.add(id);
    if(indices.size) queueMessageSync(indices);
  });
  observer.observe(chat,{childList:true,subtree:true});
@@ -954,7 +1192,12 @@ async function installHostEventsIfNeeded(){
      const handler=()=>{syncAll();scheduleLatest(700);}; es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
    for(const event of new Set(finalGenerationEvents)){
-     const handler=()=>scheduleLatest(420); es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
+     const handler=messageId=>{
+       const id=Number(messageId);
+       if(Number.isInteger(id)&&id>=0) queueMessageSync([id]); else syncAll();
+       scheduleLatest(420);
+     };
+     es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
    // MESSAGE_RECEIVED / CHARACTER_MESSAGE_RENDERED can be emitted before and again
    // after a streamed reply is finalized. They may refresh saved UI, but must never
@@ -977,8 +1220,9 @@ async function reconfigureRuntime(){
    if(mode==='inline'){
      document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(el=>restoreFollowInline(el));
      document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());
+     removeEmptyInlineAnchors(document);
    }
-   if(mode==='off') document.querySelectorAll(`[${SOURCE_ATTR}]`).forEach(n=>n.remove());
+   if(mode==='off'){ document.querySelectorAll(`[${SOURCE_ATTR}]`).forEach(n=>n.remove()); removeEmptyInlineAnchors(document); }
    return;
  }
  syncAll(); installObserverIfNeeded(); await installHostEventsIfNeeded(); scheduleLatest();
@@ -989,14 +1233,16 @@ export async function initIndependentRabbitMirror(){
  try{ globalThis.__rabbitMirrorIndependentCleanup?.(); }catch{}
  globalThis.__rabbitMirrorIndependentCleanup=destroyIndependentRabbitMirror;
  installExternalActionDelegation();
+ installForceDeleteListener();
  installExternalGeometryListeners();
  await reconfigureRuntime();
 }
 export function destroyIndependentRabbitMirror(){
  clearScheduledGeneration();
- disconnectObserver(); unsubscribeHostEvents(); removeExternalActionDelegation(); removeExternalGeometryListeners();
- syncRunning=false; pending.clear();
+ disconnectObserver(); unsubscribeHostEvents(); removeExternalActionDelegation(); removeForceDeleteListener(); removeExternalGeometryListeners();
+ syncRunning=false; pending.clear(); preparedReadyHtmlCache.clear();
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(host=>restoreFollowInline(host));
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());
+ removeEmptyInlineAnchors(document);
  if(globalThis.__rabbitMirrorIndependentCleanup===destroyIndependentRabbitMirror) delete globalThis.__rabbitMirrorIndependentCleanup;
 }
