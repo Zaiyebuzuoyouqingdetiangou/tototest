@@ -1,14 +1,17 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h47t';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.1.0b14h47t';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h48t';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.1.0b14h48t';
 import {
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.1.0b14h47t';
+} from './generationGuard.js?rmv=1.1.0b14h48t';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
 let lastScanAttempts = 0;
+let visualScannerSubscriptions = [];
+let visualScannerTimers = new Set();
+let visualScannerCaptureTimer = 0;
 
 function hashText(text) {
     let hash = 0;
@@ -1010,17 +1013,36 @@ async function scanLatestAssistantMessage(mod) {
     }
 }
 
+function clearVisualScannerTimers() {
+    if (visualScannerCaptureTimer) {
+        clearTimeout(visualScannerCaptureTimer);
+        visualScannerCaptureTimer = 0;
+    }
+    for (const timer of visualScannerTimers) clearTimeout(timer);
+    visualScannerTimers.clear();
+}
+
+export function destroyVisualScanner() {
+    clearVisualScannerTimers();
+    for (const { eventSource, eventName, handler } of visualScannerSubscriptions) {
+        try { eventSource?.off?.(eventName, handler); } catch {}
+    }
+    visualScannerSubscriptions = [];
+    if (globalThis.__rabbitMirrorVisualScannerCleanup === destroyVisualScanner) delete globalThis.__rabbitMirrorVisualScannerCleanup;
+}
+
 export async function initVisualScanner() {
     try {
+        try { globalThis.__rabbitMirrorVisualScannerCleanup?.(); } catch {}
+        globalThis.__rabbitMirrorVisualScannerCleanup = destroyVisualScanner;
         const mod = await import('../../../../../script.js');
         const eventSource = mod?.eventSource;
         const eventTypes = mod?.event_types || {};
         if (!eventSource?.on) return;
-        let captureTimer = 0;
         const captureNow = () => {
-            if (captureTimer) {
-                clearTimeout(captureTimer);
-                captureTimer = 0;
+            if (visualScannerCaptureTimer) {
+                clearTimeout(visualScannerCaptureTimer);
+                visualScannerCaptureTimer = 0;
             }
             try {
                 captureRabbitMirrorGenerationSnapshots(mod?.chat || globalThis.chat);
@@ -1029,24 +1051,39 @@ export async function initVisualScanner() {
             }
         };
         const scheduleCapture = (delay = 140) => {
-            if (captureTimer) clearTimeout(captureTimer);
-            captureTimer = setTimeout(captureNow, Math.max(0, Number(delay) || 0));
+            if (visualScannerCaptureTimer) clearTimeout(visualScannerCaptureTimer);
+            visualScannerCaptureTimer = setTimeout(captureNow, Math.max(0, Number(delay) || 0));
+        };
+        const scheduleTimer = (handler, delay) => {
+            const timer = setTimeout(() => {
+                visualScannerTimers.delete(timer);
+                handler();
+            }, delay);
+            visualScannerTimers.add(timer);
         };
         const scheduleScan = () => {
             captureNow();
             scheduleCapture(120);
-            setTimeout(() => scanLatestAssistantMessage(mod), 600);
-            setTimeout(() => scanLatestAssistantMessage(mod), 1800);
+            scheduleTimer(() => scanLatestAssistantMessage(mod), 600);
+            scheduleTimer(() => scanLatestAssistantMessage(mod), 1800);
+        };
+        const subscribe = (eventName, handler) => {
+            if (!eventName) return;
+            eventSource.on(eventName, handler);
+            visualScannerSubscriptions.push({ eventSource, eventName, handler });
         };
         const captureEvents = [
             eventTypes.MESSAGE_UPDATED,
             eventTypes.CHARACTER_MESSAGE_RENDERED,
             eventTypes.MESSAGE_RECEIVED,
         ].filter(Boolean);
-        for (const eventName of [...new Set(captureEvents)]) eventSource.on(eventName, () => scheduleCapture(140));
+        for (const eventName of [...new Set(captureEvents)]) {
+            const handler = () => scheduleCapture(140);
+            subscribe(eventName, handler);
+        }
         const generationEvents = [eventTypes.MESSAGE_RECEIVED, eventTypes.GENERATION_STOPPED, eventTypes.GENERATION_ENDED].filter(Boolean);
-        for (const eventName of [...new Set(generationEvents)]) eventSource.on(eventName, scheduleScan);
-        if (eventTypes.CHAT_CHANGED) eventSource.on(eventTypes.CHAT_CHANGED, scheduleScan);
+        for (const eventName of [...new Set(generationEvents)]) subscribe(eventName, scheduleScan);
+        subscribe(eventTypes.CHAT_CHANGED, scheduleScan);
         console.debug('[RabbitMirror] visual scanner initialized');
     } catch (error) {
         console.debug('[RabbitMirror] visual scanner disabled:', error);

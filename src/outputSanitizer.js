@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h47t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h47t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h48t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h48t';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h47t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h47t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h47t';
+} from './feedbackCat.js?rmv=1.1.0b14h48t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h48t';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h48t';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.47-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.48-test';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9597,7 +9597,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 }
 
 
-// beta.14.47: automatic frame recoloring was removed.
+// beta.14.48: keep the automatic-frame removal migration, but do not render or infer any new frame color.
 // Clean attributes and CSS variables written by beta.14.35-14.46 so cached mirrors
 // immediately return to the original external-frame rendering without touching generated content.
 function clearLegacyRabbitMirrorAutoFrameArtifacts(root) {
@@ -13730,91 +13730,62 @@ function repairMaintenanceMessageSource(root, inspection) {
 
 function maintenanceSnapshotKey(root) {
     const index = getMessageIndexFromMirrorNode(root);
-    const title = getRabbitMirrorSummaryText(root).replace(/🐇[⚪🟢🟡🔴]?/g, '').trim();
-    return `${index}:${title}`;
+    const chat = getAvailableHostChat();
+    const message = index >= 0 ? chat[index] : null;
+    const swipe = Number.isInteger(message?.swipe_id) ? message.swipe_id : 0;
+    const host = root?.matches?.('[data-rabbit-mirror-external-source="true"]')
+        ? root
+        : root?.closest?.('[data-rabbit-mirror-external-source="true"]');
+    const ownerKey = String(host?.dataset?.rmKey || '');
+    let chatKey = 'chat';
+    try { chatKey = String(getCurrentChatKey?.(chat) || 'chat'); } catch {}
+    return ownerKey ? `${chatKey}:${ownerKey}` : `${chatKey}:${index}:${swipe}`;
+}
+
+function trimMaintenanceSnapshots(max = 24) {
+    while (maintenancePreRepairSnapshots.size > max) {
+        const oldest = [...maintenancePreRepairSnapshots.entries()].sort((a, b) => Number(a[1]?.ts || 0) - Number(b[1]?.ts || 0))[0]?.[0];
+        if (!oldest) break;
+        maintenancePreRepairSnapshots.delete(oldest);
+    }
 }
 
 function captureMaintenancePreRepairSnapshot(root) {
-    if (!root?.isConnected) return false;
+    if (!root?.isConnected) return null;
     const details = root.matches?.('details') ? root : root.querySelector?.(':scope > details') || root.querySelector?.('details');
-    if (!details) return false;
-    maintenancePreRepairSnapshots.set(maintenanceSnapshotKey(root), {
-        html: details.innerHTML,
-        open: details.hasAttribute('open'),
+    if (!details?.parentNode) return null;
+    const key = maintenanceSnapshotKey(root);
+    const originalNode = details;
+    const workingNode = details.cloneNode(true);
+    originalNode.replaceWith(workingNode);
+    const workingRoot = root === originalNode ? workingNode : root;
+    try { refreshRabbitMirrorToolsInScope?.(workingRoot); } catch {}
+    const workingButton = workingRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || workingNode.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || null;
+    maintenancePreRepairSnapshots.set(key, {
+        node: originalNode,
+        open: originalNode.hasAttribute('open'),
         ts: Date.now(),
     });
-    return true;
+    trimMaintenanceSnapshots();
+    return { key, root: workingRoot, button: workingButton };
 }
 
 function restoreMaintenancePreRepairSnapshot(root, button) {
     const key = maintenanceSnapshotKey(root);
     const snapshot = maintenancePreRepairSnapshots.get(key);
-    if (!snapshot) {
+    if (!snapshot?.node) {
         setMaintenanceRabbitState(button, MAINTENANCE_STATES.unknown, '当前兔子镜没有可返回的修复前界面');
         return false;
     }
     const details = root.matches?.('details') ? root : root.querySelector?.(':scope > details') || root.querySelector?.('details');
-    if (!details) return false;
-    details.innerHTML = snapshot.html;
-    if (snapshot.open) details.setAttribute('open', ''); else details.removeAttribute('open');
+    if (!details?.parentNode) return false;
+    const originalNode = snapshot.node;
+    if (snapshot.open) originalNode.setAttribute('open', ''); else originalNode.removeAttribute('open');
+    details.replaceWith(originalNode);
     maintenancePreRepairSnapshots.delete(key);
     setTimeout(() => {
-        refreshRabbitMirrorToolsInScope?.(details);
+        try { refreshRabbitMirrorToolsInScope?.(originalNode); } catch {}
     }, 0);
-    return true;
-}
-
-function runMaintenanceRabbitRepair(root, button) {
-    if (!root?.isConnected || !button?.isConnected) return false;
-    const before = inspectMaintenanceRabbit(root);
-    captureMaintenancePreRepairSnapshot(root);
-    if (before.state !== MAINTENANCE_STATES.repairable) {
-        setMaintenanceRabbitState(button, before.state, before.reason);
-        return false;
-    }
-    const summaryText = getRabbitMirrorSummaryText(root).replace(/🐇[⚪🟢🟡🔴]?/g, '').trim();
-    const originalIndex = getMessageIndexFromMirrorNode(root);
-    setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '正在维修当前这一条兔子镜');
-
-    try {
-        const sourceResult = repairMaintenanceMessageSource(root, before);
-        const continueRepair = () => {
-            const liveRoot = findLiveMaintenanceRoot(root, summaryText, sourceResult.index >= 0 ? sourceResult.index : originalIndex);
-            if (!liveRoot) {
-                setMaintenanceRabbitState(button, MAINTENANCE_STATES.unknown, sourceResult.reason || '维修后未找到当前兔子镜');
-                return;
-            }
-            const liveButton = liveRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
-            if (before.interaction?.checkedControlsLost || before.interaction?.strippedStateProgram || before.interaction?.touchHoverMissing || before.interaction?.needsScopeRepair || before.interaction?.radioGroupLossCandidateCount) {
-                scopeRabbitMirrorInteractionIds(liveRoot);
-                liveRoot.dataset.rabbitMirrorInteractionRescued = 'true';
-            }
-            liveButton.setAttribute(MAINTENANCE_REPAIR_ATTR, 'true');
-            setTimeout(() => {
-                const afterRoot = findLiveMaintenanceRoot(liveRoot, summaryText, sourceResult.index >= 0 ? sourceResult.index : originalIndex);
-                const afterButton = afterRoot?.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || liveButton;
-                if (!afterRoot) {
-                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.unknown, '维修后无法重新定位当前兔子镜');
-                    return;
-                }
-                const after = inspectMaintenanceRabbit(afterRoot);
-                if (after.full?.sourceTruncationNoticeInstalled) {
-                    afterButton.removeAttribute(MAINTENANCE_REPAIR_ATTR);
-                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.unknown, '本次生成不完整，未标记为已修复；请重新生成该条');
-                } else if (after.state === MAINTENANCE_STATES.repairable) {
-                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.unknown, `已有修复未能消除异常：${after.reason}`);
-                } else {
-                    setMaintenanceRabbitState(afterButton, after.state, after.reason);
-                }
-            }, 320);
-        };
-        if (sourceResult.changed) setTimeout(continueRepair, 180);
-        else continueRepair();
-    } catch (error) {
-        console.debug('[RabbitMirror] maintenance rabbit repair failed:', error);
-        setMaintenanceRabbitState(button, MAINTENANCE_STATES.unknown, '修复执行失败，请生成全链路诊断');
-        return false;
-    }
     return true;
 }
 
@@ -13975,6 +13946,75 @@ function showFeedbackCatRangeMenu(root, button, types, customText = '') {
     return true;
 }
 
+function feedbackCatIndependentOwner(root, button = null) {
+    if (!root) return null;
+    const details = root.matches?.('details') ? root : root.closest?.('details') || root.querySelector?.('details');
+    const host = root?.matches?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]')
+        ? root
+        : root?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]')
+          || root?.querySelector?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]')
+          || details?.parentElement?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]');
+    const buttonMesid = Number(button?.dataset?.rmFeedbackOwnerMesid);
+    const directMesid = Number(details?.dataset?.rabbitMirrorOwnerMesid);
+    const messageId = getMessageIndexFromMirrorNode(root);
+    const targetMesid = Number.isInteger(directMesid) && directMesid >= 0
+        ? directMesid
+        : Number.isInteger(buttonMesid) && buttonMesid >= 0
+            ? buttonMesid
+            : messageId;
+    const directKey = String(details?.dataset?.rabbitMirrorOwnerKey
+        || details?.dataset?.rabbitMirrorExternalOwner
+        || button?.dataset?.rmFeedbackOwnerKey
+        || '');
+    const directSource = String(details?.dataset?.rabbitMirrorExternalSource || button?.dataset?.rmFeedbackOwnerSource || '');
+    const resolvedHost = host || (targetMesid >= 0
+        ? [...(document.querySelectorAll?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]') || [])]
+            .find(candidate => Number(candidate?.dataset?.rmOwnerMesid ?? candidate?.dataset?.rmExternalOwnerMessage) === targetMesid)
+        : directKey
+            ? [...(document.querySelectorAll?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]') || [])]
+                .find(candidate => String(candidate?.dataset?.rmKey || '') === directKey)
+            : null);
+    if (!resolvedHost && directSource !== 'independent') return null;
+    const chat = getAvailableHostChat();
+    const finalMesid = Number(resolvedHost?.dataset?.rmOwnerMesid
+        ?? resolvedHost?.dataset?.rmExternalOwnerMessage
+        ?? targetMesid);
+    if (!Number.isInteger(finalMesid) || finalMesid < 0 || chat[finalMesid]?.is_user) return null;
+    const message = chat[finalMesid] || null;
+    let ownerChat = '';
+    try { ownerChat = String(getCurrentChatKey?.(chat) || ''); } catch {}
+    return {
+        chat: String(resolvedHost?.dataset?.rmOwnerChat
+            || details?.dataset?.rabbitMirrorOwnerChat
+            || button?.dataset?.rmFeedbackOwnerChat
+            || ownerChat),
+        mesid: finalMesid,
+        swipe: Number(resolvedHost?.dataset?.rmOwnerSwipe
+            ?? details?.dataset?.rabbitMirrorOwnerSwipe
+            ?? button?.dataset?.rmFeedbackOwnerSwipe
+            ?? (Number.isInteger(message?.swipe_id) ? message.swipe_id : 0)),
+        key: String(resolvedHost?.dataset?.rmKey || directKey),
+        sourceHash: String(resolvedHost?.dataset?.rmSourceHash
+            || details?.dataset?.rabbitMirrorOwnerSourceHash
+            || button?.dataset?.rmFeedbackOwnerSourceHash
+            || ''),
+    };
+}
+
+function invokeFeedbackMirrorAction(action, root, owner) {
+    const bridge = globalThis.__rabbitMirrorIndependentActionsV1;
+    if (bridge?.runtime === RUNTIME_VERSION && typeof bridge?.[action] === 'function') {
+        try {
+            if (bridge[action](root, owner || {})) return true;
+        } catch (error) {
+            console.debug('[RabbitMirror] independent action bridge failed, using event fallback:', error);
+        }
+    }
+    const detail = { root, owner: owner || {}, handled: false };
+    document.dispatchEvent(new CustomEvent(action === 'resay' ? FEEDBACK_RESAY_EVENT : FEEDBACK_HISTORY_EVENT, { detail }));
+    return !!detail.handled;
+}
+
 function showFeedbackCatMenu(root, button, draft = null) {
     closeMaintenanceRabbitMenu();
     closeFeedbackCatMenu();
@@ -14003,11 +14043,8 @@ function showFeedbackCatMenu(root, button, draft = null) {
         : lastReceipt
             ? `<div class="rabbit-mirror-feedback-cat-status">当前没有生效中的反馈。</div>${receiptLine}`
             : '<div class="rabbit-mirror-feedback-cat-status">可同时选择多项；关闭而未提交不会影响后续生成。</div>';
-    const independentHost = root?.matches?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]')
-        ? root
-        : root?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]')
-          || root?.querySelector?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]');
-    const independentActions = independentHost
+    const independentOwner = feedbackCatIndependentOwner(root, button);
+    const independentActions = independentOwner
         ? `<div class="rabbit-mirror-feedback-cat-actions rabbit-mirror-feedback-cat-mirror-actions">
             <button type="button" data-rm-feedback-action="resay">↻ 重说</button>
             <button type="button" data-rm-feedback-action="history">◷ 兔子镜历史</button>
@@ -14091,10 +14128,10 @@ function showFeedbackCatMenu(root, button, draft = null) {
             return;
         }
         if (action === 'resay' || action === 'history') {
-            const detail = { root, handled: false };
-            document.dispatchEvent(new CustomEvent(action === 'resay' ? FEEDBACK_RESAY_EVENT : FEEDBACK_HISTORY_EVENT, { detail }));
+            const owner = independentOwner || feedbackCatIndependentOwner(root, button) || {};
+            const handled = invokeFeedbackMirrorAction(action, root, owner);
             closeFeedbackCatMenu();
-            if (!detail.handled) globalThis.toastr?.warning?.('当前兔子镜不支持这项操作。');
+            if (!handled) globalThis.toastr?.warning?.('没有找到这条回复对应的副 API 兔子镜。');
             return;
         }
         closeFeedbackCatMenu();
@@ -14105,8 +14142,12 @@ function showFeedbackCatMenu(root, button, draft = null) {
 }
 
 function rabbitMirrorExternalGenerationState(root) {
-    return String(root?.closest?.('[data-rabbit-mirror-external-source]')?.getAttribute?.('data-rm-state') || '');
+    const host = root?.matches?.('[data-rabbit-mirror-external-source="true"][data-rm-state]')
+        ? root
+        : root?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-state]');
+    return String(host?.getAttribute?.('data-rm-state') || '');
 }
+
 
 function rabbitMirrorExternalGenerationNotice(root, kind = 'maintenance') {
     const state = rabbitMirrorExternalGenerationState(root);
@@ -14913,7 +14954,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.05-test';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.08-test';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -15150,6 +15191,11 @@ function runMaintenanceAutomaticRepairPlan(root, button) {
             : initialInspection.state;
         setMaintenanceRabbitState(button, state, initialInspection.reason || '未发现可自动维修的高置信问题');
         return false;
+    }
+    const captured = captureMaintenancePreRepairSnapshot(root);
+    if (captured) {
+        root = captured.root || root;
+        button = captured.button || root.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
     }
 
     const summaryText = getRabbitMirrorSummaryText(root).replace(/🐇[⚪🟢🟡🔴]?/g, '').trim();
@@ -15403,8 +15449,12 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
 
 function runMaintenanceUserRepair(root, button, mode) {
     if (!root?.isConnected || !button?.isConnected) return false;
-    captureMaintenancePreRepairSnapshot(root);
     if (mode === 'auto') return runMaintenanceAutomaticRepairPlan(root, button);
+    const captured = captureMaintenancePreRepairSnapshot(root);
+    if (captured) {
+        root = captured.root || root;
+        button = captured.button || root.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
+    }
     const effectiveMode = mode;
     const labels = {
         auto: '正在自动判断并维修当前兔子镜',
@@ -15702,6 +15752,22 @@ function ensureMaintenanceRabbitButton(root, summary, host) {
     return current;
 }
 
+function stampFeedbackCatIndependentOwner(button, owner) {
+    if (!button) return;
+    const attributes = {
+        rmFeedbackOwnerSource: owner ? 'independent' : '',
+        rmFeedbackOwnerChat: String(owner?.chat || ''),
+        rmFeedbackOwnerMesid: Number.isInteger(owner?.mesid) && owner.mesid >= 0 ? String(owner.mesid) : '',
+        rmFeedbackOwnerSwipe: Number.isInteger(owner?.swipe) && owner.swipe >= 0 ? String(owner.swipe) : '',
+        rmFeedbackOwnerKey: String(owner?.key || ''),
+        rmFeedbackOwnerSourceHash: String(owner?.sourceHash || ''),
+    };
+    for (const [name, value] of Object.entries(attributes)) {
+        if (value) button.dataset[name] = value;
+        else delete button.dataset[name];
+    }
+}
+
 function ensureFeedbackCatButton(root, summary, host) {
     const existing = [...summary.querySelectorAll?.(`[${FEEDBACK_CAT_ATTR}]`) || []];
     let current = existing.find(button => button.getAttribute(RUNTIME_VERSION_ATTR) === RUNTIME_VERSION) || existing[0] || null;
@@ -15720,6 +15786,11 @@ function ensureFeedbackCatButton(root, summary, host) {
     if (externalState === 'loading') current.setAttribute('data-rabbit-mirror-external-waiting', 'true');
     else current.removeAttribute('data-rabbit-mirror-external-waiting');
     if (current.parentElement !== host) host.appendChild(current);
+    // Keep a second copy of the independent owner identity directly on the cat
+    // button. Some themes move/clone the tool host after it was installed; the
+    // button metadata survives that move and lets “重说/历史” resolve the exact
+    // chat + message + Swipe even when the external shell is no longer an ancestor.
+    stampFeedbackCatIndependentOwner(current, feedbackCatIndependentOwner(root));
     normalizeRabbitMirrorToolButton(current);
     return current;
 }
@@ -17730,6 +17801,7 @@ function cancelMaintenanceAutoSafeTimers() {
 function initializeMaintenanceAutoSafeStartupGuard() {
     cancelMaintenanceAutoSafeTimers();
     maintenanceAutoSafeBaselineSignatures.clear();
+    maintenancePreRepairSnapshots.clear();
     maintenanceAutoSafeReady = false;
     if (!isMaintenanceAutoSafeEnabled()) return;
     captureMaintenanceAutoSafeBaseline();
@@ -17971,6 +18043,7 @@ export function destroyOutputSanitizer() {
     maintenanceInstallTimers.clear();
     cancelMaintenanceAutoSafeTimers();
     maintenanceAutoSafeBaselineSignatures.clear();
+    maintenancePreRepairSnapshots.clear();
     maintenanceAutoSafeReady = false;
     removeMaintenanceRabbitsInChatDom();
     removeFeedbackCatsInChatDom();

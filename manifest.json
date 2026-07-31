@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・生成方式切换・维修兔 v2.07-test）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・状态机收口・维修兔 v2.08-test）",
   "loading_order": 99,
-  "js": "index.js?rmv=1.1.0b14h47t",
-  "css": "style.css?rmv=1.1.0b14h47t",
+  "js": "index.js?rmv=1.1.0b14h48t",
+  "css": "style.css?rmv=1.1.0b14h48t",
   "author": "Toto",
-  "version": "1.1.0-beta.14.47-test",
+  "version": "1.1.0-beta.14.48-test",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "RabbitMirror test build. Automatic frame palette extraction and whole-frame recoloring are removed; independent mirrors use the original external shell styling. Legacy palette attributes are cleared on restore. Independent resay/history, single-host display modes and stable-body generation remain unchanged."
+  "description": "RabbitMirror beta.14.48 state-machine consolidation. Stable body+reasoning gating, abortable single-flight requests, one host per reply, direct feedback-cat resay/history ownership, reversible DOM-node repairs, byte-bounded local history, and complete listener cleanup."
 }
