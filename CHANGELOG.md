@@ -1,4 +1,10 @@
-# 1.1.0-beta.14.24-test
+## 1.1.0-beta.14.25-test
+- 独立 API 每条助手消息/Swipe 使用稳定槽位保存，外置宿主不会因正文哈希或后续消息变化丢失。
+- 独立结果只保留在消息级外置宿主，并在宿主被酒馆重绘移动时恢复到正文后、状态栏前。
+- 外置宿主与消息正文同宽，不增加横向 padding 或 max-width。
+- 修复模型常见的 `<labelfor>` 等丢空格标签，并将 label[for] 重映射到隔离后的真实控件 ID。
+
+# 1.1.0-beta.14.25-test
 
 - 独立 API 去重键改为“聊天 + 消息序号 + Swipe”，同一条消息/Swipe 同时只允许一个生成任务。
 - `MESSAGE_RECEIVED`、`CHARACTER_MESSAGE_RENDERED`、`MESSAGE_UPDATED` 仅刷新已有外置 UI，不再启动副 API；只在生成结束、停止、Swipe 或聊天载入后的稳定阶段启动。
