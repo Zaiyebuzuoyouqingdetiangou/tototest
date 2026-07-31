@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h49t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h49t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h49t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h49t';
-import { updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h49t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h50t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h50t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h50t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h50t';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h50t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.49-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.50-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -208,7 +208,12 @@ function savedRecordMatchesObserved(saved,observed){
  if(!saved?.html||!observed) return false;
  const savedSource=String(saved.sourceHash||'');
  if(savedSource && savedSource===observed.sourceHash) return true;
+ // beta.14.47 and earlier stored sourceHash as the正文-only hash. From
+ // beta.14.48 onward sourceHash also includes reasoning. Treat the old hash as
+ // a valid legacy body fingerprint instead of deleting every historical mirror
+ // during an upgrade.
  const savedBody=String(saved.bodyHash||'');
+ if(!savedBody && savedSource && savedSource===String(observed.bodyHash||'')) return true;
  if(!savedBody || savedBody!==observed.bodyHash) return false;
  const savedReasoning=String(saved.reasoningHash||'');
  return !observed.reasoningHash || !savedReasoning || savedReasoning===observed.reasoningHash;
@@ -984,7 +989,48 @@ function usableReadyDetails(details){
   return !!(String(node.textContent||'').trim() || node.children?.length || node.matches?.('img,svg,canvas,video,audio,iframe,input,button,select,textarea,table,ul,ol,section,article,main,figure,form'));
  });
 }
-function independentStoredHtmlUsable(html=''){ return usableReadyDetails(extractReadyDetails(html)); }
+function independentStoredHtmlRestorable(html=''){
+ const source=String(html||'').trim();
+ if(!source) return false;
+ try{
+  const template=document.createElement('template');
+  template.innerHTML=source;
+  const details=template.content.querySelector('details');
+  if(!details || details.tagName!=='DETAILS') return false;
+  const summary=details.querySelector?.(':scope > summary');
+  if(!summary || !String(summary.textContent||'').trim()) return false;
+  // Historical mirrors often keep their real body hidden until a checkbox,
+  // radio, tab or script reveals it. Persistence recovery must therefore be
+  // deliberately more permissive than validation of a brand-new API result.
+  // Any non-tool child besides pure style/script metadata is recoverable.
+  return [...details.childNodes].some(node=>{
+   if(node===summary) return false;
+   if(node.nodeType===Node.TEXT_NODE) return !!String(node.textContent||'').trim();
+   if(node.nodeType!==Node.ELEMENT_NODE) return false;
+   return !['STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node.tagName);
+  }) || String(details.innerHTML||'').length>120;
+ }catch{return /<details\b[\s\S]*?<summary\b[\s\S]*?<\/summary>[\s\S]*?<\/details>/i.test(source);}
+}
+function historyRecoveryForObserved(slot,observed){
+ const entries=historyEntriesForSlot(slot);
+ return entries.find(entry=>savedRecordMatchesObserved(entry,observed) && independentStoredHtmlRestorable(entry.html))
+  || entries.find(entry=>String(entry?.bodyHash||'') && String(entry.bodyHash)===String(observed?.bodyHash||'') && independentStoredHtmlRestorable(entry.html))
+  || null;
+}
+function recoverSavedRecord(store,slot,observed){
+ const saved=findSavedRecord(store,slot);
+ if(saved?.html && independentStoredHtmlRestorable(saved.html)) return {saved,storeChanged:false,recoveredFromHistory:false};
+ const history=historyRecoveryForObserved(slot,observed);
+ if(history?.html){
+  const recovered={...history,ts:Number(history.ts||Date.now()),runtime:String(history.runtime||RUNTIME_VERSION),recoveredFromHistory:true};
+  saveRecordForSlot(store,slot,recovered);
+  return {saved:recovered,storeChanged:true,recoveredFromHistory:true};
+ }
+ // Never erase a persisted historical mirror merely because a newer runtime
+ // cannot classify its old structure. Leave the record intact for a future
+ // migration instead of turning an update into destructive data loss.
+ return {saved:null,storeChanged:false,recoveredFromHistory:false};
+}
 function readyDetailsVisuallyCollapsed(details){
  if(!details?.isConnected) return false;
  const summary=details.querySelector?.(':scope > summary');
@@ -1239,16 +1285,19 @@ async function generateFor(index,msg,force=false,sourceAware=true,options={}){
  const renderUi=options.renderUi!==false;
  if(st.enabled===false || st.autoRabbitMirrorInjection===false || st.generationSource!=='independent' || runtimeMode()!=='independent') return;
  const el=messageElement(index);
- let store=readStore(); let saved=findSavedRecord(store,slot);
- if(saved?.html && !independentStoredHtmlUsable(saved.html)){
-  removeRecordsForSlot(store,slot); writeStore(store); store=readStore(); saved=null;
- }
+ let store=readStore();
+ const recoveredAtGeneration=recoverSavedRecord(store,slot,observed);
+ let saved=recoveredAtGeneration.saved;
+ if(recoveredAtGeneration.storeChanged) writeStore(store);
  if(saved?.html&&!force){
   const savedSourceHash=String(saved.sourceHash||'');
   if(savedRecordMatchesObserved(saved,observed) || (!savedSourceHash && !sourceAware)){
    if(renderUi && el){ const restored=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash); rebuildCollapsedReadyHost(el,restored,key,'independent',saved.html,sourceHash); }
    return saved;
   }
+  // A real正文 revision may replace the current slot, but preserve its last
+  // mirror in history before allocating the new result.
+  appendHistoryEntry(slot,saved);
   removeRecordsForSlot(store,slot); writeStore(store); store=readStore();
  }
  const existing=pending.get(slot);
@@ -1504,8 +1553,9 @@ function syncMessages(indices=null){
        const observed=observeMessageSourceRevision(ctx,i,m);
        const key=recordKey(ctx,i,m); const slot=observed.slot; const sourceHash=observed.sourceHash;
        cancelFlightsForSlot(slot,sourceHash);
-       let saved=findSavedRecord(store,slot);
-       if(saved?.html && !independentStoredHtmlUsable(saved.html)){ removeRecordsForSlot(store,slot); storeChanged=true; saved=null; }
+       const recoveredAtSync=recoverSavedRecord(store,slot,observed);
+       let saved=recoveredAtSync.saved;
+       if(recoveredAtSync.storeChanged) storeChanged=true;
        const savedSourceHash=String(saved?.sourceHash||'');
        let keep=collapseDuplicateIdentityHosts(el,key,'independent',sourceHash);
        if(keep?.dataset?.rmState==='ready' && !usableReadyDetails(keep.querySelector?.(':scope > details'))){ keep.remove(); keep=null; }
@@ -1519,7 +1569,11 @@ function syncMessages(indices=null){
        // Never repaint an old mirror over a newly regenerated/swiped正文. A
        // record is eligible only for the exact current source fingerprint.
        if(saved?.html && !savedRecordMatchesObserved(saved,observed)){
-         removeRecordsForSlot(store,slot); storeChanged=true; saved=null;
+         // Synchronization is read-only for incompatible legacy records. Do
+         // not destroy persisted mirrors merely because the current runtime
+         // cannot prove a match; a later migration or Swipe may still recover
+         // them. Actual replacement happens only when a new generation starts.
+         saved=null;
        }
        const hostSourceHash=String(keep?.dataset?.rmSourceHash||'');
        const hostIsStale=!!(keep && hostSourceHash && hostSourceHash!==sourceHash);
@@ -1743,6 +1797,51 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
 function independentRequestConfigSignature(st=getSettings()){
  return [st?.generationSource,normalizeBase(st?.independentApiBaseUrl||''),String(st?.independentApiModel||''),Number(st?.independentApiTemperature)||0,Number(st?.independentApiMaxTokens)||12000].join('|');
 }
+function captureMountedIndependentRecords(){
+ const snapshots=[];
+ const ctx=getContext();
+ for(const host of allExternalHosts().filter(node=>node.dataset.rmSource==='independent' && node.dataset.rmState==='ready')){
+  const index=Number(host.dataset.rmOwnerMesid ?? host.dataset.rmExternalOwnerMessage);
+  const msg=Number.isInteger(index)&&index>=0 ? ctx.chat?.[index] : null;
+  if(!msg || msg.is_user || typeof msg.mes!=='string') continue;
+  const details=host.querySelector?.(':scope > details');
+  if(!details) continue;
+  let html=String(host.__rabbitMirrorIndependentSource||'').trim();
+  if(!html){
+   const clone=details.cloneNode(true);
+   clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
+   html=clone.outerHTML;
+  }
+  if(!independentStoredHtmlRestorable(html)) continue;
+  const observed={
+   slot:messageSlotKey(ctx,index,msg),
+   sourceHash:messageSourceFingerprint(msg),
+   bodyHash:messageBodyFingerprint(msg),
+   reasoningHash:messageReasoningFingerprint(msg),
+  };
+  const mountedSource=String(host.dataset.rmSourceHash||details.dataset.rabbitMirrorOwnerSourceHash||'');
+  const matches=!mountedSource || mountedSource===observed.sourceHash || mountedSource===observed.bodyHash;
+  snapshots.push({
+   slot:observed.slot,
+   matches,
+   record:{html,sourceHash:mountedSource||observed.sourceHash,bodyHash:observed.bodyHash,reasoningHash:observed.reasoningHash,ts:Date.now(),model:'',runtime:RUNTIME_VERSION,recoveredFromMountedHost:true},
+  });
+ }
+ return snapshots;
+}
+function restoreMountedIndependentRecords(snapshots=[]){
+ if(!Array.isArray(snapshots)||!snapshots.length) return;
+ const store=readStore(); let changed=false;
+ for(const snapshot of snapshots){
+  const slot=String(snapshot?.slot||''); const record=normalizeHistoryEntry(snapshot?.record);
+  if(!slot||!record) continue;
+  appendHistoryEntry(slot,record);
+  const existing=findSavedRecord(store,slot);
+  if(snapshot.matches && (!existing?.html || !independentStoredHtmlRestorable(existing.html))){ saveRecordForSlot(store,slot,record); changed=true; }
+ }
+ if(changed) writeStore(store);
+}
+
 async function reconfigureRuntime(){
  if(!currentRuntime()) return;
  const sequence=++runtimeConfigSequence;
@@ -1773,7 +1872,12 @@ async function reconfigureRuntime(){
 export function refreshRabbitMirrorGenerationMode(){ void reconfigureRuntime(); }
 export async function initIndependentRabbitMirror(){
  if(!currentRuntime()) return;
+ // Preserve already-mounted ready mirrors before a hot-update cleanup removes
+ // the old runtime DOM. This is a last-resort migration path when a previous
+ // build already pruned its current-output cache.
+ const mountedSnapshots=captureMountedIndependentRecords();
  try{ globalThis.__rabbitMirrorIndependentCleanup?.(); }catch{}
+ restoreMountedIndependentRecords(mountedSnapshots);
  globalThis.__rabbitMirrorIndependentCleanup=destroyIndependentRabbitMirror;
  migrateLegacyDeletedRecords();
  installIndependentActionBridge();
