@@ -1,3 +1,17 @@
+# 1.1.0-beta.14.24-test
+
+- 独立 API 去重键改为“聊天 + 消息序号 + Swipe”，同一条消息/Swipe 同时只允许一个生成任务。
+- `MESSAGE_RECEIVED`、`CHARACTER_MESSAGE_RENDERED`、`MESSAGE_UPDATED` 仅刷新已有外置 UI，不再启动副 API；只在生成结束、停止、Swipe 或聊天载入后的稳定阶段启动。
+- 请求完成前若正文或 Swipe 已变化，旧结果会被判定为过期并丢弃，不会先显示 A 再被 B 覆盖。
+- 加载、成功、失败继续复用最初建立的同一个外置宿主；宿主一旦连接后不再因 ready/error/tool 更新重新插入，避免成功后改变到状态栏下方。
+- 不修改 Prompt、美化母本、点菜、Token、自动维修、副 API 参数或正式版。
+
+# 1.1.0-beta.14.23-test
+
+- 修复 iPhone/Safari 外置失败卡片“重新生成”“检测 API”可见但点击无反应：按钮节点直接绑定 pointerup + click，不再依赖 window/document 捕获委托。
+- 长度截断错误会显示当前最大输出值；低于 8192 时给出明确提高建议。
+- 不修改 Prompt、美化母本、点菜、Token、自动维修或副 API 请求参数策略。
+
 ## 1.1.0-beta.14.22-test
 
 - 独立 API 生成改为流式优先，避免长时间无首字节导致反向代理 HTTP 524。
