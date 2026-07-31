@@ -1,18 +1,19 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h22t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h22t';
-import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h22t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h24t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h24t';
+import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h24t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.22-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.24-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
 let hostModule = null;
-let generationTimers = new Set();
+let latestGenerationTimer = null;
+let followupGenerationTimers = new Set();
+let generationSequence = 0;
 let observer = null;
 let syncRunning = false;
 const pending = new Map();
 let externalActionListenerInstalled = false;
-let externalActionBusy = false;
 
 function currentRuntime(){ return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION; }
 function readStore(){ try { const v=JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); return v&&typeof v==='object'?v:{}; } catch { return {}; } }
@@ -26,7 +27,8 @@ function hashText(text=''){ let h=2166136261; for(const ch of String(text)){ h^=
 function getContext(){ try { return globalThis.SillyTavern?.getContext?.() || {}; } catch { return {}; } }
 function chatKey(ctx){ const meta=ctx.chatMetadata||globalThis.chat_metadata||{}; return String(meta.chat_id||meta.chatId||meta.file_name||ctx.characterId||ctx.groupId||'chat'); }
 function swipeId(msg){ return Number(msg?.swipe_id ?? msg?.swipeId ?? 0) || 0; }
-function recordKey(ctx,index,msg){ return `${chatKey(ctx)}:${index}:${swipeId(msg)}:${hashText(msg?.mes||'')}`; }
+function messageSlotKey(ctx,index,msg){ return `${chatKey(ctx)}:${index}:${swipeId(msg)}`; }
+function recordKey(ctx,index,msg){ return `${messageSlotKey(ctx,index,msg)}:${hashText(msg?.mes||'')}`; }
 function messageElement(index){ return document.querySelector(`#chat .mes[mesid="${index}"], #chat [mesid="${index}"].mes, #chat [mesid="${index}"]`); }
 function messageBody(el){ return el?.querySelector?.('.mes_text') || el; }
 function assistantMessages(ctx){ const chat=Array.isArray(ctx.chat)?ctx.chat:[]; return chat.map((m,i)=>({m,i})).filter(x=>!x.m?.is_user && typeof x.m?.mes==='string'); }
@@ -285,8 +287,12 @@ async function callIndependentApi(ctx,index,msg){
  const inner=extractMirrorInner(raw);
  if(!inner){
    const finish=responseFinishReason(result.payload);
-   const suffix=/length|max_tokens|MAX_TOKENS/i.test(finish)?'；输出可能因长度限制被截断':'';
-   throw new Error(`独立 API 调用成功，但返回内容不是完整兔子镜${finish?`（finish_reason: ${finish}）`:''}${suffix}；参数模式：${profile}`);
+   const configuredMax=Number(st.independentApiMaxTokens)||5000;
+   if(/length|max_tokens|MAX_TOKENS/i.test(finish)){
+     const recommendation=configuredMax<8192?'；建议把“最大输出”提高到至少 8192 后重新生成':'';
+     throw new Error(`独立 API 已返回内容，但兔子镜在输出完成前被截断（finish_reason: ${finish}）。当前最大输出设置：${configuredMax}${recommendation}；参数模式：${profile}`);
+   }
+   throw new Error(`独立 API 调用成功，但返回内容不是完整兔子镜${finish?`（finish_reason: ${finish}）`:''}；参数模式：${profile}`);
  }
  return inner;
 }
@@ -310,9 +316,15 @@ function placeExternalHost(el,host){
  const body=externalInsertTarget(el);
  if(!body||!host) return false;
  host.classList.add('rabbit-mirror-external-host');
+ // Loading, ready and error must keep the exact same message-level host position.
+ // Once the host is connected, never reinsert it merely because the generated
+ // details or tool buttons changed. Re-insertion was able to move a completed
+ // mirror behind later-rendered status-bar nodes.
+ if(host.isConnected && host.dataset.rmExternalPlacementEstablished==='true') return true;
  const parent=body.parentElement;
  if(!parent) return false;
  if(host.parentElement!==parent || body.nextElementSibling!==host) parent.insertBefore(host,body.nextSibling);
+ host.dataset.rmExternalPlacementEstablished='true';
  return true;
 }
 function markExternalDetails(details,key,source){
@@ -362,6 +374,33 @@ function setPlaceholderSummary(details,text){
  }
  label.textContent=text;
 }
+function externalActionButtonFromEvent(event){
+ const current=event?.currentTarget;
+ if(current?.matches?.('[data-rabbit-mirror-external-action]')) return current;
+ return event?.target?.closest?.('[data-rabbit-mirror-external-action]') || null;
+}
+function bindExternalActionButton(button){
+ if(!button?.addEventListener) return button;
+ if(button.dataset.rmExternalActionBound===RUNTIME_VERSION) return button;
+ button.dataset.rmExternalActionBound=RUNTIME_VERSION;
+ const activate=event=>{
+   const now=Date.now();
+   const last=Number(button.dataset.rmExternalPointerAt||0);
+   if(event.type==='click' && last && now-last<900){
+     event.preventDefault?.();
+     event.stopPropagation?.();
+     return;
+   }
+   if(event.type==='pointerup') button.dataset.rmExternalPointerAt=String(now);
+   void handleExternalActionClick(event);
+ };
+ button.addEventListener('pointerup',activate,true);
+ button.addEventListener('click',activate,true);
+ return button;
+}
+function bindExternalActionButtons(scope=document){
+ for(const button of scope?.querySelectorAll?.('[data-rabbit-mirror-external-action]')||[]) bindExternalActionButton(button);
+}
 function externalErrorActions(){
  const actions=document.createElement('div');
  actions.className='rabbit-mirror-external-error-actions';
@@ -373,6 +412,8 @@ function externalErrorActions(){
  test.type='button'; test.className='menu_button rabbit-mirror-external-error-action';
  test.setAttribute('data-rabbit-mirror-external-action','test-api');
  test.textContent='检测 API';
+ bindExternalActionButton(retry);
+ bindExternalActionButton(test);
  actions.append(retry,test);
  return actions;
 }
@@ -390,6 +431,7 @@ function renderExternalErrorBody(details,text='',statusText=''){
  status.textContent=String(statusText||'');
  if(!statusText) status.hidden=true;
  body.append(message,status,externalErrorActions());
+ bindExternalActionButtons(body);
  details.setAttribute('open','');
  return body;
 }
@@ -486,26 +528,55 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
  return host;
 }
 
+function scheduleMessageGeneration(index,delay=260){
+ const timer=setTimeout(()=>{
+   followupGenerationTimers.delete(timer);
+   if(!currentRuntime() || runtimeMode()!=='independent') return;
+   const ctx=getContext(); const msg=ctx.chat?.[index];
+   if(!msg || msg.is_user || typeof msg.mes!=='string') return;
+   void generateFor(index,msg);
+ },delay);
+ followupGenerationTimers.add(timer);
+}
+function currentGenerationIdentity(index){
+ const ctx=getContext(); const msg=ctx.chat?.[index];
+ if(!msg || msg.is_user || typeof msg.mes!=='string') return null;
+ return {ctx,msg,slot:messageSlotKey(ctx,index,msg),key:recordKey(ctx,index,msg)};
+}
 async function generateFor(index,msg,force=false){
- const ctx=getContext(); const key=recordKey(ctx,index,msg); const st=getSettings();
+ const ctx=getContext(); const key=recordKey(ctx,index,msg); const slot=messageSlotKey(ctx,index,msg); const st=getSettings();
  if(st.enabled===false || st.autoRabbitMirrorInjection===false || st.generationSource!=='independent') return;
  const el=messageElement(index); if(!el) return;
  const store=readStore();
  if(store[key]?.html&&!force){ensureExternalUi(el,key,store[key].html,'ready');return;}
- if(pending.has(key)) return;
+ const existing=pending.get(slot);
+ if(existing) return existing.task;
  ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading');
+ const runId=++generationSequence;
+ let stale=false;
  const task=callIndependentApi(ctx,index,msg).then(html=>{
+   const live=currentGenerationIdentity(index);
+   const active=pending.get(slot);
+   if(!live || live.slot!==slot || live.key!==key || active?.runId!==runId){ stale=true; return; }
    const next=readStore(); next[key]={html,ts:Date.now(),model:st.independentApiModel};
    const keys=Object.keys(next).sort((a,b)=>(next[b]?.ts||0)-(next[a]?.ts||0));
    for(const k of keys.slice(120)) delete next[k];
    writeStore(next); ensureExternalUi(el,key,html,'ready');
  }).catch(err=>{
+   const live=currentGenerationIdentity(index);
+   const active=pending.get(slot);
+   if(!live || live.slot!==slot || live.key!==key || active?.runId!==runId){ stale=true; return; }
    console.error('[RabbitMirror] independent generation failed',err);
    ensureExternalUi(el,key,String(err?.message||err),'error');
- }).finally(()=>pending.delete(key));
- pending.set(key,task); await task;
+ }).finally(()=>{
+   if(pending.get(slot)?.runId===runId) pending.delete(slot);
+   if(stale) scheduleMessageGeneration(index,320);
+ });
+ pending.set(slot,{task,runId,key});
+ await task;
 }
 function setExternalErrorActionState(host,busy,statusText=''){
+ bindExternalActionButtons(host);
  const buttons=[...(host?.querySelectorAll?.('[data-rabbit-mirror-external-action]')||[])];
  for(const button of buttons){ button.disabled=!!busy; button.setAttribute('aria-busy',busy?'true':'false'); }
  const status=host?.querySelector?.('[data-rabbit-mirror-external-api-test-status]');
@@ -541,44 +612,52 @@ function messageIndexForExternalHost(host){
  return Number.isInteger(index)&&index>=0?index:null;
 }
 async function handleExternalActionClick(event){
- const button=event?.target?.closest?.('[data-rabbit-mirror-external-action]');
+ const button=externalActionButtonFromEvent(event);
  if(!button) return;
  const host=button.closest(`[${SOURCE_ATTR}]`);
  if(!host || host.dataset.rmSource!=='independent' || host.dataset.rmState!=='error') return;
- event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation?.();
- if(externalActionBusy) return;
+ event.preventDefault?.(); event.stopPropagation?.(); event.stopImmediatePropagation?.();
+ if(host.dataset.rmExternalActionBusy==='true') return;
  const action=button.getAttribute('data-rabbit-mirror-external-action');
- if(action==='retry'){
-   const index=messageIndexForExternalHost(host); const ctx=getContext(); const msg=index===null?null:ctx.chat?.[index];
-   if(index===null || !msg || msg.is_user){ globalThis.toastr?.error?.('无法定位这条回复，不能重新生成兔子镜。'); return; }
-   setExternalErrorActionState(host,true,'正在重新生成兔子镜……');
-   await generateFor(index,msg,true);
-   return;
- }
- if(action==='test-api'){
-   externalActionBusy=true;
-   setExternalErrorActionState(host,true,'正在检测模型列表和生成接口……');
-   try{
-     const result=await diagnoseIndependentApi();
-     setExternalErrorActionState(host,false,result);
-     const status=host.querySelector?.('[data-rabbit-mirror-external-api-test-status]'); if(status) status.dataset.state='success';
-   }catch(error){
-     const message=`检测失败：${String(error?.message||error)}`;
-     setExternalErrorActionState(host,false,message);
-     const status=host.querySelector?.('[data-rabbit-mirror-external-api-test-status]'); if(status) status.dataset.state='error';
-   }finally{ externalActionBusy=false; }
+ host.dataset.rmExternalActionBusy='true';
+ try{
+   if(action==='retry'){
+     const index=messageIndexForExternalHost(host); const ctx=getContext(); const msg=index===null?null:ctx.chat?.[index];
+     if(index===null || !msg || msg.is_user){
+       setExternalErrorActionState(host,false,'无法定位这条回复，不能重新生成兔子镜。');
+       globalThis.toastr?.error?.('无法定位这条回复，不能重新生成兔子镜。');
+       return;
+     }
+     setExternalErrorActionState(host,true,'正在重新生成兔子镜……');
+     await generateFor(index,msg,true);
+     return;
+   }
+   if(action==='test-api'){
+     setExternalErrorActionState(host,true,'正在检测模型列表和生成接口……');
+     try{
+       const result=await diagnoseIndependentApi();
+       setExternalErrorActionState(host,false,result);
+       const status=host.querySelector?.('[data-rabbit-mirror-external-api-test-status]'); if(status) status.dataset.state='success';
+     }catch(error){
+       const message=`检测失败：${String(error?.message||error)}`;
+       setExternalErrorActionState(host,false,message);
+       const status=host.querySelector?.('[data-rabbit-mirror-external-api-test-status]'); if(status) status.dataset.state='error';
+     }
+   }
+ }finally{
+   delete host.dataset.rmExternalActionBusy;
+   bindExternalActionButtons(host);
  }
 }
 function installExternalActionDelegation(){
  if(externalActionListenerInstalled) return;
- globalThis.addEventListener?.('click',handleExternalActionClick,true);
+ // iPhone/Safari: bind the real buttons directly. Do not rely on a window/document
+ // capture delegate, because other SillyTavern tool handlers may stop the event first.
  externalActionListenerInstalled=true;
+ bindExternalActionButtons(document);
 }
 function removeExternalActionDelegation(){
- if(!externalActionListenerInstalled) return;
- globalThis.removeEventListener?.('click',handleExternalActionClick,true);
  externalActionListenerInstalled=false;
- externalActionBusy=false;
 }
 function externalizeFollowMirror(index,msg){
  const st=getSettings(); if(st.generationSource!=='follow'||st.followDisplayMode!=='external') return;
@@ -669,19 +748,22 @@ function relevantMutationIndices(records){
  }
  return found;
 }
-function scheduleLatest(){
- for(const t of generationTimers) clearTimeout(t); generationTimers.clear();
- const mode=runtimeMode(); if(mode==='off'||mode==='inline') return;
- for(const delay of [300,1000]){
-   const t=setTimeout(()=>{
-     generationTimers.delete(t);
-     const ctx=getContext(); const list=assistantMessages(ctx); const last=list.at(-1); if(!last)return;
-     const current=runtimeMode();
-     if(current==='independent') generateFor(last.i,last.m);
-     else if(current==='follow-external') externalizeFollowMirror(last.i,last.m);
-   },delay);
-   generationTimers.add(t);
- }
+function clearScheduledGeneration(){
+ if(latestGenerationTimer){ clearTimeout(latestGenerationTimer); latestGenerationTimer=null; }
+ for(const timer of followupGenerationTimers) clearTimeout(timer);
+ followupGenerationTimers.clear();
+}
+function scheduleLatest(delay=520){
+ if(latestGenerationTimer) clearTimeout(latestGenerationTimer);
+ const mode=runtimeMode();
+ if(mode==='off'||mode==='inline'){ latestGenerationTimer=null; return; }
+ latestGenerationTimer=setTimeout(()=>{
+   latestGenerationTimer=null;
+   const ctx=getContext(); const list=assistantMessages(ctx); const last=list.at(-1); if(!last)return;
+   const current=runtimeMode();
+   if(current==='independent') void generateFor(last.i,last.m);
+   else if(current==='follow-external') externalizeFollowMirror(last.i,last.m);
+ },delay);
 }
 let hostSubscriptions=[];
 function unsubscribeHostEvents(){
@@ -706,12 +788,23 @@ async function installHostEventsIfNeeded(){
    hostModule=hostModule || await import('../../../../../script.js');
    const es=hostModule?.eventSource, et=hostModule?.event_types||{};
    const fullSyncEvents=[et.CHAT_CHANGED].filter(Boolean);
-   const latestEvents=[et.GENERATION_ENDED,et.GENERATION_STOPPED,et.MESSAGE_RECEIVED,et.CHARACTER_MESSAGE_RENDERED,et.MESSAGE_SWIPED,et.MESSAGE_UPDATED].filter(Boolean);
+   const finalGenerationEvents=[et.GENERATION_ENDED,et.GENERATION_STOPPED,et.MESSAGE_SWIPED].filter(Boolean);
+   const renderOnlyEvents=[et.MESSAGE_RECEIVED,et.CHARACTER_MESSAGE_RENDERED,et.MESSAGE_UPDATED].filter(Boolean);
    for(const event of new Set(fullSyncEvents)){
-     const handler=()=>{syncAll();scheduleLatest();}; es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
+     const handler=()=>{syncAll();scheduleLatest(700);}; es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
-   for(const event of new Set(latestEvents)){
-     const handler=()=>scheduleLatest(); es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
+   for(const event of new Set(finalGenerationEvents)){
+     const handler=()=>scheduleLatest(420); es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
+   }
+   // MESSAGE_RECEIVED / CHARACTER_MESSAGE_RENDERED can be emitted before and again
+   // after a streamed reply is finalized. They may refresh saved UI, but must never
+   // start a second independent generation.
+   for(const event of new Set(renderOnlyEvents)){
+     const handler=messageId=>{
+       const id=Number(messageId);
+       if(Number.isInteger(id)&&id>=0) queueMessageSync([id]); else syncAll();
+     };
+     es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
  }catch(e){ console.warn('[RabbitMirror] independent host events unavailable',e); }
 }
@@ -720,7 +813,7 @@ async function reconfigureRuntime(){
  disconnectObserver(); unsubscribeHostEvents();
  const mode=runtimeMode();
  if(mode==='off'||mode==='inline'){
-   for(const t of generationTimers) clearTimeout(t); generationTimers.clear();
+   clearScheduledGeneration();
    if(mode==='inline'){
      document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(el=>restoreFollowInline(el.closest('.mes')));
      document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());
@@ -739,7 +832,7 @@ export async function initIndependentRabbitMirror(){
  await reconfigureRuntime();
 }
 export function destroyIndependentRabbitMirror(){
- for(const t of generationTimers) clearTimeout(t); generationTimers.clear();
+ clearScheduledGeneration();
  disconnectObserver(); unsubscribeHostEvents(); removeExternalActionDelegation();
  syncRunning=false; pending.clear();
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(host=>restoreFollowInline(host.closest('.mes')));
