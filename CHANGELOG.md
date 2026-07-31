@@ -1,3 +1,11 @@
+# RabbitMirror 1.1.0-beta.14.26-test
+
+- 独立 API 兔子镜改为 `#chat` 下、整条消息之后的专属 sibling shell，不再挂入 `.mes_text`、状态栏或其他插件容器。
+- loading、ready、error 始终复用同一 shell；完成态只替换 shell 内部内容，不再重排宿主。
+- shell 绑定 chat / mesid / swipe，并由消息级查询恢复；新消息与其他插件插入节点不会删除或搬动旧 shell。
+- 维修兔、挨打猫与诊断链可通过 shell owner 元数据定位原消息，不依赖 `closest(.mes)`。
+- 外置 shell 全宽、无额外 padding/max-width，并使用 RabbitMirror 专属命名空间和 `isolation:isolate`，降低与其他插件样式及 DOM 管理冲突。
+
 ## 1.1.0-beta.14.25-test
 - 独立 API 每条助手消息/Swipe 使用稳定槽位保存，外置宿主不会因正文哈希或后续消息变化丢失。
 - 独立结果只保留在消息级外置宿主，并在宿主被酒馆重绘移动时恢复到正文后、状态栏前。

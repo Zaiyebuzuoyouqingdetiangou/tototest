@@ -1,5 +1,5 @@
 
-/* 1.1.0-beta.14.25-test: settings drawer mobile performance containment. */
+/* 1.1.0-beta.14.26-test: settings drawer mobile performance containment. */
 .rabbit-mirror-settings {
     contain: layout style !important;
 }
@@ -139,7 +139,7 @@ toto[data-rabbit-mirror="true"] summary {
 
 
 
-/* 1.1.0-beta.14.25-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
+/* 1.1.0-beta.14.26-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
 [data-rabbit-mirror-tool-entry-host] {
   all: initial !important;
   display: inline-flex !important;
@@ -461,7 +461,7 @@ toto[data-rabbit-mirror="true"] summary {
   pointer-events:none;
 }
 
-/* 1.1.0-beta.14.25-test: keep independent RabbitMirror in its message-level external host. */
+/* 1.1.0-beta.14.26-test: keep independent RabbitMirror in its message-level external host. */
 .rabbit-mirror-external-host[data-rm-source="independent"]{display:block;position:relative;width:100%;box-sizing:border-box;contain:layout style;}
 .rabbit-mirror-external-host[data-rm-source="independent"] > details[data-rabbit-mirror-external-details="true"]{display:block;width:100%;box-sizing:border-box;}
 
@@ -488,6 +488,37 @@ toto[data-rabbit-mirror="true"] summary {
   margin:0 !important;
 }
 .rabbit-mirror-external-host[data-rm-source="independent"] > details[data-rabbit-mirror-external-details="true"] > summary{
+  width:100% !important;
+  max-width:none !important;
+  box-sizing:border-box !important;
+}
+
+
+/* beta.14.26: true message-sibling shell for independent API output. */
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"]{
+  display:block !important;
+  position:relative !important;
+  isolation:isolate !important;
+  width:100% !important;
+  max-width:none !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+  margin:10px 0 14px !important;
+  padding:0 !important;
+  overflow:visible !important;
+  contain:layout style !important;
+  clear:both !important;
+  z-index:1 !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details[data-rabbit-mirror-external-details="true"]{
+  display:block !important;
+  width:100% !important;
+  max-width:none !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+  margin:0 !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details[data-rabbit-mirror-external-details="true"] > summary{
   width:100% !important;
   max-width:none !important;
   box-sizing:border-box !important;
