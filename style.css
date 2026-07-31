@@ -1,5 +1,56 @@
 
-/* 1.1.0-beta.14.30-test: settings drawer mobile performance containment. */
+
+#chat [data-rabbit-mirror-independent-inline-anchor="true"]{
+  display:block !important;
+  width:100% !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"]{
+  display:block !important;
+  width:auto !important;
+  max-width:none !important;
+  min-width:0 !important;
+  margin:1em 0 0 !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  overflow:visible !important;
+  contain:none !important;
+  clear:both !important;
+}
+.rabbit-mirror-resay{
+  all:initial !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  position:relative !important;
+  z-index:2147483001 !important;
+  flex:0 0 auto !important;
+  width:auto !important;
+  min-width:0 !important;
+  min-height:20px !important;
+  margin:0 !important;
+  padding:1px 3px !important;
+  border:0 !important;
+  border-radius:5px !important;
+  background:transparent !important;
+  color:inherit !important;
+  font:inherit !important;
+  font-size:16px !important;
+  line-height:1 !important;
+  cursor:pointer !important;
+  opacity:.94 !important;
+  pointer-events:auto !important;
+  touch-action:manipulation !important;
+  -webkit-tap-highlight-color:transparent !important;
+}
+.rabbit-mirror-resay:disabled{opacity:.45 !important;cursor:default !important;}
+.rabbit-mirror-resay::before,.rabbit-mirror-resay::after{content:none !important;display:none !important;}
+
+/* 1.1.0-beta.14.33-test: settings drawer mobile performance containment. */
 .rabbit-mirror-settings {
     contain: layout style !important;
 }
@@ -139,7 +190,7 @@ toto[data-rabbit-mirror="true"] summary {
 
 
 
-/* 1.1.0-beta.14.30-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
+/* 1.1.0-beta.14.33-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
 [data-rabbit-mirror-tool-entry-host] {
   all: initial !important;
   display: inline-flex !important;
@@ -466,7 +517,7 @@ toto[data-rabbit-mirror="true"] summary {
  * when status bars, avatars or other extensions alter the message layout.
  * The preferred visual target is the consistently centered width shown by the
  * user's reference screenshots, while keeping the shell as an isolated sibling. */
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"]{
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
   display:block !important;
   position:relative !important;
   isolation:isolate !important;
@@ -486,7 +537,7 @@ toto[data-rabbit-mirror="true"] summary {
   clear:both !important;
   z-index:1 !important;
 }
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details[data-rabbit-mirror-external-details="true"]{
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
   display:block !important;
   width:100% !important;
   max-width:none !important;
@@ -498,16 +549,16 @@ toto[data-rabbit-mirror="true"] summary {
   background:transparent !important;
   overflow:visible !important;
 }
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details[data-rabbit-mirror-external-details="true"] > :not(summary):not(style):not(script){
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > :not(summary):not(style):not(script){
   max-width:100% !important;
   box-sizing:border-box !important;
 }
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details.rabbit-mirror-external-placeholder{
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details.rabbit-mirror-external-placeholder{
   border:0 !important;
   border-radius:0 !important;
   background:transparent !important;
 }
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details[data-rabbit-mirror-external-details="true"] > summary{
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary{
   width:100% !important;
   max-width:none !important;
   box-sizing:border-box !important;
@@ -516,11 +567,11 @@ toto[data-rabbit-mirror="true"] summary {
   cursor:pointer !important;
   -webkit-tap-highlight-color:transparent !important;
 }
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details[data-rabbit-mirror-external-details="true"][open] > summary{
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"][open] > summary{
   border-bottom:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.22)) !important;
 }
 @media (max-width:360px){
-  #chat .rabbit-mirror-external-shell[data-rm-source="independent"]{
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
     width:calc(100% - 24px) !important;
     max-width:none !important;
   }
@@ -529,23 +580,23 @@ toto[data-rabbit-mirror="true"] summary {
  * These selectors never target inline/follow-current mirrors or generated
  * RabbitMirror descendants, so their own responsive CSS remains untouched. */
 @media (min-width:641px) and (max-width:1199px){
-  #chat .rabbit-mirror-external-shell[data-rm-source="independent"]{
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
     width:78% !important;
     max-width:min(760px,calc(100% - 32px)) !important;
   }
 }
 @media (min-width:1200px) and (max-width:1799px){
-  #chat .rabbit-mirror-external-shell[data-rm-source="independent"]{
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
     width:72% !important;
     max-width:min(860px,calc(100% - 40px)) !important;
   }
 }
 @media (min-width:1800px){
-  #chat .rabbit-mirror-external-shell[data-rm-source="independent"]{
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
     width:64% !important;
     max-width:min(920px,calc(100% - 48px)) !important;
   }
 }
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details.rabbit-mirror-external-placeholder > .rabbit-mirror-external-placeholder-body{
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details.rabbit-mirror-external-placeholder > .rabbit-mirror-external-placeholder-body{
   border-top:0 !important;
 }
