@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h27t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h27t';
-import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h27t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h29t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h29t';
+import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h29t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.27-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.29-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -365,32 +365,25 @@ function stampExternalHostOwnership(el,host,key='',source='independent'){
  host.setAttribute('aria-label',`第 ${mesid || '?'} 条回复的兔子镜`);
 }
 function syncExternalHostGeometry(el,host){
- if(!el||!host?.isConnected) return;
- const body=messageBody(el);
- const parent=host.parentElement;
- if(!body||!parent) return;
- const bodyRect=body.getBoundingClientRect?.();
- const parentRect=parent.getBoundingClientRect?.();
- if(!bodyRect||!parentRect||bodyRect.width<=0||parentRect.width<=0) return;
- const inlineStart=Math.max(0,Math.min(parentRect.width,bodyRect.left-parentRect.left));
- const inlineEnd=Math.max(0,Math.min(parentRect.width,parentRect.right-bodyRect.right));
- host.style.setProperty('--rm-external-inline-start',`${Math.round(inlineStart*100)/100}px`);
- host.style.setProperty('--rm-external-inline-end',`${Math.round(inlineEnd*100)/100}px`);
+ if(!host?.isConnected) return;
+ // beta.14.28: do not copy a transient .mes_text rectangle. During mobile
+ // rendering that rectangle can be temporarily narrowed by status bars,
+ // avatars or another extension, which made identical mirrors use random
+ // widths. The external shell now has one stable CSS width token.
+ host.style.removeProperty('--rm-external-inline-start');
+ host.style.removeProperty('--rm-external-inline-end');
+ host.dataset.rmExternalWidthMode='stable-comfort';
 }
 function scheduleExternalHostGeometry(el,host){
  syncExternalHostGeometry(el,host);
- globalThis.requestAnimationFrame?.(()=>{
-   if(host?.isConnected) syncExternalHostGeometry(el,host);
- });
 }
 function placeExternalHost(el,host,key='',source='independent'){
  if(!el||!host) return false;
  const parent=el.parentElement;
  if(!parent) return false;
  stampExternalHostOwnership(el,host,key,source);
- // Independent output remains a sibling of the whole message, but its visual
- // width follows the original .mes_text rectangle. This preserves plugin
- // isolation without stretching the mirror to the full #chat viewport.
+ // Keep the shell as a sibling of the whole message. Width is controlled by
+ // stable #chat-relative CSS rather than by the message's live layout.
  const alreadySibling=host.parentElement===parent && !el.contains(host);
  if(!alreadySibling || host.dataset.rmExternalPlacementEstablished!=='true'){
    parent.insertBefore(host,el.nextSibling);
@@ -408,36 +401,25 @@ function messageElementForExternalHost(host){
  return host?.closest?.('.mes[mesid], [mesid].mes, [mesid]') || null;
 }
 function refreshExternalHostGeometry(){
- if(externalGeometryFrame){
-   globalThis.cancelAnimationFrame?.(externalGeometryFrame);
-   globalThis.clearTimeout?.(externalGeometryFrame);
+ // Stable comfort width is CSS-only; orientation changes do not sample any
+ // message-specific rectangle and therefore cannot freeze a narrow width.
+ for(const host of allExternalHosts().filter(node=>node.dataset.rmSource==='independent')){
+   syncExternalHostGeometry(messageElementForExternalHost(host),host);
  }
- const run=()=>{
-   externalGeometryFrame=0;
-   for(const host of allExternalHosts().filter(node=>node.dataset.rmSource==='independent')){
-     const owner=messageElementForExternalHost(host);
-     if(owner) syncExternalHostGeometry(owner,host);
-   }
- };
- externalGeometryFrame=globalThis.requestAnimationFrame?.(run) || globalThis.setTimeout(run,16);
 }
 function installExternalGeometryListeners(){
  if(externalGeometryListenersInstalled) return;
  externalGeometryListenersInstalled=true;
- globalThis.addEventListener?.('resize',refreshExternalHostGeometry,{passive:true});
- globalThis.addEventListener?.('orientationchange',refreshExternalHostGeometry,{passive:true});
 }
 function removeExternalGeometryListeners(){
- if(!externalGeometryListenersInstalled) return;
  externalGeometryListenersInstalled=false;
- globalThis.removeEventListener?.('resize',refreshExternalHostGeometry);
- globalThis.removeEventListener?.('orientationchange',refreshExternalHostGeometry);
  if(externalGeometryFrame){
    globalThis.cancelAnimationFrame?.(externalGeometryFrame);
    globalThis.clearTimeout?.(externalGeometryFrame);
    externalGeometryFrame=0;
  }
 }
+
 function markExternalDetails(details,key,source){
  if(!details) return details;
  details.setAttribute('data-rabbit-mirror-external-details','true');
