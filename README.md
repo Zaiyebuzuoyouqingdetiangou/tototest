@@ -1,8 +1,8 @@
-## 独立 API 服务端桥接（beta.14.17-test）
+## 独立 API 内置后端通道（beta.14.19-test）
 
-独立 API 现通过配套 SillyTavern Server Plugin 转发。安装前端扩展后，还必须把 `server-plugin-rabbitmirror-independent-api` 放入 SillyTavern 的 `plugins` 目录，设置 `enableServerPlugins: true` 并重启服务器。详细步骤见 `SERVER-BRIDGE-INSTALL.txt`。
+独立 API 现直接复用 SillyTavern 自带的“Custom Chat Completions”后端路由。只需安装本前端扩展 ZIP，不再需要额外 Server Plugin、`enableServerPlugins` 或通用 `/proxy/`。模型列表、连接检测和正式生成均由 SillyTavern 服务器向目标 API 发起请求。
 
-## 1.1.0-beta.14.18-test
+## 1.1.0-beta.14.19-test
 
 - 独立 API 生成失败时，在同一个外置折叠兔子镜中显示“重新生成”和“检测 API”。
 - “重新生成”按当前消息、当前 Swipe 和当前独立 API 设置原位重试，不新增第二个入口。
@@ -10,14 +10,14 @@
 - 按钮仅在失败状态出现；加载中和成功状态不显示，不影响维修兔、挨打猫、自动巡逻、Prompt 或 Token。
 
 
-## 1.1.0-beta.14.18-test
+## 1.1.0-beta.14.19-test
 
 - 独立 API 开始请求时立即创建原生外置 `<details>`：`【兔子镜：正在生成中……】`。
 - 占位标题从第一帧起同步安装维修兔与挨打猫，不再等待生成结束或 MutationObserver 后挂载。
 - 生成成功时保留同一工具节点，并在同一消息级外置宿主内原位切换为实际兔子镜；失败时同一折叠节点原位显示错误。
 - 生成期间点击维修兔或挨打猫只显示等待提示，不执行维修、自动巡逻或反馈提交。
 - 不修改独立 API Prompt、美化母本、正文、Swipe、`display_text` 或 Token 逻辑。
-> 测试版本：1.1.0-beta.14.18-test（原生外置折叠兔子镜、独立 API 与失败重试检测）
+> 测试版本：1.1.0-beta.14.19-test（原生外置折叠兔子镜、独立 API 与失败重试检测）
 
 # RabbitMirror 兔子镜 — Beta v1.1
 
@@ -44,7 +44,7 @@ RabbitMirror 是一个用于 SillyTavern 的互动小剧场扩展。它会根据
 - 动态视觉场景；
 - 共同回忆资料来源：可在需要时生成回忆杀；
 - 挨打猫：用于纠正兔子镜的美化效果；
-- 维修兔 v1.84-test：检查和修复显示、排版及交互问题，包括原 CSS 引用唯一缺失 checked 控制类时的高置信恢复；
+- 维修兔 v1.85-test：检查和修复显示、排版及交互问题，包括原 CSS 引用唯一缺失 checked 控制类时的高置信恢复；
 - 测试功能“维修兔自动巡逻”：默认关闭；开启后只对后续新生成／重新生成的兔子镜执行一次高置信本地交互修复，布局与结构问题仍需手动确认；
 - 每轮 RabbitMirror 注入字符数与 Token 估算；
 - 手机 Safari / WebView 的交互、裁切与 3D 翻面兼容补救。
@@ -101,7 +101,7 @@ SillyTavern 的提示词拆分界面可能把同一份内容同时归类在“�
 本测试版新增默认关闭的“维修兔自动巡逻（测试）”。开启后只处理之后新生成或重新生成兔子镜中的高置信局部交互修复，每面只尝试一次。布局、结构、源码恢复与内容判断仍需手动点击维修兔。该设置与执行均为本地逻辑，不注入 Prompt、不增加模型 Token。
 
 ### TEST: RabbitMirror generation modes
-This test build offers two mutually exclusive modes. “Follow current API” keeps the existing injection chain and can display the generated RabbitMirror inline or in a message-level external popup. “Use independent API” removes RabbitMirror prompt injection from the current API; after the assistant reply finishes, the configured OpenAI-compatible endpoint/model receives the available chat, reasoning, character, Persona and world/author-note context and generates the only RabbitMirror as an external popup. A live independent endpoint must permit requests from the SillyTavern page (CORS or a same-origin proxy).
+This test build offers two mutually exclusive modes. “Follow current API” keeps the existing injection chain and can display the generated RabbitMirror inline or in a message-level external popup. “Use independent API” removes RabbitMirror prompt injection from the current API; after the assistant reply finishes, the configured OpenAI-compatible endpoint/model receives the available chat, reasoning, character, Persona and world/author-note context and generates the only RabbitMirror as an external popup. Independent requests are sent through SillyTavern’s built-in Custom Chat Completions backend, so no browser CORS access or additional server plugin is required.
 
 
 ## 独立 API 响应兼容（beta.14.5-test）
