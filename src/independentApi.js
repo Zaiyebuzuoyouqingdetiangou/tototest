@@ -1,11 +1,12 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h25t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h25t';
-import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h25t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h26t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h26t';
+import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h26t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.25-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.26-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
+const EXTERNAL_SHELL_ATTR = 'data-rabbit-mirror-external-shell';
 let hostModule = null;
 let latestGenerationTimer = null;
 let followupGenerationTimers = new Set();
@@ -313,8 +314,23 @@ async function callIndependentApi(ctx,index,msg){
  }
  return inner;
 }
+function externalOwnerMesid(el){
+ return String(el?.getAttribute?.('mesid') ?? el?.dataset?.messageId ?? el?.dataset?.messageid ?? '').trim();
+}
+function allExternalHosts(){
+ return [...(document.querySelectorAll?.(`[${SOURCE_ATTR}]`)||[])];
+}
 function externalHosts(el){
- return [...(el?.querySelectorAll?.(`[${SOURCE_ATTR}]`)||[])];
+ if(!el) return [];
+ const mesid=externalOwnerMesid(el);
+ const currentChat=chatKey(getContext());
+ const descendants=[...(el.querySelectorAll?.(`[${SOURCE_ATTR}]`)||[])];
+ const owned=mesid ? allExternalHosts().filter(node=>{
+   const ownerMesid=String(node.dataset.rmOwnerMesid||node.dataset.rmExternalOwnerMessage||'');
+   const ownerChat=String(node.dataset.rmOwnerChat||'');
+   return ownerMesid===mesid && (!ownerChat || ownerChat===currentChat);
+ }) : [];
+ return [...new Set([...descendants,...owned])];
 }
 function matchingExternalHosts(el,key='',source=''){
  return externalHosts(el).filter(node => (!key || node.dataset.rmKey===key) && (!source || node.dataset.rmSource===source));
@@ -327,23 +343,47 @@ function removeDuplicateExternalHosts(el,keep=null,source=''){
  }
 }
 function externalInsertTarget(el){
- return messageBody(el);
+ return el;
 }
-function placeExternalHost(el,host){
- const body=externalInsertTarget(el);
- if(!body||!host) return false;
- host.classList.add('rabbit-mirror-external-host');
- // Loading, ready and error must keep the exact same message-level host position.
- // Once the host is connected, never reinsert it merely because the generated
- // details or tool buttons changed. Re-insertion was able to move a completed
- // mirror behind later-rendered status-bar nodes.
- const parent=body.parentElement;
+function stampExternalHostOwnership(el,host,key='',source='independent'){
+ if(!el||!host) return;
+ const ctx=getContext();
+ const mesid=externalOwnerMesid(el);
+ const msg=Number.isInteger(Number(mesid)) ? ctx.chat?.[Number(mesid)] : null;
+ host.setAttribute(SOURCE_ATTR,'true');
+ host.setAttribute(EXTERNAL_SHELL_ATTR,'true');
+ host.classList.add('rabbit-mirror-external-host','rabbit-mirror-external-shell');
+ host.dataset.rmKey=String(key||host.dataset.rmKey||'');
+ host.dataset.rmSource=String(source||host.dataset.rmSource||'independent');
+ host.dataset.rmOwnerMesid=mesid;
+ host.dataset.rmExternalOwnerMessage=mesid;
+ host.dataset.rmOwnerChat=chatKey(ctx);
+ host.dataset.rmOwnerSwipe=String(swipeId(msg));
+ host.setAttribute('role','region');
+ host.setAttribute('aria-label',`第 ${mesid || '?'} 条回复的兔子镜`);
+}
+function placeExternalHost(el,host,key='',source='independent'){
+ if(!el||!host) return false;
+ const parent=el.parentElement;
  if(!parent) return false;
- const correctlyPlaced=host.parentElement===parent && body.nextElementSibling===host;
- if(!correctlyPlaced) parent.insertBefore(host,body.nextSibling);
+ stampExternalHostOwnership(el,host,key,source);
+ // Independent output is a sibling of the whole message, never a child of
+ // .mes_text / status bar / another plugin container. Once established as a
+ // sibling, do not keep moving it when foreign plugins insert their own rows.
+ const alreadySibling=host.parentElement===parent && !el.contains(host);
+ if(!alreadySibling || host.dataset.rmExternalPlacementEstablished!=='true'){
+   parent.insertBefore(host,el.nextSibling);
+ }
  host.dataset.rmExternalPlacementEstablished='true';
- host.dataset.rmExternalOwnerMessage=String(el.getAttribute?.('mesid')||'');
  return true;
+}
+function messageElementForExternalHost(host){
+ const owner=Number(host?.dataset?.rmOwnerMesid ?? host?.dataset?.rmExternalOwnerMessage);
+ if(Number.isInteger(owner)&&owner>=0){
+   const direct=messageElement(owner);
+   if(direct) return direct;
+ }
+ return host?.closest?.('.mes[mesid], [mesid].mes, [mesid]') || null;
 }
 function markExternalDetails(details,key,source){
  if(!details) return details;
@@ -519,7 +559,8 @@ function fallbackExternalDetails(state,text=''){
 function buildExternalHost(key,html,state,source){
  const host=document.createElement('div');
  host.setAttribute(SOURCE_ATTR,'true');
- host.className='rabbit-mirror-external-host';
+ host.setAttribute(EXTERNAL_SHELL_ATTR,'true');
+ host.className='rabbit-mirror-external-host rabbit-mirror-external-shell';
  host.dataset.rmKey=key;
  host.dataset.rmSource=source;
  host.dataset.rmState=state;
@@ -541,18 +582,20 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
    );
    host=document.createElement('div');
    host.setAttribute(SOURCE_ATTR,'true');
-   host.className='rabbit-mirror-external-host';
+   host.setAttribute(EXTERNAL_SHELL_ATTR,'true');
+   host.className='rabbit-mirror-external-host rabbit-mirror-external-shell';
    host.dataset.rmKey=key;
    host.dataset.rmSource=source;
    host.dataset.rmState=state;
    if(escaped){ markExternalDetails(escaped,key,source); host.append(escaped); }
    else host=buildExternalHost(key,html,state,source);
-   placeExternalHost(el,host);
+   host.__rabbitMirrorIndependentSource = state==='ready' ? String(html||'') : '';
+   placeExternalHost(el,host,key,source);
    removeDuplicateExternalHosts(el,host,source);
    ensureExternalTools(host);
    return host;
  }
- placeExternalHost(el,host);
+ placeExternalHost(el,host,key,source);
  removeDuplicateExternalHosts(el,host,source);
  let current=repatriateExternalDetails(el,host,key,source);
  if(!current) current=recoverEscapedExternalDetails(el,host,key,source);
@@ -560,6 +603,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
  host.dataset.rmKey=key;
  host.dataset.rmSource=source;
  host.dataset.rmState=state;
+ host.__rabbitMirrorIndependentSource = state==='ready' ? String(html||'') : '';
  if(state==='ready'){
    const nextDetails=extractReadyDetails(html);
    if(!nextDetails){
@@ -577,7 +621,6 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
    if(current?.isConnected) current.replaceWith(nextDetails); else host.append(nextDetails);
    if(wasOpen) nextDetails.setAttribute('open','');
    ensureExternalTools(host);
-   placeExternalHost(el,host);
    return host;
  }
  let details=current;
@@ -597,7 +640,6 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
    bodyNode.textContent=html;
  } else bodyNode?.remove?.();
  ensureExternalTools(host);
- placeExternalHost(el,host);
  return host;
 }
 
@@ -681,7 +723,9 @@ async function diagnoseIndependentApi(){
  return `${modelNote}；生成接口检测成功，参数模式：${profile}${parsed?`，返回：${parsed.slice(0,80)}`:'，但未解析到文本'}`;
 }
 function messageIndexForExternalHost(host){
- const mes=host?.closest?.('.mes[mesid], [mesid].mes, [mesid]');
+ const owned=Number(host?.dataset?.rmOwnerMesid ?? host?.dataset?.rmExternalOwnerMessage);
+ if(Number.isInteger(owned)&&owned>=0) return owned;
+ const mes=messageElementForExternalHost(host);
  const index=Number(mes?.getAttribute?.('mesid'));
  return Number.isInteger(index)&&index>=0?index:null;
 }
@@ -744,12 +788,16 @@ function externalizeFollowMirror(index,msg){
  const host=document.createElement('div');
  host.setAttribute(SOURCE_ATTR,'true'); host.dataset.rmKey=key; host.dataset.rmSource='follow'; host.dataset.rmState='ready';
  mirror.removeAttribute('open'); mirror.setAttribute('data-rabbit-mirror-external-details','true');
- host.append(mirror); body.insertAdjacentElement('afterend',host);
+ host.append(mirror); placeExternalHost(el,host,key,'follow');
  removeDuplicateExternalHosts(el,host,'follow');
  if(wasOpen) mirror.removeAttribute('open');
 }
-function restoreFollowInline(el){
- const host=el?.querySelector?.(`[${SOURCE_ATTR}][data-rm-source="follow"]`); if(!host) return;
+function restoreFollowInline(elOrHost){
+ const el=elOrHost?.matches?.(`[${SOURCE_ATTR}]`) ? messageElementForExternalHost(elOrHost) : elOrHost;
+ const host=elOrHost?.matches?.(`[${SOURCE_ATTR}][data-rm-source="follow"]`)
+  ? elOrHost
+  : externalHosts(el).find(node=>node.dataset.rmSource==='follow');
+ if(!host) return;
  const mirror=host.querySelector(':scope > details'); const body=messageBody(el);
  if(mirror&&body){ mirror.removeAttribute('data-rabbit-mirror-external-details'); body.append(mirror); }
  host.remove();
@@ -785,7 +833,14 @@ function syncMessages(indices=null){
    }
  } finally { syncRunning=false; }
 }
-function syncAll(){ syncMessages(null); }
+function pruneForeignChatExternalHosts(){
+ const current=chatKey(getContext());
+ for(const host of allExternalHosts()){
+   const ownerChat=String(host.dataset.rmOwnerChat||'');
+   if(ownerChat && ownerChat!==current) host.remove();
+ }
+}
+function syncAll(){ pruneForeignChatExternalHosts(); syncMessages(null); }
 let queuedIndices=new Set();
 let syncTimer=null;
 function queueMessageSync(indices=[]){
@@ -889,7 +944,7 @@ async function reconfigureRuntime(){
  if(mode==='off'||mode==='inline'){
    clearScheduledGeneration();
    if(mode==='inline'){
-     document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(el=>restoreFollowInline(el.closest('.mes')));
+     document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(el=>restoreFollowInline(el));
      document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());
    }
    if(mode==='off') document.querySelectorAll(`[${SOURCE_ATTR}]`).forEach(n=>n.remove());
@@ -909,7 +964,7 @@ export function destroyIndependentRabbitMirror(){
  clearScheduledGeneration();
  disconnectObserver(); unsubscribeHostEvents(); removeExternalActionDelegation();
  syncRunning=false; pending.clear();
- document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(host=>restoreFollowInline(host.closest('.mes')));
+ document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(host=>restoreFollowInline(host));
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());
  if(globalThis.__rabbitMirrorIndependentCleanup===destroyIndependentRabbitMirror) delete globalThis.__rabbitMirrorIndependentCleanup;
 }

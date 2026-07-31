@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h25t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h25t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h26t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h26t';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h25t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h25t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h25t';
+} from './feedbackCat.js?rmv=1.1.0b14h26t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h26t';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h26t';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.25-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.26-test';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -5746,9 +5746,18 @@ function getAvailableHostChat() {
     return [];
 }
 
+function getExternalOwnerMessageIndex(node) {
+    const shell = node?.closest?.('[data-rabbit-mirror-external-shell][data-rm-owner-mesid], [data-rabbit-mirror-external-source][data-rm-owner-mesid]');
+    const value = Number(shell?.getAttribute?.('data-rm-owner-mesid'));
+    return Number.isInteger(value) && value >= 0 ? value : -1;
+}
+
 function getAssistantMessageForRenderedRoot(root) {
     const chat = getAvailableHostChat();
     if (!chat.length || !root?.closest) return null;
+
+    const externalIndex = getExternalOwnerMessageIndex(root);
+    if (externalIndex >= 0 && chat[externalIndex] && !chat[externalIndex]?.is_user) return chat[externalIndex];
 
     const messageElement = root.closest('.mes, [mesid], [data-message-id], [data-messageid]');
     const rawMessageId = messageElement?.getAttribute?.('mesid')
@@ -5773,6 +5782,10 @@ function getAssistantMessageForRenderedRoot(root) {
 }
 
 function getRawAssistantMessageForRenderedRoot(root) {
+    const externalShell = root?.closest?.('[data-rabbit-mirror-external-shell][data-rm-source="independent"]');
+    const independentSource = externalShell?.__rabbitMirrorIndependentSource;
+    if (typeof independentSource === 'string' && independentSource.trim()) return independentSource;
+
     const message = getAssistantMessageForRenderedRoot(root);
     if (!message) return '';
 
@@ -10262,7 +10275,8 @@ function diagnosticCodeRescueSummary(root) {
     const rawWouldChange = !!rawMessage && rawCleaned !== rawMessage && rawCleaned !== decodedRaw;
     const strictParseOk = strictWhole ? !!parseTotoFragment(cleanRabbitMirrorOutput(strictWhole)) : false;
     const messageElement = body?.closest?.('.mes, [mesid], [data-message-id], [data-messageid]');
-    const mesid = messageElement?.getAttribute?.('mesid') || '(unknown)';
+    const externalMesid = getExternalOwnerMessageIndex(body);
+    const mesid = externalMesid >= 0 ? String(externalMesid) : (messageElement?.getAttribute?.('mesid') || '(unknown)');
     const displayTextDiff = (() => {
         try {
             const index = Number.parseInt(mesid, 10);
@@ -14808,7 +14822,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.91-test';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.92-test';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -14934,7 +14948,7 @@ function runMaintenanceRescueModule(module, context, result) {
 function runMaintenanceLegacyRescueLibrary(root, mode = 'all') {
     const result = createMaintenanceLibraryResult(mode);
     if (!root?.isConnected) return result;
-    const messageScope = root.closest?.('.mes, [mesid], [data-message-id], [data-messageid]') || root;
+    const messageScope = root.closest?.('[data-rabbit-mirror-external-shell], [data-rabbit-mirror-external-source], .mes, [mesid], [data-message-id], [data-messageid]') || root;
     const liveRoots = getRenderedRabbitMirrorInteractionRoots(messageScope);
     // 排版／内容显示专项只处理用户点击的当前兔子镜，不能顺带重排同条消息中的其他镜面。
     const targets = mode === 'text' ? [root] : (liveRoots.length ? liveRoots : [root]);
@@ -17069,6 +17083,8 @@ const sourceRecoveryLastRun = new Map();
 let codeShellRecoveryObserver = null;
 
 function getMessageIndexFromElement(node) {
+    const externalIndex = getExternalOwnerMessageIndex(node);
+    if (externalIndex >= 0) return externalIndex;
     const messageElement = node?.closest?.('#chat [mesid], .mes[mesid]');
     const value = Number(messageElement?.getAttribute?.('mesid'));
     return Number.isInteger(value) && value >= 0 ? value : -1;
@@ -17379,6 +17395,8 @@ export function triggerInteractionDiagnosticOnce() {
 
 
 function getMessageIndexFromMirrorNode(node) {
+    const externalIndex = getExternalOwnerMessageIndex(node);
+    if (externalIndex >= 0) return externalIndex;
     const messageNode = node?.closest?.('.mes, [mesid], [data-message-id], [data-messageid]');
     if (!messageNode) return -1;
     const raw = messageNode.getAttribute('mesid')
