@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h26t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h26t';
-import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h26t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h27t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h27t';
+import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h27t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.26-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.27-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -13,6 +13,8 @@ let followupGenerationTimers = new Set();
 let generationSequence = 0;
 let observer = null;
 let syncRunning = false;
+let externalGeometryFrame = 0;
+let externalGeometryListenersInstalled = false;
 const pending = new Map();
 let externalActionListenerInstalled = false;
 
@@ -362,19 +364,39 @@ function stampExternalHostOwnership(el,host,key='',source='independent'){
  host.setAttribute('role','region');
  host.setAttribute('aria-label',`第 ${mesid || '?'} 条回复的兔子镜`);
 }
+function syncExternalHostGeometry(el,host){
+ if(!el||!host?.isConnected) return;
+ const body=messageBody(el);
+ const parent=host.parentElement;
+ if(!body||!parent) return;
+ const bodyRect=body.getBoundingClientRect?.();
+ const parentRect=parent.getBoundingClientRect?.();
+ if(!bodyRect||!parentRect||bodyRect.width<=0||parentRect.width<=0) return;
+ const inlineStart=Math.max(0,Math.min(parentRect.width,bodyRect.left-parentRect.left));
+ const inlineEnd=Math.max(0,Math.min(parentRect.width,parentRect.right-bodyRect.right));
+ host.style.setProperty('--rm-external-inline-start',`${Math.round(inlineStart*100)/100}px`);
+ host.style.setProperty('--rm-external-inline-end',`${Math.round(inlineEnd*100)/100}px`);
+}
+function scheduleExternalHostGeometry(el,host){
+ syncExternalHostGeometry(el,host);
+ globalThis.requestAnimationFrame?.(()=>{
+   if(host?.isConnected) syncExternalHostGeometry(el,host);
+ });
+}
 function placeExternalHost(el,host,key='',source='independent'){
  if(!el||!host) return false;
  const parent=el.parentElement;
  if(!parent) return false;
  stampExternalHostOwnership(el,host,key,source);
- // Independent output is a sibling of the whole message, never a child of
- // .mes_text / status bar / another plugin container. Once established as a
- // sibling, do not keep moving it when foreign plugins insert their own rows.
+ // Independent output remains a sibling of the whole message, but its visual
+ // width follows the original .mes_text rectangle. This preserves plugin
+ // isolation without stretching the mirror to the full #chat viewport.
  const alreadySibling=host.parentElement===parent && !el.contains(host);
  if(!alreadySibling || host.dataset.rmExternalPlacementEstablished!=='true'){
    parent.insertBefore(host,el.nextSibling);
  }
  host.dataset.rmExternalPlacementEstablished='true';
+ scheduleExternalHostGeometry(el,host);
  return true;
 }
 function messageElementForExternalHost(host){
@@ -384,6 +406,37 @@ function messageElementForExternalHost(host){
    if(direct) return direct;
  }
  return host?.closest?.('.mes[mesid], [mesid].mes, [mesid]') || null;
+}
+function refreshExternalHostGeometry(){
+ if(externalGeometryFrame){
+   globalThis.cancelAnimationFrame?.(externalGeometryFrame);
+   globalThis.clearTimeout?.(externalGeometryFrame);
+ }
+ const run=()=>{
+   externalGeometryFrame=0;
+   for(const host of allExternalHosts().filter(node=>node.dataset.rmSource==='independent')){
+     const owner=messageElementForExternalHost(host);
+     if(owner) syncExternalHostGeometry(owner,host);
+   }
+ };
+ externalGeometryFrame=globalThis.requestAnimationFrame?.(run) || globalThis.setTimeout(run,16);
+}
+function installExternalGeometryListeners(){
+ if(externalGeometryListenersInstalled) return;
+ externalGeometryListenersInstalled=true;
+ globalThis.addEventListener?.('resize',refreshExternalHostGeometry,{passive:true});
+ globalThis.addEventListener?.('orientationchange',refreshExternalHostGeometry,{passive:true});
+}
+function removeExternalGeometryListeners(){
+ if(!externalGeometryListenersInstalled) return;
+ externalGeometryListenersInstalled=false;
+ globalThis.removeEventListener?.('resize',refreshExternalHostGeometry);
+ globalThis.removeEventListener?.('orientationchange',refreshExternalHostGeometry);
+ if(externalGeometryFrame){
+   globalThis.cancelAnimationFrame?.(externalGeometryFrame);
+   globalThis.clearTimeout?.(externalGeometryFrame);
+   externalGeometryFrame=0;
+ }
 }
 function markExternalDetails(details,key,source){
  if(!details) return details;
@@ -958,11 +1011,12 @@ export async function initIndependentRabbitMirror(){
  try{ globalThis.__rabbitMirrorIndependentCleanup?.(); }catch{}
  globalThis.__rabbitMirrorIndependentCleanup=destroyIndependentRabbitMirror;
  installExternalActionDelegation();
+ installExternalGeometryListeners();
  await reconfigureRuntime();
 }
 export function destroyIndependentRabbitMirror(){
  clearScheduledGeneration();
- disconnectObserver(); unsubscribeHostEvents(); removeExternalActionDelegation();
+ disconnectObserver(); unsubscribeHostEvents(); removeExternalActionDelegation(); removeExternalGeometryListeners();
  syncRunning=false; pending.clear();
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(host=>restoreFollowInline(host));
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());
