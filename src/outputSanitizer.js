@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h33t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h33t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h37t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h37t';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h33t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h33t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h33t';
+} from './feedbackCat.js?rmv=1.1.0b14h37t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h37t';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h37t';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.33-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.37-test';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -63,8 +63,7 @@ function ensureFeedbackCatRuntimeStyle() {
     isolation: isolate !important;
 }
 [${TOOL_ENTRY_HOST_ATTR}] > button[${MAINTENANCE_RABBIT_ATTR}],
-[${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}],
-[${TOOL_ENTRY_HOST_ATTR}] > button[data-rabbit-mirror-resay] {
+[${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}] {
     all: initial !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -107,8 +106,6 @@ function ensureFeedbackCatRuntimeStyle() {
 }
 [${TOOL_ENTRY_HOST_ATTR}] > button[${MAINTENANCE_RABBIT_ATTR}]::before,
 [${TOOL_ENTRY_HOST_ATTR}] > button[${MAINTENANCE_RABBIT_ATTR}]::after,
-[${TOOL_ENTRY_HOST_ATTR}] > button[data-rabbit-mirror-resay]::before,
-[${TOOL_ENTRY_HOST_ATTR}] > button[data-rabbit-mirror-resay]::after,
 [${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}]::before,
 [${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}]::after {
     content: none !important;
@@ -9600,6 +9597,217 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 }
 
 
+// beta.14.35: one-shot frame palette extraction for both main-API and independent-API mirrors.
+// Only the outer RabbitMirror <details>/<summary> and independent shell receive variables.
+// Generated descendants, media queries, animation, grid/flex and message source are untouched.
+const AUTO_FRAME_ATTR = 'data-rabbit-mirror-auto-frame';
+const AUTO_FRAME_VERSION_ATTR = 'data-rabbit-mirror-auto-frame-version';
+const AUTO_FRAME_SOURCE_ATTR = 'data-rabbit-mirror-auto-frame-source';
+
+function clampAutoFrameChannel(value) {
+    return Math.max(0, Math.min(255, Math.round(Number(value) || 0)));
+}
+
+function parseAutoFrameCssColor(value) {
+    const text = String(value || '').trim().toLowerCase();
+    if (!text || text === 'transparent' || text === 'none' || text === 'currentcolor') return null;
+    const hex = text.match(/^#([0-9a-f]{3,8})$/i)?.[1];
+    if (hex) {
+        const expanded = hex.length <= 4 ? [...hex].map(ch => ch + ch).join('') : hex;
+        if (![6, 8].includes(expanded.length)) return null;
+        return {
+            r: parseInt(expanded.slice(0, 2), 16),
+            g: parseInt(expanded.slice(2, 4), 16),
+            b: parseInt(expanded.slice(4, 6), 16),
+            a: expanded.length === 8 ? parseInt(expanded.slice(6, 8), 16) / 255 : 1,
+        };
+    }
+    const rgb = text.match(/^rgba?\((.+)\)$/i);
+    if (rgb) {
+        const parts = rgb[1].replace(/[\/,]/g, ' ').match(/[+-]?(?:\d+\.?\d*|\.\d+)%?/g) || [];
+        if (parts.length < 3) return null;
+        const channel = token => token.endsWith('%') ? Number.parseFloat(token) * 2.55 : Number.parseFloat(token);
+        const alpha = token => token?.endsWith('%') ? Number.parseFloat(token) / 100 : Number.parseFloat(token ?? '1');
+        const parsed = { r: channel(parts[0]), g: channel(parts[1]), b: channel(parts[2]), a: alpha(parts[3]) };
+        if (![parsed.r, parsed.g, parsed.b, parsed.a].every(Number.isFinite)) return null;
+        return { r: clampAutoFrameChannel(parsed.r), g: clampAutoFrameChannel(parsed.g), b: clampAutoFrameChannel(parsed.b), a: Math.max(0, Math.min(1, parsed.a)) };
+    }
+    const hsl = text.match(/^hsla?\((.+)\)$/i);
+    if (hsl) {
+        const parts = hsl[1].replace(/[\/,]/g, ' ').match(/[+-]?(?:\d+\.?\d*|\.\d+)%?/g) || [];
+        if (parts.length < 3) return null;
+        let h = Number.parseFloat(parts[0]);
+        const sat = Number.parseFloat(parts[1]) / 100;
+        const light = Number.parseFloat(parts[2]) / 100;
+        const a = parts[3]?.endsWith('%') ? Number.parseFloat(parts[3]) / 100 : Number.parseFloat(parts[3] ?? '1');
+        if (![h, sat, light, a].every(Number.isFinite)) return null;
+        h = ((h % 360) + 360) % 360;
+        const c = (1 - Math.abs(2 * light - 1)) * sat;
+        const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        const m = light - c / 2;
+        let rp = 0, gp = 0, bp = 0;
+        if (h < 60) [rp, gp, bp] = [c, x, 0];
+        else if (h < 120) [rp, gp, bp] = [x, c, 0];
+        else if (h < 180) [rp, gp, bp] = [0, c, x];
+        else if (h < 240) [rp, gp, bp] = [0, x, c];
+        else if (h < 300) [rp, gp, bp] = [x, 0, c];
+        else [rp, gp, bp] = [c, 0, x];
+        return { r: clampAutoFrameChannel((rp + m) * 255), g: clampAutoFrameChannel((gp + m) * 255), b: clampAutoFrameChannel((bp + m) * 255), a: Math.max(0, Math.min(1, a)) };
+    }
+    return null;
+}
+
+function autoFrameColorTokens(value) {
+    const matches = String(value || '').match(/rgba?\([^)]*\)|hsla?\([^)]*\)|#[0-9a-f]{3,8}/gi) || [];
+    return matches.map(parseAutoFrameCssColor).filter(color => color && color.a >= 0.12);
+}
+
+function mixAutoFrameColors(colors) {
+    const valid = (colors || []).filter(color => color && color.a >= 0.12);
+    if (!valid.length) return null;
+    let weight = 0, r = 0, g = 0, b = 0;
+    valid.slice(0, 6).forEach((color, index) => {
+        const current = Math.max(0.15, color.a) * (1 / (1 + index * 0.16));
+        weight += current;
+        r += color.r * current;
+        g += color.g * current;
+        b += color.b * current;
+    });
+    return weight ? { r: clampAutoFrameChannel(r / weight), g: clampAutoFrameChannel(g / weight), b: clampAutoFrameChannel(b / weight), a: 1 } : null;
+}
+
+function autoFrameRelativeLuminance(color) {
+    const channel = value => {
+        const normalized = value / 255;
+        return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b);
+}
+
+function blendAutoFrameColor(color, target, ratio) {
+    const amount = Math.max(0, Math.min(1, ratio));
+    return {
+        r: clampAutoFrameChannel(color.r + (target.r - color.r) * amount),
+        g: clampAutoFrameChannel(color.g + (target.g - color.g) * amount),
+        b: clampAutoFrameChannel(color.b + (target.b - color.b) * amount),
+        a: 1,
+    };
+}
+
+function autoFrameRgb(color) {
+    return `rgb(${color.r} ${color.g} ${color.b})`;
+}
+
+function autoFrameRgba(color, alpha) {
+    return `rgba(${color.r}, ${color.g}, ${color.b}, ${Math.max(0, Math.min(1, alpha)).toFixed(3)})`;
+}
+
+function autoFrameOuterDetails(root) {
+    if (!root?.querySelector) return null;
+    if (root.matches?.('details') && isRabbitMirrorDetails(root)) return root;
+    const direct = root.querySelector?.(':scope > details');
+    if (direct && isRabbitMirrorDetails(direct)) return direct;
+    return [...(root.querySelectorAll?.('details') || [])].find(isRabbitMirrorDetails) || null;
+}
+
+function autoFrameCandidateElements(details) {
+    const candidates = [];
+    const queue = [];
+    const excluded = 'summary, style, script, template, input, textarea, select, option, [data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-menu], [data-rabbit-mirror-feedback-cat-menu]';
+    for (const child of [...(details?.children || [])]) {
+        if (child.matches?.(excluded)) continue;
+        queue.push({ element: child, depth: 0 });
+    }
+    const seen = new Set();
+    while (queue.length && candidates.length < 80) {
+        const item = queue.shift();
+        const element = item?.element;
+        if (!element || seen.has(element)) continue;
+        seen.add(element);
+        if (element.matches?.('details') && element !== details) continue;
+        candidates.push(item);
+        if (item.depth >= 4) continue;
+        for (const child of [...(element.children || [])]) {
+            if (child.matches?.(excluded)) continue;
+            queue.push({ element: child, depth: item.depth + 1 });
+        }
+    }
+    return candidates;
+}
+
+function readAutoFrameCandidate(element, depth = 0) {
+    let style = null;
+    try { style = getComputedStyle(element); } catch { return null; }
+    if (!style) return null;
+    const solid = parseAutoFrameCssColor(style.backgroundColor);
+    const gradient = style.backgroundImage && style.backgroundImage !== 'none'
+        ? mixAutoFrameColors(autoFrameColorTokens(style.backgroundImage))
+        : null;
+    const colors = [];
+    if (solid?.a >= 0.12) colors.push(solid);
+    if (gradient) colors.push(gradient);
+    const color = mixAutoFrameColors(colors);
+    if (!color) return null;
+    const className = String(element.className || '').toLowerCase();
+    const chroma = (Math.max(color.r, color.g, color.b) - Math.min(color.r, color.g, color.b)) / 255;
+    let score = (gradient ? 16 : 0) + (solid?.a >= 0.12 ? 6 : 0) + chroma * 8 - depth * 1.3;
+    if (depth === 0) score += 2.5;
+    if (/(?:wrapper|container|card|scene|scenery|visual|screen|window|app|stage|panel)/.test(className)) score += 2.5;
+    if (/(?:text|copy|desc|content|body|rules|feedback)/.test(className) && depth > 0) score -= 2;
+    return { color, score, source: gradient ? 'gradient' : 'background' };
+}
+
+function extractRabbitMirrorAutoFrameColor(details) {
+    let best = null;
+    for (const { element, depth } of autoFrameCandidateElements(details)) {
+        const candidate = readAutoFrameCandidate(element, depth);
+        if (!candidate) continue;
+        if (!best || candidate.score > best.score) best = candidate;
+    }
+    if (best) return best;
+    const own = readAutoFrameCandidate(details, 1);
+    if (own) return own;
+    return { color: { r: 112, g: 126, b: 154, a: 1 }, score: 0, source: 'fallback' };
+}
+
+function writeRabbitMirrorAutoFrameVariables(target, palette) {
+    if (!target?.style || !palette?.color) return;
+    const base = palette.color;
+    const luminance = autoFrameRelativeLuminance(base);
+    const summary = luminance > 0.78
+        ? blendAutoFrameColor(base, { r: 0, g: 0, b: 0 }, 0.10)
+        : luminance < 0.10
+            ? blendAutoFrameColor(base, { r: 255, g: 255, b: 255 }, 0.10)
+            : base;
+    const border = luminance > 0.62
+        ? blendAutoFrameColor(base, { r: 0, g: 0, b: 0 }, 0.28)
+        : blendAutoFrameColor(base, { r: 255, g: 255, b: 255 }, 0.22);
+    const summaryLuminance = autoFrameRelativeLuminance(summary);
+    const text = summaryLuminance > 0.48 ? 'rgb(24 29 40)' : 'rgb(246 248 252)';
+    target.style.setProperty('--rm-auto-frame-base', autoFrameRgb(base));
+    target.style.setProperty('--rm-auto-frame-summary', autoFrameRgb(summary));
+    target.style.setProperty('--rm-auto-frame-border', autoFrameRgba(border, 0.86));
+    target.style.setProperty('--rm-auto-frame-surface', autoFrameRgba(base, luminance < 0.2 ? 0.16 : 0.11));
+    target.style.setProperty('--rm-auto-frame-text', text);
+    target.style.setProperty('--rm-auto-frame-shadow', autoFrameRgba(base, 0.22));
+    target.setAttribute(AUTO_FRAME_ATTR, 'true');
+    target.setAttribute(AUTO_FRAME_VERSION_ATTR, RUNTIME_VERSION);
+    target.setAttribute(AUTO_FRAME_SOURCE_ATTR, palette.source || 'computed');
+}
+
+function applyRabbitMirrorAutoFrameTheme(root, force = false) {
+    const details = autoFrameOuterDetails(root);
+    if (!details || !isInsideChatMessage(details)) return false;
+    if (details.classList?.contains('rabbit-mirror-external-placeholder')) return false;
+    if (!force && details.getAttribute(AUTO_FRAME_VERSION_ATTR) === RUNTIME_VERSION) return false;
+    const palette = extractRabbitMirrorAutoFrameColor(details);
+    writeRabbitMirrorAutoFrameVariables(details, palette);
+    const shell = details.closest?.('.rabbit-mirror-external-shell[data-rm-source="independent"]');
+    if (shell) writeRabbitMirrorAutoFrameVariables(shell, palette);
+    return true;
+}
+
+
 
 // 一次性兔子镜总诊断：用户启动后点击一条异常消息。
 // 既可捕获已渲染兔子镜交互，也可捕获尚未恢复的代码块/纯文字兔子镜消息；约 650ms 后自动停止。
@@ -14830,7 +15038,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.99-test';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.02-test';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -15698,6 +15906,11 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } 
 
     getRenderedRabbitMirrorInteractionRoots(scope).forEach(root => {
         if (!isInsideChatMessage(root)) return;
+        try {
+            applyRabbitMirrorAutoFrameTheme(root);
+        } catch (error) {
+            console.debug('[RabbitMirror] automatic frame palette skipped for one mirror:', error);
+        }
         try {
             installNestedDetailsReplacementContainment(root);
         } catch (error) {

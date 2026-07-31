@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h33t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h33t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h33t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h37t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h37t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h37t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.33-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.37-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -20,6 +20,8 @@ let externalGeometryFrame = 0;
 let externalGeometryListenersInstalled = false;
 const pending = new Map();
 let externalActionListenerInstalled = false;
+let externalActionWindowPointerHandler = null;
+let externalActionWindowClickHandler = null;
 let forceDeleteListenerInstalled = false;
 const orphanExternalHostTimers = new Map();
 
@@ -62,6 +64,7 @@ function messageElement(index){ return document.querySelector(`#chat .mes[mesid=
 function messageBody(el){ return el?.querySelector?.('.mes_text') || el; }
 function assistantMessages(ctx){ const chat=Array.isArray(ctx.chat)?ctx.chat:[]; return chat.map((m,i)=>({m,i})).filter(x=>!x.m?.is_user && typeof x.m?.mes==='string'); }
 function reasoningOf(m){ return String(m?.reasoning ?? m?.extra?.reasoning ?? m?.extra?.reasoning_content ?? m?.extra?.thoughts ?? '').trim(); }
+function messageSourceFingerprint(m){ return hashText(String(m?.mes||'')); }
 function safeJson(value,max=24000){ try { const seen=new WeakSet(); const t=JSON.stringify(value,(key,item)=>{ if(typeof item==='function') return `[Function ${item.name||'anonymous'}]`; if(item&&typeof item==='object'){ if(seen.has(item)) return '[Circular]'; seen.add(item); } return item; },2); return t.length>max?t.slice(0,max)+'\n…[截断]':t; } catch { return ''; } }
 function contextBundle(ctx,targetIndex){
  const chat=Array.isArray(ctx.chat)?ctx.chat:[];
@@ -615,42 +618,17 @@ function refreshExistingExternalDetails(host,key,source='independent'){
 function externalToolHost(details){
  return details?.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]') || null;
 }
-function ensureIndependentResayButton(host){
- if(!host?.isConnected || host.dataset.rmSource!=='independent') return null;
+function removeIndependentResayButtons(host){
+ if(!host?.querySelectorAll) return;
+ for(const button of host.querySelectorAll(`[${RESAY_ATTR}], .rabbit-mirror-resay`)) button.remove();
  const details=host.querySelector?.(':scope > details');
- const summary=details?.querySelector?.(':scope > summary');
- if(!summary) return null;
- let tools=externalToolHost(details);
- if(!tools){
-  tools=document.createElement('span');
-  tools.setAttribute('data-rabbit-mirror-tool-entry-host','true');
-  tools.setAttribute('role','group');
-  tools.setAttribute('aria-label','兔子镜工具');
-  summary.append(tools);
- }
- let button=tools.querySelector?.(`[${RESAY_ATTR}]`);
- if(!button){
-  button=document.createElement('button');
-  button.type='button';
-  button.className='rabbit-mirror-resay';
-  button.setAttribute(RESAY_ATTR,'true');
-  button.setAttribute('data-rabbit-mirror-external-action','retry');
-  button.textContent='↻';
-  const feedback=tools.querySelector?.('[data-rabbit-mirror-feedback-cat]');
-  if(feedback) tools.insertBefore(button,feedback); else tools.append(button);
- }
- const loading=host.dataset.rmState==='loading';
- button.disabled=loading;
- button.title=loading?'兔子镜正在生成中':'重说兔子镜';
- button.setAttribute('aria-label',button.title);
- button.setAttribute('aria-disabled',loading?'true':'false');
- bindExternalActionButton(button);
- return button;
+ const tools=externalToolHost(details);
+ if(tools && !tools.querySelector('[data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat]')) tools.remove();
 }
 function ensureExternalTools(host){
  if(!host?.isConnected) return;
  try{ refreshRabbitMirrorToolsInScope(host); }catch(error){ console.debug('[RabbitMirror] external tool preparation skipped:',error); }
- ensureIndependentResayButton(host);
+ removeIndependentResayButtons(host);
 }
 function transferExternalTools(fromDetails,toDetails){
  const tools=externalToolHost(fromDetails);
@@ -838,31 +816,35 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
  return host;
 }
 
-function scheduleMessageGeneration(index,delay=260){
+function scheduleMessageGeneration(index,delay=260,sourceAware=false){
  const timer=setTimeout(()=>{
    followupGenerationTimers.delete(timer);
    if(!currentRuntime() || runtimeMode()!=='independent') return;
    const ctx=getContext(); const msg=ctx.chat?.[index];
    if(!msg || msg.is_user || typeof msg.mes!=='string') return;
-   void generateFor(index,msg);
+   void generateFor(index,msg,false,sourceAware);
  },delay);
  followupGenerationTimers.add(timer);
 }
 function currentGenerationIdentity(index){
  const ctx=getContext(); const msg=ctx.chat?.[index];
  if(!msg || msg.is_user || typeof msg.mes!=='string') return null;
- return {ctx,msg,slot:messageSlotKey(ctx,index,msg),key:recordKey(ctx,index,msg)};
+ return {ctx,msg,slot:messageSlotKey(ctx,index,msg),key:recordKey(ctx,index,msg),sourceHash:messageSourceFingerprint(msg)};
 }
-async function generateFor(index,msg,force=false){
- const ctx=getContext(); const key=recordKey(ctx,index,msg); const slot=messageSlotKey(ctx,index,msg); const st=getSettings();
+async function generateFor(index,msg,force=false,sourceAware=false){
+ const ctx=getContext(); const key=recordKey(ctx,index,msg); const slot=messageSlotKey(ctx,index,msg); const sourceHash=messageSourceFingerprint(msg); const st=getSettings();
  if(st.enabled===false || st.autoRabbitMirrorInjection===false || st.generationSource!=='independent') return;
  const el=messageElement(index); if(!el) return;
  let store=readStore();
  const saved=findSavedRecord(store,slot);
  if(saved?.deleted&&!force){ externalHosts(el).filter(n=>n.dataset.rmSource==='independent').forEach(n=>n.remove()); removeEmptyInlineAnchors(el); return; }
- if(saved?.html&&!force){ensureExternalUi(el,key,saved.html,'ready');return;}
+ if(saved?.html&&!force){
+   const savedSourceHash=String(saved.sourceHash||'');
+   if(!sourceAware || (savedSourceHash && savedSourceHash===sourceHash)){ ensureExternalUi(el,key,saved.html,'ready'); return; }
+   removeRecordsForSlot(store,slot); writeStore(store); store=readStore();
+ }
  const existing=pending.get(slot);
- if(existing) return existing.task;
+ if(existing && existing.sourceHash===sourceHash) return existing.task;
  if(force){ removeRecordsForSlot(store,slot); writeStore(store); }
  ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading');
  const runId=++generationSequence;
@@ -870,22 +852,22 @@ async function generateFor(index,msg,force=false){
  const task=callIndependentApi(ctx,index,msg).then(html=>{
    const live=currentGenerationIdentity(index);
    const active=pending.get(slot);
-   if(!live || live.slot!==slot || live.key!==key || active?.runId!==runId){ stale=true; return; }
-   const next=readStore(); saveRecordForSlot(next,slot,{html,ts:Date.now(),model:st.independentApiModel});
+   if(!live || live.slot!==slot || live.key!==key || live.sourceHash!==sourceHash || active?.runId!==runId){ stale=true; return; }
+   const next=readStore(); saveRecordForSlot(next,slot,{html,sourceHash,ts:Date.now(),model:st.independentApiModel});
    const keys=Object.keys(next).sort((a,b)=>(next[b]?.ts||0)-(next[a]?.ts||0));
    for(const k of keys.slice(120)) delete next[k];
    writeStore(next); const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,html,'ready');
  }).catch(err=>{
    const live=currentGenerationIdentity(index);
    const active=pending.get(slot);
-   if(!live || live.slot!==slot || live.key!==key || active?.runId!==runId){ stale=true; return; }
+   if(!live || live.slot!==slot || live.key!==key || live.sourceHash!==sourceHash || active?.runId!==runId){ stale=true; return; }
    console.error('[RabbitMirror] independent generation failed',err);
    const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,String(err?.message||err),'error');
  }).finally(()=>{
    if(pending.get(slot)?.runId===runId) pending.delete(slot);
-   if(stale) scheduleMessageGeneration(index,320);
+   if(stale) scheduleMessageGeneration(index,320,true);
  });
- pending.set(slot,{task,runId,key});
+ pending.set(slot,{task,runId,key,sourceHash});
  await task;
 }
 function setExternalErrorActionState(host,busy,statusText=''){
@@ -1004,12 +986,39 @@ function removeForceDeleteListener(){
 }
 function installExternalActionDelegation(){
  if(externalActionListenerInstalled) return;
- // iPhone/Safari: bind the real buttons directly. Do not rely on a window/document
- // capture delegate, because other SillyTavern tool handlers may stop the event first.
+ // iPhone/Safari: some SillyTavern/RabbitMirror rescue handlers run on document/chat
+ // capture and may stop the event before it reaches the real button. Intercept these
+ // two dedicated actions one level earlier on window, then keep direct bindings as a
+ // fallback for hosts that do not expose window-level pointer events.
+ const intercept=event=>{
+   const target=event?.target?.nodeType===1 ? event.target : event?.target?.parentElement;
+   const button=target?.closest?.('[data-rabbit-mirror-external-action]');
+   if(!button) return;
+   const host=button.closest?.(`[${SOURCE_ATTR}]`);
+   if(!host || host.dataset.rmSource!=='independent' || !host.contains(button)) return;
+   const now=Date.now();
+   const last=Number(button.dataset.rmExternalPointerAt||0);
+   if(event.type==='click' && last && now-last<900){
+     event.preventDefault?.();
+     event.stopPropagation?.();
+     event.stopImmediatePropagation?.();
+     return;
+   }
+   if(event.type==='pointerup') button.dataset.rmExternalPointerAt=String(now);
+   void handleExternalActionClick(event);
+ };
+ externalActionWindowPointerHandler=intercept;
+ externalActionWindowClickHandler=intercept;
+ globalThis.addEventListener?.('pointerup',externalActionWindowPointerHandler,true);
+ globalThis.addEventListener?.('click',externalActionWindowClickHandler,true);
  externalActionListenerInstalled=true;
  bindExternalActionButtons(document);
 }
 function removeExternalActionDelegation(){
+ if(externalActionWindowPointerHandler) globalThis.removeEventListener?.('pointerup',externalActionWindowPointerHandler,true);
+ if(externalActionWindowClickHandler) globalThis.removeEventListener?.('click',externalActionWindowClickHandler,true);
+ externalActionWindowPointerHandler=null;
+ externalActionWindowClickHandler=null;
  externalActionListenerInstalled=false;
 }
 function externalizeFollowMirror(index,msg){
@@ -1140,7 +1149,7 @@ function clearScheduledGeneration(){
  for(const timer of followupGenerationTimers) clearTimeout(timer);
  followupGenerationTimers.clear();
 }
-function scheduleLatest(delay=520){
+function scheduleLatest(delay=520,sourceAware=false){
  if(latestGenerationTimer) clearTimeout(latestGenerationTimer);
  const mode=runtimeMode();
  if(mode==='off'||mode==='inline'){ latestGenerationTimer=null; return; }
@@ -1148,7 +1157,7 @@ function scheduleLatest(delay=520){
    latestGenerationTimer=null;
    const ctx=getContext(); const list=assistantMessages(ctx); const last=list.at(-1); if(!last)return;
    const current=runtimeMode();
-   if(current==='independent') void generateFor(last.i,last.m);
+   if(current==='independent') void generateFor(last.i,last.m,false,sourceAware);
    else if(current==='follow-external') externalizeFollowMirror(last.i,last.m);
  },delay);
 }
@@ -1186,16 +1195,36 @@ async function installHostEventsIfNeeded(){
    hostModule=hostModule || await import('../../../../../script.js');
    const es=hostModule?.eventSource, et=hostModule?.event_types||{};
    const fullSyncEvents=[et.CHAT_CHANGED].filter(Boolean);
-   const finalGenerationEvents=[et.GENERATION_ENDED,et.GENERATION_STOPPED,et.MESSAGE_SWIPED].filter(Boolean);
+   const generationFinishedEvents=[et.GENERATION_ENDED,et.GENERATION_STOPPED].filter(Boolean);
+   const swipeEvents=[et.MESSAGE_SWIPED].filter(Boolean);
    const renderOnlyEvents=[et.MESSAGE_RECEIVED,et.CHARACTER_MESSAGE_RENDERED,et.MESSAGE_UPDATED].filter(Boolean);
    for(const event of new Set(fullSyncEvents)){
      const handler=()=>{syncAll();scheduleLatest(700);}; es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
-   for(const event of new Set(finalGenerationEvents)){
+   for(const event of new Set(generationFinishedEvents)){
+     const handler=()=>{
+       const last=assistantMessages(getContext()).at(-1);
+       if(last){
+         queueMessageSync([last.i]);
+         scheduleMessageGeneration(last.i,420,true);
+       } else syncAll();
+     };
+     es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
+   }
+   for(const event of new Set(swipeEvents)){
      const handler=messageId=>{
-       const id=Number(messageId);
-       if(Number.isInteger(id)&&id>=0) queueMessageSync([id]); else syncAll();
-       scheduleLatest(420);
+       const ctx=getContext();
+       const raw=messageId&&typeof messageId==='object'
+         ? (messageId.messageId ?? messageId.mesid ?? messageId.index)
+         : messageId;
+       const parsed=Number(raw);
+       const id=Number.isInteger(parsed)&&parsed>=0&&!ctx.chat?.[parsed]?.is_user
+         ? parsed
+         : assistantMessages(ctx).at(-1)?.i;
+       if(Number.isInteger(id)&&id>=0){
+         queueMessageSync([id]);
+         scheduleMessageGeneration(id,260,true);
+       } else syncAll();
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }

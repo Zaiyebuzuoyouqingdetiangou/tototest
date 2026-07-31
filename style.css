@@ -21,36 +21,7 @@
   contain:none !important;
   clear:both !important;
 }
-.rabbit-mirror-resay{
-  all:initial !important;
-  display:inline-flex !important;
-  align-items:center !important;
-  justify-content:center !important;
-  position:relative !important;
-  z-index:2147483001 !important;
-  flex:0 0 auto !important;
-  width:auto !important;
-  min-width:0 !important;
-  min-height:20px !important;
-  margin:0 !important;
-  padding:1px 3px !important;
-  border:0 !important;
-  border-radius:5px !important;
-  background:transparent !important;
-  color:inherit !important;
-  font:inherit !important;
-  font-size:16px !important;
-  line-height:1 !important;
-  cursor:pointer !important;
-  opacity:.94 !important;
-  pointer-events:auto !important;
-  touch-action:manipulation !important;
-  -webkit-tap-highlight-color:transparent !important;
-}
-.rabbit-mirror-resay:disabled{opacity:.45 !important;cursor:default !important;}
-.rabbit-mirror-resay::before,.rabbit-mirror-resay::after{content:none !important;display:none !important;}
-
-/* 1.1.0-beta.14.33-test: settings drawer mobile performance containment. */
+/* 1.1.0-beta.14.37-test: settings drawer mobile performance containment. */
 .rabbit-mirror-settings {
     contain: layout style !important;
 }
@@ -190,7 +161,7 @@ toto[data-rabbit-mirror="true"] summary {
 
 
 
-/* 1.1.0-beta.14.33-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
+/* 1.1.0-beta.14.37-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
 [data-rabbit-mirror-tool-entry-host] {
   all: initial !important;
   display: inline-flex !important;
@@ -502,10 +473,18 @@ toto[data-rabbit-mirror="true"] summary {
   flex-wrap:wrap;
   gap:8px;
   margin-top:12px;
+  position:relative;
+  z-index:2147483002;
+  pointer-events:auto !important;
 }
 .rabbit-mirror-external-error-action{
   min-width:96px;
+  min-height:42px;
+  position:relative;
+  z-index:2147483003;
+  pointer-events:auto !important;
   touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
 }
 .rabbit-mirror-external-error-action[disabled]{
   opacity:.55;
@@ -599,4 +578,36 @@ toto[data-rabbit-mirror="true"] summary {
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details.rabbit-mirror-external-placeholder > .rabbit-mirror-external-placeholder-body{
   border-top:0 !important;
+}
+
+
+/* beta.14.35: automatic outer-frame palette for main-API and independent-API mirrors.
+ * Only nodes explicitly stamped by the one-shot palette extractor are affected.
+ * Generated RabbitMirror descendants keep their own CSS and responsive rules. */
+#chat details[data-rabbit-mirror-auto-frame="true"] {
+  border-color:var(--rm-auto-frame-border) !important;
+  outline:1px solid var(--rm-auto-frame-border) !important;
+  outline-offset:-1px !important;
+}
+#chat details[data-rabbit-mirror-auto-frame="true"] > summary {
+  background-color:var(--rm-auto-frame-summary) !important;
+  color:var(--rm-auto-frame-text) !important;
+  border-color:var(--rm-auto-frame-border) !important;
+  text-shadow:0 1px 1px rgba(0,0,0,.10) !important;
+}
+#chat details[data-rabbit-mirror-auto-frame="true"][open] > summary {
+  border-bottom-color:var(--rm-auto-frame-border) !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rabbit-mirror-auto-frame="true"] {
+  border-color:var(--rm-auto-frame-border) !important;
+  background-color:var(--rm-auto-frame-surface) !important;
+  box-shadow:0 1px 0 rgba(255,255,255,.08) inset, 0 5px 18px var(--rm-auto-frame-shadow) !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rabbit-mirror-auto-frame="true"] > details[data-rabbit-mirror-external-details="true"] {
+  outline:0 !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rabbit-mirror-auto-frame="true"] > details[data-rabbit-mirror-external-details="true"] > summary {
+  background-color:var(--rm-auto-frame-summary) !important;
+  color:var(--rm-auto-frame-text) !important;
+  border-bottom-color:var(--rm-auto-frame-border) !important;
 }
