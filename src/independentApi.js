@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h21t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h21t';
-import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h21t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h22t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h22t';
+import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h22t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.21-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.22-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -122,7 +122,7 @@ async function fetchIndependentUrl(url,options={}){
     custom_include_headers,
     custom_include_body:'',
     custom_exclude_body:'',
-    stream:false,
+    stream:remoteBody.stream!==false,
    };
    return await fetch(ST_CUSTOM_GENERATE_ENDPOINT,{
     method:'POST',
@@ -213,32 +213,48 @@ function extractMirrorInner(raw){
  return '';
 }
 function responseFinishReason(payload){ return String(payload?.choices?.[0]?.finish_reason ?? payload?.stop_reason ?? payload?.candidates?.[0]?.finishReason ?? '').trim(); }
-function independentRequestProfiles(st,systemPrompt,userPrompt){
+function independentRequestProfiles(st,systemPrompt,userPrompt,options={}){
  const model=st.independentApiModel;
- const maxTokens=Number(st.independentApiMaxTokens)||5000;
- const temperature=Number.isFinite(Number(st.independentApiTemperature))?Number(st.independentApiTemperature):0.8;
+ const maxTokens=Number(options.maxTokens ?? st.independentApiMaxTokens)||5000;
+ const temperature=Number.isFinite(Number(options.temperature ?? st.independentApiTemperature))?Number(options.temperature ?? st.independentApiTemperature):0.8;
+ const stream=options.stream!==false;
  const systemUser=[{role:'system',content:systemPrompt},{role:'user',content:userPrompt}];
  const userOnly=[{role:'user',content:`${systemPrompt}\n\n${userPrompt}`}];
  const profiles={
-  chat_system_user_full:{kind:'chat',body:{model,messages:systemUser,temperature,max_tokens:maxTokens,stream:false}},
-  chat_system_user_completion:{kind:'chat',body:{model,messages:systemUser,temperature,max_completion_tokens:maxTokens,stream:false}},
-  chat_system_user_minimal:{kind:'chat',body:{model,messages:systemUser}},
-  chat_user_only_full:{kind:'chat',body:{model,messages:userOnly,temperature,max_tokens:maxTokens,stream:false}},
-  chat_user_only_completion:{kind:'chat',body:{model,messages:userOnly,temperature,max_completion_tokens:maxTokens,stream:false}},
-  chat_user_only_minimal:{kind:'chat',body:{model,messages:userOnly}},
+  chat_system_user_full:{kind:'chat',body:{model,messages:systemUser,temperature,max_tokens:maxTokens,stream}},
+  chat_system_user_completion:{kind:'chat',body:{model,messages:systemUser,temperature,max_completion_tokens:maxTokens,stream}},
+  chat_system_user_minimal:{kind:'chat',body:{model,messages:systemUser,stream}},
+  chat_user_only_full:{kind:'chat',body:{model,messages:userOnly,temperature,max_tokens:maxTokens,stream}},
+  chat_user_only_completion:{kind:'chat',body:{model,messages:userOnly,temperature,max_completion_tokens:maxTokens,stream}},
+  chat_user_only_minimal:{kind:'chat',body:{model,messages:userOnly,stream}},
+  chat_system_user_nostream:{kind:'chat',body:{model,messages:systemUser,temperature,max_tokens:maxTokens,stream:false}},
+  chat_user_only_nostream:{kind:'chat',body:{model,messages:userOnly,temperature,max_tokens:maxTokens,stream:false}},
  };
  const remembered=getRememberedApiProfile(st);
- const order=[remembered,'chat_system_user_full','chat_system_user_completion','chat_system_user_minimal','chat_user_only_full','chat_user_only_completion','chat_user_only_minimal'].filter(Boolean);
+ const order=[remembered,'chat_system_user_full','chat_system_user_completion','chat_system_user_minimal','chat_user_only_full','chat_user_only_completion','chat_user_only_minimal','chat_system_user_nostream','chat_user_only_nostream'].filter(Boolean);
  return [...new Set(order)].map(name=>({name,...profiles[name]})).filter(x=>x.body&&x.kind);
 }
+
+function compactRemoteError(status,raw=''){
+ const source=String(raw||'');
+ if(Number(status)===524 || /\b524\b|a timeout occurred|cloudflare/i.test(source)){
+   return '上游生成等待超时（HTTP 524）。请求已经到达副 API，但网关在时限内没有收到模型返回的数据。';
+ }
+ if(/^\s*<!doctype html|<html[\s>]/i.test(source)){
+   const text=source.replace(/<script\b[\s\S]*?<\/script>/gi,' ').replace(/<style\b[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/\s+/g,' ').trim();
+   return text.slice(0,220) || `HTTP ${status}`;
+ }
+ return source.replace(/\s+/g,' ').trim().slice(0,220);
+}
+
 function retryableParameterError(status,result){
  if(![400,422,500].includes(Number(status))) return false;
  const text=`${result?.raw||''} ${safeJson(result?.payload||{},4000)}`;
  return /invalid[_ -]?request|invalid[_ -]?parameter|parameter|参数错误|参数有误|unsupported|not supported|unknown field|max_tokens|max_completion_tokens|temperature|stream/i.test(text);
 }
-async function requestIndependentCompletion(st,systemPrompt,userPrompt){
+async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={}){
  const attempts=[];
- for(const profile of independentRequestProfiles(st,systemPrompt,userPrompt)){
+ for(const profile of independentRequestProfiles(st,systemPrompt,userPrompt,options)){
   const url=endpoint(st.independentApiBaseUrl,profile.kind==='responses'?'/responses':'/chat/completions');
   const r=await fetchIndependentUrl(url,{method:'POST',headers:headers(st),body:JSON.stringify(profile.body)});
   const result=await readApiResponse(r);
@@ -257,9 +273,9 @@ async function callIndependentApi(ctx,index,msg){
  const userPrompt=`请根据以下当前聊天、可用推理、角色卡、Persona、世界书与作者注释生成兔子镜：\n\n${contextBundle(ctx,index)}`;
  const {response:r,result,profile,attempts}=await requestIndependentCompletion(st,systemPrompt,userPrompt);
  if(!r.ok){
-   const detail=result.raw||'';
+   const detail=compactRemoteError(r.status,result.raw||'');
    const tried=attempts.map(x=>x.profile).join(' → ');
-   throw new Error(`独立 API 请求失败：HTTP ${r.status}${detail?` · ${detail.slice(0,220)}`:''}${tried?`；已尝试兼容参数：${tried}`:''}`);
+   throw new Error(`独立 API 请求失败：HTTP ${r.status}${detail?` · ${detail}`:''}${tried?`；已尝试兼容参数：${tried}`:''}`);
  }
  const raw=String(result.text||'').trim();
  if(!raw){
@@ -510,10 +526,11 @@ async function diagnoseIndependentApi(){
  }
  const systemPrompt='你正在执行 API 连接检测。严格只回复 OK。';
  const userPrompt='请回复 OK。';
- const {response,result,profile,attempts}=await requestIndependentCompletion(st,systemPrompt,userPrompt);
+ const {response,result,profile,attempts}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{maxTokens:32,temperature:0,stream:true});
  if(!response?.ok){
    const tried=attempts.map(item=>`${item.profile}(HTTP ${item.status})`).join(' → ');
-   throw new Error(`${modelNote}；生成接口检测失败：HTTP ${response?.status||'未知'}${result?.raw?` · ${String(result.raw).slice(0,180)}`:''}${tried?`；尝试：${tried}`:''}`);
+   const detail=compactRemoteError(response?.status,result?.raw||'');
+   throw new Error(`${modelNote}；生成接口检测失败：HTTP ${response?.status||'未知'}${detail?` · ${detail}`:''}${tried?`；尝试：${tried}`:''}`);
  }
  const parsed=String(result?.text||'').trim();
  return `${modelNote}；生成接口检测成功，参数模式：${profile}${parsed?`，返回：${parsed.slice(0,80)}`:'，但未解析到文本'}`;
