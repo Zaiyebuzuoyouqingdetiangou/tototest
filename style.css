@@ -8,30 +8,20 @@
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"]{
   display:block !important;
-  width:calc(100% - 20px) !important;
+  width:auto !important;
   max-width:none !important;
   min-width:0 !important;
-  box-sizing:border-box !important;
-  margin:14px 10px 16px !important;
+  margin:1em 0 0 !important;
   padding:0 !important;
-  border:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.30)) !important;
-  border-radius:16px !important;
-  background:var(--SmartThemeBlurTintColor,rgba(255,255,255,.94)) !important;
-  box-shadow:0 8px 24px rgba(0,0,0,.10),0 1px 0 rgba(255,255,255,.20) inset !important;
-  overflow:hidden !important;
-  contain:layout style !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  overflow:visible !important;
+  contain:none !important;
   clear:both !important;
 }
-
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details[data-rabbit-mirror-external-details="true"]{
-  display:block !important; width:100% !important; max-width:none !important; min-width:0 !important;
-  box-sizing:border-box !important; margin:0 !important; border:0 !important; border-radius:0 !important;
-  background:transparent !important; box-shadow:none !important; overflow:visible !important;
-}
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"] > details[data-rabbit-mirror-external-details="true"] > summary{
-  box-sizing:border-box !important; margin:0 !important; padding:11px 14px !important;
-}
-/* 1.1.0-beta.14.45-test: settings drawer mobile performance containment. */
+/* 1.1.0-beta.14.47-test: settings drawer mobile performance containment. */
 .rabbit-mirror-settings {
     contain: layout style !important;
 }
@@ -171,7 +161,7 @@ toto[data-rabbit-mirror="true"] summary {
 
 
 
-/* 1.1.0-beta.14.45-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
+/* 1.1.0-beta.14.47-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
 [data-rabbit-mirror-tool-entry-host] {
   all: initial !important;
   display: inline-flex !important;
@@ -483,10 +473,10 @@ toto[data-rabbit-mirror="true"] summary {
   margin:10px auto 14px !important;
   padding:0 !important;
   border:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.30)) !important;
-  border-radius:16px !important;
-  background:var(--SmartThemeBlurTintColor,rgba(255,255,255,.94)) !important;
-  box-shadow:0 8px 24px rgba(0,0,0,.10),0 1px 0 rgba(255,255,255,.20) inset !important;
-  overflow:hidden !important;
+  border-radius:12px !important;
+  background:var(--SmartThemeBlurTintColor,rgba(127,127,127,.055)) !important;
+  box-shadow:0 1px 0 rgba(255,255,255,.08) inset !important;
+  overflow:visible !important;
   contain:layout style !important;
   clear:both !important;
   z-index:1 !important;
@@ -555,12 +545,6 @@ toto[data-rabbit-mirror="true"] summary {
   border-top:0 !important;
 }
 
-
-/* beta.14.41: preserve the original rounded white frame geometry and dye that frame only. */
-#chat details[data-rabbit-mirror-auto-frame="true"] { border-radius:16px !important; border-color:var(--rm-auto-frame-border) !important; background:var(--rm-auto-frame-surface) !important; box-shadow:0 8px 24px var(--rm-auto-frame-shadow) !important; overflow:hidden !important; }
-#chat details[data-rabbit-mirror-auto-frame="true"] > summary { background:var(--rm-auto-frame-summary) !important; border-color:var(--rm-auto-frame-border) !important; color:var(--rm-auto-frame-text) !important; }
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rabbit-mirror-auto-frame="true"] { border-radius:16px !important; border-color:var(--rm-auto-frame-border) !important; background:var(--rm-auto-frame-surface) !important; box-shadow:0 8px 24px var(--rm-auto-frame-shadow),0 1px 0 rgba(255,255,255,.14) inset !important; overflow:hidden !important; }
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rabbit-mirror-auto-frame="true"] > details[data-rabbit-mirror-external-details="true"] > summary { background:var(--rm-auto-frame-summary) !important; border-color:var(--rm-auto-frame-border) !important; color:var(--rm-auto-frame-text) !important; }
 
 /* beta.14.39: independent RabbitMirror history viewer opened from the feedback cat. */
 .rabbit-mirror-history-overlay{

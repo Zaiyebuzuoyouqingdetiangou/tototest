@@ -1,4 +1,4 @@
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h45t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h47t';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';

@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h45t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h45t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h45t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h47t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h47t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h47t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.45-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.47-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -1034,8 +1034,37 @@ async function generateFor(index,msg,force=false,sourceAware=false){
  await task;
 }
 function independentHostForRoot(root){
- const host=root?.matches?.(`[${SOURCE_ATTR}]`) ? root : root?.closest?.(`[${SOURCE_ATTR}]`);
- return host?.dataset?.rmSource==='independent' ? host : null;
+ if(!root) return null;
+ const direct=root?.matches?.(`[${SOURCE_ATTR}]`) ? root : root?.closest?.(`[${SOURCE_ATTR}]`);
+ if(direct?.dataset?.rmSource==='independent') return direct;
+ const ownerDetails=root?.closest?.('[data-rabbit-mirror-external-details], details');
+ const ownerHost=ownerDetails?.closest?.(`[${SOURCE_ATTR}]`);
+ if(ownerHost?.dataset?.rmSource==='independent') return ownerHost;
+ const toolHost=root?.closest?.('[data-rabbit-mirror-tool-entry-host]');
+ const siblingHost=toolHost?.parentElement?.closest?.(`[${SOURCE_ATTR}]`);
+ return siblingHost?.dataset?.rmSource==='independent' ? siblingHost : null;
+}
+function messageIndexForExternalHost(host){
+ if(!host) return null;
+ const ctx=getContext();
+ const owner=String(host.dataset?.rmOwnerMesid||host.dataset?.rmExternalOwnerMessage||'').trim();
+ if(/^\d+$/.test(owner)){
+  const index=Number(owner);
+  if(Number.isInteger(index) && index>=0 && ctx.chat?.[index] && !ctx.chat[index]?.is_user) return index;
+ }
+ const ownerEl=host.closest?.('.mes[mesid], [mesid].mes') || host.parentElement?.closest?.('.mes[mesid], [mesid].mes');
+ const mesid=String(ownerEl?.getAttribute?.('mesid')||'').trim();
+ if(/^\d+$/.test(mesid)){
+  const index=Number(mesid);
+  if(Number.isInteger(index) && index>=0 && ctx.chat?.[index] && !ctx.chat[index]?.is_user) return index;
+ }
+ const key=String(host.dataset?.rmKey||'');
+ const match=key.match(/(?:^|:)(\d+):(\d+)$/);
+ if(match){
+  const index=Number(match[1]);
+  if(Number.isInteger(index) && index>=0 && ctx.chat?.[index] && !ctx.chat[index]?.is_user) return index;
+ }
+ return null;
 }
 function independentSlotForHost(host){
  const index=messageIndexForExternalHost(host); if(index===null) return null;

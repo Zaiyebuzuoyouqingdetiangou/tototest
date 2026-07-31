@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h45t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h45t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h47t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h47t';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h45t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h45t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h45t';
+} from './feedbackCat.js?rmv=1.1.0b14h47t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h47t';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h47t';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.45-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.47-test';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9597,255 +9597,32 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 }
 
 
-// beta.14.38: conservative one-shot frame accent for both main-API and independent-API mirrors.
-// Preserve any frame authored by the model. Only plain/default outer frames receive a subtle accent
-// sampled from the mirror's outermost visual surface; descendants and their own CSS remain untouched.
-const AUTO_FRAME_ATTR = 'data-rabbit-mirror-auto-frame';
-const AUTO_FRAME_VERSION_ATTR = 'data-rabbit-mirror-auto-frame-version';
-const AUTO_FRAME_SOURCE_ATTR = 'data-rabbit-mirror-auto-frame-source';
-const AUTO_FRAME_PRESERVED_ATTR = 'data-rabbit-mirror-auto-frame-preserved';
+// beta.14.47: automatic frame recoloring was removed.
+// Clean attributes and CSS variables written by beta.14.35-14.46 so cached mirrors
+// immediately return to the original external-frame rendering without touching generated content.
+function clearLegacyRabbitMirrorAutoFrameArtifacts(root) {
+    if (!root) return;
+    const targets = new Set();
+    if (root.nodeType === 1) targets.add(root);
+    root.closest?.('.rabbit-mirror-external-shell[data-rm-source="independent"]') && targets.add(root.closest('.rabbit-mirror-external-shell[data-rm-source="independent"]'));
+    root.querySelectorAll?.('[data-rabbit-mirror-auto-frame], [data-rabbit-mirror-auto-frame-version], [data-rabbit-mirror-auto-frame-source], [data-rabbit-mirror-auto-frame-preserved], [style*="--rm-auto-frame-"]').forEach(node => targets.add(node));
 
-function clampAutoFrameChannel(value) {
-    return Math.max(0, Math.min(255, Math.round(Number(value) || 0)));
-}
-
-function parseAutoFrameCssColor(value) {
-    const text = String(value || '').trim().toLowerCase();
-    if (!text || text === 'transparent' || text === 'none' || text === 'currentcolor') return null;
-    const hex = text.match(/^#([0-9a-f]{3,8})$/i)?.[1];
-    if (hex) {
-        const expanded = hex.length <= 4 ? [...hex].map(ch => ch + ch).join('') : hex;
-        if (![6, 8].includes(expanded.length)) return null;
-        return {
-            r: parseInt(expanded.slice(0, 2), 16),
-            g: parseInt(expanded.slice(2, 4), 16),
-            b: parseInt(expanded.slice(4, 6), 16),
-            a: expanded.length === 8 ? parseInt(expanded.slice(6, 8), 16) / 255 : 1,
-        };
+    for (const target of targets) {
+        target.removeAttribute?.('data-rabbit-mirror-auto-frame');
+        target.removeAttribute?.('data-rabbit-mirror-auto-frame-version');
+        target.removeAttribute?.('data-rabbit-mirror-auto-frame-source');
+        target.removeAttribute?.('data-rabbit-mirror-auto-frame-preserved');
+        if (!target.style) continue;
+        for (const name of [
+            '--rm-auto-frame-base',
+            '--rm-auto-frame-summary',
+            '--rm-auto-frame-border',
+            '--rm-auto-frame-surface',
+            '--rm-auto-frame-text',
+            '--rm-auto-frame-shadow',
+        ]) target.style.removeProperty(name);
+        if (!String(target.getAttribute?.('style') || '').trim()) target.removeAttribute?.('style');
     }
-    const rgb = text.match(/^rgba?\((.+)\)$/i);
-    if (rgb) {
-        const parts = rgb[1].replace(/[\/,]/g, ' ').match(/[+-]?(?:\d+\.?\d*|\.\d+)%?/g) || [];
-        if (parts.length < 3) return null;
-        const channel = token => token.endsWith('%') ? Number.parseFloat(token) * 2.55 : Number.parseFloat(token);
-        const alpha = token => token?.endsWith('%') ? Number.parseFloat(token) / 100 : Number.parseFloat(token ?? '1');
-        const parsed = { r: channel(parts[0]), g: channel(parts[1]), b: channel(parts[2]), a: alpha(parts[3]) };
-        if (![parsed.r, parsed.g, parsed.b, parsed.a].every(Number.isFinite)) return null;
-        return { r: clampAutoFrameChannel(parsed.r), g: clampAutoFrameChannel(parsed.g), b: clampAutoFrameChannel(parsed.b), a: Math.max(0, Math.min(1, parsed.a)) };
-    }
-    const hsl = text.match(/^hsla?\((.+)\)$/i);
-    if (hsl) {
-        const parts = hsl[1].replace(/[\/,]/g, ' ').match(/[+-]?(?:\d+\.?\d*|\.\d+)%?/g) || [];
-        if (parts.length < 3) return null;
-        let h = Number.parseFloat(parts[0]);
-        const sat = Number.parseFloat(parts[1]) / 100;
-        const light = Number.parseFloat(parts[2]) / 100;
-        const a = parts[3]?.endsWith('%') ? Number.parseFloat(parts[3]) / 100 : Number.parseFloat(parts[3] ?? '1');
-        if (![h, sat, light, a].every(Number.isFinite)) return null;
-        h = ((h % 360) + 360) % 360;
-        const c = (1 - Math.abs(2 * light - 1)) * sat;
-        const x = c * (1 - Math.abs((h / 60) % 2 - 1));
-        const m = light - c / 2;
-        let rp = 0, gp = 0, bp = 0;
-        if (h < 60) [rp, gp, bp] = [c, x, 0];
-        else if (h < 120) [rp, gp, bp] = [x, c, 0];
-        else if (h < 180) [rp, gp, bp] = [0, c, x];
-        else if (h < 240) [rp, gp, bp] = [0, x, c];
-        else if (h < 300) [rp, gp, bp] = [x, 0, c];
-        else [rp, gp, bp] = [c, 0, x];
-        return { r: clampAutoFrameChannel((rp + m) * 255), g: clampAutoFrameChannel((gp + m) * 255), b: clampAutoFrameChannel((bp + m) * 255), a: Math.max(0, Math.min(1, a)) };
-    }
-    return null;
-}
-
-function autoFrameColorTokens(value) {
-    const matches = String(value || '').match(/rgba?\([^)]*\)|hsla?\([^)]*\)|#[0-9a-f]{3,8}/gi) || [];
-    return matches.map(parseAutoFrameCssColor).filter(color => color && color.a >= 0.12);
-}
-
-function mixAutoFrameColors(colors) {
-    const valid = (colors || []).filter(color => color && color.a >= 0.12);
-    if (!valid.length) return null;
-    let weight = 0, r = 0, g = 0, b = 0;
-    valid.slice(0, 6).forEach((color, index) => {
-        const current = Math.max(0.15, color.a) * (1 / (1 + index * 0.16));
-        weight += current;
-        r += color.r * current;
-        g += color.g * current;
-        b += color.b * current;
-    });
-    return weight ? { r: clampAutoFrameChannel(r / weight), g: clampAutoFrameChannel(g / weight), b: clampAutoFrameChannel(b / weight), a: 1 } : null;
-}
-
-function autoFrameRelativeLuminance(color) {
-    const channel = value => {
-        const normalized = value / 255;
-        return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
-    };
-    return 0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b);
-}
-
-function blendAutoFrameColor(color, target, ratio) {
-    const amount = Math.max(0, Math.min(1, ratio));
-    return {
-        r: clampAutoFrameChannel(color.r + (target.r - color.r) * amount),
-        g: clampAutoFrameChannel(color.g + (target.g - color.g) * amount),
-        b: clampAutoFrameChannel(color.b + (target.b - color.b) * amount),
-        a: 1,
-    };
-}
-
-function autoFrameRgba(color, alpha) {
-    return `rgba(${color.r}, ${color.g}, ${color.b}, ${Math.max(0, Math.min(1, alpha)).toFixed(3)})`;
-}
-
-function autoFrameOuterDetails(root) {
-    if (!root?.querySelector) return null;
-    if (root.matches?.('details') && isRabbitMirrorDetails(root)) return root;
-    const direct = root.querySelector?.(':scope > details');
-    if (direct && isRabbitMirrorDetails(direct)) return direct;
-    return [...(root.querySelectorAll?.('details') || [])].find(isRabbitMirrorDetails) || null;
-}
-
-function clearRabbitMirrorAutoFrameTheme(target) {
-    if (!target?.style) return;
-    for (const name of [
-        '--rm-auto-frame-base',
-        '--rm-auto-frame-summary',
-        '--rm-auto-frame-border',
-        '--rm-auto-frame-surface',
-        '--rm-auto-frame-text',
-        '--rm-auto-frame-shadow',
-    ]) target.style.removeProperty(name);
-    target.removeAttribute(AUTO_FRAME_ATTR);
-    target.removeAttribute(AUTO_FRAME_SOURCE_ATTR);
-}
-
-function hasAuthoredRabbitMirrorOuterFrame(details) {
-    const summary = details?.querySelector?.(':scope > summary');
-    const authoredProps = /(?:^|;)\s*(?:background(?:-color|-image)?|border(?:-[^:;]+)?|box-shadow|outline|color)\s*:/i;
-    const detailsStyle = String(details?.getAttribute?.('style') || '');
-    const summaryStyle = String(summary?.getAttribute?.('style') || '');
-    return authoredProps.test(detailsStyle) || authoredProps.test(summaryStyle);
-}
-
-function readAutoFrameCandidate(element, source, score) {
-    let style = null;
-    try { style = getComputedStyle(element); } catch { return null; }
-    if (!style) return null;
-    const solid = parseAutoFrameCssColor(style.backgroundColor);
-    const gradient = style.backgroundImage && style.backgroundImage !== 'none'
-        ? mixAutoFrameColors(autoFrameColorTokens(style.backgroundImage))
-        : null;
-    const color = mixAutoFrameColors([gradient, solid]);
-    if (!color) return null;
-    const chroma = (Math.max(color.r, color.g, color.b) - Math.min(color.r, color.g, color.b)) / 255;
-    return { color, score: score + chroma * 2, source };
-}
-
-function extractRabbitMirrorAutoFrameColor(details) {
-    // Prefer the actual outer surface. Do not search deep content panels: a warm inner card must not
-    // recolor a dark outer mirror frame, which was the beta.14.35 regression.
-    const candidates = [];
-    const own = readAutoFrameCandidate(details, 'outer-details', 100);
-    if (own) candidates.push(own);
-
-    const excluded = 'summary, style, script, template, input, textarea, select, option, [data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-menu], [data-rabbit-mirror-feedback-cat-menu]';
-    const directChildren = [...(details?.children || [])].filter(child => !child.matches?.(excluded));
-    directChildren.slice(0, 5).forEach((child, index) => {
-        const direct = readAutoFrameCandidate(child, `direct-${index}`, 80 - index * 4);
-        if (direct) candidates.push(direct);
-        const firstVisual = [...(child.children || [])].find(grandchild => !grandchild.matches?.(excluded));
-        if (firstVisual) {
-            const nested = readAutoFrameCandidate(firstVisual, `direct-${index}-first`, 54 - index * 4);
-            if (nested) candidates.push(nested);
-        }
-    });
-
-    return candidates.sort((a, b) => b.score - a.score)[0] || null;
-}
-
-function currentAutoFrameSummaryBase(details) {
-    const summary = details?.querySelector?.(':scope > summary');
-    try {
-        const color = parseAutoFrameCssColor(summary ? getComputedStyle(summary).backgroundColor : '');
-        if (color?.a >= 0.12) return color;
-    } catch { /* ignore */ }
-    const luminance = autoFrameRelativeLuminance({ r: 245, g: 246, b: 248 });
-    return luminance >= 0 ? { r: 245, g: 246, b: 248, a: 1 } : { r: 245, g: 246, b: 248, a: 1 };
-}
-
-function writeRabbitMirrorAutoFrameVariables(target, palette, details) {
-    if (!target?.style || !palette?.color) return;
-    const base = palette.color;
-    const luminance = autoFrameRelativeLuminance(base);
-    const lightTarget = { r: 255, g: 255, b: 255 };
-    const darkTarget = { r: 8, g: 10, b: 16 };
-    // Keep the original rounded white-frame language, but dye the whole frame with a softened
-    // version of the mirror's own outer background. Dark mirrors stay recognizably dark; light
-    // mirrors stay airy. Only plugin-owned/default frames use these variables.
-    const surface = luminance < 0.22
-        ? blendAutoFrameColor(base, darkTarget, 0.18)
-        : blendAutoFrameColor(base, lightTarget, luminance > 0.72 ? 0.46 : 0.30);
-    const summary = luminance < 0.22
-        ? blendAutoFrameColor(base, darkTarget, 0.06)
-        : blendAutoFrameColor(base, lightTarget, luminance > 0.72 ? 0.32 : 0.18);
-    const border = luminance < 0.22
-        ? blendAutoFrameColor(base, lightTarget, 0.20)
-        : blendAutoFrameColor(base, darkTarget, 0.16);
-    const text = autoFrameRelativeLuminance(summary) < 0.42 ? { r: 248, g: 249, b: 252 } : { r: 28, g: 31, b: 38 };
-    target.style.setProperty('--rm-auto-frame-base', autoFrameRgba(base, 1));
-    target.style.setProperty('--rm-auto-frame-surface', autoFrameRgba(surface, 0.97));
-    target.style.setProperty('--rm-auto-frame-summary', autoFrameRgba(summary, 0.98));
-    target.style.setProperty('--rm-auto-frame-border', autoFrameRgba(border, 0.78));
-    target.style.setProperty('--rm-auto-frame-text', autoFrameRgba(text, 0.98));
-    target.style.setProperty('--rm-auto-frame-shadow', autoFrameRgba(border, luminance < 0.22 ? 0.22 : 0.14));
-    target.setAttribute(AUTO_FRAME_ATTR, 'true');
-    target.setAttribute(AUTO_FRAME_VERSION_ATTR, RUNTIME_VERSION);
-    target.setAttribute(AUTO_FRAME_SOURCE_ATTR, palette.source || 'computed');
-    target.removeAttribute(AUTO_FRAME_PRESERVED_ATTR);
-}
-
-function applyRabbitMirrorAutoFrameTheme(root, force = false) {
-    const details = autoFrameOuterDetails(root);
-    if (!details || !isInsideChatMessage(details)) return false;
-    if (details.classList?.contains('rabbit-mirror-external-placeholder')) return false;
-    if (!force && details.getAttribute(AUTO_FRAME_VERSION_ATTR) === RUNTIME_VERSION) return false;
-
-    const shell = details.closest?.('.rabbit-mirror-external-shell[data-rm-source="independent"]');
-    const authored = hasAuthoredRabbitMirrorOuterFrame(details);
-    const palette = extractRabbitMirrorAutoFrameColor(details);
-    if (shell) {
-        // Independent mode keeps the plugin-owned rounded frame. Dye only that frame;
-        // never flatten or recolor the generated mirror layout itself.
-        clearRabbitMirrorAutoFrameTheme(details);
-        details.setAttribute(AUTO_FRAME_VERSION_ATTR, RUNTIME_VERSION);
-        details.setAttribute(AUTO_FRAME_PRESERVED_ATTR, authored ? 'authored' : 'inside-shell');
-        if (palette) writeRabbitMirrorAutoFrameVariables(shell, palette, details);
-        else {
-            clearRabbitMirrorAutoFrameTheme(shell);
-            shell.setAttribute(AUTO_FRAME_VERSION_ATTR, RUNTIME_VERSION);
-            shell.setAttribute(AUTO_FRAME_PRESERVED_ATTR, 'no-color');
-        }
-        return !!palette;
-    }
-
-    if (authored) {
-        clearRabbitMirrorAutoFrameTheme(details);
-        details.setAttribute(AUTO_FRAME_VERSION_ATTR, RUNTIME_VERSION);
-        details.setAttribute(AUTO_FRAME_PRESERVED_ATTR, 'authored');
-        return true;
-    }
-
-    if (!palette) {
-        clearRabbitMirrorAutoFrameTheme(details);
-        details.setAttribute(AUTO_FRAME_VERSION_ATTR, RUNTIME_VERSION);
-        details.setAttribute(AUTO_FRAME_PRESERVED_ATTR, 'no-color');
-        return false;
-    }
-
-    writeRabbitMirrorAutoFrameVariables(details, palette, details);
-    return true;
 }
 
 
@@ -15999,9 +15776,9 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } 
     getRenderedRabbitMirrorInteractionRoots(scope).forEach(root => {
         if (!isInsideChatMessage(root)) return;
         try {
-            applyRabbitMirrorAutoFrameTheme(root);
+            clearLegacyRabbitMirrorAutoFrameArtifacts(root);
         } catch (error) {
-            console.debug('[RabbitMirror] automatic frame palette skipped for one mirror:', error);
+            console.debug('[RabbitMirror] legacy frame palette cleanup skipped for one mirror:', error);
         }
         try {
             installNestedDetailsReplacementContainment(root);

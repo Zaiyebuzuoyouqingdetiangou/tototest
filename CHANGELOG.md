@@ -1,22 +1,33 @@
-## 1.1.0-beta.14.45-test
+## 1.1.0-beta.14.47-test
+
+- 删除 beta.14.35-14.46 加入的背景色提取、整框染色、主题变量和主／副 API 自动补色逻辑。
+- 独立 API 恢复 beta.14.34 最初的外置圆框样式；“外置后内嵌”恢复透明宿主，不再额外包一层染色框。
+- 页面恢复时仅清理旧缓存遗留的 `data-rabbit-mirror-auto-frame*` 与 `--rm-auto-frame-*`，不修改兔子镜内部 HTML/CSS。
+- 挨打猫重说与历史、单宿主模式切换、正文稳定生成、维修回退均保持不变。
+
+## 1.1.0-beta.14.47-test
+- 修复挨打猫“重说/兔子镜历史”误报当前兔子镜不支持：补齐宿主到消息索引的反查，并兼容纯外置、外置后内嵌与旧缓存迁移宿主。
+- 重说仍仅作用于当前副 API 兔子镜，不修改正文。
+
+## 1.1.0-beta.14.47-test
 
 - 修复“纯外置”切换到“外置后内嵌”时复制第二个宿主：显示模式切换现在只迁移同一 DOM。
 - 同一聊天、消息、Swipe、正文指纹的旧外置与内嵌宿主按身份合并，只保留一条完整结果。
 - 显示模式切换不会重新请求副 API，也不会新增历史版本。
 
-## 1.1.0-beta.14.45-test
+## 1.1.0-beta.14.47-test
 - Added a cross-module/global in-flight lock keyed by chat, message, swipe and正文 fingerprint so duplicate trigger paths cannot start two independent RabbitMirror requests.
 - Added DOM identity deduplication and startup recovery that keeps one newest valid host per reply.
 - Added collapsed legacy-host recovery: invalid/empty ready shells are rebuilt from the saved complete HTML, preserving open state.
 
-## 1.1.0-beta.14.45-test
+## 1.1.0-beta.14.47-test
 
 - 修复正文重说时消息节点短暂消失导致稳定生成轮询直接退出、当前回复永远不再补生成兔子镜的问题。
 - 稳定生成调度在 30 秒窗口内容忍消息替换，并在新正文重新出现后重新计算 2.6 秒安静窗口。
 - source-aware 的 latest 调度统一走同一条可恢复轮询链，避免旧任务作废后没有新的入队机会。
 - 不修改圆润染色框、挨打猫重说与历史、维修回退、Prompt 或 Token 逻辑。
 
-## 1.1.0-beta.14.45-test
+## 1.1.0-beta.14.47-test
 - Independent API generation now polls the selected reply source and requires a 2.6-second continuous stable window after regeneration events, preventing an early reasoning-pass RabbitMirror and a later duplicate.
 - Maintenance Rabbit captures the current mirror DOM before a repair route changes it.
 - Added “返回修复前” to Maintenance Rabbit; it restores only the current mirror and leaves chat text/history untouched.

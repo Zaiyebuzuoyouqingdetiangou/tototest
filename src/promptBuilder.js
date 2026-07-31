@@ -1,9 +1,9 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.1.0b14h45t';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.1.0b14h45t';
-import { pickCombination } from './picker.js?rmv=1.1.0b14h45t';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=1.1.0b14h45t';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.1.0b14h45t';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.1.0b14h45t';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.1.0b14h47t';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.1.0b14h47t';
+import { pickCombination } from './picker.js?rmv=1.1.0b14h47t';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=1.1.0b14h47t';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.1.0b14h47t';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.1.0b14h47t';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
