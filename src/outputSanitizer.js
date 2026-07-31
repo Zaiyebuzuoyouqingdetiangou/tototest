@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h39t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h39t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h41t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h41t';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h39t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h39t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h39t';
+} from './feedbackCat.js?rmv=1.1.0b14h41t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h41t';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h41t';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.39-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.41-test';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9815,31 +9815,36 @@ function applyRabbitMirrorAutoFrameTheme(root, force = false) {
     const shell = details.closest?.('.rabbit-mirror-external-shell[data-rm-source="independent"]');
     const authored = hasAuthoredRabbitMirrorOuterFrame(details);
     const palette = extractRabbitMirrorAutoFrameColor(details);
-    if (authored) {
-        // Preserve the model-authored details exactly. The surrounding plugin-owned white rounded
-        // shell may still be dyed so main/secondary mirrors share the requested framed appearance.
+    if (shell) {
+        // Independent mode keeps the plugin-owned rounded frame. Dye only that frame;
+        // never flatten or recolor the generated mirror layout itself.
         clearRabbitMirrorAutoFrameTheme(details);
         details.setAttribute(AUTO_FRAME_VERSION_ATTR, RUNTIME_VERSION);
-        details.setAttribute(AUTO_FRAME_PRESERVED_ATTR, 'authored');
-        if (shell && palette) writeRabbitMirrorAutoFrameVariables(shell, palette, details);
-        else if (shell) {
+        details.setAttribute(AUTO_FRAME_PRESERVED_ATTR, authored ? 'authored' : 'inside-shell');
+        if (palette) writeRabbitMirrorAutoFrameVariables(shell, palette, details);
+        else {
             clearRabbitMirrorAutoFrameTheme(shell);
             shell.setAttribute(AUTO_FRAME_VERSION_ATTR, RUNTIME_VERSION);
             shell.setAttribute(AUTO_FRAME_PRESERVED_ATTR, 'no-color');
         }
+        return !!palette;
+    }
+
+    if (authored) {
+        clearRabbitMirrorAutoFrameTheme(details);
+        details.setAttribute(AUTO_FRAME_VERSION_ATTR, RUNTIME_VERSION);
+        details.setAttribute(AUTO_FRAME_PRESERVED_ATTR, 'authored');
         return true;
     }
 
     if (!palette) {
         clearRabbitMirrorAutoFrameTheme(details);
-        if (shell) clearRabbitMirrorAutoFrameTheme(shell);
         details.setAttribute(AUTO_FRAME_VERSION_ATTR, RUNTIME_VERSION);
         details.setAttribute(AUTO_FRAME_PRESERVED_ATTR, 'no-color');
         return false;
     }
 
     writeRabbitMirrorAutoFrameVariables(details, palette, details);
-    if (shell) writeRabbitMirrorAutoFrameVariables(shell, palette, details);
     return true;
 }
 
@@ -14183,7 +14188,11 @@ function showFeedbackCatMenu(root, button, draft = null) {
         : lastReceipt
             ? `<div class="rabbit-mirror-feedback-cat-status">当前没有生效中的反馈。</div>${receiptLine}`
             : '<div class="rabbit-mirror-feedback-cat-status">可同时选择多项；关闭而未提交不会影响后续生成。</div>';
-    const independentActions = root?.closest?.('[data-rabbit-mirror-external-source]')?.getAttribute?.('data-rm-source') === 'independent'
+    const independentHost = root?.matches?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]')
+        ? root
+        : root?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]')
+          || root?.querySelector?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]');
+    const independentActions = independentHost
         ? `<div class="rabbit-mirror-feedback-cat-actions rabbit-mirror-feedback-cat-mirror-actions">
             <button type="button" data-rm-feedback-action="resay">↻ 重说</button>
             <button type="button" data-rm-feedback-action="history">◷ 兔子镜历史</button>
@@ -15089,7 +15098,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.04-test';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.05-test';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。

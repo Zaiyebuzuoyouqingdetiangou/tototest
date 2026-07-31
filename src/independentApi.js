@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h39t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h39t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h39t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h41t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h41t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h41t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.39-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.41-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -22,11 +22,9 @@ let syncRunning = false;
 let externalGeometryFrame = 0;
 let externalGeometryListenersInstalled = false;
 const pending = new Map();
-let externalActionListenerInstalled = false;
-let externalActionWindowPointerHandler = null;
-let externalActionWindowClickHandler = null;
 let feedbackActionListenerInstalled = false;
 const orphanExternalHostTimers = new Map();
+const messageSourceRevisions = new Map();
 
 function currentRuntime(){ return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION; }
 function readStore(){ try { const v=JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); return v&&typeof v==='object'?v:{}; } catch { return {}; } }
@@ -125,6 +123,18 @@ function messageBody(el){ return el?.querySelector?.('.mes_text') || el; }
 function assistantMessages(ctx){ const chat=Array.isArray(ctx.chat)?ctx.chat:[]; return chat.map((m,i)=>({m,i})).filter(x=>!x.m?.is_user && typeof x.m?.mes==='string'); }
 function reasoningOf(m){ return String(m?.reasoning ?? m?.extra?.reasoning ?? m?.extra?.reasoning_content ?? m?.extra?.thoughts ?? '').trim(); }
 function messageSourceFingerprint(m){ return hashText(String(m?.mes||'')); }
+function observeMessageSourceRevision(ctx,index,msg){
+ const slot=messageSlotKey(ctx,index,msg); const sourceHash=messageSourceFingerprint(msg);
+ const previous=messageSourceRevisions.get(slot);
+ const revision=previous && previous.sourceHash===sourceHash ? previous.revision : Number(previous?.revision||0)+1;
+ const value={slot,sourceHash,revision,seenAt:Date.now()};
+ messageSourceRevisions.set(slot,value);
+ if(messageSourceRevisions.size>400){
+  const stale=[...messageSourceRevisions.entries()].sort((a,b)=>Number(a[1]?.seenAt||0)-Number(b[1]?.seenAt||0)).slice(0,messageSourceRevisions.size-320);
+  for(const [key] of stale) messageSourceRevisions.delete(key);
+ }
+ return value;
+}
 function safeJson(value,max=24000){ try { const seen=new WeakSet(); const t=JSON.stringify(value,(key,item)=>{ if(typeof item==='function') return `[Function ${item.name||'anonymous'}]`; if(item&&typeof item==='object'){ if(seen.has(item)) return '[Circular]'; seen.add(item); } return item; },2); return t.length>max?t.slice(0,max)+'\n…[截断]':t; } catch { return ''; } }
 function contextBundle(ctx,targetIndex){
  const chat=Array.isArray(ctx.chat)?ctx.chat:[];
@@ -427,13 +437,32 @@ function independentPlacementForState(state='ready'){
 }
 function inlineAnchorForMessage(el,create=false){
  const body=messageBody(el);
- if(!body) return null;
- let anchor=[...(body.querySelectorAll?.(`:scope > [${INLINE_ANCHOR_ATTR}]`)||[])][0] || null;
+ if(!el||!body) return null;
+ // Never place RabbitMirror's inline anchor inside .mes_text. SillyTavern and
+ // some swipe/regenerate plugins replace or serialize that node while a new
+ // reply is being committed; an extension-owned child there can make the old
+ // rendered message win the final repaint. Keep the same visual position, but
+ // use a namespaced sibling immediately after .mes_text instead.
+ let anchor=[...(el.querySelectorAll?.(`:scope > [${INLINE_ANCHOR_ATTR}]`)||[])][0] || null;
+ const legacy=[...(body.querySelectorAll?.(`:scope > [${INLINE_ANCHOR_ATTR}]`)||[])][0] || null;
+ if(!anchor && legacy) anchor=legacy;
+ if(anchor && anchor.parentElement!==el){
+  body.insertAdjacentElement?.('afterend',anchor);
+  if(anchor.parentElement!==el) el.append(anchor);
+ }
  if(!anchor && create){
   anchor=document.createElement('div');
   anchor.setAttribute(INLINE_ANCHOR_ATTR,'true');
   anchor.dataset.rmOwnerMesid=externalOwnerMesid(el);
-  body.append(anchor);
+  body.insertAdjacentElement?.('afterend',anchor);
+  if(anchor.parentElement!==el) el.append(anchor);
+ }
+ for(const duplicate of [...(el.querySelectorAll?.(`:scope > [${INLINE_ANCHOR_ATTR}]`)||[])]){
+  if(duplicate!==anchor){
+   const host=duplicate.querySelector?.(`[${SOURCE_ATTR}]`);
+   if(host&&anchor) anchor.append(host);
+   duplicate.remove();
+  }
  }
  return anchor;
 }
@@ -708,50 +737,7 @@ function setPlaceholderSummary(details,text){
  }
  label.textContent=text;
 }
-function externalActionButtonFromEvent(event){
- const current=event?.currentTarget;
- if(current?.matches?.('[data-rabbit-mirror-external-action]')) return current;
- return event?.target?.closest?.('[data-rabbit-mirror-external-action]') || null;
-}
-function bindExternalActionButton(button){
- if(!button?.addEventListener) return button;
- if(button.dataset.rmExternalActionBound===RUNTIME_VERSION) return button;
- button.dataset.rmExternalActionBound=RUNTIME_VERSION;
- const activate=event=>{
-   const now=Date.now();
-   const last=Number(button.dataset.rmExternalPointerAt||0);
-   if(event.type==='click' && last && now-last<900){
-     event.preventDefault?.();
-     event.stopPropagation?.();
-     return;
-   }
-   if(event.type==='pointerup') button.dataset.rmExternalPointerAt=String(now);
-   void handleExternalActionClick(event);
- };
- button.addEventListener('pointerup',activate,true);
- button.addEventListener('click',activate,true);
- return button;
-}
-function bindExternalActionButtons(scope=document){
- for(const button of scope?.querySelectorAll?.('[data-rabbit-mirror-external-action]')||[]) bindExternalActionButton(button);
-}
-function externalErrorActions(){
- const actions=document.createElement('div');
- actions.className='rabbit-mirror-external-error-actions';
- const retry=document.createElement('button');
- retry.type='button'; retry.className='menu_button rabbit-mirror-external-error-action';
- retry.setAttribute('data-rabbit-mirror-external-action','retry');
- retry.textContent='重新生成';
- const test=document.createElement('button');
- test.type='button'; test.className='menu_button rabbit-mirror-external-error-action';
- test.setAttribute('data-rabbit-mirror-external-action','test-api');
- test.textContent='检测 API';
- bindExternalActionButton(retry);
- bindExternalActionButton(test);
- actions.append(retry,test);
- return actions;
-}
-function renderExternalErrorBody(details,text='',statusText=''){
+function renderExternalErrorBody(details,text=''){
  if(!details) return null;
  let body=details.querySelector(':scope > .rabbit-mirror-external-placeholder-body');
  if(!body){ body=document.createElement('div'); body.className='rabbit-mirror-external-placeholder-body'; details.append(body); }
@@ -759,13 +745,7 @@ function renderExternalErrorBody(details,text='',statusText=''){
  const message=document.createElement('div');
  message.className='rabbit-mirror-external-error-message';
  message.textContent=String(text||'独立 API 生成失败。');
- const status=document.createElement('div');
- status.className='rabbit-mirror-external-api-test-status';
- status.setAttribute('data-rabbit-mirror-external-api-test-status','true');
- status.textContent=String(statusText||'');
- if(!statusText) status.hidden=true;
- body.append(message,status,externalErrorActions());
- bindExternalActionButtons(body);
+ body.append(message);
  details.setAttribute('open','');
  return body;
 }
@@ -803,7 +783,7 @@ function buildExternalHost(key,html,state,source){
  host.append(details);
  return host;
 }
-function ensureExternalUi(el,key,html,state='ready',source='independent'){
+function ensureExternalUi(el,key,html,state='ready',source='independent',sourceHash=''){
  const body=externalInsertTarget(el); if(!body) return null;
  const same=matchingExternalHosts(el,key,source);
  let host=same[0] || externalHosts(el).find(node=>node.dataset.rmSource===source) || null;
@@ -819,9 +799,11 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
    host.dataset.rmKey=key;
    host.dataset.rmSource=source;
    host.dataset.rmState=state;
+   if(sourceHash) host.dataset.rmSourceHash=String(sourceHash);
    if(escaped){ markExternalDetails(escaped,key,source); host.append(escaped); }
    else host=buildExternalHost(key,html,state,source);
    host.__rabbitMirrorIndependentSource = state==='ready' ? String(html||'') : '';
+   if(sourceHash) host.dataset.rmSourceHash=String(sourceHash);
    placeExternalHost(el,host,key,source);
    removeDuplicateExternalHosts(el,host,source);
    ensureExternalTools(host);
@@ -830,6 +812,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent'){
  host.dataset.rmKey=key;
  host.dataset.rmSource=source;
  host.dataset.rmState=state;
+ if(sourceHash) host.dataset.rmSourceHash=String(sourceHash);
  placeExternalHost(el,host,key,source);
  removeDuplicateExternalHosts(el,host,source);
  let current=repatriateExternalDetails(el,host,key,source);
@@ -889,125 +872,55 @@ function scheduleMessageGeneration(index,delay=260,sourceAware=false){
 function currentGenerationIdentity(index){
  const ctx=getContext(); const msg=ctx.chat?.[index];
  if(!msg || msg.is_user || typeof msg.mes!=='string') return null;
- return {ctx,msg,slot:messageSlotKey(ctx,index,msg),key:recordKey(ctx,index,msg),sourceHash:messageSourceFingerprint(msg)};
+ const observed=observeMessageSourceRevision(ctx,index,msg);
+ return {ctx,msg,slot:observed.slot,key:recordKey(ctx,index,msg),sourceHash:observed.sourceHash,revision:observed.revision};
 }
 async function generateFor(index,msg,force=false,sourceAware=false){
- const ctx=getContext(); const key=recordKey(ctx,index,msg); const slot=messageSlotKey(ctx,index,msg); const sourceHash=messageSourceFingerprint(msg); const st=getSettings();
+ const ctx=getContext();
+ const currentMsg=ctx.chat?.[index];
+ if(!currentMsg || currentMsg.is_user || typeof currentMsg.mes!=='string') return;
+ msg=currentMsg;
+ const observed=observeMessageSourceRevision(ctx,index,msg);
+ const key=recordKey(ctx,index,msg); const slot=observed.slot; const sourceHash=observed.sourceHash; const revision=observed.revision; const st=getSettings();
  if(st.enabled===false || st.autoRabbitMirrorInjection===false || st.generationSource!=='independent') return;
  const el=messageElement(index); if(!el) return;
  let store=readStore();
  const saved=findSavedRecord(store,slot);
  if(saved?.html&&!force){
    const savedSourceHash=String(saved.sourceHash||'');
-   if(!sourceAware || (savedSourceHash && savedSourceHash===sourceHash)){ ensureExternalUi(el,key,saved.html,'ready'); return; }
+   if((savedSourceHash && savedSourceHash===sourceHash) || (!savedSourceHash && !sourceAware)){
+     ensureExternalUi(el,key,saved.html,'ready','independent',savedSourceHash||sourceHash); return;
+   }
    removeRecordsForSlot(store,slot); writeStore(store); store=readStore();
  }
  const existing=pending.get(slot);
- if(existing && existing.sourceHash===sourceHash) return existing.task;
+ if(existing && existing.sourceHash===sourceHash && existing.revision===revision) return existing.task;
  if(force){ removeRecordsForSlot(store,slot); writeStore(store); }
- ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading');
+ ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
  const runId=++generationSequence;
  let stale=false;
  const task=callIndependentApi(ctx,index,msg).then(html=>{
    const live=currentGenerationIdentity(index);
    const active=pending.get(slot);
-   if(!live || live.slot!==slot || live.key!==key || live.sourceHash!==sourceHash || active?.runId!==runId){ stale=true; return; }
+   if(!live || live.slot!==slot || live.key!==key || live.sourceHash!==sourceHash || live.revision!==revision || active?.runId!==runId || active?.revision!==revision){ stale=true; return; }
    const completed={html,sourceHash,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION};
    appendHistoryEntry(slot,completed);
    const next=readStore(); saveRecordForSlot(next,slot,completed);
    const keys=Object.keys(next).sort((a,b)=>(next[b]?.ts||0)-(next[a]?.ts||0));
    for(const k of keys.slice(120)) delete next[k];
-   writeStore(next); const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,html,'ready');
+   writeStore(next); const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,html,'ready','independent',sourceHash);
  }).catch(err=>{
    const live=currentGenerationIdentity(index);
    const active=pending.get(slot);
-   if(!live || live.slot!==slot || live.key!==key || live.sourceHash!==sourceHash || active?.runId!==runId){ stale=true; return; }
+   if(!live || live.slot!==slot || live.key!==key || live.sourceHash!==sourceHash || live.revision!==revision || active?.runId!==runId || active?.revision!==revision){ stale=true; return; }
    console.error('[RabbitMirror] independent generation failed',err);
-   const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,String(err?.message||err),'error');
+   const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
  }).finally(()=>{
    if(pending.get(slot)?.runId===runId) pending.delete(slot);
    if(stale) scheduleMessageGeneration(index,320,true);
  });
- pending.set(slot,{task,runId,key,sourceHash});
+ pending.set(slot,{task,runId,key,sourceHash,revision});
  await task;
-}
-function setExternalErrorActionState(host,busy,statusText=''){
- bindExternalActionButtons(host);
- const buttons=[...(host?.querySelectorAll?.('[data-rabbit-mirror-external-action]')||[])];
- for(const button of buttons){ button.disabled=!!busy; button.setAttribute('aria-busy',busy?'true':'false'); }
- const status=host?.querySelector?.('[data-rabbit-mirror-external-api-test-status]');
- if(status){ status.hidden=!statusText; status.textContent=String(statusText||''); status.dataset.state=busy?'loading':''; }
-}
-async function diagnoseIndependentApi(){
- const st=getSettings();
- if(!st.independentApiBaseUrl) throw new Error('尚未填写独立 API 地址');
- if(!st.independentApiModel) throw new Error('尚未选择独立 API 模型');
- let modelNote='';
- try{
-   const models=await fetchIndependentModels();
-   modelNote=models.includes(st.independentApiModel)
-     ? `模型列表连接成功，已找到 ${st.independentApiModel}`
-     : `模型列表连接成功，但列表中未找到当前模型 ${st.independentApiModel}`;
- }catch(error){
-   modelNote=`模型列表检测未通过：${String(error?.message||error)}`;
- }
- const systemPrompt='你正在执行 API 连接检测。严格只回复 OK。';
- const userPrompt='请回复 OK。';
- const {response,result,profile,attempts}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{maxTokens:32,temperature:0,stream:true});
- if(!response?.ok){
-   const tried=attempts.map(item=>`${item.profile}(HTTP ${item.status})`).join(' → ');
-   const detail=compactRemoteError(response?.status,result?.raw||'');
-   throw new Error(`${modelNote}；生成接口检测失败：HTTP ${response?.status||'未知'}${detail?` · ${detail}`:''}${tried?`；尝试：${tried}`:''}`);
- }
- const parsed=String(result?.text||'').trim();
- return `${modelNote}；生成接口检测成功，参数模式：${profile}${parsed?`，返回：${parsed.slice(0,80)}`:'，但未解析到文本'}`;
-}
-function messageIndexForExternalHost(host){
- const owned=Number(host?.dataset?.rmOwnerMesid ?? host?.dataset?.rmExternalOwnerMessage);
- if(Number.isInteger(owned)&&owned>=0) return owned;
- const mes=messageElementForExternalHost(host);
- const index=Number(mes?.getAttribute?.('mesid'));
- return Number.isInteger(index)&&index>=0?index:null;
-}
-async function handleExternalActionClick(event){
- const button=externalActionButtonFromEvent(event);
- if(!button) return;
- const host=button.closest(`[${SOURCE_ATTR}]`);
- if(!host || host.dataset.rmSource!=='independent') return;
- const action=button.getAttribute('data-rabbit-mirror-external-action');
- if(action==='retry' && host.dataset.rmState==='loading') return;
- if(action==='test-api' && host.dataset.rmState!=='error') return;
- event.preventDefault?.(); event.stopPropagation?.(); event.stopImmediatePropagation?.();
- if(host.dataset.rmExternalActionBusy==='true') return;
- host.dataset.rmExternalActionBusy='true';
- try{
-   if(action==='retry'){
-     const index=messageIndexForExternalHost(host); const ctx=getContext(); const msg=index===null?null:ctx.chat?.[index];
-     if(index===null || !msg || msg.is_user){
-       setExternalErrorActionState(host,false,'无法定位这条回复，不能重新生成兔子镜。');
-       globalThis.toastr?.error?.('无法定位这条回复，不能重新生成兔子镜。');
-       return;
-     }
-     setExternalErrorActionState(host,true,'正在重新生成兔子镜……');
-     await generateFor(index,msg,true);
-     return;
-   }
-   if(action==='test-api'){
-     setExternalErrorActionState(host,true,'正在检测模型列表和生成接口……');
-     try{
-       const result=await diagnoseIndependentApi();
-       setExternalErrorActionState(host,false,result);
-       const status=host.querySelector?.('[data-rabbit-mirror-external-api-test-status]'); if(status) status.dataset.state='success';
-     }catch(error){
-       const message=`检测失败：${String(error?.message||error)}`;
-       setExternalErrorActionState(host,false,message);
-       const status=host.querySelector?.('[data-rabbit-mirror-external-api-test-status]'); if(status) status.dataset.state='error';
-     }
-   }
- }finally{
-   delete host.dataset.rmExternalActionBusy;
-   bindExternalActionButtons(host);
- }
 }
 function independentHostForRoot(root){
  const host=root?.matches?.(`[${SOURCE_ATTR}]`) ? root : root?.closest?.(`[${SOURCE_ATTR}]`);
@@ -1094,43 +1007,6 @@ function removeFeedbackMirrorActionListeners(){
  feedbackActionListenerInstalled=false;
  closeIndependentHistoryPanel();
 }
-function installExternalActionDelegation(){
- if(externalActionListenerInstalled) return;
- // iPhone/Safari: some SillyTavern/RabbitMirror rescue handlers run on document/chat
- // capture and may stop the event before it reaches the real button. Intercept these
- // two dedicated actions one level earlier on window, then keep direct bindings as a
- // fallback for hosts that do not expose window-level pointer events.
- const intercept=event=>{
-   const target=event?.target?.nodeType===1 ? event.target : event?.target?.parentElement;
-   const button=target?.closest?.('[data-rabbit-mirror-external-action]');
-   if(!button) return;
-   const host=button.closest?.(`[${SOURCE_ATTR}]`);
-   if(!host || host.dataset.rmSource!=='independent' || !host.contains(button)) return;
-   const now=Date.now();
-   const last=Number(button.dataset.rmExternalPointerAt||0);
-   if(event.type==='click' && last && now-last<900){
-     event.preventDefault?.();
-     event.stopPropagation?.();
-     event.stopImmediatePropagation?.();
-     return;
-   }
-   if(event.type==='pointerup') button.dataset.rmExternalPointerAt=String(now);
-   void handleExternalActionClick(event);
- };
- externalActionWindowPointerHandler=intercept;
- externalActionWindowClickHandler=intercept;
- globalThis.addEventListener?.('pointerup',externalActionWindowPointerHandler,true);
- globalThis.addEventListener?.('click',externalActionWindowClickHandler,true);
- externalActionListenerInstalled=true;
- bindExternalActionButtons(document);
-}
-function removeExternalActionDelegation(){
- if(externalActionWindowPointerHandler) globalThis.removeEventListener?.('pointerup',externalActionWindowPointerHandler,true);
- if(externalActionWindowClickHandler) globalThis.removeEventListener?.('click',externalActionWindowClickHandler,true);
- externalActionWindowPointerHandler=null;
- externalActionWindowClickHandler=null;
- externalActionListenerInstalled=false;
-}
 function externalizeFollowMirror(index,msg){
  const st=getSettings(); if(st.generationSource!=='follow'||st.followDisplayMode!=='external') return;
  const el=messageElement(index); const body=messageBody(el); if(!body) return;
@@ -1169,18 +1045,39 @@ function syncMessages(indices=null){
  try{
    const ctx=getContext(); const st=getSettings(); const mode=runtimeMode(); const store=mode==='independent'?readStore():null;
    const allowed=indices instanceof Set?indices:null;
+   let storeChanged=false;
    for(const {m,i} of assistantMessages(ctx)){
      if(allowed && !allowed.has(i)) continue;
      const el=messageElement(i); if(!el) continue;
      if(mode==='off') { externalHosts(el).forEach(n=>n.remove()); continue; }
      if(mode==='independent'){
        externalHosts(el).filter(n=>n.dataset.rmSource==='follow').forEach(n=>n.remove());
-       const key=recordKey(ctx,i,m); const slot=messageSlotKey(ctx,i,m); const saved=findSavedRecord(store,slot);
+       const observed=observeMessageSourceRevision(ctx,i,m);
+       const key=recordKey(ctx,i,m); const slot=observed.slot; const sourceHash=observed.sourceHash;
+       let saved=findSavedRecord(store,slot);
+       const savedSourceHash=String(saved?.sourceHash||'');
        const independentHosts=externalHosts(el).filter(n=>n.dataset.rmSource==='independent');
        const keep=independentHosts.find(n=>n.dataset.rmKey===key) || independentHosts[0] || null;
        for(const node of independentHosts){ if(node!==keep) node.remove(); }
-       if(saved?.html) ensureExternalUi(el,key,saved.html,'ready');
-       else if(keep){
+
+       // Never repaint an old mirror over a newly regenerated/swiped正文. A
+       // record is eligible only for the exact current source fingerprint.
+       if(saved?.html && savedSourceHash && savedSourceHash!==sourceHash){
+         removeRecordsForSlot(store,slot); storeChanged=true; saved=null;
+       }
+       const hostSourceHash=String(keep?.dataset?.rmSourceHash||'');
+       const hostIsStale=!!(keep && hostSourceHash && hostSourceHash!==sourceHash);
+       if(hostIsStale){
+         // Migrate any legacy inline anchor out of .mes_text before hiding it.
+         // This keeps SillyTavern's regenerated正文 DOM extension-free.
+         placeExternalHost(el,keep,keep.dataset.rmKey||key,'independent');
+         keep.hidden=true;
+         keep.dataset.rmAwaitingFreshSource='true';
+       }
+       if(saved?.html && (!savedSourceHash || savedSourceHash===sourceHash)){
+         const host=ensureExternalUi(el,key,saved.html,'ready','independent',savedSourceHash||sourceHash);
+         if(host){ host.hidden=false; delete host.dataset.rmAwaitingFreshSource; }
+       } else if(keep && !hostIsStale){
          placeExternalHost(el,keep,keep.dataset.rmKey||key,'independent');
          refreshExistingExternalDetails(keep,key,'independent');
        }
@@ -1189,6 +1086,7 @@ function syncMessages(indices=null){
        if(mode==='follow-external') externalizeFollowMirror(i,m); else restoreFollowInline(el);
      }
    }
+   if(storeChanged) writeStore(store);
  } finally { syncRunning=false; }
 }
 function pruneForeignChatExternalHosts(){
@@ -1370,7 +1268,6 @@ export async function initIndependentRabbitMirror(){
  if(!currentRuntime()) return;
  try{ globalThis.__rabbitMirrorIndependentCleanup?.(); }catch{}
  globalThis.__rabbitMirrorIndependentCleanup=destroyIndependentRabbitMirror;
- installExternalActionDelegation();
  migrateLegacyDeletedRecords();
  installFeedbackMirrorActionListeners();
  installExternalGeometryListeners();
@@ -1378,8 +1275,8 @@ export async function initIndependentRabbitMirror(){
 }
 export function destroyIndependentRabbitMirror(){
  clearScheduledGeneration();
- disconnectObserver(); unsubscribeHostEvents(); removeExternalActionDelegation(); removeFeedbackMirrorActionListeners(); removeExternalGeometryListeners();
- syncRunning=false; pending.clear(); preparedReadyHtmlCache.clear();
+ disconnectObserver(); unsubscribeHostEvents(); removeFeedbackMirrorActionListeners(); removeExternalGeometryListeners();
+ syncRunning=false; pending.clear(); messageSourceRevisions.clear(); preparedReadyHtmlCache.clear();
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(host=>restoreFollowInline(host));
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());
  removeEmptyInlineAnchors(document);
