@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h19t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h19t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h20t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h20t';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h19t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h19t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h19t';
+} from './feedbackCat.js?rmv=1.1.0b14h20t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h20t';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h20t';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.19-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.20-test';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -14808,7 +14808,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.85-test';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.86-test';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -17557,13 +17557,14 @@ function scheduleMaintenanceAutoSafeForRoot(root, button) {
 
 function scheduleMaintenanceRabbitInstall() {
     if (!isCurrentRuntime()) return;
-    for (const delay of [120, 900]) {
-        const timer = setTimeout(() => {
-            maintenanceInstallTimers.delete(timer);
-            installMaintenanceRabbitsInChatDom();
-        }, delay);
-        maintenanceInstallTimers.add(timer);
-    }
+    // One coalesced pass is enough. The old 120ms + 900ms pair multiplied full-chat
+    // scans when several SillyTavern events fired for the same render on mobile.
+    if (maintenanceInstallTimers.size) return;
+    const timer = setTimeout(() => {
+        maintenanceInstallTimers.delete(timer);
+        installMaintenanceRabbitsInChatDom();
+    }, 180);
+    maintenanceInstallTimers.add(timer);
 }
 
 function scheduleObservedChatInstall(messageRoots = []) {
@@ -17630,47 +17631,30 @@ function installChatMutationObserver() {
     chatInstallObserver = new MutationObserver(mutations => {
         const messageRoots = new Set();
         for (const mutation of mutations) {
+            if (mutation.type !== 'childList') continue;
             const targetElement = mutation.target?.nodeType === 1 ? mutation.target : mutation.target?.parentElement;
+            // External mirrors install their tools synchronously. Never observe their internal
+            // replacement, animation or tool DOM, otherwise the two observers can ping-pong.
             if (targetElement?.closest?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) continue;
-
-            if (mutation.type === 'attributes') {
-                if (!targetElement?.matches?.('toto, details, summary')) continue;
-                const message = targetElement.closest?.('.mes, [mesid]');
-                if (message) messageRoots.add(message);
-                continue;
-            }
-            if (mutation.type === 'characterData') {
-                if (targetElement?.matches?.('style')) {
-                    const message = targetElement.closest?.('.mes, [mesid]');
-                    if (message) messageRoots.add(message);
-                }
-                continue;
-            }
-            const nodes = [...(mutation.addedNodes || []), ...(mutation.removedNodes || [])];
-            const relevant = nodes.some(node => {
-                if (node?.nodeType !== 1) return false;
+            const added = [...(mutation.addedNodes || [])].filter(node => node?.nodeType === 1);
+            const relevant = added.some(node => {
                 if (node.matches?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) return false;
-                return node.matches?.('toto, details, summary, style, .mes, .mes_text')
-                    || !!node.querySelector?.('toto, details, summary, style');
+                return node.matches?.('toto, details, .mes, .mes_text')
+                    || !!node.querySelector?.('toto, details');
             });
-            if (!relevant && !mutation.target?.matches?.('style')) continue;
+            if (!relevant) continue;
             const message = targetElement?.closest?.('.mes, [mesid]');
             if (message) messageRoots.add(message);
-            for (const node of nodes) {
-                const element = node?.nodeType === 1 ? node : null;
-                const ownMessage = element?.matches?.('.mes, [mesid]') ? element : element?.closest?.('.mes, [mesid]');
+            for (const node of added) {
+                const ownMessage = node.matches?.('.mes, [mesid]') ? node : node.closest?.('.mes, [mesid]');
                 if (ownMessage) messageRoots.add(ownMessage);
             }
         }
         if (messageRoots.size) scheduleObservedChatInstall(messageRoots);
     });
-    chatInstallObserver.observe(chatRoot, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['class', 'style', 'hidden'],
-        characterData: true,
-    });
+    // Tool installation only needs structural insertions. Watching class/style/hidden and
+    // characterData reacts to CSS animation and generated UI updates and can saturate Safari.
+    chatInstallObserver.observe(chatRoot, { childList: true, subtree: true });
     return true;
 }
 

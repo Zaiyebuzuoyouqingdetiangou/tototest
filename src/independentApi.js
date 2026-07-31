@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h19t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h19t';
-import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h19t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h20t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h20t';
+import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h20t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.19-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.20-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -636,10 +636,17 @@ function nodeMessageIndex(node){
 function relevantMutationIndices(records){
  const found=new Set();
  for(const rec of records){
-   for(const node of [...rec.addedNodes,...rec.removedNodes]){
+   const target=rec.target?.nodeType===1?rec.target:rec.target?.parentElement;
+   if(target?.closest?.(`[${SOURCE_ATTR}], [data-rabbit-mirror-tool-entry-host]`)) continue;
+   // Only added structural content can create a new mirror candidate. Removed nodes and
+   // RabbitMirror's own external host/tool changes must not schedule another sync pass.
+   for(const node of [...(rec.addedNodes||[])]){
      const el=node?.nodeType===1?node:null;
-     if(el?.closest?.(`[${SOURCE_ATTR}], [data-rabbit-mirror-tool-entry-host]`) || el?.matches?.(`[${SOURCE_ATTR}], [data-rabbit-mirror-tool-entry-host]`)) continue;
-     const id=nodeMessageIndex(node) ?? nodeMessageIndex(rec.target);
+     if(!el) continue;
+     if(el.matches?.(`[${SOURCE_ATTR}], [data-rabbit-mirror-tool-entry-host]`) || el.closest?.(`[${SOURCE_ATTR}], [data-rabbit-mirror-tool-entry-host]`)) continue;
+     const relevant=el.matches?.('.mes, .mes_text, toto, details') || !!el.querySelector?.('toto, details');
+     if(!relevant) continue;
+     const id=nodeMessageIndex(el) ?? nodeMessageIndex(target);
      if(id!==null) found.add(id);
    }
  }
