@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h41t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h41t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h41t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h42t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h42t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h42t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.41-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.42-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -860,14 +860,36 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
 }
 
 function scheduleMessageGeneration(index,delay=260,sourceAware=false){
- const timer=setTimeout(()=>{
-   followupGenerationTimers.delete(timer);
+ const firstTimer=setTimeout(()=>{
+   followupGenerationTimers.delete(firstTimer);
    if(!currentRuntime() || runtimeMode()!=='independent') return;
-   const ctx=getContext(); const msg=ctx.chat?.[index];
-   if(!msg || msg.is_user || typeof msg.mes!=='string') return;
-   void generateFor(index,msg,false,sourceAware);
+   const first=currentGenerationIdentity(index);
+   if(!first) return;
+   if(!sourceAware){ void generateFor(index,first.msg,false,false); return; }
+   // Regeneration can emit an early "generation ended" after the reasoning pass,
+   // before the visible answer starts. Poll the actual selected message source and
+   // require a continuous quiet window before launching the independent API.
+   let stableSince=Date.now();
+   let lastHash=first.sourceHash;
+   let lastRevision=first.revision;
+   const poll=()=>{
+     if(!currentRuntime() || runtimeMode()!=='independent') return;
+     const live=currentGenerationIdentity(index);
+     if(!live) return;
+     if(live.sourceHash!==lastHash || live.revision!==lastRevision){
+       lastHash=live.sourceHash; lastRevision=live.revision; stableSince=Date.now();
+     }
+     if(Date.now()-stableSince>=2600){
+       const text=String(live.msg?.mes||'').replace(/<[^>]+>/g,' ').trim();
+       if(text.length<12){ stableSince=Date.now(); }
+       else { void generateFor(index,live.msg,false,true); return; }
+     }
+     const next=setTimeout(()=>{ followupGenerationTimers.delete(next); poll(); },420);
+     followupGenerationTimers.add(next);
+   };
+   poll();
  },delay);
- followupGenerationTimers.add(timer);
+ followupGenerationTimers.add(firstTimer);
 }
 function currentGenerationIdentity(index){
  const ctx=getContext(); const msg=ctx.chat?.[index];

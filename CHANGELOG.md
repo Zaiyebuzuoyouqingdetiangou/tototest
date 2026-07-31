@@ -1,3 +1,8 @@
+## 1.1.0-beta.14.42-test
+- Independent API generation now polls the selected reply source and requires a 2.6-second continuous stable window after regeneration events, preventing an early reasoning-pass RabbitMirror and a later duplicate.
+- Maintenance Rabbit captures the current mirror DOM before a repair route changes it.
+- Added “返回修复前” to Maintenance Rabbit; it restores only the current mirror and leaves chat text/history untouched.
+
 ## beta.14.40 — 正文重说提交锁与安全内嵌锚点
 
 - 修复正文“重说”完成后，新正文与新兔子镜短暂出现、随后被旧 Swipe／旧缓存状态回写的问题。

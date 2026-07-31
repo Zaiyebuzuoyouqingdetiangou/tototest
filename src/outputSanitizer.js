@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h41t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h41t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h42t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h42t';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h41t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h41t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h41t';
+} from './feedbackCat.js?rmv=1.1.0b14h42t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h42t';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h42t';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.41-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.42-test';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9860,6 +9860,7 @@ const MAINTENANCE_STATE_ATTR = 'data-rabbit-mirror-maintenance-state';
 const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_MENU_ATTR = 'data-rabbit-mirror-maintenance-menu';
+const maintenancePreRepairSnapshots = new Map();
 const MAINTENANCE_AUTO_SAFE_ATTR = 'data-rabbit-mirror-auto-safe-maintenance';
 const MAINTENANCE_AUTO_SAFE_RESULT_ATTR = 'data-rabbit-mirror-auto-safe-result';
 const MAINTENANCE_AUTO_SAFE_VERSION = 'safe-v2-state-preserving';
@@ -13950,9 +13951,46 @@ function repairMaintenanceMessageSource(root, inspection) {
     return { changed, index, reason: changed ? '已用临时副本恢复当前消息显示层' : '当前消息重绘失败' };
 }
 
+function maintenanceSnapshotKey(root) {
+    const index = getMessageIndexFromMirrorNode(root);
+    const title = getRabbitMirrorSummaryText(root).replace(/🐇[⚪🟢🟡🔴]?/g, '').trim();
+    return `${index}:${title}`;
+}
+
+function captureMaintenancePreRepairSnapshot(root) {
+    if (!root?.isConnected) return false;
+    const details = root.matches?.('details') ? root : root.querySelector?.(':scope > details') || root.querySelector?.('details');
+    if (!details) return false;
+    maintenancePreRepairSnapshots.set(maintenanceSnapshotKey(root), {
+        html: details.innerHTML,
+        open: details.hasAttribute('open'),
+        ts: Date.now(),
+    });
+    return true;
+}
+
+function restoreMaintenancePreRepairSnapshot(root, button) {
+    const key = maintenanceSnapshotKey(root);
+    const snapshot = maintenancePreRepairSnapshots.get(key);
+    if (!snapshot) {
+        setMaintenanceRabbitState(button, MAINTENANCE_STATES.unknown, '当前兔子镜没有可返回的修复前界面');
+        return false;
+    }
+    const details = root.matches?.('details') ? root : root.querySelector?.(':scope > details') || root.querySelector?.('details');
+    if (!details) return false;
+    details.innerHTML = snapshot.html;
+    if (snapshot.open) details.setAttribute('open', ''); else details.removeAttribute('open');
+    maintenancePreRepairSnapshots.delete(key);
+    setTimeout(() => {
+        refreshRabbitMirrorToolsInScope?.(details);
+    }, 0);
+    return true;
+}
+
 function runMaintenanceRabbitRepair(root, button) {
     if (!root?.isConnected || !button?.isConnected) return false;
     const before = inspectMaintenanceRabbit(root);
+    captureMaintenancePreRepairSnapshot(root);
     if (before.state !== MAINTENANCE_STATES.repairable) {
         setMaintenanceRabbitState(button, before.state, before.reason);
         return false;
@@ -15588,6 +15626,7 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
 
 function runMaintenanceUserRepair(root, button, mode) {
     if (!root?.isConnected || !button?.isConnected) return false;
+    captureMaintenancePreRepairSnapshot(root);
     if (mode === 'auto') return runMaintenanceAutomaticRepairPlan(root, button);
     const effectiveMode = mode;
     const labels = {
@@ -15720,6 +15759,7 @@ function showMaintenanceRabbitMenu(root, button) {
       <button type="button" data-rm-maintenance-action="source">📄 空白或显示代码、纯文字</button>
       <button type="button" data-rm-maintenance-action="style">🎨 样子不对</button>
       <button type="button" data-rm-maintenance-action="all">🔧 全部试试（强制维修）</button>
+      <button type="button" data-rm-maintenance-action="restore-before" ${maintenancePreRepairSnapshots.has(maintenanceSnapshotKey(root)) ? '' : 'disabled'}>↩️ 返回修复前</button>
       <button type="button" data-rm-maintenance-action="diagnostic">📋 生成全链路诊断</button>
       <button type="button" data-rm-maintenance-action="close">关闭</button>`;
     document.body.appendChild(panel);
@@ -15736,6 +15776,10 @@ function showMaintenanceRabbitMenu(root, button) {
         event.stopPropagation();
         closeMaintenanceRabbitMenu();
         if (action === 'close') return;
+        if (action === 'restore-before') {
+            restoreMaintenancePreRepairSnapshot(root, button);
+            return;
+        }
         if (action === 'patrol') {
             const inspection = inspectMaintenanceRabbit(root);
             setMaintenanceRabbitState(button, inspection.state, `${inspection.reason}；${maintenanceRecommendationText(inspection)}`);

@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・生成方式切换・维修兔 v2.06-test）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・生成方式切换・维修兔 v2.07-test）",
   "loading_order": 99,
-  "js": "index.js?rmv=1.1.0b14h41t",
-  "css": "style.css?rmv=1.1.0b14h41t",
+  "js": "index.js?rmv=1.1.0b14h42t",
+  "css": "style.css?rmv=1.1.0b14h42t",
   "author": "Toto",
-  "version": "1.1.0-beta.14.41-test",
+  "version": "1.1.0-beta.14.42-test",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "RabbitMirror test build. Independent API mirrors keep the original rounded white plugin frame geometry and dye that frame with the mirror palette without flattening generated content. Failed independent generations show error text only; obsolete Retry Generation and Test API card actions are removed. The feedback cat exposes message-scoped Resay and RabbitMirror History for independent mirrors. No fixed prompt is added to the current API in independent mode."
+  "description": "RabbitMirror test build. Independent API generation waits for the regenerated visible answer source to remain stable before launching, preventing a reasoning-pass mirror followed by a second mirror. Maintenance Rabbit stores a pre-repair DOM snapshot and can restore the current mirror to its interface before interaction repair. No fixed prompt is added to the current API in independent mode."
 }
