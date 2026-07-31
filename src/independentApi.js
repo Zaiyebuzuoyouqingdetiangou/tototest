@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h20t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h20t';
-import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h20t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h21t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h21t';
+import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope } from './outputSanitizer.js?rmv=1.1.0b14h21t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.20-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.21-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -554,12 +554,12 @@ async function handleExternalActionClick(event){
 }
 function installExternalActionDelegation(){
  if(externalActionListenerInstalled) return;
- document.addEventListener('click',handleExternalActionClick,true);
+ globalThis.addEventListener?.('click',handleExternalActionClick,true);
  externalActionListenerInstalled=true;
 }
 function removeExternalActionDelegation(){
  if(!externalActionListenerInstalled) return;
- document.removeEventListener('click',handleExternalActionClick,true);
+ globalThis.removeEventListener?.('click',handleExternalActionClick,true);
  externalActionListenerInstalled=false;
  externalActionBusy=false;
 }
