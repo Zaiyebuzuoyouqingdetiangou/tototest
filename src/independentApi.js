@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h51t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h51t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h51t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h51t';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h51t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h52t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h52t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h52t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h52t';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h52t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.51-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.52-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -180,10 +180,18 @@ function hostGenerationLooksActive(){
   return !!document.querySelector?.('#chat .mes.streaming, #chat .mes[data-is-streaming="true"], #chat .mes[is_generating="true"], #chat .mes[data-generating="true"]');
  }catch{return false;}
 }
-function chatKey(ctx){ try{ return String(getCurrentChatKey?.(Array.isArray(ctx?.chat)?ctx.chat:null) || 'chat'); }catch{ const meta=ctx?.chatMetadata||globalThis.chat_metadata||{}; return String(meta.chat_id||meta.chatId||meta.file_name||ctx?.characterId||ctx?.groupId||'chat'); } }
+function legacyChatKey(ctx){ const meta=ctx?.chatMetadata||globalThis.chat_metadata||{}; return String(meta.chat_id||meta.chatId||meta.file_name||ctx?.characterId||ctx?.groupId||'chat'); }
+function chatKey(ctx){ try{ return String(getCurrentChatKey?.(Array.isArray(ctx?.chat)?ctx.chat:null) || legacyChatKey(ctx)); }catch{ return legacyChatKey(ctx); } }
 function swipeId(msg){ return Number(msg?.swipe_id ?? msg?.swipeId ?? 0) || 0; }
 function messageBaseSlotKey(ctx,index,msg){ return `${chatKey(ctx)}:${index}:${swipeId(msg)}`; }
 function messageSlotKey(ctx,index,msg){ return `${messageBaseSlotKey(ctx,index,msg)}:${messageSourceFingerprint(msg)}`; }
+function legacyMessageSlotKeys(ctx,index,msg){
+ const legacyChat=legacyChatKey(ctx);
+ const currentChat=chatKey(ctx);
+ if(!legacyChat || legacyChat===currentChat) return [];
+ const base=`${legacyChat}:${index}:${swipeId(msg)}`;
+ return [base,`${base}:${messageSourceFingerprint(msg)}`];
+}
 function recordKey(ctx,index,msg){ return messageSlotKey(ctx,index,msg); }
 function baseSlotOf(slot=''){
  const parsed=parseMessageIndexFromOwnerKey(slot);
@@ -193,26 +201,18 @@ function baseSlotOf(slot=''){
  }
  return String(slot||'');
 }
-function slotSearchKeys(slot=''){
- const current=String(slot||'');
- const base=baseSlotOf(current);
- return [...new Set([current, base].filter(Boolean))];
+function slotSearchKeys(slot='',aliases=[]){
+ const values=[String(slot||''),...(Array.isArray(aliases)?aliases:[])].filter(Boolean);
+ const expanded=[];
+ for(const value of values){ expanded.push(value); const base=baseSlotOf(value); if(base) expanded.push(base); }
+ return [...new Set(expanded)];
 }
-function findSavedRecord(store,slot){
- for(const candidate of slotSearchKeys(slot)){
+function findSavedRecord(store,slot,aliases=[]){
+ for(const candidate of slotSearchKeys(slot,aliases)){
   const exact=store?.[candidate];
   if(exact?.html) return exact;
  }
  return null;
-}
-function removeRecordsForSlot(store,slot,{includeLegacy=true}={}){
- const targets=new Set([String(slot||'')]);
- if(includeLegacy){
-  const base=baseSlotOf(slot);
-  if(base) targets.add(base);
- }
- for(const key of Object.keys(store||{})){ if(targets.has(key)) delete store[key]; }
- return store;
 }
 function saveRecordForSlot(store,slot,value,{dropLegacy=true}={}){
  if(dropLegacy){
@@ -247,7 +247,7 @@ function observeMessageSourceRevision(ctx,index,msg){
  const slot=messageSlotKey(ctx,index,msg); const sourceHash=messageSourceFingerprint(msg);
  const previous=messageSourceRevisions.get(slot);
  const revision=previous && previous.sourceHash===sourceHash ? previous.revision : Number(previous?.revision||0)+1;
- const value={slot,sourceHash,bodyHash:messageBodyFingerprint(msg),reasoningHash:messageReasoningFingerprint(msg),revision,seenAt:Date.now()};
+ const value={slot,sourceHash,bodyHash:messageBodyFingerprint(msg),reasoningHash:messageReasoningFingerprint(msg),legacySlots:legacyMessageSlotKeys(ctx,index,msg),revision,seenAt:Date.now()};
  messageSourceRevisions.set(slot,value);
  if(messageSourceRevisions.size>400){
   const stale=[...messageSourceRevisions.entries()].sort((a,b)=>Number(a[1]?.seenAt||0)-Number(b[1]?.seenAt||0)).slice(0,messageSourceRevisions.size-320);
@@ -1050,7 +1050,7 @@ function independentStoredHtmlRestorable(html=''){
  }catch{return /<details\b[\s\S]*?<summary\b[\s\S]*?<\/summary>[\s\S]*?<\/details>/i.test(source);}
 }
 function historyRecoveryForObserved(slot,observed){
- for(const candidate of slotSearchKeys(slot)){
+ for(const candidate of slotSearchKeys(slot,observed?.legacySlots||[])){
   const entries=historyEntriesForSlot(candidate);
   const matched=entries.find(entry=>savedRecordMatchesObserved(entry,observed) && independentStoredHtmlRestorable(entry.html))
    || entries.find(entry=>String(entry?.bodyHash||'') && String(entry.bodyHash)===String(observed?.bodyHash||'') && independentStoredHtmlRestorable(entry.html));
@@ -1061,7 +1061,7 @@ function historyRecoveryForObserved(slot,observed){
 function recoverSavedRecord(store,slot,observed){
  const exact=store?.[slot];
  if(exact?.html && independentStoredHtmlRestorable(exact.html)) return {saved:exact,storeChanged:false,recoveredFromHistory:false};
- const saved=findSavedRecord(store,slot);
+ const saved=findSavedRecord(store,slot,observed?.legacySlots||[]);
  if(saved?.html && independentStoredHtmlRestorable(saved.html) && savedRecordMatchesObserved(saved,observed)){
   if(exact!==saved){
    const recovered={...saved,ts:Number(saved.ts||Date.now()),runtime:String(saved.runtime||RUNTIME_VERSION),recoveredFromHistory:false};
@@ -1479,7 +1479,7 @@ function parseMessageIndexFromOwnerKey(key=''){
  const parts=String(key||'').split(':').filter(Boolean);
  if(parts.length<2) return null;
  const numeric=value=>/^\d+$/.test(String(value||''));
- if(parts.length>=3 && numeric(parts.at(-3)) && numeric(parts.at(-2))){
+ if(parts.length>=4 && numeric(parts.at(-3)) && numeric(parts.at(-2))){
   const sourceHash=String(parts.at(-1)||'');
   if(/^[a-z0-9]+$/i.test(sourceHash)) return {index:Number(parts.at(-3)),swipe:Number(parts.at(-2)),sourceHash};
  }
@@ -1515,7 +1515,7 @@ function resolveIndependentActionIdentity(root,owner={}){
   const fullSuffix=`${baseSuffix}:${currentSourceHash}`;
   if(!meta.key.endsWith(baseSuffix) && !meta.key.endsWith(fullSuffix)) return null;
  }
- return {ctx,msg,index,host,slot:messageSlotKey(ctx,index,msg),key:currentKey};
+ return {ctx,msg,index,host,slot:messageSlotKey(ctx,index,msg),legacySlots:legacyMessageSlotKeys(ctx,index,msg),key:currentKey};
 }
 function closeIndependentHistoryPanel(){
  document.querySelectorAll?.(`[${HISTORY_PANEL_ATTR}]`)?.forEach(panel=>panel.remove());
@@ -1537,9 +1537,12 @@ function historyPreviewDetails(entry){
 function showIndependentHistory(root,owner={}){
  const identity=resolveIndependentActionIdentity(root,owner);
  if(!identity) return false;
- const current=findSavedRecord(readStore(),identity.slot);
+ const current=findSavedRecord(readStore(),identity.slot,identity.legacySlots||[]);
  if(current?.html) appendHistoryEntry(identity.slot,current);
- const entries=historyEntriesForSlot(identity.slot);
+ const entries=[...new Map(slotSearchKeys(identity.slot,identity.legacySlots||[])
+  .flatMap(candidate=>historyEntriesForSlot(candidate))
+  .map(entry=>[String(entry.id||hashText(entry.html||'')),entry])).values()]
+  .sort((a,b)=>Number(b.ts||0)-Number(a.ts||0));
  closeIndependentHistoryPanel();
  if(!entries.length){ globalThis.toastr?.info?.('这条回复还没有兔子镜历史。'); return true; }
  const overlay=document.createElement('div');
@@ -1570,7 +1573,7 @@ function showIndependentHistory(root,owner={}){
 function resayIndependentMirror(root,owner={}){
  const identity=resolveIndependentActionIdentity(root,owner);
  if(!identity) return false;
- const saved=findSavedRecord(readStore(),identity.slot); if(saved?.html) appendHistoryEntry(identity.slot,saved);
+ const saved=findSavedRecord(readStore(),identity.slot,identity.legacySlots||[]); if(saved?.html) appendHistoryEntry(identity.slot,saved);
  void generateFor(identity.index,identity.msg,true,true);
  globalThis.toastr?.info?.('正在重说这面兔子镜……');
  return true;
@@ -1657,7 +1660,6 @@ function syncMessages(indices=null){
        const recoveredAtSync=recoverSavedRecord(store,slot,observed);
        let saved=recoveredAtSync.saved;
        if(recoveredAtSync.storeChanged) storeChanged=true;
-       const savedSourceHash=String(saved?.sourceHash||'');
        let keep=collapseDuplicateIdentityHosts(el,key,'independent',sourceHash);
        if(keep?.dataset?.rmState==='ready' && !usableReadyDetails(keep.querySelector?.(':scope > details'))){ keep.remove(); keep=null; }
        if(displayModeChanged && keep){
@@ -1961,7 +1963,9 @@ async function reconfigureRuntime(){
    clearScheduledGeneration(); cancelAllIndependentFlights('mode-disabled');
    if(mode==='inline'){
      document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(el=>restoreFollowInline(el));
-     document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());
+     // Changing the generation source only affects future generations. Existing
+     // independent RabbitMirrors remain mounted and recoverable; removing them
+     // here made a settings toggle look like permanent data loss.
      removeEmptyInlineAnchors(document);
    }
    if(mode==='off'){ document.querySelectorAll(`[${SOURCE_ATTR}]`).forEach(n=>n.remove()); removeEmptyInlineAnchors(document); }
