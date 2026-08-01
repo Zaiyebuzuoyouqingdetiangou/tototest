@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h64t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h64t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h64t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h64t';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h64t';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.1.0b14h64t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h68t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h68t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h68t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h68t';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h68t';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.1.0b14h68t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.64-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.68-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -52,6 +52,8 @@ let hostGenerationInProgress = false;
 let hostGenerationHintStartedAt = 0;
 let independentActionBridge = null;
 let runtimeConfigSequence = 0;
+let lastAppliedRuntimeMode = null;
+const automaticGenerationCutovers = new Map();
 let backgroundLifecycleListenersInstalled = false;
 let backgroundResumeTimer = 0;
 let generationPlaceholderTimer = 0;
@@ -955,11 +957,33 @@ function markExternalHostsAwaitingFreshSource(index,status='waiting'){
  }
  return changed;
 }
+function clearIndependentResayStatus(host){
+ if(!host) return;
+ delete host.dataset.rmPending;
+ host.removeAttribute?.('aria-busy');
+ host.querySelector?.(':scope > [data-rabbit-mirror-resay-status="true"]')?.remove?.();
+}
+function showIndependentResayStatus(host){
+ if(!host) return null;
+ host.dataset.rmPending='true';
+ host.setAttribute?.('aria-busy','true');
+ let status=host.querySelector?.(':scope > [data-rabbit-mirror-resay-status="true"]');
+ if(!status){
+  status=document.createElement('div');
+  status.className='rabbit-mirror-resay-status';
+  status.setAttribute('data-rabbit-mirror-resay-status','true');
+  status.setAttribute('role','status');
+  status.setAttribute('aria-live','polite');
+  host.prepend(status);
+ }
+ status.textContent='🐇 正在重新生成兔子镜……旧版本会保留到新版本完成';
+ return status;
+}
 function clearExternalHostFreshSourceState(host){
  if(!host) return;
  delete host.dataset.rmAwaitingFreshSource;
  delete host.dataset.rmFreshSourceStatus;
- delete host.dataset.rmPending;
+ clearIndependentResayStatus(host);
 }
 function refreshExternalHostGeometry(){
  // Stable comfort width is CSS-only; orientation changes do not sample any
@@ -1155,6 +1179,32 @@ function renderExternalErrorBody(details,text=''){
  message.className='rabbit-mirror-external-error-message';
  message.textContent=String(text||'独立 API 生成失败。');
  body.append(message);
+ const actions=document.createElement('div');
+ actions.className='rabbit-mirror-external-error-actions';
+ const retry=document.createElement('button');
+ retry.type='button';
+ retry.className='rabbit-mirror-external-error-action rabbit-mirror-external-error-retry';
+ retry.textContent='↻ 重新生成兔子镜';
+ retry.setAttribute('data-rm-external-error-retry','true');
+ retry.addEventListener('click',event=>{
+  event.preventDefault(); event.stopPropagation();
+  if(!resayIndependentMirror(details,{})) globalThis.toastr?.warning?.('没有找到这条回复对应的副 API 兔子镜。');
+ },true);
+ const cat=document.createElement('button');
+ cat.type='button';
+ cat.className='rabbit-mirror-external-error-action rabbit-mirror-external-error-cat';
+ cat.textContent='🐈 打开挨打猫';
+ cat.setAttribute('data-rm-external-error-cat','true');
+ cat.addEventListener('click',event=>{
+  event.preventDefault(); event.stopPropagation();
+  const host=details.closest?.(`[${SOURCE_ATTR}][data-rm-source="independent"]`);
+  if(host) ensureExternalTools(host);
+  const feedback=details.querySelector?.('[data-rabbit-mirror-feedback-cat]') || host?.querySelector?.('[data-rabbit-mirror-feedback-cat]');
+  if(feedback){ feedback.click(); return; }
+  globalThis.toastr?.warning?.('挨打猫当前未启用，可先使用“重新生成兔子镜”。');
+ },true);
+ actions.append(retry,cat);
+ body.append(actions);
  details.setAttribute('open','');
  return body;
 }
@@ -1621,7 +1671,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
    return host;
  }
  if(state==='loading' && currentReady){
-   host.dataset.rmPending='true';
+   showIndependentResayStatus(host);
    ensureExternalTools(host);
    return host;
  }
@@ -1642,7 +1692,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
    if(!bodyNode){ bodyNode=document.createElement('div'); bodyNode.className='rabbit-mirror-external-placeholder-body'; details.append(bodyNode); }
    bodyNode.textContent=html;
  } else bodyNode?.remove?.();
- if(state!=='loading') delete host.dataset.rmPending;
+ if(state!=='loading') clearIndependentResayStatus(host);
  ensureExternalTools(host);
  return host;
 }
@@ -1662,6 +1712,9 @@ function hasGenerationWorkFor(index,slot='',sourceHash=''){
  return globalFlights().has(flightIdentity(slot,sourceHash));
 }
 function scheduleMessageGeneration(index,delay=260,sourceAware=true){
+ const initialContext=getContext();
+ const initialMessage=initialContext.chat?.[index];
+ if(suppressesAutomaticGeneration(initialContext,index) || hasExistingFollowRabbitMirror(initialContext,index,initialMessage)) return null;
  const pollKey=generationPollKey(index); const previous=generationPolls.get(pollKey);
  if(previous){ previous.cancelled=true; if(previous.timer) clearTimeout(previous.timer); }
  const state={cancelled:false,timer:0,startedAt:Date.now(),stableSince:0,lastHash:'',lastRevision:-1};
@@ -1671,6 +1724,7 @@ function scheduleMessageGeneration(index,delay=260,sourceAware=true){
  const poll=()=>{
   if(state.cancelled || !currentRuntime() || runtimeMode()!=='independent'){ finish(); return; }
   const live=currentGenerationIdentity(index);
+  if(live && (suppressesAutomaticGeneration(live.ctx,index) || hasExistingFollowRabbitMirror(live.ctx,index,live.msg))){ finish(); return; }
   if(live) cancelSupersededFlightsForBase(live.baseSlot,live.sourceHash);
   if(!live){ if(Date.now()-state.startedAt<OWNER_REATTACH_WAIT_MS) queue(generationWaitPollDelay(state.startedAt)); else finish(); return; }
   if(hostGenerationLooksActive()){ state.stableSince=0; state.lastHash=''; state.lastRevision=-1; if(Date.now()-state.startedAt<ACTIVE_GENERATION_WAIT_MS) queue(generationWaitPollDelay(state.startedAt)); else finish(); return; }
@@ -1817,6 +1871,7 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  const baseSlot=messageBaseSlotKey(ctx,index,msg);
  cancelSupersededFlightsForBase(baseSlot,sourceHash);
  if(st.enabled===false || st.autoRabbitMirrorInjection===false || st.generationSource!=='independent' || runtimeMode()!=='independent') return;
+ if(!force && (suppressesAutomaticGeneration(ctx,index) || hasExistingFollowRabbitMirror(ctx,index,msg))) return;
  const el=messageElement(index);
  let store=readStore();
  const recoveredAtGeneration=recoverSavedRecord(store,slot,observed);
@@ -1892,10 +1947,13 @@ async function generateFor(index,msg,force=false,sourceAware=true){
    if(liveEl){
     const liveHost=collapseDuplicateIdentityHosts(liveEl,key,'independent',sourceHash);
     if(readyDetailsFromHost(liveHost)){
-     liveHost.dataset.rmState='ready';
-     delete liveHost.dataset.rmPending;
-     if(liveHost.dataset.rmAwaitingFreshSource==='true') liveHost.dataset.rmFreshSourceStatus='error';
-     ensureExternalTools(liveHost);
+     // The old ready mirror belongs to the previous正文 version. Do not reveal
+     // it beside the new正文, but also do not leave a non-interactive CSS-only
+     // error notice. Replace the mounted stale details with a real error
+     // placeholder that carries the exact owner identity, feedback cat and a
+     // direct retry action. The previous ready HTML remains in cache/history.
+     clearExternalHostFreshSourceState(liveHost);
+     ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
     } else ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
    }
   }
@@ -2211,6 +2269,39 @@ function passiveObservedIdentity(ctx,index,msg){
   legacySlots:legacyMessageSlotKeys(ctx,index,msg),
  };
 }
+function ensureAutomaticGenerationCutover(ctx=getContext()){
+ const ownerChat=chatKey(ctx);
+ if(automaticGenerationCutovers.has(ownerChat)) return automaticGenerationCutovers.get(ownerChat);
+ let maxIndex=-1;
+ for(const {i} of assistantMessages(ctx)) maxIndex=Math.max(maxIndex,Number(i));
+ const cutover={maxIndex,allowed:new Set()};
+ automaticGenerationCutovers.set(ownerChat,cutover);
+ return cutover;
+}
+function suppressesAutomaticGeneration(ctx,index){
+ const cutover=automaticGenerationCutovers.get(chatKey(ctx));
+ if(!cutover) return false;
+ const normalized=Number(index);
+ return Number.isInteger(normalized) && normalized<=cutover.maxIndex && !cutover.allowed.has(normalized);
+}
+function allowAutomaticGenerationForIndex(ctx,index){
+ const cutover=automaticGenerationCutovers.get(chatKey(ctx));
+ const normalized=Number(index);
+ if(cutover && Number.isInteger(normalized) && normalized>=0) cutover.allowed.add(normalized);
+}
+function clearAutomaticGenerationCutovers(){ automaticGenerationCutovers.clear(); }
+function hasExistingFollowRabbitMirror(ctx,index,msg){
+ const el=messageElement(index);
+ if(el){
+  const followHost=externalHosts(el).find(node=>node.dataset.rmSource==='follow' && usableReadyDetails(node.querySelector?.(':scope > details')));
+  if(followHost) return true;
+  const inline=[...(el.querySelectorAll?.('toto[data-rabbit-mirror="true"] > details')||[])].find(details=>!details.closest?.(`[${SOURCE_ATTR}][data-rm-source="independent"]`));
+  if(inline) return true;
+ }
+ const raw=`${String(msg?.mes||'')}
+${String(msg?.extra?.display_text||'')}`;
+ return /<toto\b[^>]*data-rabbit-mirror\s*=\s*["']true["'][^>]*>/i.test(raw);
+}
 function settleIndependentHostsForInactiveSource(el){
  if(!el) return;
  for(const host of externalHosts(el).filter(node=>node.dataset.rmSource==='independent')){
@@ -2222,7 +2313,7 @@ function settleIndependentHostsForInactiveSource(el){
    // but clear every transient loading marker so follow-current display changes
    // can never look like they started a new independent request.
    host.dataset.rmState='ready';
-   delete host.dataset.rmPending;
+   clearIndependentResayStatus(host);
    delete host.dataset.rmReplyGenerationPlaceholder;
    clearExternalHostFreshSourceState(host);
    placeExternalHost(el,host,host.dataset.rmKey||'', 'independent');
@@ -2299,6 +2390,14 @@ function syncMessages(indices=null){
        let saved=recoveredAtSync.saved;
        if(recoveredAtSync.storeChanged) storeChanged=true;
        let keep=collapseDuplicateIdentityHosts(el,key,'independent',sourceHash);
+       // Migrate beta.14.54-beta.14.64 CSS-only failure notices into a real,
+       // actionable error placeholder. Those old hosts hid the stale details
+       // and exposed only a ::before sentence, so neither the feedback cat nor
+       // a retry control could be reached.
+       if(keep?.dataset?.rmAwaitingFreshSource==='true' && keep.dataset.rmFreshSourceStatus==='error'){
+         clearExternalHostFreshSourceState(keep);
+         keep=ensureExternalUi(el,key,'独立 API 生成失败。可直接重新生成兔子镜，或打开挨打猫后重说。','error','independent',sourceHash);
+       }
        if(keep?.dataset?.rmState==='ready' && !usableReadyDetails(keep.querySelector?.(':scope > details'))){ keep.remove(); keep=null; }
        if(displayModeChanged && keep){
          // Switching display mode only relocates the one existing mirror.
@@ -2503,6 +2602,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
    for(const event of new Set(fullSyncEvents)){
      const handler=()=>{
        hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); cancelAllIndependentFlights('chat-changed'); messageSourceRevisions.clear();
+       if(runtimeMode()==='independent' && automaticGenerationCutovers.size) ensureAutomaticGenerationCutover(getContext());
        syncAll(); scheduleLatest(700);
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
@@ -2521,6 +2621,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
        // tail means that exact reply is being regenerated, so its old mirror
        // must stop being shown immediately, without removing the shell.
        if(lastMessage && !lastMessage.is_user && typeof lastMessage.mes==='string'){
+         allowAutomaticGenerationForIndex(ctx,lastIndex);
          cancelFlightsForMessage(lastIndex,'host-regeneration-started');
          markExternalHostsAwaitingFreshSource(lastIndex,'waiting');
        }
@@ -2557,6 +2658,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
          ? parsed
          : assistantMessages(ctx).at(-1)?.i;
        if(Number.isInteger(id)&&id>=0){
+         allowAutomaticGenerationForIndex(ctx,id);
          cancelFlightsForMessage(id,'swipe-changed');
          queueMessageSync([id]);
          scheduleMessageGeneration(id,260,true);
@@ -2652,6 +2754,11 @@ async function reconfigureRuntime(){
  const mountedIndependentSnapshots=captureMountedIndependentRecords();
  disconnectObserver(); unsubscribeHostEvents();
  const mode=runtimeMode();
+ const previousMode=lastAppliedRuntimeMode;
+ const enteredIndependentFromAnotherSource=previousMode!==null && mode==='independent' && previousMode!=='independent';
+ if(enteredIndependentFromAnotherSource){ clearAutomaticGenerationCutovers(); ensureAutomaticGenerationCutover(getContext()); }
+ else if(mode!=='independent') clearAutomaticGenerationCutovers();
+ lastAppliedRuntimeMode=mode;
  if(mode!=='independent') restoreMountedIndependentRecords(mountedIndependentSnapshots);
  const nextConfig=mode==='independent'?independentRequestConfigSignature():'';
  if(lastIndependentRequestConfig && nextConfig && nextConfig!==lastIndependentRequestConfig){
@@ -2677,7 +2784,7 @@ async function reconfigureRuntime(){
  }
  syncAll(); installObserverIfNeeded(); await installHostEventsIfNeeded(sequence);
  if(sequence!==runtimeConfigSequence || !currentRuntime()) return;
- scheduleLatest();
+ if(!enteredIndependentFromAnotherSource) scheduleLatest();
 }
 export function refreshRabbitMirrorGenerationMode(){ void reconfigureRuntime(); }
 export async function initIndependentRabbitMirror(){
@@ -2711,7 +2818,7 @@ export async function initIndependentRabbitMirror(){
  }
 }
 export function destroyIndependentRabbitMirror(){
- runtimeConfigSequence++; hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); cancelAllIndependentFlights('runtime-destroyed');
+ runtimeConfigSequence++; hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); cancelAllIndependentFlights('runtime-destroyed'); clearAutomaticGenerationCutovers(); lastAppliedRuntimeMode=null;
  removeIndependentActionBridge();
  lastIndependentRequestConfig='';
  disconnectObserver(); unsubscribeHostEvents(); removeFeedbackMirrorActionListeners(); removeRepairPersistenceListener(); removeExternalGeometryListeners(); removeBackgroundLifecycleListeners();

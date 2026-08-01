@@ -1,10 +1,11 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h64t';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.1.0b14h64t';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h68t';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.1.0b14h68t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h68t';
 import {
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.1.0b14h64t';
+} from './generationGuard.js?rmv=1.1.0b14h68t';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -329,6 +330,33 @@ function detectRepeatedUnitShape(root, html = '') {
 }
 
 
+
+function visualSceneryAuditExpected(html = '') {
+    if (/data-rm-visual-scenery\s*=\s*["']true["']/i.test(String(html || ''))) return true;
+    try { return !!getSettings()?.forceVisualScenery; } catch { return false; }
+}
+
+function inspectVisualSceneryMotion(html = '', spatialSignalCount = 0) {
+    const text = String(html || '');
+    if (!visualSceneryAuditExpected(text)) return [];
+    const flags = [];
+    const hasMarker = /data-rm-visual-scenery\s*=\s*["']true["']/i.test(text);
+    const keyframeCount = count(/@(?:-webkit-)?keyframes\b/gi, text);
+    const animationDeclarationCount = count(/(?:^|[;{])\s*(?:-webkit-)?animation(?:-name)?\s*:/gi, text);
+    const infiniteCount = count(/\binfinite\b/gi, text);
+    const meaningfulKeyframeMotion = /@(?:-webkit-)?keyframes[\s\S]{0,2400}?(?:translate(?:3d|x|y)?\s*\(|rotate(?:3d|x|y)?\s*\(|scale(?:3d|x|y)?\s*\(|clip-path\s*:|mask(?:-position|-size)?\s*:|background-position\s*:|stroke-dashoffset\s*:|offset-distance\s*:)/i.test(text);
+    const layeredSceneSignals = count(/position\s*:\s*absolute|z-index\s*:|grid-area\s*:|clip-path\s*:|mask\s*:|radial-gradient|linear-gradient|<svg\b/gi, text);
+
+    if (!hasMarker) flags.push('visual_scenery_marker_missing');
+    if (keyframeCount < 1 || animationDeclarationCount < 1 || infiniteCount < 1 || !meaningfulKeyframeMotion) {
+        flags.push('weak_visual_scenery_motion');
+    }
+    if (animationDeclarationCount < 2 || spatialSignalCount < 3 || layeredSceneSignals < 4) {
+        flags.push('weak_visual_scenery_layers');
+    }
+    return flags;
+}
+
 function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount }) {
     const flags = [];
     const sameBlockStack = detectSameBlockStack(root, html);
@@ -352,6 +380,7 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     if (interactionMissing) flags.push('missing_interaction');
     if (fakeInteraction) flags.push('fake_interaction');
     if (detectVisualPromiseWithoutMechanism(html, plain)) flags.push('visual_promise_unfulfilled');
+    flags.push(...inspectVisualSceneryMotion(html, spatialSignalCount));
     return [...new Set(flags)];
 }
 
@@ -990,7 +1019,7 @@ async function scanLatestAssistantMessage(mod) {
     if (sigHash !== lastScannedHash) {
         lastScannedHash = sigHash;
         lastScanAttempts = 0;
-    } else if (lastScanAttempts >= 3) {
+    } else if (lastScanAttempts >= 2) {
         return;
     }
     lastScanAttempts += 1;
@@ -1062,10 +1091,15 @@ export async function initVisualScanner() {
             visualScannerTimers.add(timer);
         };
         const scheduleScan = () => {
+            // Multiple SillyTavern end events can fire for the same reply. Keep
+            // only one early and one settled scan instead of stacking another
+            // pair for every event.
+            for (const timer of visualScannerTimers) clearTimeout(timer);
+            visualScannerTimers.clear();
             captureNow();
             scheduleCapture(120);
-            scheduleTimer(() => scanLatestAssistantMessage(mod), 600);
-            scheduleTimer(() => scanLatestAssistantMessage(mod), 1800);
+            scheduleTimer(() => scanLatestAssistantMessage(mod), 650);
+            scheduleTimer(() => scanLatestAssistantMessage(mod), 1750);
         };
         const subscribe = (eventName, handler) => {
             if (!eventName) return;

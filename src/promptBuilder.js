@@ -1,9 +1,9 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.1.0b14h64t';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.1.0b14h64t';
-import { pickCombination } from './picker.js?rmv=1.1.0b14h64t';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=1.1.0b14h64t';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.1.0b14h64t';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.1.0b14h64t';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.1.0b14h68t';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.1.0b14h68t';
+import { pickCombination } from './picker.js?rmv=1.1.0b14h68t';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=1.1.0b14h68t';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.1.0b14h68t';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.1.0b14h68t';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -158,6 +158,11 @@ function recentRiskCorrection() {
         lines.push('近期真实输出缺少有效交互，或只有悬停、位移、变色和装饰性操作入口。本轮必须先建立可保持的状态机制，再写触发入口与受控对象；触发前后须出现不同的内容、空间、构图或状态。');
     }
 
+    const hasWeakVisualScenery = flags.some(flag => ['visual_scenery_marker_missing', 'weak_visual_scenery_motion', 'weak_visual_scenery_layers'].includes(flag));
+    if (hasWeakVisualScenery) {
+        lines.push('近期动态视觉场景退化为静态页面、弱动效或单层头图。本轮必须先完成有前中后景的完整舞台，让主要主体与环境层在打开后立即持续运动，再把一条可保持交互寄生于场景对象；不得用播放器外观、进度条、微粒或静态卡片冒充动态画面。');
+    }
+
     if ((counts.same_block_stack || 0) >= 2 || (counts.info_page_degrade || 0) >= 2 || (counts.flat_vertical_flow || 0) >= 2) {
         lines.push('连续重复风险偏高。本轮必须显著改变阅读路径，例如改为分层视窗、横向/环形/地图式空间、局部展开、遮罩探索或多焦点跳读。');
     }
@@ -235,6 +240,20 @@ function complexInteractiveCore() {
   - 交互形态、规模与阶段须由本轮展现形式自身的结构、功能、使用方式与叙事产生；checkbox、翻面、弹窗、按钮组、标签页等仅在媒介天然适合时使用，不得作为默认骨架换皮复用；非一次性动作的首次操作不得耗尽全部体验。
   - 仅变色、描边、阴影、轻微位移、伪选项、无关交互堆叠，或非一次性媒介中一次显隐后立即结束，不算完整交互。
   - 交互须真实存在并可触摸触发，hover/active 只能辅助，不能单独充当本轮必需的完整交互；装饰不得遮挡操作对象。仅当媒介天然需要分层阅读时才可使用内部 details；禁止 onclick/onmouseover/onmouseout 等事件属性与内联 JavaScript，必须使用宿主可保留的 HTML/CSS 状态机制构成状态与反馈。`;
+}
+
+
+function visualScenerySceneFirstCore() {
+    return String.raw`
+Visual Scenery 场景优先级【覆盖通用交互骨架的执行顺序】:
+  - 本轮第一优先级是先让一幅完整动态场景本体成立，再把交互自然寄生在场景对象上；不得为了满足“复杂交互”先搭建按钮组、标签页、仪表盘、信息卡、播放器或说明面板。
+  - 施工顺序必须是：①建立一个自适应手机宽度的完整舞台；②明确背景层、中景主体层、前景遮挡／叙事层；③让占据主要视觉权重的主体或环境关系持续运动；④再选择场景内真实存在的一个对象作为可触摸入口，使画面产生可保持的第二状态。
+  - 首个主要场景根节点必须标记 data-rm-visual-scenery="true"，方便插件只读验收；该属性不产生可见文字，也不得被当作标题或说明。
+  - 至少一条主动画必须同时具备真实 @keyframes、可见元素上的 animation 声明、infinite 循环，并在打开后 1 秒内产生肉眼可见的位移、缩放、旋转、形变、遮罩推进、流体变化或光影扫动。只写 transform、transition、动画名、SVG、微尘闪烁或低对比呼吸不算主动画。
+  - 除主动画外，至少再有一个与场景空间有关的协同动态层，例如环境光、帘幕、影子、液面、雾、雨、丝线、纸片、轨迹或前景遮挡；两个动态层须共同服务同一构图，不能只是散落的小点。
+  - 场景未操作时就必须完整、清晰、持续活动；交互只能推进、揭示或改变场景，不能作为显示核心画面的前置条件。
+  - 允许场景画布中的纯装饰与短标签使用定位和裁切；主要正文与交互反馈仍须进入正常文档流并完整撑高，不能被固定高度或 overflow:hidden 截断。
+  - 交互要求收敛为一条与场景本体一致的完整链即可：场景对象→触摸操作→可保持的画面／关系／时间状态变化→明确反馈→可返回或继续。不得额外堆叠与场景无关的复杂控件。`;
 }
 
 
@@ -380,7 +399,7 @@ ${selectedFormats}`);
     chunks.push(sharedMemoryMaterialRule(memoryMaterial));
     chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
     chunks.push(presentationEmbodimentRule());
-    chunks.push(complexInteractiveCore());
+    chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
     chunks.push(innerDetailsCooldownRule());
     chunks.push(paletteCooldownRule());
     chunks.push(visualColorTruthRule());

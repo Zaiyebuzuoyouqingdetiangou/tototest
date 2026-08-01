@@ -51,7 +51,7 @@
   margin:0 !important;
   overflow:visible !important;
 }
-/* 1.1.0-beta.14.64-test: settings drawer mobile performance containment. */
+/* 1.1.0-beta.14.65-test: settings drawer mobile performance containment. */
 .rabbit-mirror-settings {
     contain: layout style !important;
 }
@@ -531,20 +531,31 @@ toto[data-rabbit-mirror="true"] summary {
   clear:both !important;
   z-index:1 !important;
 }
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-pending="true"]::after{
-  content:"重说中…" !important;
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"] > .rabbit-mirror-resay-status{
   position:absolute !important;
   top:10px !important;
-  right:14px !important;
-  padding:2px 8px !important;
-  border:1px solid rgba(0,0,0,.08) !important;
+  left:50% !important;
+  z-index:30 !important;
+  transform:translateX(-50%) !important;
+  width:max-content !important;
+  max-width:calc(100% - 28px) !important;
+  box-sizing:border-box !important;
+  padding:7px 12px !important;
+  border:1px solid color-mix(in srgb, var(--rm-shell-border, rgba(0,0,0,.16)) 72%, rgba(255,255,255,.55)) !important;
   border-radius:999px !important;
-  background:rgba(255,255,255,.92) !important;
-  color:rgba(70,70,70,.82) !important;
-  font-size:11px !important;
+  background:color-mix(in srgb, var(--rm-shell-bg, rgba(255,255,255,.97)) 88%, rgba(255,255,255,.96)) !important;
+  color:var(--rm-shell-text, rgba(45,45,45,.88)) !important;
+  font-size:12px !important;
+  font-weight:650 !important;
   line-height:1.4 !important;
-  box-shadow:0 2px 8px rgba(0,0,0,.05) !important;
+  text-align:center !important;
+  white-space:normal !important;
+  overflow-wrap:anywhere !important;
+  box-shadow:0 4px 14px var(--rm-shell-shadow, rgba(0,0,0,.10)) !important;
   pointer-events:none !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-pending="true"] > details[data-rabbit-mirror-external-details="true"]{
+  opacity:.76 !important;
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"],
 #chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
@@ -659,4 +670,37 @@ toto[data-rabbit-mirror="true"] summary {
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-awaiting-fresh-source="true"]::after{
   content:none !important;
   display:none !important;
+}
+
+/* beta.14.65: failed independent generation must remain actionable even when
+ * a theme hides or compresses the title tools. */
+.rabbit-mirror-external-error-actions{
+  display:flex !important;
+  flex-wrap:wrap !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:8px !important;
+  margin-top:12px !important;
+}
+.rabbit-mirror-external-error-action{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  min-height:36px !important;
+  min-width:0 !important;
+  padding:7px 12px !important;
+  border:1px solid var(--rm-shell-border, var(--SmartThemeBorderColor, rgba(128,128,128,.28))) !important;
+  border-radius:999px !important;
+  background:color-mix(in srgb, var(--rm-shell-bg, white) 88%, currentColor 12%) !important;
+  color:var(--rm-shell-text, var(--SmartThemeBodyColor, inherit)) !important;
+  box-shadow:0 2px 8px rgba(0,0,0,.06) !important;
+  font:inherit !important;
+  font-size:12px !important;
+  line-height:1.25 !important;
+  white-space:nowrap !important;
+  cursor:pointer !important;
+  -webkit-tap-highlight-color:transparent !important;
+}
+.rabbit-mirror-external-error-action:active{
+  transform:translateY(1px) !important;
 }
