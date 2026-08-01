@@ -1,6 +1,6 @@
-# RabbitMirror 兔子镜 — 1.1.0-beta.14.61-test
+# RabbitMirror 兔子镜 — 1.1.0-beta.14.62-test
 
-## beta.14.61 跟随主 API 外置显示修复
+## beta.14.62 跟随主 API 外置显示修复
 
 “跟随当前 API＋外置弹窗”现在也使用圆角染色外框，并挂在正文内容通道下方，不再裸露铺满或落到整条消息工具区之后。切换回“正文下方”时，兔子镜会根据移出前留下的 DOM 标记回到原来的生成位置，而不是追加到正文最末端。所有改动只作用于显示层，不修改 `message.mes`、`display_text`、Swipe 或主 API Prompt。
 

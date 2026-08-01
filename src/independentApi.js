@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h61t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h61t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h61t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h61t';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h61t';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.1.0b14h61t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h62t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h62t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h62t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h62t';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h62t';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.1.0b14h62t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.61-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.62-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -742,27 +742,35 @@ function removeEmptyInlineAnchors(scope=document){
 function followExternalAnchorForMessage(el,create=false){
  const body=messageBody(el);
  if(!el||!body) return null;
- const contentParent=(body!==el && body.parentElement && el.contains(body.parentElement)) ? body.parentElement : el;
  const anchors=[...(el.querySelectorAll?.(`[${FOLLOW_EXTERNAL_ANCHOR_ATTR}]`)||[])];
  let anchor=anchors[0]||null;
- const putAfterBody=(node)=>{
+ const origin=followOriginMarker(el,null,false);
+ const placeAtOrigin=(node)=>{
   if(!node) return;
-  if(body!==el && body.parentElement===contentParent) body.insertAdjacentElement?.('afterend',node);
-  else if(node.parentElement!==contentParent) contentParent.append(node);
+  // Follow-current API mirrors already have an exact origin marker inside the
+  // rendered正文. Keep the external shell in that same content lane and at the
+  // same vertical position instead of appending it after the entire .mes_text.
+  if(origin?.isConnected && body.contains(origin)){
+   if(node.previousElementSibling!==origin || node.parentElement!==origin.parentElement){
+    origin.insertAdjacentElement?.('afterend',node);
+   }
+   return;
+  }
+  if(node.parentElement!==body) body.append(node);
  };
- if(anchor && anchor.parentElement!==contentParent) putAfterBody(anchor);
+ if(anchor) placeAtOrigin(anchor);
  if(!anchor && create){
   anchor=document.createElement('div');
   anchor.setAttribute(FOLLOW_EXTERNAL_ANCHOR_ATTR,'true');
   anchor.dataset.rmOwnerMesid=externalOwnerMesid(el);
-  putAfterBody(anchor);
+  placeAtOrigin(anchor);
  }
  for(const duplicate of [...(el.querySelectorAll?.(`[${FOLLOW_EXTERNAL_ANCHOR_ATTR}]`)||[])]){
   if(duplicate===anchor) continue;
   for(const host of [...(duplicate.querySelectorAll?.(`:scope > [${SOURCE_ATTR}][data-rm-source="follow"]`)||[])]) anchor?.append(host);
   duplicate.remove();
  }
- if(anchor && body!==el && anchor.previousElementSibling!==body) putAfterBody(anchor);
+ if(anchor) placeAtOrigin(anchor);
  return anchor;
 }
 function removeEmptyFollowExternalAnchors(scope=document){
@@ -2210,7 +2218,11 @@ function syncMessages(indices=null){
      const el=messageElement(i); if(!el) continue;
      if(mode==='off') { externalHosts(el).forEach(n=>n.remove()); continue; }
      if(mode==='independent'){
-       externalHosts(el).filter(n=>n.dataset.rmSource==='follow').forEach(n=>n.remove());
+       // Switching generation source must not erase mirrors that were produced
+       // together with the正文 API. Restore any externalized follow mirror to
+       // its exact origin marker first; only future replies use the independent
+       // generator.
+       for(const followHost of externalHosts(el).filter(n=>n.dataset.rmSource==='follow')) restoreFollowInline(followHost);
        const observed=observeMessageSourceRevision(ctx,i,m);
        const key=recordKey(ctx,i,m); const slot=observed.slot; const sourceHash=observed.sourceHash;
        cancelSupersededFlightsForBase(messageBaseSlotKey(ctx,i,m),sourceHash);

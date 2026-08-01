@@ -1,14 +1,14 @@
-import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=1.1.0b14h61t';
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=1.1.0b14h61t';
-import { clearLastCombo } from './src/storage.js?rmv=1.1.0b14h61t';
-import { initVisualScanner, destroyVisualScanner } from './src/visualScanner.js?rmv=1.1.0b14h61t';
-import { initOutputSanitizer, destroyOutputSanitizer } from './src/outputSanitizer.js?rmv=1.1.0b14h61t';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.1.0b14h61t';
-import { getSettings } from './src/settings.js?rmv=1.1.0b14h61t';
-import { clearRabbitMirrorGenerationSnapshots } from './src/generationGuard.js?rmv=1.1.0b14h61t';
-import { initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './src/independentApi.js?rmv=1.1.0b14h61t';
+import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=1.1.0b14h62t';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=1.1.0b14h62t';
+import { clearLastCombo } from './src/storage.js?rmv=1.1.0b14h62t';
+import { initVisualScanner, destroyVisualScanner } from './src/visualScanner.js?rmv=1.1.0b14h62t';
+import { initOutputSanitizer, destroyOutputSanitizer } from './src/outputSanitizer.js?rmv=1.1.0b14h62t';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.1.0b14h62t';
+import { getSettings } from './src/settings.js?rmv=1.1.0b14h62t';
+import { clearRabbitMirrorGenerationSnapshots } from './src/generationGuard.js?rmv=1.1.0b14h62t';
+import { initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './src/independentApi.js?rmv=1.1.0b14h62t';
 
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.1.0-beta.14.61-test';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.1.0-beta.14.62-test';
 
 // Claim the active runtime before UI/DOM initialization. Versioned module URLs ensure this file and its internal graph cannot be satisfied by a stale hot-reload cache.
 try { globalThis.__rabbitMirrorFeedbackCatSyncCleanup?.(); } catch {}
