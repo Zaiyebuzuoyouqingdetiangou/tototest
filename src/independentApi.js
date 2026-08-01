@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h63t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h63t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h63t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h63t';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h63t';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.1.0b14h63t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h64t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h64t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h64t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h64t';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h64t';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.1.0b14h64t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.63-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.64-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -2211,6 +2211,32 @@ function passiveObservedIdentity(ctx,index,msg){
   legacySlots:legacyMessageSlotKeys(ctx,index,msg),
  };
 }
+function settleIndependentHostsForInactiveSource(el){
+ if(!el) return;
+ for(const host of externalHosts(el).filter(node=>node.dataset.rmSource==='independent')){
+  const details=host.querySelector?.(':scope > details');
+  const ready=details && !details.classList?.contains('rabbit-mirror-external-placeholder') && usableReadyDetails(details) ? details : null;
+  if(ready){
+   // A source switch may interrupt an independent resay after the old ready
+   // details were deliberately kept visible. Preserve that completed mirror,
+   // but clear every transient loading marker so follow-current display changes
+   // can never look like they started a new independent request.
+   host.dataset.rmState='ready';
+   delete host.dataset.rmPending;
+   delete host.dataset.rmReplyGenerationPlaceholder;
+   clearExternalHostFreshSourceState(host);
+   placeExternalHost(el,host,host.dataset.rmKey||'', 'independent');
+   continue;
+  }
+  // A loading/error placeholder without usable completed details has no visual
+  // value once the independent generator is inactive. Removing it does not
+  // delete cache/history and it will be recreated only after switching back to
+  // the independent source and scheduling a real request.
+  host.remove();
+ }
+ removeEmptyInlineAnchors(el);
+}
+
 function restoreIndependentMirrorPassively(ctx,store,el,index,msg){
  const observed=passiveObservedIdentity(ctx,index,msg);
  const key=recordKey(ctx,index,msg);
@@ -2326,9 +2352,13 @@ function syncMessages(indices=null){
          refreshExistingExternalDetails(keep,key,'independent');
        }
      } else {
-       // Generation-source changes affect only future replies. Existing exact
-       // independent RabbitMirrors remain visible and are passively remounted
-       // from their own cache after SillyTavern replaces a message DOM node.
+       // Generation-source changes affect only future replies. Keep completed
+       // independent mirrors, but remove any abandoned loading/error placeholder
+       // left by a cancelled independent run. A follow display-mode switch must
+       // never appear to start an independent generation.
+       settleIndependentHostsForInactiveSource(el);
+       // Existing exact independent RabbitMirrors remain visible and are
+       // passively remounted from cache after SillyTavern replaces a message DOM.
        if(restoreIndependentMirrorPassively(ctx,store,el,i,m)) storeChanged=true;
        if(mode==='follow-external') externalizeFollowMirror(i,m); else restoreFollowInline(el);
      }

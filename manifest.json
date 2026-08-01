@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・双来源共存・维修兔 v2.10-test）",
   "loading_order": 99,
-  "js": "index.js?rmv=1.1.0b14h63t",
-  "css": "style.css?rmv=1.1.0b14h63t",
+  "js": "index.js?rmv=1.1.0b14h64t",
+  "css": "style.css?rmv=1.1.0b14h64t",
   "author": "Toto",
-  "version": "1.1.0-beta.14.63-test",
+  "version": "1.1.0-beta.14.64-test",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
