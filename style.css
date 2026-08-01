@@ -14,23 +14,23 @@
   display:block !important;
   position:relative !important;
   isolation:isolate !important;
-  width:100% !important;
-  max-width:none !important;
+  width:calc(100% - 44px) !important;
+  max-width:560px !important;
   min-width:0 !important;
   box-sizing:border-box !important;
-  margin:0 !important;
+  margin:0 auto !important;
   padding:0 !important;
   border:1px solid var(--rm-shell-border, rgba(0,0,0,.10)) !important;
   border-radius:15px !important;
   background:linear-gradient(145deg, var(--rm-shell-highlight, rgba(255,255,255,.99)), var(--rm-shell-bg, rgba(255,255,255,.97))) !important;
   color:var(--rm-shell-text, inherit) !important;
-  box-shadow:0 5px 14px var(--rm-shell-shadow, rgba(0,0,0,.055)), 3px 0 0 var(--rm-shell-accent, transparent) inset, 0 1px 0 var(--rm-shell-inner-light, rgba(255,255,255,.82)) inset !important;
+  box-shadow:0 4px 10px var(--rm-shell-shadow, rgba(0,0,0,.045)), 3px 0 0 var(--rm-shell-accent, transparent) inset, 0 1px 0 var(--rm-shell-inner-light, rgba(255,255,255,.82)) inset !important;
   overflow:visible !important;
   contain:none !important;
   clear:both !important;
   z-index:1 !important;
 }
-/* 1.1.0-beta.14.58-test: settings drawer mobile performance containment. */
+/* 1.1.0-beta.14.59-test: settings drawer mobile performance containment. */
 .rabbit-mirror-settings {
     contain: layout style !important;
 }
@@ -549,7 +549,7 @@ toto[data-rabbit-mirror="true"] summary {
     border-radius:16px !important;
   }
   #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"]{
-    width:100% !important;
+    width:calc(100% - 32px) !important;
     max-width:none !important;
     border-radius:14px !important;
   }
