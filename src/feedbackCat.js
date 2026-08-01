@@ -4,7 +4,7 @@ const FEEDBACK_STORAGE_KEY = 'rabbit_mirror_theater:feedback_cat:v1';
 const FEEDBACK_PENDING_KEY = 'rabbit_mirror_theater:feedback_cat_pending:v2';
 const FEEDBACK_METADATA_KEY = 'rabbit_mirror_theater_feedback_cat_v2';
 const FEEDBACK_PROMPT_KEY = 'rabbit_mirror_theater:feedback_cat_prompt';
-const RUNTIME_VERSION = '1.1.0-beta.14.56-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.58-test';
 const VALID_ROUNDS = new Set([1, 3, 10]);
 const VALID_TYPES = new Set(['color', 'structure', 'overall', 'interaction', 'language', 'custom']);
 
@@ -625,8 +625,108 @@ export function consumeInjectedFeedbackForSuccessfulRabbitMirror(message) {
     return result;
 }
 
+
+export function consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror(html, feedbackId = '') {
+    const source = String(html || '').trim();
+    if (!source) return null;
+    let pending = null;
+    try {
+        pending = JSON.parse(localStorage.getItem(FEEDBACK_PENDING_KEY) || 'null');
+    } catch {
+        pending = null;
+    }
+    if (!pending?.feedbackId || Date.now() - Number(pending.injectedAt || 0) > 30 * 60 * 1000) return null;
+    if (feedbackId && pending.feedbackId !== feedbackId) return null;
+    if (String(pending.generationType || '') !== 'independent') return null;
+
+    const { state, identity } = readCurrentState();
+    if (pending.chatKey !== identity.key) return null;
+    const record = state.active;
+    if (!record || record.id !== pending.feedbackId) {
+        try { localStorage.removeItem(FEEDBACK_PENDING_KEY); } catch {}
+        return null;
+    }
+
+    const now = Date.now();
+    if (normalizeFeedbackTypes(record).includes('language')) {
+        const audit = auditLanguageFeedbackCompliance(source);
+        if (!audit.compliant) {
+            record.updatedAt = now;
+            record.delivery = {
+                ...(record.delivery || {}),
+                status: 'not_applied',
+                checkedAt: now,
+                complianceReason: audit.reason,
+                foreignWords: audit.foreignWords,
+                runtimeVersion: RUNTIME_VERSION,
+                successfulRabbitMirrorDetected: true,
+                independentApi: true,
+            };
+            state.active = record;
+            state.lastReceipt = clone({
+                ...record.delivery,
+                feedbackId: record.id,
+                type: record.type,
+                types: normalizeFeedbackTypes(record),
+                label: record.label,
+                remainingRounds: record.remainingRounds,
+            });
+            writeCurrentState(state);
+            syncFeedbackCatExtensionPrompt(record);
+            try { localStorage.removeItem(FEEDBACK_PENDING_KEY); } catch {}
+            return {
+                consumed: false,
+                cleared: false,
+                remainingRounds: Number(record.remainingRounds || 0),
+                record: clone(record),
+                receipt: clone(state.lastReceipt),
+                complianceFailed: true,
+            };
+        }
+    }
+
+    const remaining = Math.max(0, Number(record.remainingRounds || 0) - 1);
+    const receipt = {
+        ...(record.delivery || {}),
+        status: 'consumed',
+        consumedAt: now,
+        feedbackId: record.id,
+        type: record.type,
+        types: normalizeFeedbackTypes(record),
+        label: record.label,
+        remainingRounds: remaining,
+        runtimeVersion: RUNTIME_VERSION,
+        successfulRabbitMirrorDetected: true,
+        independentApi: true,
+    };
+    state.lastReceipt = receipt;
+
+    let result;
+    if (remaining > 0) {
+        record.remainingRounds = remaining;
+        record.updatedAt = now;
+        record.delivery = {
+            ...receipt,
+            status: 'waiting',
+            waitingSince: now,
+            previousConsumedAt: now,
+        };
+        state.active = record;
+        result = { consumed: true, cleared: false, remainingRounds: remaining, record: clone(record), receipt: clone(receipt) };
+        writeCurrentState(state);
+        syncFeedbackCatExtensionPrompt(record);
+    } else {
+        state.active = null;
+        result = { consumed: true, cleared: true, remainingRounds: 0, record: clone(record), receipt: clone(receipt) };
+        writeCurrentState(state);
+        clearFeedbackCatExtensionPrompt();
+    }
+    try { localStorage.removeItem(FEEDBACK_PENDING_KEY); } catch {}
+    return result;
+}
+
 function deliveryStatusLabel(delivery) {
-    if (delivery?.status === 'injected') return '本轮已由生成拦截器读取并追加到兔子镜主隐藏 Prompt';
+    if (delivery?.status === 'injected') return '本轮已读取并追加到兔子镜隐藏 Prompt';
     if (delivery?.status === 'consumed') return '已随成功生成消耗';
     if (delivery?.status === 'not_applied') return `上一轮未落实，反馈继续保留${delivery?.complianceReason ? `：${delivery.complianceReason}` : ''}`;
     return '等待下一次正式生成';

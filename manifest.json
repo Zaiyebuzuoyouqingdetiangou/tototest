@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・外置圆框安全染色・维修兔 v2.09-test）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・主背景同系外框・维修兔 v2.10-test）",
   "loading_order": 99,
-  "js": "index.js?rmv=1.1.0b14h56t",
-  "css": "style.css?rmv=1.1.0b14h56t",
+  "js": "index.js?rmv=1.1.0b14h58t",
+  "css": "style.css?rmv=1.1.0b14h58t",
   "author": "Toto",
-  "version": "1.1.0-beta.14.56-test",
+  "version": "1.1.0-beta.14.58-test",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "新回复生成期间立即显示唯一白色圆角占位框，并保留正文版本隔离、旧缓存恢复与同 DOM 原位替换。"
+  "description": "副 API 外框按兔子镜主背景同系配色；补齐挨打猫副 API 闭环、维修结果持久化、display_text 身份隔离和监听清理。"
 }

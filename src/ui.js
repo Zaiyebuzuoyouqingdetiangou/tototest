@@ -1,14 +1,14 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.1.0b14h56t';
-import { clearLastCombo } from './storage.js?rmv=1.1.0b14h56t';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.1.0b14h56t';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.1.0b14h56t';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.1.0b14h56t';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.1.0b14h56t';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.1.0b14h56t';
-import { fetchIndependentModels, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.1.0b14h56t';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.1.0b14h58t';
+import { clearLastCombo } from './storage.js?rmv=1.1.0b14h58t';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.1.0b14h58t';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.1.0b14h58t';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.1.0b14h58t';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.1.0b14h58t';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.1.0b14h58t';
+import { fetchIndependentModels, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.1.0b14h58t';
 
-const SETTINGS_UI_VERSION = '1.1.0-beta.14.56-test';
-const RUNTIME_VERSION = '1.1.0-beta.14.56-test';
+const SETTINGS_UI_VERSION = '1.1.0-beta.14.58-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.58-test';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;

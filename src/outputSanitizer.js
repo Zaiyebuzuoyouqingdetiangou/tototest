@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h56t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h56t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h58t';
+import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h58t';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h56t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h56t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h56t';
+} from './feedbackCat.js?rmv=1.1.0b14h58t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h58t';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h58t';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.56-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.58-test';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9637,6 +9637,7 @@ const MAINTENANCE_STATE_ATTR = 'data-rabbit-mirror-maintenance-state';
 const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_MENU_ATTR = 'data-rabbit-mirror-maintenance-menu';
+const INDEPENDENT_REPAIR_PERSIST_EVENT = 'rabbitmirror:independent-repair-persist';
 const maintenancePreRepairSnapshots = new Map();
 const MAINTENANCE_AUTO_SAFE_ATTR = 'data-rabbit-mirror-auto-safe-maintenance';
 const MAINTENANCE_AUTO_SAFE_RESULT_ATTR = 'data-rabbit-mirror-auto-safe-result';
@@ -15209,6 +15210,7 @@ function scheduleMaintenanceScopedFollowups(root, summaryText, messageIndex, mod
                 runMaintenanceLegacyRescueLibrary(latestRoot, mode);
                 if (sourceResult.changed && mode === 'source') runMaintenanceSourceInteractionFollowup(latestRoot);
                 installMaintenanceRabbitForRoot(latestRoot);
+                notifyIndependentRepairPersistence(latestRoot);
             };
             if (sourceResult.changed) setTimeout(runLibrary, 60);
             else runLibrary();
@@ -15229,6 +15231,13 @@ function compareMaintenanceFindings(beforeFindings, afterFindings) {
     const remaining = [...afterMap.values()];
     const introduced = [...afterMap.entries()].filter(([key]) => !beforeMap.has(key)).map(([, finding]) => finding);
     return { resolved, remaining, introduced };
+}
+
+function notifyIndependentRepairPersistence(root) {
+    const host = root?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]');
+    if (!host?.isConnected || typeof document === 'undefined' || typeof CustomEvent === 'undefined') return false;
+    document.dispatchEvent(new CustomEvent(INDEPENDENT_REPAIR_PERSIST_EVENT, { detail: { root, host } }));
+    return true;
 }
 
 function runMaintenanceAutomaticRepairPlan(root, button) {
@@ -15315,6 +15324,8 @@ function runMaintenanceAutomaticRepairPlan(root, button) {
                 `已按顺序维修并验证 ${resolvedLabels.length} 项：${resolvedLabels.join('、') || '未发现剩余高置信异常'}`,
             );
         }
+
+        notifyIndependentRepairPersistence(liveRoot);
 
         // 宿主可能在维修后稍晚重绘；再做一次只读复核，若问题重新出现则恢复黄灯。
         setTimeout(() => {
@@ -15495,6 +15506,7 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
     } else {
         setMaintenanceRabbitState(button, inspection.state, inspection.reason || '自动巡逻未发现需要安全修复的问题');
     }
+    if (repaired > 0) notifyIndependentRepairPersistence(root);
     return { repaired, modules, inspection };
 }
 
@@ -15572,6 +15584,7 @@ function runMaintenanceUserRepair(root, button, mode) {
                     const autoNote = mode === 'auto' ? `（自动选择：${effectiveMode}）` : '';
                     setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.idle, `维修路线已执行${autoNote}，请实际确认是否恢复正常`);
                 }
+                notifyIndependentRepairPersistence(afterRoot);
             }, 360);
         };
         if (sourceResult.changed) setTimeout(continueRepair, 200);
@@ -15655,7 +15668,14 @@ function showMaintenanceRabbitMenu(root, button) {
         closeMaintenanceRabbitMenu();
         if (action === 'close') return;
         if (action === 'restore-before') {
-            restoreMaintenancePreRepairSnapshot(root, button);
+            const restoreSummary = getRabbitMirrorSummaryText(root);
+            const restoreIndex = getMessageIndexFromMirrorNode(root);
+            if (restoreMaintenancePreRepairSnapshot(root, button)) {
+                setTimeout(() => {
+                    const restoredRoot = findLiveMaintenanceRoot(root, restoreSummary, restoreIndex);
+                    if (restoredRoot) notifyIndependentRepairPersistence(restoredRoot);
+                }, 40);
+            }
             return;
         }
         if (action === 'patrol') {
@@ -17791,6 +17811,7 @@ function messageUsesDistinctDisplaySource(message) {
 
 
 let chatInstallObserver = null;
+let chatRootReadyObserver = null;
 let observedChatInstallRoot = null;
 let chatInstallDebounceTimer = 0;
 const pendingObservedMessageRoots = new Set();
@@ -18017,13 +18038,16 @@ function installChatMutationObserver() {
 
 function installChatRootReadyObserver() {
     if (typeof MutationObserver === 'undefined' || typeof document === 'undefined' || !document.body) return;
+    chatRootReadyObserver?.disconnect?.();
+    chatRootReadyObserver = null;
     if (installChatMutationObserver()) return;
-    const observer = new MutationObserver(() => {
+    chatRootReadyObserver = new MutationObserver(() => {
         if (!installChatMutationObserver()) return;
-        observer.disconnect();
+        chatRootReadyObserver?.disconnect?.();
+        chatRootReadyObserver = null;
         scheduleMaintenanceRabbitInstall();
     });
-    observer.observe(document.body, { childList: true, subtree: true });
+    chatRootReadyObserver.observe(document.body, { childList: true, subtree: true });
 }
 
 function unsubscribeOutputHostEvents() {
@@ -18083,6 +18107,8 @@ export function destroyOutputSanitizer() {
     unsubscribeOutputHostEvents();
     chatInstallObserver?.disconnect?.();
     chatInstallObserver = null;
+    chatRootReadyObserver?.disconnect?.();
+    chatRootReadyObserver = null;
     removeToolEntryDelegation();
     observedChatInstallRoot = null;
     if (chatInstallDebounceTimer) {
