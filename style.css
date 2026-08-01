@@ -25,7 +25,7 @@
   clear:both !important;
   z-index:1 !important;
 }
-/* 1.1.0-beta.14.53-test: settings drawer mobile performance containment. */
+/* 1.1.0-beta.14.54-test: settings drawer mobile performance containment. */
 .rabbit-mirror-settings {
     contain: layout style !important;
 }
@@ -165,7 +165,7 @@ toto[data-rabbit-mirror="true"] summary {
 
 
 
-/* 1.1.0-beta.14.53-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
+/* 1.1.0-beta.14.54-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
 [data-rabbit-mirror-tool-entry-host] {
   all: initial !important;
   display: inline-flex !important;
@@ -460,7 +460,7 @@ toto[data-rabbit-mirror="true"] summary {
   overflow-wrap:anywhere;
   line-height:1.55;
 }
-/* beta.14.53: restore the compact centered white shell that users expect.
+/* beta.14.54: restore the compact centered white shell that users expect.
  * Independent external hosts should look like a cute neutral frame, not inherit
  * the page theme tint, and should keep comfortable left/right breathing room. */
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
@@ -577,4 +577,30 @@ toto[data-rabbit-mirror="true"] summary {
  .rabbit-mirror-history-body{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);}
  .rabbit-mirror-history-list{flex-direction:row;border-right:0;border-bottom:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.20));overflow-x:auto;overflow-y:hidden;}
  .rabbit-mirror-history-list button{flex:0 0 min(210px,72vw);}
+}
+
+/* beta.14.54: a regenerated正文 must never keep displaying the old version's
+ * mirror. Preserve the one white shell so the layout does not jump, hide the
+ * stale details, and show a neutral status until the new mirror commits. */
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-awaiting-fresh-source="true"] > details[data-rabbit-mirror-external-details="true"]{
+  display:none !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-awaiting-fresh-source="true"]::before{
+  content:"正文正在更新，兔子镜将在新回复完成后刷新…" !important;
+  display:block !important;
+  width:100% !important;
+  box-sizing:border-box !important;
+  padding:16px 18px !important;
+  color:rgba(78,78,78,.72) !important;
+  font-size:13px !important;
+  line-height:1.55 !important;
+  text-align:center !important;
+  overflow-wrap:anywhere !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-awaiting-fresh-source="true"][data-rm-fresh-source-status="error"]::before{
+  content:"新正文的兔子镜生成失败，可在挨打猫中重说" !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-awaiting-fresh-source="true"]::after{
+  content:none !important;
+  display:none !important;
 }

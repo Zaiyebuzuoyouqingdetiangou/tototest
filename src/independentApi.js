@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h53t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h53t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h53t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h53t';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h53t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h54t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h54t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h54t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h54t';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h54t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.53-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.54-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -798,6 +798,26 @@ function markExternalHostsAwaitingOwner(mesid=''){
  },1800);
  orphanExternalHostTimers.set(id,timer);
 }
+function markExternalHostsAwaitingFreshSource(index,status='waiting'){
+ const id=Number(index);
+ if(!Number.isInteger(id) || id<0) return false;
+ let changed=false;
+ for(const host of externalHostsOwnedByMesid(String(id)).filter(node=>node.dataset.rmSource==='independent')){
+   if(!readyDetailsFromHost(host)) continue;
+   host.hidden=false;
+   host.dataset.rmAwaitingFreshSource='true';
+   host.dataset.rmFreshSourceStatus=status==='error'?'error':'waiting';
+   delete host.dataset.rmPending;
+   changed=true;
+ }
+ return changed;
+}
+function clearExternalHostFreshSourceState(host){
+ if(!host) return;
+ delete host.dataset.rmAwaitingFreshSource;
+ delete host.dataset.rmFreshSourceStatus;
+ delete host.dataset.rmPending;
+}
 function refreshExternalHostGeometry(){
  // Stable comfort width is CSS-only; orientation changes do not sample any
  // message-specific rectangle and therefore cannot freeze a narrow width.
@@ -1198,7 +1218,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
  const wasOpen=!!current?.hasAttribute?.('open');
  const currentReady=usableReadyDetails(current) ? current : null;
  if(state==='ready'){
-   delete host.dataset.rmPending;
+   clearExternalHostFreshSourceState(host);
    const sameReadySource=currentReady && host.dataset.rmState==='ready' && String(host.__rabbitMirrorIndependentSource||'')===String(html||'');
    host.__rabbitMirrorIndependentSource = String(html||'');
    if(sameReadySource){
@@ -1423,6 +1443,7 @@ async function generateFor(index,msg,force=false,sourceAware=true,options={}){
     if(readyDetailsFromHost(liveHost)){
      liveHost.dataset.rmState='ready';
      delete liveHost.dataset.rmPending;
+     if(liveHost.dataset.rmAwaitingFreshSource==='true') liveHost.dataset.rmFreshSourceStatus='error';
      ensureExternalTools(liveHost);
     } else ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
    }
@@ -1681,15 +1702,17 @@ function syncMessages(indices=null){
        const hostSourceHash=String(keep?.dataset?.rmSourceHash||'');
        const hostIsStale=!!(keep && hostSourceHash && hostSourceHash!==sourceHash);
        if(hostIsStale){
-         // Migrate any legacy inline anchor out of .mes_text before hiding it.
-         // This keeps SillyTavern's regenerated正文 DOM extension-free.
+         // The mounted mirror belongs to the previous正文 version. Keep the one
+         // shell anchored in place, but never show stale mirror content beside
+         // the regenerated正文 while the new independent result is pending.
          placeExternalHost(el,keep,keep.dataset.rmKey||key,'independent');
-         keep.hidden=true;
+         keep.hidden=false;
          keep.dataset.rmAwaitingFreshSource='true';
+         keep.dataset.rmFreshSourceStatus='waiting';
        }
        if(saved?.html && savedRecordMatchesObserved(saved,observed)){
          const host=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash);
-         if(host){ rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,sourceHash); host.hidden=false; delete host.dataset.rmAwaitingFreshSource; }
+         if(host){ rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,sourceHash); host.hidden=false; clearExternalHostFreshSourceState(host); }
        } else if(keep && !hostIsStale){
          placeExternalHost(el,keep,keep.dataset.rmKey||key,'independent');
          refreshExistingExternalDetails(keep,key,'independent');
@@ -1844,12 +1867,19 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
    }
    for(const event of new Set(generationStartedEvents)){
      const handler=()=>{
-       // Do not tear down the current shell at generation start. On mobile a
-       // long gap before the replacement正文 lands makes the mirror appear to
-       // vanish. Keep the previous UI visible; exact-version checks already
-       // prevent any late old request from overwriting the new result.
        hostGenerationInProgress=true;
        clearScheduledGeneration();
+       const ctx=getContext();
+       const lastIndex=Array.isArray(ctx.chat)?ctx.chat.length-1:-1;
+       const lastMessage=lastIndex>=0?ctx.chat[lastIndex]:null;
+       // A user message at the tail means a brand-new assistant reply: the
+       // previous reply's mirror remains valid. An assistant message at the
+       // tail means that exact reply is being regenerated, so its old mirror
+       // must stop being shown immediately, without removing the shell.
+       if(lastMessage && !lastMessage.is_user && typeof lastMessage.mes==='string'){
+         cancelFlightsForMessage(lastIndex,'host-regeneration-started');
+         markExternalHostsAwaitingFreshSource(lastIndex,'waiting');
+       }
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
