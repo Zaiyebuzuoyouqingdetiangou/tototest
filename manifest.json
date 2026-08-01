@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・生成来源切换恢复・维修兔 v2.09-test）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・外置圆框与塌缩修复・维修兔 v2.09-test）",
   "loading_order": 99,
-  "js": "index.js?rmv=1.1.0b14h52t",
-  "css": "style.css?rmv=1.1.0b14h52t",
+  "js": "index.js?rmv=1.1.0b14h53t",
+  "css": "style.css?rmv=1.1.0b14h53t",
   "author": "Toto",
-  "version": "1.1.0-beta.14.52-test",
+  "version": "1.1.0-beta.14.53-test",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "修复升级后旧外置兔子镜被空壳检测误删；支持旧正文指纹与历史回填。"
+  "description": "修复纯外置塌成直线；纯外置与外置后内嵌统一白色圆角框，并保留旧缓存恢复。"
 }

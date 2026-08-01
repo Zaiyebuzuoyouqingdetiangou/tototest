@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h52t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h52t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h52t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h52t';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h52t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h53t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h53t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h53t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h53t';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h53t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.52-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.53-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
