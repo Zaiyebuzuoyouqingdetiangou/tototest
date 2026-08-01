@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h62t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h62t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h62t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h62t';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h62t';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.1.0b14h62t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h63t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h63t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h63t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h63t';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h63t';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.1.0b14h63t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.62-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.63-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -2201,11 +2201,53 @@ function runtimeMode(){
  if(st.generationSource==='follow' && st.followDisplayMode==='external') return 'follow-external';
  return 'inline';
 }
+function passiveObservedIdentity(ctx,index,msg){
+ return {
+  slot:messageSlotKey(ctx,index,msg),
+  sourceHash:messageSourceFingerprint(msg),
+  bodyHash:messageBodyFingerprint(msg),
+  displayHash:messageDisplayFingerprint(msg),
+  reasoningHash:messageReasoningFingerprint(msg),
+  legacySlots:legacyMessageSlotKeys(ctx,index,msg),
+ };
+}
+function restoreIndependentMirrorPassively(ctx,store,el,index,msg){
+ const observed=passiveObservedIdentity(ctx,index,msg);
+ const key=recordKey(ctx,index,msg);
+ let keep=collapseDuplicateIdentityHosts(el,key,'independent',observed.sourceHash);
+ if(keep?.dataset?.rmState==='ready' && !usableReadyDetails(keep.querySelector?.(':scope > details'))){ keep.remove(); keep=null; }
+ const recovered=recoverSavedRecord(store,observed.slot,observed);
+ let saved=recovered.saved;
+ if(saved?.html && !savedRecordMatchesObserved(saved,observed)) saved=null;
+ if(saved?.html){
+  const host=ensureExternalUi(el,key,saved.html,'ready','independent',observed.sourceHash);
+  if(host){
+   rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,observed.sourceHash);
+   host.hidden=false;
+   clearExternalHostFreshSourceState(host);
+  }
+  return recovered.storeChanged;
+ }
+ if(keep){
+  const mountedSource=String(keep.dataset.rmSourceHash||'');
+  if(!mountedSource || mountedSource===observed.sourceHash || mountedSource===observed.bodyHash){
+   placeExternalHost(el,keep,keep.dataset.rmKey||key,'independent');
+   keep.hidden=false;
+   clearExternalHostFreshSourceState(keep);
+   refreshExistingExternalDetails(keep,key,'independent');
+  }else{
+   // The old mirror belongs to another正文 version. Keep its cache/history but
+   // never display it beside a changed正文 while the follow API is active.
+   keep.hidden=true;
+  }
+ }
+ return recovered.storeChanged;
+}
 function syncMessages(indices=null){
  if(!currentRuntime() || syncRunning) return;
  syncRunning=true;
  try{
-   const ctx=getContext(); const st=getSettings(); const mode=runtimeMode(); const store=mode==='independent'?readStore():null;
+   const ctx=getContext(); const st=getSettings(); const mode=runtimeMode(); const store=readStore();
    const displayModeChanged=mode==='independent' ? consumeIndependentDisplayModeChange() : false;
    const allowed=indices instanceof Set?indices:null;
    const generationActive=mode==='independent' && hostGenerationLooksActive();
@@ -2284,9 +2326,10 @@ function syncMessages(indices=null){
          refreshExistingExternalDetails(keep,key,'independent');
        }
      } else {
-       // Switching away from the independent generator must not silently erase
-       // already generated independent mirrors. Preserve existing ready hosts;
-       // only future generations follow the current API mode.
+       // Generation-source changes affect only future replies. Existing exact
+       // independent RabbitMirrors remain visible and are passively remounted
+       // from their own cache after SillyTavern replaces a message DOM node.
+       if(restoreIndependentMirrorPassively(ctx,store,el,i,m)) storeChanged=true;
        if(mode==='follow-external') externalizeFollowMirror(i,m); else restoreFollowInline(el);
      }
    }
@@ -2397,7 +2440,9 @@ function disconnectObserver(){
 }
 function installObserverIfNeeded(){
  disconnectObserver();
- const mode=runtimeMode(); if(mode==='off'||mode==='inline'||typeof MutationObserver==='undefined') return;
+ const mode=runtimeMode();
+ const preserveIndependentInInline=mode==='inline' && allExternalHosts().some(node=>node.dataset.rmSource==='independent');
+ if(mode==='off' || (mode==='inline' && !preserveIndependentInInline) || typeof MutationObserver==='undefined') return;
  const chat=document.querySelector('#chat'); if(!chat) return;
  observer=new MutationObserver(records=>{
    const removed=removedMutationIndices(records);
@@ -2574,8 +2619,10 @@ function restoreMountedIndependentRecords(snapshots=[]){
 async function reconfigureRuntime(){
  if(!currentRuntime()) return;
  const sequence=++runtimeConfigSequence;
+ const mountedIndependentSnapshots=captureMountedIndependentRecords();
  disconnectObserver(); unsubscribeHostEvents();
  const mode=runtimeMode();
+ if(mode!=='independent') restoreMountedIndependentRecords(mountedIndependentSnapshots);
  const nextConfig=mode==='independent'?independentRequestConfigSignature():'';
  if(lastIndependentRequestConfig && nextConfig && nextConfig!==lastIndependentRequestConfig){
    clearScheduledGeneration(); cancelAllIndependentFlights('api-settings-changed');
@@ -2588,10 +2635,12 @@ async function reconfigureRuntime(){
    clearScheduledGeneration(); cancelAllIndependentFlights('mode-disabled');
    if(mode==='inline'){
      document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(el=>restoreFollowInline(el));
-     // Changing the generation source only affects future generations. Existing
-     // independent RabbitMirrors remain mounted and recoverable; removing them
-     // here made a settings toggle look like permanent data loss.
+     // Reconcile exact independent records once before returning. This repairs
+     // source switches where SillyTavern rebuilt the message DOM during the same
+     // settings change and detached the old external shell.
+     syncAll();
      removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);
+     installObserverIfNeeded();
    }
    if(mode==='off'){ document.querySelectorAll(`[${SOURCE_ATTR}]`).forEach(n=>n.remove()); removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document); }
    return;

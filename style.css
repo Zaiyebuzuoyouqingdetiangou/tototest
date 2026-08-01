@@ -42,7 +42,7 @@
   clear:both !important;
   z-index:1 !important;
 }
-/* 1.1.0-beta.14.62-test: settings drawer mobile performance containment. */
+/* 1.1.0-beta.14.63-test: settings drawer mobile performance containment. */
 .rabbit-mirror-settings {
     contain: layout style !important;
 }
@@ -511,7 +511,7 @@ toto[data-rabbit-mirror="true"] summary {
   box-sizing:border-box !important;
   align-self:auto !important;
   margin:8px 0 10px !important;
-  padding:0 !important;
+  padding:6px !important;
   border:1px solid var(--rm-shell-border, rgba(0,0,0,.10)) !important;
   border-radius:18px !important;
   background:linear-gradient(145deg, var(--rm-shell-highlight, rgba(255,255,255,.99)), var(--rm-shell-bg, rgba(255,255,255,.97))) !important;
@@ -550,6 +550,9 @@ toto[data-rabbit-mirror="true"] summary {
   border-radius:0 !important;
   background:transparent !important;
   overflow:visible !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
+  border-radius:13px !important;
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > :not(summary):not(style):not(script),
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"] > details[data-rabbit-mirror-external-details="true"] > :not(summary):not(style):not(script),
