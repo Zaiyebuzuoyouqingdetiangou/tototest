@@ -1,16 +1,18 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h60t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h60t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h60t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h60t';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h60t';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.1.0b14h60t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h61t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h61t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h61t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h61t';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h61t';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.1.0b14h61t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.60-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.61-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
 const EXTERNAL_SHELL_ATTR = 'data-rabbit-mirror-external-shell';
 const INLINE_ANCHOR_ATTR = 'data-rabbit-mirror-independent-inline-anchor';
+const FOLLOW_EXTERNAL_ANCHOR_ATTR = 'data-rabbit-mirror-follow-external-anchor';
+const FOLLOW_ORIGIN_ATTR = 'data-rabbit-mirror-follow-origin';
 const RESAY_ATTR = 'data-rabbit-mirror-resay';
 const RESAY_EVENT = 'rabbitmirror:resay';
 const HISTORY_EVENT = 'rabbitmirror:history';
@@ -737,6 +739,63 @@ function removeEmptyInlineAnchors(scope=document){
   if(!anchor.querySelector?.(`[${SOURCE_ATTR}]`)) anchor.remove();
  });
 }
+function followExternalAnchorForMessage(el,create=false){
+ const body=messageBody(el);
+ if(!el||!body) return null;
+ const contentParent=(body!==el && body.parentElement && el.contains(body.parentElement)) ? body.parentElement : el;
+ const anchors=[...(el.querySelectorAll?.(`[${FOLLOW_EXTERNAL_ANCHOR_ATTR}]`)||[])];
+ let anchor=anchors[0]||null;
+ const putAfterBody=(node)=>{
+  if(!node) return;
+  if(body!==el && body.parentElement===contentParent) body.insertAdjacentElement?.('afterend',node);
+  else if(node.parentElement!==contentParent) contentParent.append(node);
+ };
+ if(anchor && anchor.parentElement!==contentParent) putAfterBody(anchor);
+ if(!anchor && create){
+  anchor=document.createElement('div');
+  anchor.setAttribute(FOLLOW_EXTERNAL_ANCHOR_ATTR,'true');
+  anchor.dataset.rmOwnerMesid=externalOwnerMesid(el);
+  putAfterBody(anchor);
+ }
+ for(const duplicate of [...(el.querySelectorAll?.(`[${FOLLOW_EXTERNAL_ANCHOR_ATTR}]`)||[])]){
+  if(duplicate===anchor) continue;
+  for(const host of [...(duplicate.querySelectorAll?.(`:scope > [${SOURCE_ATTR}][data-rm-source="follow"]`)||[])]) anchor?.append(host);
+  duplicate.remove();
+ }
+ if(anchor && body!==el && anchor.previousElementSibling!==body) putAfterBody(anchor);
+ return anchor;
+}
+function removeEmptyFollowExternalAnchors(scope=document){
+ scope?.querySelectorAll?.(`[${FOLLOW_EXTERNAL_ANCHOR_ATTR}]`)?.forEach(anchor=>{
+  if(!anchor.querySelector?.(`[${SOURCE_ATTR}][data-rm-source="follow"]`)) anchor.remove();
+ });
+}
+function followOriginMarker(el,mirror=null,create=false){
+ const body=messageBody(el);
+ if(!body) return null;
+ const markers=[...(body.querySelectorAll?.(`[${FOLLOW_ORIGIN_ATTR}]`)||[])];
+ let marker=create && mirror ? markers.find(node=>node.nextElementSibling===mirror) || null : markers[0] || null;
+ if(create && mirror && body.contains(mirror)){
+  for(const duplicate of markers) if(duplicate!==marker) duplicate.remove();
+  if(!marker){
+   marker=document.createElement('span');
+   marker.setAttribute(FOLLOW_ORIGIN_ATTR,'true');
+   marker.dataset.rmOwnerMesid=externalOwnerMesid(el);
+   marker.hidden=true;
+   mirror.insertAdjacentElement?.('beforebegin',marker);
+  }
+ }
+ return marker;
+}
+function legacyFollowOriginContainer(body){
+ if(!body?.querySelectorAll) return null;
+ const candidates=[...body.querySelectorAll('toto')].reverse();
+ return candidates.find(node=>{
+  if(node.querySelector?.('details')) return false;
+  if(String(node.textContent||'').trim()) return false;
+  return !node.querySelector?.('img,svg,canvas,video,audio,iframe,input,button,select,textarea,table,ul,ol,section,article,main,figure,[role],[data-action]');
+ })||null;
+}
 function stampExternalDetailsOwnership(host){
  if(!host) return;
  const details=host.querySelector?.(':scope > details');
@@ -797,6 +856,20 @@ function placeExternalHost(el,host,key='',source='independent'){
  stampExternalHostOwnership(el,host,key,source);
  const previousParent=host.parentElement;
  const desired=source==='independent' ? independentPlacementForState(host.dataset.rmState||'ready') : 'external';
+ if(source==='follow'){
+  const anchor=followExternalAnchorForMessage(el,true);
+  if(!anchor) return false;
+  if(host.parentElement!==anchor) anchor.append(host);
+  host.dataset.rmPlacement='external';
+  host.dataset.rmExternalPlacementEstablished='true';
+  host.hidden=false;
+  delete host.dataset.rmAwaitingOwner;
+  clearOrphanExternalHostTimer(externalOwnerMesid(el));
+  syncExternalHostGeometry(el,host);
+  if(previousParent?.hasAttribute?.(FOLLOW_EXTERNAL_ANCHOR_ATTR) && previousParent!==anchor && !previousParent.querySelector?.(`[${SOURCE_ATTR}][data-rm-source="follow"]`)) previousParent.remove();
+  if(previousParent?.hasAttribute?.(INLINE_ANCHOR_ATTR) && !previousParent.querySelector?.(`[${SOURCE_ATTR}]`)) previousParent.remove();
+  return true;
+ }
  if(desired==='inline'){
   const anchor=inlineAnchorForMessage(el,true);
   if(!anchor) return false;
@@ -2064,12 +2137,23 @@ function externalizeFollowMirror(index,msg){
    .find(d=>/兔子镜|RabbitMirror/i.test(d.querySelector(':scope > summary')?.textContent||''));
  if(!mirror||mirror.closest(`[${SOURCE_ATTR}]`)) return;
  const ctx=getContext(); const key=`follow:${recordKey(ctx,index,msg)}`;
+ const sourceHtml=String(mirror.outerHTML||'');
+ // Hot-updating from beta.14.60 can temporarily restore the old external
+ // details by appending it to .mes_text while leaving its empty <toto> origin
+ // behind. Rejoin that legacy container before stamping the new exact marker.
+ if(!followOriginMarker(el,null,false)){
+  const legacyContainer=legacyFollowOriginContainer(body);
+  if(legacyContainer && !legacyContainer.contains(mirror)) legacyContainer.append(mirror);
+ }
+ followOriginMarker(el,mirror,true);
  const wasOpen=mirror.hasAttribute('open');
  const host=document.createElement('div');
  host.setAttribute(SOURCE_ATTR,'true'); host.dataset.rmKey=key; host.dataset.rmSource='follow'; host.dataset.rmState='ready';
+ host.__rabbitMirrorIndependentSource=sourceHtml;
  mirror.removeAttribute('open'); mirror.setAttribute('data-rabbit-mirror-external-details','true');
  host.append(mirror); placeExternalHost(el,host,key,'follow');
  removeDuplicateExternalHosts(el,host,'follow');
+ scheduleExternalShellTint(host,sourceHtml);
  if(wasOpen) mirror.removeAttribute('open');
 }
 function restoreFollowInline(elOrHost){
@@ -2079,8 +2163,28 @@ function restoreFollowInline(elOrHost){
   : externalHosts(el).find(node=>node.dataset.rmSource==='follow');
  if(!host) return;
  const mirror=host.querySelector(':scope > details'); const body=messageBody(el);
- if(mirror&&body){ mirror.removeAttribute('data-rabbit-mirror-external-details'); body.append(mirror); }
+ if(mirror&&body){
+  mirror.removeAttribute('data-rabbit-mirror-external-details');
+  mirror.removeAttribute('data-rabbit-mirror-external-owner');
+  delete mirror.dataset.rabbitMirrorExternalOwner;
+  delete mirror.dataset.rabbitMirrorExternalSource;
+  delete mirror.dataset.rabbitMirrorOwnerChat;
+  delete mirror.dataset.rabbitMirrorOwnerMesid;
+  delete mirror.dataset.rabbitMirrorOwnerSwipe;
+  delete mirror.dataset.rabbitMirrorOwnerKey;
+  delete mirror.dataset.rabbitMirrorOwnerSourceHash;
+  const marker=followOriginMarker(el,null,false);
+  if(marker) marker.replaceWith(mirror);
+  else{
+   const legacyContainer=legacyFollowOriginContainer(body);
+   if(legacyContainer) legacyContainer.append(mirror);
+   else body.append(mirror);
+  }
+ }
+ const parent=host.parentElement;
  host.remove();
+ if(parent?.hasAttribute?.(FOLLOW_EXTERNAL_ANCHOR_ATTR) && !parent.querySelector?.(`[${SOURCE_ATTR}][data-rm-source="follow"]`)) parent.remove();
+ removeEmptyFollowExternalAnchors(el||document);
 }
 function runtimeMode(){
  const st=getSettings();
@@ -2475,9 +2579,9 @@ async function reconfigureRuntime(){
      // Changing the generation source only affects future generations. Existing
      // independent RabbitMirrors remain mounted and recoverable; removing them
      // here made a settings toggle look like permanent data loss.
-     removeEmptyInlineAnchors(document);
+     removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);
    }
-   if(mode==='off'){ document.querySelectorAll(`[${SOURCE_ATTR}]`).forEach(n=>n.remove()); removeEmptyInlineAnchors(document); }
+   if(mode==='off'){ document.querySelectorAll(`[${SOURCE_ATTR}]`).forEach(n=>n.remove()); removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document); }
    return;
  }
  syncAll(); installObserverIfNeeded(); await installHostEventsIfNeeded(sequence);
@@ -2523,6 +2627,6 @@ export function destroyIndependentRabbitMirror(){
  syncRunning=false; pending.clear(); messageSourceRevisions.clear(); preparedReadyHtmlCache.clear();
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(host=>restoreFollowInline(host));
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());
- removeEmptyInlineAnchors(document);
+ removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);
  if(globalThis.__rabbitMirrorIndependentCleanup===destroyIndependentRabbitMirror) delete globalThis.__rabbitMirrorIndependentCleanup;
 }

@@ -8,6 +8,17 @@
   box-sizing:border-box !important;
   margin-top:8px !important;
 }
+#chat [data-rabbit-mirror-follow-external-anchor="true"]{
+  display:block !important;
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+  margin-top:6px !important;
+}
+#chat [data-rabbit-mirror-follow-origin="true"]{
+  display:none !important;
+}
 /* “外置后内嵌” lives in the same content lane as .mes_text/status details.
  * Its 100% width therefore follows the message content column rather than the
  * outer .mes. “纯外置” remains a separately centered sibling card. */
@@ -31,7 +42,7 @@
   clear:both !important;
   z-index:1 !important;
 }
-/* 1.1.0-beta.14.60-test: settings drawer mobile performance containment. */
+/* 1.1.0-beta.14.61-test: settings drawer mobile performance containment. */
 .rabbit-mirror-settings {
     contain: layout style !important;
 }
@@ -490,6 +501,27 @@ toto[data-rabbit-mirror="true"] summary {
   clear:both !important;
   z-index:1 !important;
 }
+#chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"]{
+  display:block !important;
+  position:relative !important;
+  isolation:isolate !important;
+  width:calc(100% - 44px) !important;
+  max-width:560px !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+  align-self:auto !important;
+  margin:6px auto 12px !important;
+  padding:0 !important;
+  border:1px solid var(--rm-shell-border, rgba(0,0,0,.10)) !important;
+  border-radius:18px !important;
+  background:linear-gradient(145deg, var(--rm-shell-highlight, rgba(255,255,255,.99)), var(--rm-shell-bg, rgba(255,255,255,.97))) !important;
+  color:var(--rm-shell-text, inherit) !important;
+  box-shadow:0 9px 22px var(--rm-shell-shadow, rgba(0,0,0,.07)), 3px 0 0 var(--rm-shell-accent, transparent) inset, 0 1px 0 var(--rm-shell-inner-light, rgba(255,255,255,.86)) inset !important;
+  overflow:visible !important;
+  contain:none !important;
+  clear:both !important;
+  z-index:1 !important;
+}
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-pending="true"]::after{
   content:"重说中…" !important;
   position:absolute !important;
@@ -506,7 +538,8 @@ toto[data-rabbit-mirror="true"] summary {
   pointer-events:none !important;
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"],
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"] > details[data-rabbit-mirror-external-details="true"]{
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"] > details[data-rabbit-mirror-external-details="true"],
+#chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
   display:block !important;
   width:100% !important;
   max-width:none !important;
@@ -519,7 +552,8 @@ toto[data-rabbit-mirror="true"] summary {
   overflow:visible !important;
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > :not(summary):not(style):not(script),
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"] > details[data-rabbit-mirror-external-details="true"] > :not(summary):not(style):not(script){
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"] > details[data-rabbit-mirror-external-details="true"] > :not(summary):not(style):not(script),
+#chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > :not(summary):not(style):not(script){
   max-width:100% !important;
   box-sizing:border-box !important;
 }
@@ -530,7 +564,8 @@ toto[data-rabbit-mirror="true"] summary {
   background:transparent !important;
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary,
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"] > details[data-rabbit-mirror-external-details="true"] > summary{
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"] > details[data-rabbit-mirror-external-details="true"] > summary,
+#chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary{
   width:100% !important;
   max-width:none !important;
   box-sizing:border-box !important;
@@ -540,11 +575,17 @@ toto[data-rabbit-mirror="true"] summary {
   -webkit-tap-highlight-color:transparent !important;
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"][open] > summary,
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"] > details[data-rabbit-mirror-external-details="true"][open] > summary{
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"] > details[data-rabbit-mirror-external-details="true"][open] > summary,
+#chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"][open] > summary{
   border-bottom:1px solid var(--rm-shell-border, rgba(0,0,0,.08)) !important;
 }
 @media (max-width:420px){
   #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
+    width:calc(100% - 32px) !important;
+    max-width:none !important;
+    border-radius:16px !important;
+  }
+  #chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"]{
     width:calc(100% - 32px) !important;
     max-width:none !important;
     border-radius:16px !important;
