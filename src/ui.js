@@ -1,14 +1,14 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.1.0b14h50t';
-import { clearLastCombo } from './storage.js?rmv=1.1.0b14h50t';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.1.0b14h50t';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.1.0b14h50t';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.1.0b14h50t';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.1.0b14h50t';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.1.0b14h50t';
-import { fetchIndependentModels, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.1.0b14h50t';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.1.0b14h51t';
+import { clearLastCombo } from './storage.js?rmv=1.1.0b14h51t';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.1.0b14h51t';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.1.0b14h51t';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.1.0b14h51t';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.1.0b14h51t';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.1.0b14h51t';
+import { fetchIndependentModels, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.1.0b14h51t';
 
-const SETTINGS_UI_VERSION = '1.1.0-beta.14.50-test';
-const RUNTIME_VERSION = '1.1.0-beta.14.50-test';
+const SETTINGS_UI_VERSION = '1.1.0-beta.14.51-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.51-test';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -363,7 +363,7 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_models').on('click', async () => { saveIndependentFields(); try { const models=await fetchIndependentModels(); const current=getSettings().independentApiModel; $('#rh_independent_model').html(models.map(id=>`<option value="${escapeHtml(id)}">${escapeHtml(id)}</option>`).join('') || '<option value="">没有返回模型</option>'); if(current&&models.includes(current)) $('#rh_independent_model').val(current); else if(models[0]) { $('#rh_independent_model').val(models[0]); updateSettings({independentApiModel:models[0]}); } toastr?.success?.(`已拉取 ${models.length} 个模型`); } catch(error) { toastr?.error?.(String(error?.message||error)); } });
     $('#rh_independent_test').on('click', async () => { saveIndependentFields(); try { const result=await testIndependentConnection(); toastr?.success?.(`连接成功；可用模型 ${result.models.length} 个`); } catch(error) { toastr?.error?.(String(error?.message||error)); } });
 
-    $('#rh_enabled').on('change', e => updateSettings({ enabled: e.target.checked, autoRabbitMirrorInjection: e.target.checked, mode: e.target.checked ? 'integrated' : 'off' }));
+    $('#rh_enabled').on('change', e => { updateSettings({ enabled: e.target.checked, autoRabbitMirrorInjection: e.target.checked, mode: e.target.checked ? 'integrated' : 'off' }); if (e.target.checked) syncFeedbackCatExtensionPrompt(getActiveFeedbackForCurrentChat()); else clearFeedbackCatExtensionPrompt(); refreshRabbitMirrorGenerationMode(); });
     $('#rh_feedback_cat').on('change', e => {
         updateSettings({ feedbackCatEnabled: e.target.checked });
         if (e.target.checked) syncFeedbackCatExtensionPrompt(getActiveFeedbackForCurrentChat());

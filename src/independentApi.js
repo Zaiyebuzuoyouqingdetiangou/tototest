@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h50t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h50t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h50t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h50t';
-import { updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h50t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h51t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h51t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h51t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h51t';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h51t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.50-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.51-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -147,7 +147,15 @@ function historyEntriesForSlot(slot){
 }
 function migrateLegacyDeletedRecords(){
  const store=readStore(); let changed=false;
- for(const [key,value] of Object.entries(store)) if(value?.deleted){ delete store[key]; changed=true; }
+ for(const [key,value] of Object.entries(store)){
+  if(!value?.deleted) continue;
+  if(value?.html){
+   const next={...value};
+   delete next.deleted;
+   store[key]=next;
+  }else delete store[key];
+  changed=true;
+ }
  if(changed) writeStore(store);
 }
 function readApiProfileStore(){ try { const v=JSON.parse(localStorage.getItem(API_PROFILE_STORE_KEY)||'{}'); return v&&typeof v==='object'?v:{}; } catch { return {}; } }
@@ -172,28 +180,45 @@ function hostGenerationLooksActive(){
   return !!document.querySelector?.('#chat .mes.streaming, #chat .mes[data-is-streaming="true"], #chat .mes[is_generating="true"], #chat .mes[data-generating="true"]');
  }catch{return false;}
 }
-function chatKey(ctx){ const meta=ctx.chatMetadata||globalThis.chat_metadata||{}; return String(meta.chat_id||meta.chatId||meta.file_name||ctx.characterId||ctx.groupId||'chat'); }
+function chatKey(ctx){ try{ return String(getCurrentChatKey?.(Array.isArray(ctx?.chat)?ctx.chat:null) || 'chat'); }catch{ const meta=ctx?.chatMetadata||globalThis.chat_metadata||{}; return String(meta.chat_id||meta.chatId||meta.file_name||ctx?.characterId||ctx?.groupId||'chat'); } }
 function swipeId(msg){ return Number(msg?.swipe_id ?? msg?.swipeId ?? 0) || 0; }
-function messageSlotKey(ctx,index,msg){ return `${chatKey(ctx)}:${index}:${swipeId(msg)}`; }
+function messageBaseSlotKey(ctx,index,msg){ return `${chatKey(ctx)}:${index}:${swipeId(msg)}`; }
+function messageSlotKey(ctx,index,msg){ return `${messageBaseSlotKey(ctx,index,msg)}:${messageSourceFingerprint(msg)}`; }
 function recordKey(ctx,index,msg){ return messageSlotKey(ctx,index,msg); }
-function findSavedRecord(store,slot){
- const exact=store?.[slot];
- if(exact?.html) return exact;
- const prefix=`${slot}:`;
- let best=null;
- for(const [key,value] of Object.entries(store||{})){
-  if(!key.startsWith(prefix) || !value?.html) continue;
-  if(!best || Number(value.ts||0)>Number(best.ts||0)) best=value;
+function baseSlotOf(slot=''){
+ const parsed=parseMessageIndexFromOwnerKey(slot);
+ if(parsed?.sourceHash){
+  const suffix=`:${parsed.index}:${parsed.swipe}:${parsed.sourceHash}`;
+  return String(slot).endsWith(suffix) ? String(slot).slice(0,-suffix.length)+`:${parsed.index}:${parsed.swipe}` : `${chatKey(getContext())}:${parsed.index}:${parsed.swipe}`;
  }
- return best;
+ return String(slot||'');
 }
-function removeRecordsForSlot(store,slot){
- const prefix=`${slot}:`;
- for(const key of Object.keys(store||{})){ if(key===slot || key.startsWith(prefix)) delete store[key]; }
+function slotSearchKeys(slot=''){
+ const current=String(slot||'');
+ const base=baseSlotOf(current);
+ return [...new Set([current, base].filter(Boolean))];
+}
+function findSavedRecord(store,slot){
+ for(const candidate of slotSearchKeys(slot)){
+  const exact=store?.[candidate];
+  if(exact?.html) return exact;
+ }
+ return null;
+}
+function removeRecordsForSlot(store,slot,{includeLegacy=true}={}){
+ const targets=new Set([String(slot||'')]);
+ if(includeLegacy){
+  const base=baseSlotOf(slot);
+  if(base) targets.add(base);
+ }
+ for(const key of Object.keys(store||{})){ if(targets.has(key)) delete store[key]; }
  return store;
 }
-function saveRecordForSlot(store,slot,value){
- removeRecordsForSlot(store,slot);
+function saveRecordForSlot(store,slot,value,{dropLegacy=true}={}){
+ if(dropLegacy){
+  const base=baseSlotOf(slot);
+  if(base && base!==slot) delete store[base];
+ }
  store[slot]=value;
  return store;
 }
@@ -910,6 +935,19 @@ function ensureExternalTools(host){
  try{ refreshRabbitMirrorToolsInScope(host); }catch(error){ console.debug('[RabbitMirror] external tool preparation skipped:',error); }
  removeIndependentResayButtons(host);
 }
+function readyDetailsFromHost(host){
+ const details=host?.querySelector?.(':scope > details');
+ return usableReadyDetails(details) ? details : null;
+}
+function readyRecordFromHost(host,observed,model=''){
+ const details=readyDetailsFromHost(host);
+ if(!details || !observed) return null;
+ const clone=details.cloneNode(true);
+ clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
+ const html=String(clone.outerHTML||'').trim();
+ if(!independentStoredHtmlRestorable(html)) return null;
+ return {html,sourceHash:String(host?.dataset?.rmSourceHash||observed.sourceHash||''),bodyHash:String(observed.bodyHash||''),reasoningHash:String(observed.reasoningHash||''),ts:Date.now(),model:String(model||''),runtime:RUNTIME_VERSION,recoveredFromMountedHost:true};
+}
 function transferExternalTools(fromDetails,toDetails){
  const tools=externalToolHost(fromDetails);
  const summary=toDetails?.querySelector?.(':scope > summary');
@@ -1012,14 +1050,26 @@ function independentStoredHtmlRestorable(html=''){
  }catch{return /<details\b[\s\S]*?<summary\b[\s\S]*?<\/summary>[\s\S]*?<\/details>/i.test(source);}
 }
 function historyRecoveryForObserved(slot,observed){
- const entries=historyEntriesForSlot(slot);
- return entries.find(entry=>savedRecordMatchesObserved(entry,observed) && independentStoredHtmlRestorable(entry.html))
-  || entries.find(entry=>String(entry?.bodyHash||'') && String(entry.bodyHash)===String(observed?.bodyHash||'') && independentStoredHtmlRestorable(entry.html))
-  || null;
+ for(const candidate of slotSearchKeys(slot)){
+  const entries=historyEntriesForSlot(candidate);
+  const matched=entries.find(entry=>savedRecordMatchesObserved(entry,observed) && independentStoredHtmlRestorable(entry.html))
+   || entries.find(entry=>String(entry?.bodyHash||'') && String(entry.bodyHash)===String(observed?.bodyHash||'') && independentStoredHtmlRestorable(entry.html));
+  if(matched) return matched;
+ }
+ return null;
 }
 function recoverSavedRecord(store,slot,observed){
+ const exact=store?.[slot];
+ if(exact?.html && independentStoredHtmlRestorable(exact.html)) return {saved:exact,storeChanged:false,recoveredFromHistory:false};
  const saved=findSavedRecord(store,slot);
- if(saved?.html && independentStoredHtmlRestorable(saved.html)) return {saved,storeChanged:false,recoveredFromHistory:false};
+ if(saved?.html && independentStoredHtmlRestorable(saved.html) && savedRecordMatchesObserved(saved,observed)){
+  if(exact!==saved){
+   const recovered={...saved,ts:Number(saved.ts||Date.now()),runtime:String(saved.runtime||RUNTIME_VERSION),recoveredFromHistory:false};
+   saveRecordForSlot(store,slot,recovered);
+   return {saved:recovered,storeChanged:true,recoveredFromHistory:false};
+  }
+  return {saved,storeChanged:false,recoveredFromHistory:false};
+ }
  const history=historyRecoveryForObserved(slot,observed);
  if(history?.html){
   const recovered={...history,ts:Number(history.ts||Date.now()),runtime:String(history.runtime||RUNTIME_VERSION),recoveredFromHistory:true};
@@ -1146,8 +1196,16 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
  let current=repatriateExternalDetails(el,host,key,source);
  if(!current) current=recoverEscapedExternalDetails(el,host,key,source);
  const wasOpen=!!current?.hasAttribute?.('open');
- host.__rabbitMirrorIndependentSource = state==='ready' ? String(html||'') : '';
+ const currentReady=usableReadyDetails(current) ? current : null;
  if(state==='ready'){
+   delete host.dataset.rmPending;
+   const sameReadySource=currentReady && host.dataset.rmState==='ready' && String(host.__rabbitMirrorIndependentSource||'')===String(html||'');
+   host.__rabbitMirrorIndependentSource = String(html||'');
+   if(sameReadySource){
+     if(wasOpen) currentReady.setAttribute('open','');
+     ensureExternalTools(host);
+     return host;
+   }
    const nextDetails=extractReadyDetails(html);
    if(!nextDetails){
      host.dataset.rmState='error';
@@ -1167,6 +1225,12 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
    ensureExternalTools(host);
    return host;
  }
+ if(state==='loading' && currentReady){
+   host.dataset.rmPending='true';
+   ensureExternalTools(host);
+   return host;
+ }
+ host.__rabbitMirrorIndependentSource = '';
  let details=current;
  if(details && !details.classList?.contains('rabbit-mirror-external-placeholder')){
    const placeholder=fallbackExternalDetails(state,html);
@@ -1183,9 +1247,11 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
    if(!bodyNode){ bodyNode=document.createElement('div'); bodyNode.className='rabbit-mirror-external-placeholder-body'; details.append(bodyNode); }
    bodyNode.textContent=html;
  } else bodyNode?.remove?.();
+ if(state!=='loading') delete host.dataset.rmPending;
  ensureExternalTools(host);
  return host;
 }
+
 
 function generationPollKey(index){ return `${chatKey(getContext())}:${Number(index)}`; }
 function scheduleMessageGeneration(index,delay=260,sourceAware=true){
@@ -1270,6 +1336,19 @@ function cancelFlightsForSlot(slot,exceptSourceHash=''){
  const active=pending.get(slot);
  if(active && (!exceptSourceHash || active.sourceHash!==exceptSourceHash)){ abortFlight(active,'source-changed'); pending.delete(slot); }
 }
+function cancelFlightsForMessage(index,reason='message-source-changed'){
+ const ctx=getContext(); const msg=ctx.chat?.[index];
+ if(!msg || msg.is_user || typeof msg.mes!=='string') return;
+ const base=messageBaseSlotKey(ctx,index,msg);
+ for(const [id,flight] of globalFlights()){
+  if(String(flight?.baseSlot||'')!==base) continue;
+  abortFlight(flight,reason); globalFlights().delete(id);
+ }
+ for(const [slot,active] of pending.entries()){
+  if(String(active?.baseSlot||'')!==base) continue;
+  abortFlight(active,reason); pending.delete(slot);
+ }
+}
 function cancelAllIndependentFlights(reason='runtime-changed'){
  for(const flight of globalFlights().values()) abortFlight(flight,reason);
  globalFlights().clear();
@@ -1289,16 +1368,14 @@ async function generateFor(index,msg,force=false,sourceAware=true,options={}){
  const recoveredAtGeneration=recoverSavedRecord(store,slot,observed);
  let saved=recoveredAtGeneration.saved;
  if(recoveredAtGeneration.storeChanged) writeStore(store);
- if(saved?.html&&!force){
+ const mountedHost=el ? collapseDuplicateIdentityHosts(el,key,'independent',sourceHash) : null;
+ const mountedReady=readyRecordFromHost(mountedHost,observed,st.independentApiModel);
+ if(saved?.html && !force){
   const savedSourceHash=String(saved.sourceHash||'');
   if(savedRecordMatchesObserved(saved,observed) || (!savedSourceHash && !sourceAware)){
    if(renderUi && el){ const restored=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash); rebuildCollapsedReadyHost(el,restored,key,'independent',saved.html,sourceHash); }
    return saved;
   }
-  // A real正文 revision may replace the current slot, but preserve its last
-  // mirror in history before allocating the new result.
-  appendHistoryEntry(slot,saved);
-  removeRecordsForSlot(store,slot); writeStore(store); store=readStore();
  }
  const existing=pending.get(slot);
  if(existing && existing.sourceHash===sourceHash && existing.revision===revision && !force){
@@ -1312,14 +1389,17 @@ async function generateFor(index,msg,force=false,sourceAware=true,options={}){
   shared.task.finally?.(()=>queueMessageSync([index]));
   return shared.task;
  }
- if(force){ cancelFlightsForSlot(slot); removeRecordsForSlot(store,slot); writeStore(store); }
- else cancelFlightsForSlot(slot,sourceHash);
+ const previousReadyRecord=mountedReady || (saved?.html && independentStoredHtmlRestorable(saved.html) ? {...saved} : null);
+ if(force){
+  cancelFlightsForSlot(slot);
+  if(previousReadyRecord?.html) appendHistoryEntry(slot,previousReadyRecord);
+ } else cancelFlightsForSlot(slot,sourceHash);
  if(renderUi && el){
   collapseDuplicateIdentityHosts(el,key,'independent',sourceHash);
   ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
  }
  const runId=++generationSequence; const controller=new AbortController(); let stale=false;
- const flight={task:null,runId,key,slot,index,sourceHash,revision,cancelled:false,controller,renderUi};
+ const flight={task:null,runId,key,slot,index,sourceHash,revision,cancelled:false,controller,renderUi,baseSlot:baseSlotOf(slot)};
  const stillCurrent=()=>{
   const live=currentGenerationIdentity(index); const active=pending.get(slot);
   return currentRuntime() && runtimeMode()==='independent' && live && live.slot===slot && live.key===key && live.sourceHash===sourceHash && live.revision===revision && active?.runId===runId && active?.revision===revision && !flight.cancelled && globalFlights().get(flightKey)===flight;
@@ -1336,8 +1416,17 @@ async function generateFor(index,msg,force=false,sourceAware=true,options={}){
  }).catch(err=>{
   if(err?.name==='AbortError' || controller.signal.aborted || !stillCurrent()){ stale=true; return; }
   console.error('[RabbitMirror] independent generation failed',err);
-  if(renderUi){ const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash); }
-  else console.warn('[RabbitMirror] background independent generation failed:',String(err?.message||err));
+  if(renderUi){
+   const liveEl=messageElement(index);
+   if(liveEl){
+    const liveHost=collapseDuplicateIdentityHosts(liveEl,key,'independent',sourceHash);
+    if(readyDetailsFromHost(liveHost)){
+     liveHost.dataset.rmState='ready';
+     delete liveHost.dataset.rmPending;
+     ensureExternalTools(liveHost);
+    } else ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
+   }
+  } else console.warn('[RabbitMirror] background independent generation failed:',String(err?.message||err));
  }).finally(()=>{
   if(pending.get(slot)?.runId===runId) pending.delete(slot);
   if(globalFlights().get(flightKey)===flight) globalFlights().delete(flightKey);
@@ -1345,9 +1434,10 @@ async function generateFor(index,msg,force=false,sourceAware=true,options={}){
   if(!renderUi) queueMessageSync([index]);
  });
  flight.task=task; globalFlights().set(flightKey,flight);
- pending.set(slot,{task,runId,key,sourceHash,revision,controller,cancelled:false,renderUi});
+ pending.set(slot,{task,runId,key,sourceHash,revision,controller,cancelled:false,renderUi,baseSlot:baseSlotOf(slot)});
  await task;
 }
+
 function independentHostForRoot(root){
  if(!root) return null;
  const candidates=[];
@@ -1386,8 +1476,15 @@ function actionOwnerMetadata(root,owner={}){
  };
 }
 function parseMessageIndexFromOwnerKey(key=''){
- const match=String(key||'').match(/(?:^|:)(\d+):(\d+)$/);
- return match?{index:Number(match[1]),swipe:Number(match[2])}:null;
+ const parts=String(key||'').split(':').filter(Boolean);
+ if(parts.length<2) return null;
+ const numeric=value=>/^\d+$/.test(String(value||''));
+ if(parts.length>=3 && numeric(parts.at(-3)) && numeric(parts.at(-2))){
+  const sourceHash=String(parts.at(-1)||'');
+  if(/^[a-z0-9]+$/i.test(sourceHash)) return {index:Number(parts.at(-3)),swipe:Number(parts.at(-2)),sourceHash};
+ }
+ if(numeric(parts.at(-2)) && numeric(parts.at(-1))) return {index:Number(parts.at(-2)),swipe:Number(parts.at(-1)),sourceHash:''};
+ return null;
 }
 function resolveIndependentActionIdentity(root,owner={}){
  const ctx=getContext(); const meta=actionOwnerMetadata(root,owner); let host=independentHostForRoot(root);
@@ -1410,9 +1507,13 @@ function resolveIndependentActionIdentity(root,owner={}){
  const parsedOwnerKey=parseMessageIndexFromOwnerKey(meta.key);
  const ownerSwipe=Number.isInteger(parsedOwnerKey?.swipe)?parsedOwnerKey.swipe:meta.swipe;
  if(Number.isInteger(ownerSwipe) && ownerSwipe!==currentSwipe) return null;
+ const ownerSourceHash=String(parsedOwnerKey?.sourceHash || meta.sourceHash || host?.dataset?.rmSourceHash || '').trim();
+ const currentSourceHash=messageSourceFingerprint(msg);
+ if(ownerSourceHash && ownerSourceHash!==currentSourceHash) return null;
  if(meta.key && meta.key!==currentKey){
-  const suffix=`:${index}:${currentSwipe}`;
-  if(!meta.key.endsWith(suffix)) return null;
+  const baseSuffix=`:${index}:${currentSwipe}`;
+  const fullSuffix=`${baseSuffix}:${currentSourceHash}`;
+  if(!meta.key.endsWith(baseSuffix) && !meta.key.endsWith(fullSuffix)) return null;
  }
  return {ctx,msg,index,host,slot:messageSlotKey(ctx,index,msg),key:currentKey};
 }
@@ -1592,7 +1693,9 @@ function syncMessages(indices=null){
          refreshExistingExternalDetails(keep,key,'independent');
        }
      } else {
-       externalHosts(el).filter(n=>n.dataset.rmSource==='independent').forEach(n=>n.remove());
+       // Switching away from the independent generator must not silently erase
+       // already generated independent mirrors. Preserve existing ready hosts;
+       // only future generations follow the current API mode.
        if(mode==='follow-external') externalizeFollowMirror(i,m); else restoreFollowInline(el);
      }
    }
@@ -1739,13 +1842,12 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
    }
    for(const event of new Set(generationStartedEvents)){
      const handler=()=>{
-       hostGenerationInProgress=true; clearScheduledGeneration(); cancelAllIndependentFlights('generation-restarted');
-       const last=assistantMessages(getContext()).at(-1);
-       if(last){
-         for(const host of externalHostsOwnedByMesid(String(last.i)).filter(node=>node.dataset.rmSource==='independent')){
-           host.hidden=true; host.dataset.rmAwaitingFreshSource='true';
-         }
-       }
+       // Do not tear down the current shell at generation start. On mobile a
+       // long gap before the replacement正文 lands makes the mirror appear to
+       // vanish. Keep the previous UI visible; exact-version checks already
+       // prevent any late old request from overwriting the new result.
+       hostGenerationInProgress=true;
+       clearScheduledGeneration();
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
@@ -1775,7 +1877,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
          ? parsed
          : assistantMessages(ctx).at(-1)?.i;
        if(Number.isInteger(id)&&id>=0){
-         cancelAllIndependentFlights('swipe-changed');
+         cancelFlightsForMessage(id,'swipe-changed');
          queueMessageSync([id]);
          scheduleMessageGeneration(id,260,true);
        } else syncAll();
