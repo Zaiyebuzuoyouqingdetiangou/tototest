@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h55t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h55t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h55t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h55t';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h55t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h56t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h56t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h56t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h56t';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h56t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.55-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.56-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -1194,6 +1194,98 @@ function collapseDuplicateIdentityHosts(el,key,source='independent',sourceHash='
  }
  return keep;
 }
+function clampShellChannel(value){ return Math.max(0,Math.min(255,Math.round(Number(value)||0))); }
+function parseExternalShellColor(token=''){
+ const value=String(token||'').trim().toLowerCase();
+ if(!value || value==='transparent') return null;
+ let match=value.match(/^#([0-9a-f]{3,8})$/i);
+ if(match){
+  let hex=match[1];
+  if(hex.length===3 || hex.length===4) hex=[...hex].map(ch=>ch+ch).join('');
+  if(hex.length!==6 && hex.length!==8) return null;
+  return {r:parseInt(hex.slice(0,2),16),g:parseInt(hex.slice(2,4),16),b:parseInt(hex.slice(4,6),16),a:hex.length===8?parseInt(hex.slice(6,8),16)/255:1};
+ }
+ match=value.match(/^rgba?\(([^)]+)\)$/i);
+ if(match){
+  const parts=match[1].split(/[\s,\/]+/).filter(Boolean);
+  if(parts.length<3) return null;
+  const channel=part=>String(part).includes('%')?255*parseFloat(part)/100:parseFloat(part);
+  const r=channel(parts[0]),g=channel(parts[1]),b=channel(parts[2]);
+  const a=parts[3]===undefined?1:(String(parts[3]).includes('%')?parseFloat(parts[3])/100:parseFloat(parts[3]));
+  if([r,g,b,a].some(Number.isNaN)) return null;
+  return {r:clampShellChannel(r),g:clampShellChannel(g),b:clampShellChannel(b),a:Math.max(0,Math.min(1,a))};
+ }
+ match=value.match(/^hsla?\(([^)]+)\)$/i);
+ if(match){
+  const parts=match[1].split(/[\s,\/]+/).filter(Boolean);
+  if(parts.length<3) return null;
+  let h=((parseFloat(parts[0])%360)+360)%360/360;
+  const saturation=Math.max(0,Math.min(1,parseFloat(parts[1])/100));
+  const lightness=Math.max(0,Math.min(1,parseFloat(parts[2])/100));
+  const a=parts[3]===undefined?1:(String(parts[3]).includes('%')?parseFloat(parts[3])/100:parseFloat(parts[3]));
+  if([h,saturation,lightness,a].some(Number.isNaN)) return null;
+  const hue=(p,q,t)=>{ if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; };
+  let r,g,b;
+  if(saturation===0) r=g=b=lightness;
+  else { const q=lightness<.5?lightness*(1+saturation):lightness+saturation-lightness*saturation; const p=2*lightness-q; r=hue(p,q,h+1/3); g=hue(p,q,h); b=hue(p,q,h-1/3); }
+  return {r:clampShellChannel(r*255),g:clampShellChannel(g*255),b:clampShellChannel(b*255),a:Math.max(0,Math.min(1,a))};
+ }
+ return null;
+}
+function externalShellColorMetrics(color){
+ const values=[color.r,color.g,color.b].map(value=>value/255);
+ const max=Math.max(...values), min=Math.min(...values);
+ return {luminance:(0.2126*color.r+0.7152*color.g+0.0722*color.b)/255,saturation:max===0?0:(max-min)/max};
+}
+function mixExternalShellColorWithWhite(color,whiteRatio=.9){
+ const ratio=Math.max(0,Math.min(1,whiteRatio));
+ return {r:clampShellChannel(color.r*(1-ratio)+255*ratio),g:clampShellChannel(color.g*(1-ratio)+255*ratio),b:clampShellChannel(color.b*(1-ratio)+255*ratio)};
+}
+function externalShellRgba(color,alpha=1){ return `rgba(${color.r}, ${color.g}, ${color.b}, ${Math.max(0,Math.min(1,alpha))})`; }
+function deriveExternalShellTint(html=''){
+ const source=String(html||'');
+ const tokens=source.match(/#[0-9a-f]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)/gi)||[];
+ const grouped=new Map();
+ for(const token of tokens.slice(0,320)){
+  const color=parseExternalShellColor(token);
+  if(!color || color.a<.18) continue;
+  const metrics=externalShellColorMetrics(color);
+  if(metrics.luminance<.045 || metrics.luminance>.975) continue;
+  const key=`${color.r},${color.g},${color.b}`;
+  const item=grouped.get(key)||{color,metrics,count:0}; item.count++; grouped.set(key,item);
+ }
+ const values=[...grouped.values()];
+ const chromatic=values.filter(item=>item.metrics.saturation>=.16);
+ const pool=chromatic.length?chromatic:values.filter(item=>item.metrics.luminance>=.12&&item.metrics.luminance<=.9);
+ if(!pool.length) return null;
+ const score=item=>item.metrics.saturation*3.2+(1-Math.abs(item.metrics.luminance-.52))*1.15+Math.min(1.4,item.count*.12);
+ pool.sort((a,b)=>score(b)-score(a));
+ const accent=pool[0].color;
+ return {
+  background:mixExternalShellColorWithWhite(accent,.91),
+  highlight:mixExternalShellColorWithWhite(accent,.80),
+  border:mixExternalShellColorWithWhite(accent,.66),
+  shadow:mixExternalShellColorWithWhite(accent,.38),
+  accent,
+ };
+}
+function applyExternalShellTint(host,html=''){
+ if(!host?.style) return false;
+ const tint=deriveExternalShellTint(html);
+ const properties=['--rm-shell-bg','--rm-shell-highlight','--rm-shell-border','--rm-shell-shadow','--rm-shell-accent'];
+ if(!tint){
+  host.removeAttribute('data-rm-shell-tinted');
+  for(const property of properties) host.style.removeProperty(property);
+  return false;
+ }
+ host.setAttribute('data-rm-shell-tinted','true');
+ host.style.setProperty('--rm-shell-bg',externalShellRgba(tint.background,.98));
+ host.style.setProperty('--rm-shell-highlight',externalShellRgba(tint.highlight,.94));
+ host.style.setProperty('--rm-shell-border',externalShellRgba(tint.border,.88));
+ host.style.setProperty('--rm-shell-shadow',externalShellRgba(tint.shadow,.20));
+ host.style.setProperty('--rm-shell-accent',externalShellRgba(tint.accent,.42));
+ return true;
+}
 function ensureExternalUi(el,key,html,state='ready',source='independent',sourceHash=''){
  const body=externalInsertTarget(el); if(!body) return null;
  const reconciled=collapseDuplicateIdentityHosts(el,key,source,sourceHash);
@@ -1223,6 +1315,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
    stampExternalDetailsOwnership(host);
    placeExternalHost(el,host,key,source);
    removeDuplicateExternalHosts(el,host,source);
+   if(state==='ready') applyExternalShellTint(host,html);
    ensureExternalTools(host);
    return host;
  }
@@ -1244,6 +1337,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
    host.__rabbitMirrorIndependentSource = String(html||'');
    if(sameReadySource){
      if(wasOpen) currentReady.setAttribute('open','');
+     applyExternalShellTint(host,html);
      ensureExternalTools(host);
      return host;
    }
@@ -1263,6 +1357,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
    if(current) transferExternalTools(current,nextDetails);
    if(current?.isConnected) current.replaceWith(nextDetails); else host.append(nextDetails);
    if(wasOpen) nextDetails.setAttribute('open','');
+   applyExternalShellTint(host,html);
    ensureExternalTools(host);
    return host;
  }
