@@ -3,22 +3,23 @@
 #chat [data-rabbit-mirror-independent-inline-anchor="true"]{
   display:block !important;
   width:100% !important;
+  max-width:100% !important;
   min-width:0 !important;
   box-sizing:border-box !important;
   margin-top:8px !important;
 }
-/* “外置后内嵌” keeps the same tinted round frame, but after completion it
- * becomes part of the owner message: full message width, shallower shadow and
- * no page-level floating gap. “纯外置” remains the centered sibling card. */
+/* “外置后内嵌” lives in the same content lane as .mes_text/status details.
+ * Its 100% width therefore follows the message content column rather than the
+ * outer .mes. “纯外置” remains a separately centered sibling card. */
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"]{
   display:block !important;
   position:relative !important;
   isolation:isolate !important;
-  width:calc(100% - 44px) !important;
-  max-width:560px !important;
+  width:100% !important;
+  max-width:100% !important;
   min-width:0 !important;
   box-sizing:border-box !important;
-  margin:0 auto !important;
+  margin:0 !important;
   padding:0 !important;
   border:1px solid var(--rm-shell-border, rgba(0,0,0,.10)) !important;
   border-radius:15px !important;
@@ -30,7 +31,7 @@
   clear:both !important;
   z-index:1 !important;
 }
-/* 1.1.0-beta.14.59-test: settings drawer mobile performance containment. */
+/* 1.1.0-beta.14.60-test: settings drawer mobile performance containment. */
 .rabbit-mirror-settings {
     contain: layout style !important;
 }
@@ -549,8 +550,8 @@ toto[data-rabbit-mirror="true"] summary {
     border-radius:16px !important;
   }
   #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"]{
-    width:calc(100% - 32px) !important;
-    max-width:none !important;
+    width:100% !important;
+    max-width:100% !important;
     border-radius:14px !important;
   }
 }

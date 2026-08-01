@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h59t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h59t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h59t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h59t';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h59t';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.1.0b14h59t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h60t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h60t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h60t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h60t';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h60t';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.1.0b14h60t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.59-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.60-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -697,32 +697,39 @@ function independentPlacementForState(state='ready'){
 function inlineAnchorForMessage(el,create=false){
  const body=messageBody(el);
  if(!el||!body) return null;
- // Never place RabbitMirror's inline anchor inside .mes_text. SillyTavern and
- // some swipe/regenerate plugins replace or serialize that node while a new
- // reply is being committed; an extension-owned child there can make the old
- // rendered message win the final repaint. Keep the same visual position, but
- // use a namespaced sibling immediately after .mes_text instead.
- let anchor=[...(el.querySelectorAll?.(`:scope > [${INLINE_ANCHOR_ATTR}]`)||[])][0] || null;
- const legacy=[...(body.querySelectorAll?.(`:scope > [${INLINE_ANCHOR_ATTR}]`)||[])][0] || null;
- if(!anchor && legacy) anchor=legacy;
- if(anchor && anchor.parentElement!==el){
-  body.insertAdjacentElement?.('afterend',anchor);
-  if(anchor.parentElement!==el) el.append(anchor);
- }
+ // Keep the extension-owned anchor OUTSIDE .mes_text so it is never serialized
+ // into the正文. However, it must stay in the same content lane as .mes_text —
+ // normally .mes_block — otherwise width:100% resolves against the outer .mes
+ // and the mirror becomes much wider than generated status/details blocks.
+ const contentParent=(body!==el && body.parentElement && el.contains(body.parentElement))
+  ? body.parentElement
+  : el;
+ const anchors=[...(el.querySelectorAll?.(`[${INLINE_ANCHOR_ATTR}]`)||[])];
+ let anchor=anchors[0] || null;
+ const putAfterBody=(node)=>{
+  if(!node) return;
+  if(body!==el && contentParent===body.parentElement){
+   body.insertAdjacentElement?.('afterend',node);
+  }else if(node.parentElement!==contentParent){
+   contentParent.append(node);
+  }
+ };
+ if(anchor && anchor.parentElement!==contentParent) putAfterBody(anchor);
  if(!anchor && create){
   anchor=document.createElement('div');
   anchor.setAttribute(INLINE_ANCHOR_ATTR,'true');
   anchor.dataset.rmOwnerMesid=externalOwnerMesid(el);
-  body.insertAdjacentElement?.('afterend',anchor);
-  if(anchor.parentElement!==el) el.append(anchor);
+  putAfterBody(anchor);
  }
- for(const duplicate of [...(el.querySelectorAll?.(`:scope > [${INLINE_ANCHOR_ATTR}]`)||[])]){
+ for(const duplicate of [...(el.querySelectorAll?.(`[${INLINE_ANCHOR_ATTR}]`)||[])]){
   if(duplicate!==anchor){
-   const host=duplicate.querySelector?.(`[${SOURCE_ATTR}]`);
-   if(host&&anchor) anchor.append(host);
+   for(const host of [...(duplicate.querySelectorAll?.(`:scope > [${SOURCE_ATTR}]`)||[])]){
+    if(anchor) anchor.append(host);
+   }
    duplicate.remove();
   }
  }
+ if(anchor && body!==el && anchor.previousElementSibling!==body) putAfterBody(anchor);
  return anchor;
 }
 function removeEmptyInlineAnchors(scope=document){
