@@ -25,7 +25,7 @@
   clear:both !important;
   z-index:1 !important;
 }
-/* 1.1.0-beta.14.54-test: settings drawer mobile performance containment. */
+/* 1.1.0-beta.14.55-test: settings drawer mobile performance containment. */
 .rabbit-mirror-settings {
     contain: layout style !important;
 }
@@ -165,7 +165,7 @@ toto[data-rabbit-mirror="true"] summary {
 
 
 
-/* 1.1.0-beta.14.54-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
+/* 1.1.0-beta.14.55-test：酒馆重绘与兔子镜局部 CSS 下的稳定工具入口。 */
 [data-rabbit-mirror-tool-entry-host] {
   all: initial !important;
   display: inline-flex !important;
@@ -460,7 +460,7 @@ toto[data-rabbit-mirror="true"] summary {
   overflow-wrap:anywhere;
   line-height:1.55;
 }
-/* beta.14.54: restore the compact centered white shell that users expect.
+/* beta.14.53: restore the compact centered white shell that users expect.
  * Independent external hosts should look like a cute neutral frame, not inherit
  * the page theme tint, and should keep comfortable left/right breathing room. */
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{

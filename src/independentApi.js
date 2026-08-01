@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h54t';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h54t';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h54t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h54t';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h54t';
+import { getSettings } from './settings.js?rmv=1.1.0b14h55t';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h55t';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.1.0b14h55t';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h55t';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h55t';
 
-const RUNTIME_VERSION = '1.1.0-beta.14.54-test';
+const RUNTIME_VERSION = '1.1.0-beta.14.55-test';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -44,6 +44,8 @@ let independentActionBridge = null;
 let runtimeConfigSequence = 0;
 let backgroundLifecycleListenersInstalled = false;
 let backgroundResumeTimer = 0;
+let generationPlaceholderTimer = 0;
+let generationPlaceholderStartedAt = 0;
 function globalFlights(){
  const current=globalThis[GLOBAL_FLIGHT_KEY];
  if(current&&typeof current.get==='function') return current;
@@ -986,6 +988,23 @@ function setPlaceholderSummary(details,text){
  }
  label.textContent=text;
 }
+function ensureReplyGenerationPlaceholder(el,key,sourceHash='',waitingForBody=true){
+ const message=waitingForBody
+  ? '正文回复完成后会自动生成兔子镜。'
+  : '正文已经完成，正在生成这条回复对应的兔子镜。';
+ const host=ensureExternalUi(el,key,message,'loading','independent',sourceHash);
+ if(!host) return null;
+ host.dataset.rmReplyGenerationPlaceholder='true';
+ clearExternalHostFreshSourceState(host);
+ host.dataset.rmState='loading';
+ if(sourceHash) host.dataset.rmSourceHash=String(sourceHash);
+ const details=host.querySelector?.(':scope > details');
+ setPlaceholderSummary(details,waitingForBody?'【兔子镜：等待正文完成……】':'【兔子镜：正在生成中……】');
+ let body=details?.querySelector?.(':scope > .rabbit-mirror-external-placeholder-body');
+ if(details && !body){ body=document.createElement('div'); body.className='rabbit-mirror-external-placeholder-body'; details.append(body); }
+ if(body) body.textContent=message;
+ return host;
+}
 function renderExternalErrorBody(details,text=''){
  if(!details) return null;
  let body=details.querySelector(':scope > .rabbit-mirror-external-placeholder-body');
@@ -1195,6 +1214,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
    host.dataset.rmKey=key;
    host.dataset.rmSource=source;
    host.dataset.rmState=state;
+   if(state!=='loading') delete host.dataset.rmReplyGenerationPlaceholder;
    if(sourceHash) host.dataset.rmSourceHash=String(sourceHash);
    if(escaped){ markExternalDetails(escaped,key,source); host.append(escaped); }
    else host=buildExternalHost(key,html,state,source);
@@ -1209,6 +1229,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
  host.dataset.rmKey=key;
  host.dataset.rmSource=source;
  host.dataset.rmState=state;
+ if(state!=='loading') delete host.dataset.rmReplyGenerationPlaceholder;
  if(sourceHash) host.dataset.rmSourceHash=String(sourceHash);
  stampExternalDetailsOwnership(host);
  placeExternalHost(el,host,key,source);
@@ -1303,6 +1324,40 @@ function prefetchIndependentGeneration(index){
  if(!msg || msg.is_user || typeof msg.mes!=='string' || !String(msg.mes||'').trim()) return false;
  void generateFor(index,msg,false,true,{renderUi:false});
  return true;
+}
+function ensureGenerationPlaceholderForIndex(index,waitingForBody=true){
+ if(!currentRuntime() || runtimeMode()!=='independent') return null;
+ const live=currentGenerationIdentity(index); const el=messageElement(index);
+ if(!live || !el) return null;
+ const store=readStore();
+ const recovered=recoverSavedRecord(store,live.slot,live);
+ if(recovered.storeChanged) writeStore(store);
+ if(recovered.saved?.html && savedRecordMatchesObserved(recovered.saved,live)) return null;
+ const existing=collapseDuplicateIdentityHosts(el,live.key,'independent',live.sourceHash);
+ if(readyDetailsFromHost(existing)) return existing;
+ return ensureReplyGenerationPlaceholder(el,live.key,live.sourceHash,waitingForBody);
+}
+function clearGenerationPlaceholderPoll(){
+ if(generationPlaceholderTimer){ clearTimeout(generationPlaceholderTimer); generationPlaceholderTimer=0; }
+ generationPlaceholderStartedAt=0;
+}
+function scheduleGenerationPlaceholderPoll(delay=80){
+ clearGenerationPlaceholderPoll();
+ generationPlaceholderStartedAt=Date.now();
+ const poll=()=>{
+  generationPlaceholderTimer=0;
+  if(!currentRuntime() || runtimeMode()!=='independent' || !hostGenerationLooksActive() || Date.now()-generationPlaceholderStartedAt>30000){
+   clearGenerationPlaceholderPoll();
+   return;
+  }
+  const ctx=getContext(); const index=Array.isArray(ctx.chat)?ctx.chat.length-1:-1; const msg=index>=0?ctx.chat?.[index]:null;
+  if(msg && !msg.is_user && typeof msg.mes==='string' && messageElement(index)){
+   const host=ensureGenerationPlaceholderForIndex(index,true);
+   if(host){ clearGenerationPlaceholderPoll(); return; }
+  }
+  generationPlaceholderTimer=setTimeout(poll,420);
+ };
+ generationPlaceholderTimer=setTimeout(poll,Math.max(0,Number(delay)||0));
 }
 function resumeIndependentBackgroundWork(){
  if(!currentRuntime() || runtimeMode()!=='independent') return;
@@ -1668,6 +1723,10 @@ function syncMessages(indices=null){
    const ctx=getContext(); const st=getSettings(); const mode=runtimeMode(); const store=mode==='independent'?readStore():null;
    const displayModeChanged=mode==='independent' ? consumeIndependentDisplayModeChange() : false;
    const allowed=indices instanceof Set?indices:null;
+   const generationActive=mode==='independent' && hostGenerationLooksActive();
+   const tailIndex=Array.isArray(ctx.chat)?ctx.chat.length-1:-1;
+   const tailMessage=tailIndex>=0?ctx.chat?.[tailIndex]:null;
+   const activeGenerationIndex=generationActive && tailMessage && !tailMessage.is_user && typeof tailMessage.mes==='string' ? tailIndex : -1;
    let storeChanged=false;
    for(const {m,i} of assistantMessages(ctx)){
      if(allowed && !allowed.has(i)) continue;
@@ -1689,6 +1748,7 @@ function syncMessages(indices=null){
        }
        const independentHosts=externalHosts(el).filter(n=>n.dataset.rmSource==='independent');
        for(const node of independentHosts){ if(node!==keep) node.remove(); }
+       const isActiveGenerationTarget=i===activeGenerationIndex;
 
        // Never repaint an old mirror over a newly regenerated/swiped正文. A
        // record is eligible only for the exact current source fingerprint.
@@ -1699,9 +1759,18 @@ function syncMessages(indices=null){
          // them. Actual replacement happens only when a new generation starts.
          saved=null;
        }
+       if(!saved?.html && !keep && isActiveGenerationTarget){
+         keep=ensureReplyGenerationPlaceholder(el,key,sourceHash,true);
+       }
        const hostSourceHash=String(keep?.dataset?.rmSourceHash||'');
-       const hostIsStale=!!(keep && hostSourceHash && hostSourceHash!==sourceHash);
-       if(hostIsStale){
+       let hostIsStale=!!(keep && hostSourceHash && hostSourceHash!==sourceHash);
+       const keepIsReplyPlaceholder=!!(keep && (keep.dataset.rmReplyGenerationPlaceholder==='true' || (keep.dataset.rmState==='loading' && keep.querySelector?.(':scope > details.rabbit-mirror-external-placeholder'))));
+       if(keepIsReplyPlaceholder && !saved?.html){
+         // Streaming正文 changes its fingerprint repeatedly. Re-key the same
+         // placeholder instead of treating it as an old completed mirror.
+         keep=ensureReplyGenerationPlaceholder(el,key,sourceHash,isActiveGenerationTarget);
+         hostIsStale=false;
+       } else if(hostIsStale){
          // The mounted mirror belongs to the previous正文 version. Keep the one
          // shell anchored in place, but never show stale mirror content beside
          // the regenerated正文 while the new independent result is pending.
@@ -1803,6 +1872,7 @@ function clearGenerationPolls(){
 function clearScheduledGeneration(){
  if(latestGenerationTimer){ clearTimeout(latestGenerationTimer); latestGenerationTimer=null; }
  clearGenerationPolls();
+ clearGenerationPlaceholderPoll();
 }
 function scheduleLatest(delay=520){
  if(latestGenerationTimer) clearTimeout(latestGenerationTimer);
@@ -1869,6 +1939,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
      const handler=()=>{
        hostGenerationInProgress=true;
        clearScheduledGeneration();
+       scheduleGenerationPlaceholderPoll(60);
        const ctx=getContext();
        const lastIndex=Array.isArray(ctx.chat)?ctx.chat.length-1:-1;
        const lastMessage=lastIndex>=0?ctx.chat[lastIndex]:null;
@@ -1886,8 +1957,12 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
    for(const event of new Set(generationFinishedEvents)){
      const handler=()=>{
        hostGenerationInProgress=false;
+       clearGenerationPlaceholderPoll();
        const last=assistantMessages(getContext()).at(-1);
        if(last){
+         // Make the one white shell visible immediately. The network request
+         // still starts only through the independent generation path below.
+         ensureGenerationPlaceholderForIndex(last.i,false);
          // Start the network request immediately when the host confirms the reply ended.
          // Rendering remains gated by the stable-source poll, so background tabs do not
          // create an early visible mirror yet the request can continue while hidden.
@@ -1922,7 +1997,10 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
    for(const event of new Set(renderOnlyEvents)){
      const handler=messageId=>{
        const id=Number(messageId);
-       if(Number.isInteger(id)&&id>=0) queueMessageSync([id]); else syncAll();
+       if(Number.isInteger(id)&&id>=0){
+         if(hostGenerationLooksActive()) ensureGenerationPlaceholderForIndex(id,true);
+         queueMessageSync([id]);
+       } else syncAll();
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }

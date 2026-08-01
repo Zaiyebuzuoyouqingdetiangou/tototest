@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・外置圆框与塌缩修复・维修兔 v2.09-test）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・新回复占位框・维修兔 v2.09-test）",
   "loading_order": 99,
-  "js": "index.js?rmv=1.1.0b14h54t",
-  "css": "style.css?rmv=1.1.0b14h54t",
+  "js": "index.js?rmv=1.1.0b14h55t",
+  "css": "style.css?rmv=1.1.0b14h55t",
   "author": "Toto",
-  "version": "1.1.0-beta.14.54-test",
+  "version": "1.1.0-beta.14.55-test",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "修复纯外置塌成直线；纯外置与外置后内嵌统一白色圆角框，并保留旧缓存恢复。"
+  "description": "新回复生成期间立即显示唯一白色圆角占位框，并保留正文版本隔离、旧缓存恢复与同 DOM 原位替换。"
 }
