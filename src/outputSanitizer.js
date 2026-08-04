@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.25';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.25';
+import { getSettings } from './settings.js?rmv=1.2.26';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.26';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.2.25';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.25';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.25';
+} from './feedbackCat.js?rmv=1.2.26';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.26';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.26';
 
 
-const RUNTIME_VERSION = '1.2.25';
+const RUNTIME_VERSION = '1.2.26';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -2046,14 +2046,12 @@ function applyCheckedRuleTextFallback(toto, input) {
                 continue;
             }
             rememberCheckedRevealCandidate(revealCandidates, target, rule.styleMap);
-            const baseline = capturePseudoStyleState(target, new Set(rule.styleMap.map(([property]) => property)));
             for (const [property, value] of rule.styleMap) {
-                const original = baseline.get(property) || { value: '', priority: '' };
                 records.push({
                     element: target,
                     property,
-                    value: original.value,
-                    priority: original.priority,
+                    value: target.style.getPropertyValue(property),
+                    priority: target.style.getPropertyPriority(property),
                 });
                 target.style.setProperty(property, value, 'important');
             }
@@ -2116,14 +2114,12 @@ function applyCheckedRuleInlineFallback(toto, input) {
         }
         for (const target of targets) {
             rememberCheckedRevealCandidate(revealCandidates, target, styleMap);
-            const baseline = capturePseudoStyleState(target, new Set(styleMap.map(([property]) => property)));
             for (const [property, value] of styleMap) {
-                const original = baseline.get(property) || { value: '', priority: '' };
                 records.push({
                     element: target,
                     property,
-                    value: original.value,
-                    priority: original.priority,
+                    value: target.style.getPropertyValue(property),
+                    priority: target.style.getPropertyPriority(property),
                 });
                 target.style.setProperty(property, value, 'important');
             }
@@ -9854,7 +9850,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.25-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.26-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -10807,9 +10803,6 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         independentRequest ? `状态=${independentRequest.ok ? 'success' : 'failed'} HTTP=${independentRequest.status || '?'} model=${independentRequest.model || '(无)'}` : '（暂无独立 API实际生成记录）',
         independentRequest ? `profile=${independentRequest.profile || '(无)'} systemMessage=${!!independentRequest.systemMessageSent} temperatureConfigured=${independentRequest.configuredTemperature ?? '(无)'} temperatureSent=${!!independentRequest.temperatureSent}` : '',
         independentRequest ? `tokenField=${independentRequest.tokenField || '(无)'} stream=${!!independentRequest.streamSent} remembered=${independentRequest.rememberedProfile || '(无)'} attempts=${Array.isArray(independentRequest.attempts) ? independentRequest.attempts.map(item => `${item.profile}:${item.status}`).join(' -> ') : '(无)'}` : '',
-        independentRequest ? `responseTransport=${independentRequest.responseTransport || '(无)'} endReason=${independentRequest.responseEndReason || '(无)'} chunks=${Number(independentRequest.responseChunks || 0)} chars=${Number(independentRequest.responseChars || 0)} extracted=${Number(independentRequest.extractedTextChars || 0)}` : '',
-        independentRequest ? `requestCount=${Number(independentRequest.requestCount || (Array.isArray(independentRequest.attempts) ? independentRequest.attempts.length : 0))} automaticFallback=${independentRequest.automaticProfileFallback !== false} completionAccepted=${independentRequest.completionAccepted ?? '(未校验)'} failureStage=${independentRequest.failureStage || '(无)'} mirrorChars=${Number(independentRequest.mirrorChars || 0)}` : '',
-        independentRequest ? `sourceChangedDuringRequest=${!!independentRequest.sourceChangedDuringRequest} originalSourceHash=${independentRequest.originalSourceHash || '(无)'} adoptedSourceHash=${independentRequest.adoptedSourceHash || '(无)'}` : '',
         independentRequest ? `samplingMode=${independentRequest.samplingMode || '(无)'} themes=${Array.isArray(independentRequest.themeLabels) ? independentRequest.themeLabels.join(' + ') : '(无)'} formats=${Array.isArray(independentRequest.formatLabels) ? independentRequest.formatLabels.join(' + ') : '(无)'} executionLockChars=${Number(independentRequest.executionLockChars || 0)}` : '',
         '',
         '[1. HTML／Markdown 输入层]',
@@ -14058,17 +14051,14 @@ function feedbackCatButtonTitle() {
         : '挨打猫：反馈这面兔子镜；未选择时不会向模型追加内容';
 }
 
-function updateFeedbackCatButtonTitles(scope = document) {
+function updateFeedbackCatButtonTitles() {
     const title = feedbackCatButtonTitle();
-    const buttons = [];
-    if (scope?.matches?.(`[${FEEDBACK_CAT_ATTR}]`)) buttons.push(scope);
-    scope?.querySelectorAll?.(`[${FEEDBACK_CAT_ATTR}]`)?.forEach(button => buttons.push(button));
-    for (const button of buttons) {
+    document.querySelectorAll?.(`[${FEEDBACK_CAT_ATTR}]`)?.forEach(button => {
         button.title = title;
         button.setAttribute('aria-label', title);
         normalizeRabbitMirrorToolButton(button);
         normalizeRabbitMirrorToolHost(button.parentElement?.matches?.(`[${TOOL_ENTRY_HOST_ATTR}]`) ? button.parentElement : null);
-    }
+    });
 }
 
 function saveFeedbackCatChoice(root, types, customText, rounds) {
@@ -15142,7 +15132,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.10';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.09';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -16085,44 +16075,7 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } 
             }
         }
     });
-    if (feedbackEnabled) updateFeedbackCatButtonTitles(scope);
-}
-
-const COMPAT_RECENT_MESSAGE_LIMIT = 16;
-let lastRecentMaintenanceEnabled = null;
-let lastRecentFeedbackEnabled = null;
-
-function recentRenderedMessageScopes(chatRoot, limit = COMPAT_RECENT_MESSAGE_LIMIT) {
-    if (!chatRoot) return [];
-    // Do not inspect every mounted message or call getBoundingClientRect() across
-    // a large chat. Walk backward through only the tail of the direct message
-    // lane; new DOM insertions are handled separately by the scoped observer.
-    const wanted = Math.max(1, Number(limit) || COMPAT_RECENT_MESSAGE_LIMIT);
-    const messages = [];
-    let node = chatRoot.lastElementChild;
-    while (node && messages.length < wanted) {
-        if (node.matches?.('.mes, [mesid].mes, .mes[data-message-id], .mes[data-messageid]')) messages.push(node);
-        node = node.previousElementSibling;
-    }
-    return messages.reverse();
-}
-
-function installMaintenanceRabbitsInRecentChatDom() {
-    const chatRoot = getChatRoot();
-    if (!chatRoot) return;
-    const maintenanceEnabled = isMaintenanceRabbitEnabled();
-    const feedbackEnabled = isFeedbackCatEnabled();
-    // Remove stale controls once when a setting changes, not on every host event.
-    if (lastRecentMaintenanceEnabled !== maintenanceEnabled) {
-        if (!maintenanceEnabled) removeMaintenanceRabbitsInChatDom();
-        lastRecentMaintenanceEnabled = maintenanceEnabled;
-    }
-    if (lastRecentFeedbackEnabled !== feedbackEnabled) {
-        if (!feedbackEnabled) removeFeedbackCatsInChatDom();
-        lastRecentFeedbackEnabled = feedbackEnabled;
-    }
-    if (!maintenanceEnabled && !feedbackEnabled) return;
-    for (const scope of recentRenderedMessageScopes(chatRoot)) installMaintenanceRabbitsInScope(scope);
+    if (feedbackEnabled) updateFeedbackCatButtonTitles();
 }
 
 function installMaintenanceRabbitsInChatDom() {
@@ -16183,47 +16136,6 @@ function findNextUiTagStart(text, fromIndex) {
     return match ? Math.max(0, fromIndex) + match.index : -1;
 }
 
-
-function recoverDamagedInlineSvgFallbackBoundary(text, tagStart, uriIndex, nextUiTagIndex, styleQuote) {
-    const source = String(text || '');
-    const openingMatch = source.slice(tagStart, uriIndex).match(/^<\s*([a-z][\w:-]*)\b/i);
-    const hostTagName = String(openingMatch?.[1] || '').toLowerCase();
-    if (!hostTagName || nextUiTagIndex <= uriIndex) return { styleTail: '', hostBoundary: '' };
-
-    const fragment = source.slice(uriIndex, nextUiTagIndex);
-    const lower = fragment.toLowerCase();
-    const rawSvgEnd = lower.lastIndexOf('</svg>');
-    const encodedSvgEnd = lower.lastIndexOf('&lt;/svg&gt;');
-    const svgEndIndex = Math.max(rawSvgEnd, encodedSvgEnd);
-    if (svgEndIndex < 0) return { styleTail: '', hostBoundary: '' };
-
-    let cursor = svgEndIndex + (svgEndIndex === encodedSvgEnd ? '&lt;/svg&gt;'.length : '</svg>'.length);
-    while (cursor < fragment.length && /\s/.test(fragment[cursor])) cursor += 1;
-    while (fragment[cursor] === '\\' && (fragment[cursor + 1] === '"' || fragment[cursor + 1] === "'")) cursor += 1;
-    if (fragment[cursor] === '"' || fragment[cursor] === "'") cursor += 1;
-    while (cursor < fragment.length && /\s/.test(fragment[cursor])) cursor += 1;
-    if (fragment[cursor] !== ')') return { styleTail: '', hostBoundary: '' };
-    cursor += 1;
-    while (cursor < fragment.length && /\s/.test(fragment[cursor])) cursor += 1;
-    if (fragment[cursor] === ';') cursor += 1;
-
-    const escapedTagName = escapeRegExp(hostTagName);
-    const hostCloseRe = new RegExp(`</${escapedTagName}\\s*>(?:\\s|<!--[\\s\\S]*?-->)*$`, 'i');
-    const suffix = fragment.slice(cursor);
-    const hostCloseMatch = hostCloseRe.exec(suffix);
-    if (!hostCloseMatch) return { styleTail: '', hostBoundary: '' };
-
-    const beforeHostClose = suffix.slice(0, hostCloseMatch.index);
-    const styleCloseIndex = beforeHostClose.lastIndexOf(styleQuote);
-    if (styleCloseIndex < 0) return { styleTail: '', hostBoundary: '' };
-
-    const styleTail = beforeHostClose.slice(0, styleCloseIndex);
-    if (styleTail.length > 4096 || /[<>]/.test(styleTail) || /data:image\/svg\+xml/i.test(styleTail)) {
-        return { styleTail: '', hostBoundary: hostCloseMatch[0] };
-    }
-
-    return { styleTail, hostBoundary: hostCloseMatch[0] };
-}
 
 function findDamagedInlineSvgDeclarationEnd(text, propertyStart, uriIndex, styleQuote) {
     const source = String(text || '');
@@ -16387,14 +16299,7 @@ export function rescueDamagedDataUriRabbitMirrorOutput(responseText = '') {
             const removedFragment = text.slice(propertyStart, nextUiTagIndex);
             const safePrefix = text.slice(0, propertyStart).replace(/[ \t]+$/g, '');
             const safeSuffix = text.slice(nextUiTagIndex);
-            const fallbackBoundary = recoverDamagedInlineSvgFallbackBoundary(
-                text,
-                tagStart,
-                uriIndex,
-                nextUiTagIndex,
-                styleQuote,
-            );
-            text = `${safePrefix}${fallbackBoundary.styleTail}${styleQuote}>${fallbackBoundary.hostBoundary}\n${safeSuffix}`;
+            text = `${safePrefix}${styleQuote}>\n${safeSuffix}`;
             text = removeSurplusSvgClosingTags(text, removedFragment);
         }
         repairs += 1;
@@ -18164,7 +18069,7 @@ function scheduleMaintenanceRabbitInstall() {
     if (maintenanceInstallTimers.size) return;
     const timer = setTimeout(() => {
         maintenanceInstallTimers.delete(timer);
-        installMaintenanceRabbitsInRecentChatDom();
+        installMaintenanceRabbitsInChatDom();
     }, 180);
     maintenanceInstallTimers.add(timer);
 }
@@ -18294,7 +18199,7 @@ export async function initOutputSanitizer() {
     installToolEntryDelegation();
     installChatMutationObserver();
     scheduleMaintenanceRabbitInstall();
-    installMaintenanceRabbitsInRecentChatDom();
+    installMaintenanceRabbitsInChatDom();
 
     try {
         const mod = await import('../../../../../script.js');
@@ -18346,8 +18251,6 @@ export function destroyOutputSanitizer() {
     maintenanceAutoSafeBaselineSignatures.clear();
     maintenancePreRepairSnapshots.clear();
     maintenanceAutoSafeReady = false;
-    lastRecentMaintenanceEnabled = null;
-    lastRecentFeedbackEnabled = null;
     removeMaintenanceRabbitsInChatDom();
     removeFeedbackCatsInChatDom();
     closeMaintenanceRabbitMenu();
