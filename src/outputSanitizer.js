@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14h68t';
-import { getCurrentChatKey } from './storage.js?rmv=1.1.0b14h68t';
+import { getSettings } from './settings.js?rmv=1.2.25';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.25';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14h68t';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h68t';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h68t';
+} from './feedbackCat.js?rmv=1.2.25';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.25';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.25';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14.68-test';
+const RUNTIME_VERSION = '1.2.25';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -492,6 +492,77 @@ const CHANNEL_DIAL_CYCLE_HOST_ATTR = 'data-rm-channel-dial-cycle-host';
 const CHANNEL_DIAL_CYCLE_LABEL_ATTR = 'data-rm-channel-dial-cycle-label';
 const channelDialCycleRescueStates = new WeakMap();
 const EXPANDED_OPACITY_RESCUE_ATTR = 'data-rabbit-mirror-expanded-opacity-rescue';
+const STALE_CHECKED_INLINE_CLEANUP_ATTR = 'data-rabbit-mirror-stale-checked-inline-cleanup';
+
+function canonicalCheckedCssValue(property, value) {
+    const clean = String(value || '').trim().replace(/\s*!important\s*$/i, '');
+    if (!clean) return '';
+    if (typeof document === 'undefined' || !document.createElement) {
+        return clean.toLowerCase().replace(/\s+/g, ' ');
+    }
+    try {
+        const probe = document.createElement('span');
+        probe.style.setProperty(String(property || ''), clean);
+        return String(probe.style.getPropertyValue(String(property || '')) || clean)
+            .trim().toLowerCase().replace(/\s+/g, ' ');
+    } catch {
+        return clean.toLowerCase().replace(/\s+/g, ' ');
+    }
+}
+
+function clearPersistedCheckedInlineArtifacts(root, inputs) {
+    if (!root?.querySelectorAll || !inputs?.length) return 0;
+    let cleared = 0;
+    const seen = new WeakMap();
+
+    for (const input of inputs) {
+        const rescueOwned = input.hasAttribute?.(CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR)
+            || input.hasAttribute?.(CHECKED_TEXT_RULE_RESCUE_ATTR)
+            || input.hasAttribute?.(LABELED_CHECKED_VERIFY_CONTROL_ATTR);
+        if (!rescueOwned) continue;
+
+        for (const rule of parseCheckedRulesFromText(root, input)) {
+            if (rule.pseudoElement) continue;
+            const targets = resolveTargetsForCheckedRule(root, input, rule);
+            for (const target of targets) {
+                if (!target?.style) continue;
+                const targetOwned = target.hasAttribute?.(LABELED_CHECKED_VERIFY_TARGET_ATTR)
+                    || input.hasAttribute?.(CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR);
+                if (!targetOwned) continue;
+
+                let properties = seen.get(target);
+                if (!properties) {
+                    properties = new Set();
+                    seen.set(target, properties);
+                }
+                for (const [rawProperty, rawValue] of rule.styleMap || []) {
+                    const property = String(rawProperty || '').trim().toLowerCase();
+                    if (!property || properties.has(property)) continue;
+                    properties.add(property);
+
+                    // Exclusive stacked-state rescue owns these properties after it is installed.
+                    // Do not confuse its live state with a persisted stale checked override.
+                    if (target.hasAttribute?.(EXCLUSIVE_STACKED_STATE_PANEL_ATTR)
+                        && /^(?:opacity|visibility|pointer-events|z-index)$/.test(property)) continue;
+
+                    const priority = String(target.style.getPropertyPriority(property) || '').toLowerCase();
+                    const current = String(target.style.getPropertyValue(property) || '').trim();
+                    if (priority !== 'important' || !current) continue;
+                    if (canonicalCheckedCssValue(property, current)
+                        !== canonicalCheckedCssValue(property, rawValue)) continue;
+
+                    target.style.removeProperty(property);
+                    cleared += 1;
+                }
+            }
+        }
+    }
+
+    if (cleared > 0) {
+        root.setAttribute(STALE_CHECKED_INLINE_CLEANUP_ATTR, String(cleared));
+    }
+    return cleared;
+}
 
 function collectCheckedRevealSignal(candidate, property, value) {
     if (!candidate) return;
@@ -970,6 +1041,10 @@ function syncCrossParentCheckedRuleFallback(root) {
 
     // 先统一撤回旧分支，避免 radio 切换后上一分支的内联急救状态残留。
     for (const input of inputs) restoreInteractionInlineOverrides(input);
+    // 旧公开版会把 checked 兜底写入副 API缓存。重新载入后 WeakMap 已丢失，
+    // 那些 !important 会被误当成“原始内联样式”，从而让多个 radio 分支同时显示。
+    // 这里只移除能与 checked 规则精确对应、且带有维修归属标记的 important 声明。
+    const staleCleanupCount = clearPersistedCheckedInlineArtifacts(root, inputs);
     let activeCount = 0;
     for (const input of inputs) {
         if (!input.checked) continue;
@@ -979,6 +1054,11 @@ function syncCrossParentCheckedRuleFallback(root) {
     }
     for (const input of inputs) {
         if (!input.checked) input.setAttribute('aria-pressed', 'false');
+    }
+    if (staleCleanupCount > 0) {
+        setTimeout(() => {
+            if (root?.isConnected) notifyIndependentRepairPersistence(root);
+        }, 0);
     }
     return activeCount;
 }
@@ -1581,7 +1661,7 @@ function commonStackedPanelClassToken(targets) {
     if (!lists.length) return '';
     const candidates = [...lists[0]].filter(token => lists.every(set => set.has(token)));
     return candidates
-        .filter(token => /(?:info|content|state|panel|result|feedback|detail|text|screen|view)/i.test(token))
+        .filter(token => /(?:info|content|state|panel|result|feedback|detail|text|screen|view|draft|manuscript|essay)/i.test(token))
         .sort((a, b) => b.length - a.length)[0] || '';
 }
 
@@ -1966,12 +2046,14 @@ function applyCheckedRuleTextFallback(toto, input) {
                 continue;
             }
             rememberCheckedRevealCandidate(revealCandidates, target, rule.styleMap);
+            const baseline = capturePseudoStyleState(target, new Set(rule.styleMap.map(([property]) => property)));
             for (const [property, value] of rule.styleMap) {
+                const original = baseline.get(property) || { value: '', priority: '' };
                 records.push({
                     element: target,
                     property,
-                    value: target.style.getPropertyValue(property),
-                    priority: target.style.getPropertyPriority(property),
+                    value: original.value,
+                    priority: original.priority,
                 });
                 target.style.setProperty(property, value, 'important');
             }
@@ -2034,12 +2116,14 @@ function applyCheckedRuleInlineFallback(toto, input) {
         }
         for (const target of targets) {
             rememberCheckedRevealCandidate(revealCandidates, target, styleMap);
+            const baseline = capturePseudoStyleState(target, new Set(styleMap.map(([property]) => property)));
             for (const [property, value] of styleMap) {
+                const original = baseline.get(property) || { value: '', priority: '' };
                 records.push({
                     element: target,
                     property,
-                    value: target.style.getPropertyValue(property),
-                    priority: target.style.getPropertyPriority(property),
+                    value: original.value,
+                    priority: original.priority,
                 });
                 target.style.setProperty(property, value, 'important');
             }
@@ -9023,6 +9107,16 @@ function scheduleLabeledCheckedTransitionVerification(root, input, verification,
             if (state.sequence !== sequence) return;
             if (!root.isConnected || !input.isConnected || !root.contains(input)) return;
             let corrected = false;
+            if (input.type === 'radio' && intended && !input.checked) {
+                const radioName = String(input.name || '');
+                const newerSelectionExists = [...root.querySelectorAll('input[type="radio"]')]
+                    .some(item => item !== input
+                        && (!radioName || String(item.name || '') === radioName)
+                        && item.checked);
+                // A later click selected another radio in the same group. This verification belongs
+                // to the older click and must never reclaim the group or re-apply its old panel.
+                if (newerSelectionExists) return;
+            }
             if (!!input.checked !== !!intended) {
                 setRescuedCheckedState(root, input, intended);
                 corrected = true;
@@ -9244,11 +9338,17 @@ function installInteractionLabelFallback(toto) {
         const previous = !!input.checked;
         const intendedChecked = input.type === 'radio' ? true : !previous;
         if (input.type === 'radio') {
-            // 先恢复同组上一分支由急救器写入的内联状态，再切换到当前分支。
+            // 将同组切换作为一个原子操作：取消所有旧点击的延迟验证，撤回旧分支，
+            // 再只启用当前分支。否则旧 radio 的 +240ms 验证可能把自己重新勾上。
             const radioName = String(input.name || '');
-            [...toto.querySelectorAll('input[type="radio"]')]
-                .filter(item => item !== input && (!radioName || item.name === radioName))
-                .forEach(item => restoreInteractionInlineOverrides(item));
+            const group = [...toto.querySelectorAll('input[type="radio"]')]
+                .filter(item => !radioName || String(item.name || '') === radioName);
+            for (const item of group) {
+                cancelLabeledCheckedTransitionVerification(item);
+                if (item !== input) item.checked = false;
+                restoreInteractionInlineOverrides(item);
+                if (item !== input) item.setAttribute?.('aria-pressed', 'false');
+            }
             input.checked = true;
         } else {
             input.checked = !input.checked;
@@ -9280,9 +9380,23 @@ function installInteractionLabelFallback(toto) {
         // 仅在状态被回滚时补发一次 input/change，不造成正常环境的双重切换。
         setTimeout(() => {
             if (!input.isConnected || input.checked === intendedChecked) return;
+            if (input.type === 'radio') {
+                const radioName = String(input.name || '');
+                for (const item of toto.querySelectorAll('input[type="radio"]')) {
+                    if (item === input || (radioName && String(item.name || '') !== radioName)) continue;
+                    cancelLabeledCheckedTransitionVerification(item);
+                    item.checked = false;
+                    restoreInteractionInlineOverrides(item);
+                    item.setAttribute?.('aria-pressed', 'false');
+                }
+            }
             input.checked = intendedChecked;
             restoreInteractionInlineOverrides(input);
-            applyCheckedVisualFallback(toto, input);
+            if (input.type === 'radio' && input.hasAttribute?.(CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR)) {
+                syncCrossParentCheckedRuleFallback(toto);
+            } else {
+                applyCheckedVisualFallback(toto, input);
+            }
             applyRenderedLabelInternalHiddenEntries(toto);
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -9740,7 +9854,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.1.0-BETA-10-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.25-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -10643,6 +10757,16 @@ ${styleTexts}`;
     };
 }
 
+function diagnosticIndependentApiRequestSnapshot() {
+    try {
+        const value = JSON.parse(localStorage.getItem('rabbit_mirror_independent_api_last_request_v2') || 'null');
+        if (!value || typeof value !== 'object') return null;
+        return value;
+    } catch {
+        return null;
+    }
+}
+
 function buildInteractionDiagnosticText(root, state, phase = 'capture complete') {
     const inputs = diagnosticQueryContentAll(root, 'input[type="checkbox"], input[type="radio"]').slice(0, 8);
     const labels = diagnosticQueryContentAll(root, 'label');
@@ -10666,8 +10790,10 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
     const title = diagnosticCompactText(root.querySelector('summary')?.textContent, 64);
     const code = diagnosticCodeRescueSummary(root);
     const full = diagnosticFullChainSummary(root, code);
+    const independentRequest = diagnosticIndependentApiRequestSnapshot();
     const lines = [
-        `RabbitMirror 全链路诊断 ${INTERACTION_DIAGNOSTIC_VERSION}`,
+        `兔子镜小剧场 全链路诊断`,
+        `运行版本: ${INTERACTION_DIAGNOSTIC_VERSION}`,
         `标题: ${title || '(未渲染 summary／可能仍是代码块或纯文字)'}`,
         `阶段: ${phase}`,
         `诊断模式: 一次性全链路诊断（已自动停止）`,
@@ -10676,6 +10802,15 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `旧全局急救链: 已合并停用`,
         `消息 mesid: ${code.mesid}`,
         `根节点: ${diagnosticElementName(root)} / connected=${!!root.isConnected}`,
+        '',
+        '[0. 独立 API 最近一次实际请求]',
+        independentRequest ? `状态=${independentRequest.ok ? 'success' : 'failed'} HTTP=${independentRequest.status || '?'} model=${independentRequest.model || '(无)'}` : '（暂无独立 API实际生成记录）',
+        independentRequest ? `profile=${independentRequest.profile || '(无)'} systemMessage=${!!independentRequest.systemMessageSent} temperatureConfigured=${independentRequest.configuredTemperature ?? '(无)'} temperatureSent=${!!independentRequest.temperatureSent}` : '',
+        independentRequest ? `tokenField=${independentRequest.tokenField || '(无)'} stream=${!!independentRequest.streamSent} remembered=${independentRequest.rememberedProfile || '(无)'} attempts=${Array.isArray(independentRequest.attempts) ? independentRequest.attempts.map(item => `${item.profile}:${item.status}`).join(' -> ') : '(无)'}` : '',
+        independentRequest ? `responseTransport=${independentRequest.responseTransport || '(无)'} endReason=${independentRequest.responseEndReason || '(无)'} chunks=${Number(independentRequest.responseChunks || 0)} chars=${Number(independentRequest.responseChars || 0)} extracted=${Number(independentRequest.extractedTextChars || 0)}` : '',
+        independentRequest ? `requestCount=${Number(independentRequest.requestCount || (Array.isArray(independentRequest.attempts) ? independentRequest.attempts.length : 0))} automaticFallback=${independentRequest.automaticProfileFallback !== false} completionAccepted=${independentRequest.completionAccepted ?? '(未校验)'} failureStage=${independentRequest.failureStage || '(无)'} mirrorChars=${Number(independentRequest.mirrorChars || 0)}` : '',
+        independentRequest ? `sourceChangedDuringRequest=${!!independentRequest.sourceChangedDuringRequest} originalSourceHash=${independentRequest.originalSourceHash || '(无)'} adoptedSourceHash=${independentRequest.adoptedSourceHash || '(无)'}` : '',
+        independentRequest ? `samplingMode=${independentRequest.samplingMode || '(无)'} themes=${Array.isArray(independentRequest.themeLabels) ? independentRequest.themeLabels.join(' + ') : '(无)'} formats=${Array.isArray(independentRequest.formatLabels) ? independentRequest.formatLabels.join(' + ') : '(无)'} executionLockChars=${Number(independentRequest.executionLockChars || 0)}` : '',
         '',
         '[1. HTML／Markdown 输入层]',
         `原始源含HTML=${full.rawHtml} 含toto=${full.rawToto} 含三反引号=${full.rawFence}`,
@@ -10706,7 +10841,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `当前镜面相关 TH-render=${full.relevantThRenderCount || 0} highlightedCode=${full.relevantHighlightedCount || 0} codeShells=${full.relevantCodeShellCount || 0}`,
         `源码恢复候选=${full.sourceCandidate} 源码被显示层遮蔽=${full.sourceObscured}`,
         '',
-        '[6. RabbitMirror 急救安装层]',
+        '[6. 兔子镜小剧场急救安装层]',
         `interactionScoped=${full.scopedCount} interactionRescued=${full.rescuedCount}`,
         `maintenanceVersion=${full.maintenanceModuleVersion || '(无)'} mode=${full.maintenanceModuleMode || '(无)'}`,
         `findings=${full.maintenanceFindingCount || 0} repairOrder=${full.maintenanceRepairOrder || '(无)'}`,
@@ -13908,6 +14043,7 @@ function feedbackCatSourceIdentity(root) {
             skeleton: scanned.skeleton || '',
             riskFlags: Array.isArray(scanned.riskFlags) ? scanned.riskFlags : [],
             paletteFingerprint: scanned.paletteFingerprint || null,
+            interactionFamily: scanned.interactionFamily || null,
         } : null;
     } catch (error) {
         console.debug('[RabbitMirror] feedback cat source fingerprint skipped:', error);
@@ -13922,14 +14058,17 @@ function feedbackCatButtonTitle() {
         : '挨打猫：反馈这面兔子镜；未选择时不会向模型追加内容';
 }
 
-function updateFeedbackCatButtonTitles() {
+function updateFeedbackCatButtonTitles(scope = document) {
     const title = feedbackCatButtonTitle();
-    document.querySelectorAll?.(`[${FEEDBACK_CAT_ATTR}]`)?.forEach(button => {
+    const buttons = [];
+    if (scope?.matches?.(`[${FEEDBACK_CAT_ATTR}]`)) buttons.push(scope);
+    scope?.querySelectorAll?.(`[${FEEDBACK_CAT_ATTR}]`)?.forEach(button => buttons.push(button));
+    for (const button of buttons) {
         button.title = title;
         button.setAttribute('aria-label', title);
         normalizeRabbitMirrorToolButton(button);
         normalizeRabbitMirrorToolHost(button.parentElement?.matches?.(`[${TOOL_ENTRY_HOST_ATTR}]`) ? button.parentElement : null);
-    });
+    }
 }
 
 function saveFeedbackCatChoice(root, types, customText, rounds) {
@@ -15003,7 +15142,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.09-test';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.10';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -15946,7 +16085,44 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } 
             }
         }
     });
-    if (feedbackEnabled) updateFeedbackCatButtonTitles();
+    if (feedbackEnabled) updateFeedbackCatButtonTitles(scope);
+}
+
+const COMPAT_RECENT_MESSAGE_LIMIT = 16;
+let lastRecentMaintenanceEnabled = null;
+let lastRecentFeedbackEnabled = null;
+
+function recentRenderedMessageScopes(chatRoot, limit = COMPAT_RECENT_MESSAGE_LIMIT) {
+    if (!chatRoot) return [];
+    // Do not inspect every mounted message or call getBoundingClientRect() across
+    // a large chat. Walk backward through only the tail of the direct message
+    // lane; new DOM insertions are handled separately by the scoped observer.
+    const wanted = Math.max(1, Number(limit) || COMPAT_RECENT_MESSAGE_LIMIT);
+    const messages = [];
+    let node = chatRoot.lastElementChild;
+    while (node && messages.length < wanted) {
+        if (node.matches?.('.mes, [mesid].mes, .mes[data-message-id], .mes[data-messageid]')) messages.push(node);
+        node = node.previousElementSibling;
+    }
+    return messages.reverse();
+}
+
+function installMaintenanceRabbitsInRecentChatDom() {
+    const chatRoot = getChatRoot();
+    if (!chatRoot) return;
+    const maintenanceEnabled = isMaintenanceRabbitEnabled();
+    const feedbackEnabled = isFeedbackCatEnabled();
+    // Remove stale controls once when a setting changes, not on every host event.
+    if (lastRecentMaintenanceEnabled !== maintenanceEnabled) {
+        if (!maintenanceEnabled) removeMaintenanceRabbitsInChatDom();
+        lastRecentMaintenanceEnabled = maintenanceEnabled;
+    }
+    if (lastRecentFeedbackEnabled !== feedbackEnabled) {
+        if (!feedbackEnabled) removeFeedbackCatsInChatDom();
+        lastRecentFeedbackEnabled = feedbackEnabled;
+    }
+    if (!maintenanceEnabled && !feedbackEnabled) return;
+    for (const scope of recentRenderedMessageScopes(chatRoot)) installMaintenanceRabbitsInScope(scope);
 }
 
 function installMaintenanceRabbitsInChatDom() {
@@ -16007,6 +16183,47 @@ function findNextUiTagStart(text, fromIndex) {
     return match ? Math.max(0, fromIndex) + match.index : -1;
 }
 
+
+function recoverDamagedInlineSvgFallbackBoundary(text, tagStart, uriIndex, nextUiTagIndex, styleQuote) {
+    const source = String(text || '');
+    const openingMatch = source.slice(tagStart, uriIndex).match(/^<\s*([a-z][\w:-]*)\b/i);
+    const hostTagName = String(openingMatch?.[1] || '').toLowerCase();
+    if (!hostTagName || nextUiTagIndex <= uriIndex) return { styleTail: '', hostBoundary: '' };
+
+    const fragment = source.slice(uriIndex, nextUiTagIndex);
+    const lower = fragment.toLowerCase();
+    const rawSvgEnd = lower.lastIndexOf('</svg>');
+    const encodedSvgEnd = lower.lastIndexOf('&lt;/svg&gt;');
+    const svgEndIndex = Math.max(rawSvgEnd, encodedSvgEnd);
+    if (svgEndIndex < 0) return { styleTail: '', hostBoundary: '' };
+
+    let cursor = svgEndIndex + (svgEndIndex === encodedSvgEnd ? '&lt;/svg&gt;'.length : '</svg>'.length);
+    while (cursor < fragment.length && /\s/.test(fragment[cursor])) cursor += 1;
+    while (fragment[cursor] === '\\' && (fragment[cursor + 1] === '"' || fragment[cursor + 1] === "'")) cursor += 1;
+    if (fragment[cursor] === '"' || fragment[cursor] === "'") cursor += 1;
+    while (cursor < fragment.length && /\s/.test(fragment[cursor])) cursor += 1;
+    if (fragment[cursor] !== ')') return { styleTail: '', hostBoundary: '' };
+    cursor += 1;
+    while (cursor < fragment.length && /\s/.test(fragment[cursor])) cursor += 1;
+    if (fragment[cursor] === ';') cursor += 1;
+
+    const escapedTagName = escapeRegExp(hostTagName);
+    const hostCloseRe = new RegExp(`</${escapedTagName}\\s*>(?:\\s|<!--[\\s\\S]*?-->)*$`, 'i');
+    const suffix = fragment.slice(cursor);
+    const hostCloseMatch = hostCloseRe.exec(suffix);
+    if (!hostCloseMatch) return { styleTail: '', hostBoundary: '' };
+
+    const beforeHostClose = suffix.slice(0, hostCloseMatch.index);
+    const styleCloseIndex = beforeHostClose.lastIndexOf(styleQuote);
+    if (styleCloseIndex < 0) return { styleTail: '', hostBoundary: '' };
+
+    const styleTail = beforeHostClose.slice(0, styleCloseIndex);
+    if (styleTail.length > 4096 || /[<>]/.test(styleTail) || /data:image\/svg\+xml/i.test(styleTail)) {
+        return { styleTail: '', hostBoundary: hostCloseMatch[0] };
+    }
+
+    return { styleTail, hostBoundary: hostCloseMatch[0] };
+}
 
 function findDamagedInlineSvgDeclarationEnd(text, propertyStart, uriIndex, styleQuote) {
     const source = String(text || '');
@@ -16170,7 +16387,14 @@ export function rescueDamagedDataUriRabbitMirrorOutput(responseText = '') {
             const removedFragment = text.slice(propertyStart, nextUiTagIndex);
             const safePrefix = text.slice(0, propertyStart).replace(/[ \t]+$/g, '');
             const safeSuffix = text.slice(nextUiTagIndex);
-            text = `${safePrefix}${styleQuote}>\n${safeSuffix}`;
+            const fallbackBoundary = recoverDamagedInlineSvgFallbackBoundary(
+                text,
+                tagStart,
+                uriIndex,
+                nextUiTagIndex,
+                styleQuote,
+            );
+            text = `${safePrefix}${fallbackBoundary.styleTail}${styleQuote}>${fallbackBoundary.hostBoundary}\n${safeSuffix}`;
             text = removeSurplusSvgClosingTags(text, removedFragment);
         }
         repairs += 1;
@@ -17940,7 +18164,7 @@ function scheduleMaintenanceRabbitInstall() {
     if (maintenanceInstallTimers.size) return;
     const timer = setTimeout(() => {
         maintenanceInstallTimers.delete(timer);
-        installMaintenanceRabbitsInChatDom();
+        installMaintenanceRabbitsInRecentChatDom();
     }, 180);
     maintenanceInstallTimers.add(timer);
 }
@@ -18070,7 +18294,7 @@ export async function initOutputSanitizer() {
     installToolEntryDelegation();
     installChatMutationObserver();
     scheduleMaintenanceRabbitInstall();
-    installMaintenanceRabbitsInChatDom();
+    installMaintenanceRabbitsInRecentChatDom();
 
     try {
         const mod = await import('../../../../../script.js');
@@ -18122,6 +18346,8 @@ export function destroyOutputSanitizer() {
     maintenanceAutoSafeBaselineSignatures.clear();
     maintenancePreRepairSnapshots.clear();
     maintenanceAutoSafeReady = false;
+    lastRecentMaintenanceEnabled = null;
+    lastRecentFeedbackEnabled = null;
     removeMaintenanceRabbitsInChatDom();
     removeFeedbackCatsInChatDom();
     closeMaintenanceRabbitMenu();

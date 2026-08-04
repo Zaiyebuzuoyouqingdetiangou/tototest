@@ -1,11 +1,11 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h68t';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.1.0b14h68t';
-import { getSettings } from './settings.js?rmv=1.1.0b14h68t';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.2.25';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.25';
+import { getSettings } from './settings.js?rmv=1.2.25';
 import {
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.1.0b14h68t';
+} from './generationGuard.js?rmv=1.2.25';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -292,6 +292,100 @@ function detectEffectiveInteraction(html = '') {
 function detectInteractionSignals(html = '', plain = '') {
     const text = `${html || ''}\n${plain || ''}`;
     return /:hover|:active|:focus|transition\s*:|cursor\s*:\s*pointer|<button\b|<label\b|点击|选择|切换|开关|解锁|探索|查看|操作|按钮/i.test(text);
+}
+
+function interactionFamilyRecord(id = 'none', label = '未识别交互家族', confidence = 0, details = {}) {
+    return {
+        id: String(id || 'none'),
+        label: String(label || '未识别交互家族'),
+        confidence: Math.max(0, Math.min(1, Number(confidence) || 0)),
+        controlCount: Math.max(0, Number(details.controlCount) || 0),
+        panelCount: Math.max(0, Number(details.panelCount) || 0),
+    };
+}
+
+function labelsForControls(root, controls = []) {
+    if (!root?.querySelectorAll || !controls.length) return [];
+    const labels = new Set();
+    for (const control of controls) {
+        const id = String(control?.id || '').trim();
+        if (id) {
+            try {
+                root.querySelectorAll(`label[for="${globalThis.CSS?.escape ? globalThis.CSS.escape(id) : id.replace(/["\\]/g, '\\$&')}"]`).forEach(label => labels.add(label));
+            } catch {
+                root.querySelectorAll('label').forEach(label => {
+                    if (String(label.getAttribute('for') || '') === id) labels.add(label);
+                });
+            }
+        }
+        const parentLabel = control?.closest?.('label');
+        if (parentLabel) labels.add(parentLabel);
+    }
+    return [...labels];
+}
+
+function detectInteractionFamily(root, html = '') {
+    const text = String(html || '');
+    const lower = text.toLowerCase();
+    const innerDetailsCount = Math.max(0, count(/<details\b/gi, text) - 1);
+    const rotateFlip = /rotate[xy]\s*\(\s*(?:-?180|180deg)/i.test(text)
+        && /backface-visibility|transform-style\s*:\s*preserve-3d|perspective\s*:/i.test(text);
+    if (rotateFlip) return interactionFamilyRecord('flip_card_family', '翻面／双面切换', 0.96, { controlCount: count(/<input\b/gi, text), panelCount: 2 });
+
+    const controls = root?.querySelectorAll
+        ? [...root.querySelectorAll('input[type="radio"], input[type="checkbox"]')]
+        : [];
+    const radios = controls.filter(input => String(input.type || '').toLowerCase() === 'radio');
+    const checkboxes = controls.filter(input => String(input.type || '').toLowerCase() === 'checkbox');
+    const checkedRules = count(/:checked\b/gi, text);
+
+    const groups = new Map();
+    for (const radio of radios) {
+        const key = String(radio.getAttribute('name') || '').trim() || `__ungrouped__:${radio.id || groups.size}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(radio);
+    }
+    const largestRadioGroup = [...groups.values()].sort((a, b) => b.length - a.length)[0] || [];
+    const groupLabels = labelsForControls(root, largestRadioGroup);
+    const sameLayerPanelSignal = /grid-area\s*:\s*1\s*\/\s*1|position\s*:\s*absolute[\s\S]{0,220}(?:opacity\s*:\s*0|visibility\s*:\s*hidden)/i.test(lower);
+    const tabLanguageSignal = /tab|tabs|panel|pane|频道|标签页|选项卡|结局\s*0?1|档位|模式\s*[一二三123]/i.test(`${lower} ${stripTags(text)}`);
+    if (largestRadioGroup.length >= 3 && groupLabels.length >= 3 && checkedRules >= 3) {
+        return interactionFamilyRecord('tabbed_radio_family', '并列标签／多按钮切页', sameLayerPanelSignal || tabLanguageSignal ? 0.99 : 0.94, {
+            controlCount: largestRadioGroup.length,
+            panelCount: Math.max(largestRadioGroup.length, checkedRules),
+        });
+    }
+    if (largestRadioGroup.length >= 2 && groupLabels.length >= 2 && checkedRules >= 2 && (sameLayerPanelSignal || tabLanguageSignal)) {
+        return interactionFamilyRecord('tabbed_radio_family', '并列标签／多按钮切页', 0.92, {
+            controlCount: largestRadioGroup.length,
+            panelCount: Math.max(largestRadioGroup.length, checkedRules),
+        });
+    }
+    if (controls.length >= 3 && labelsForControls(root, controls).length >= 3 && checkedRules >= 2) {
+        return interactionFamilyRecord('multi_control_panel_family', '多控件状态面板', 0.86, {
+            controlCount: controls.length,
+            panelCount: checkedRules,
+        });
+    }
+    if (checkboxes.length === 1 && checkedRules >= 1) {
+        return interactionFamilyRecord('checkbox_reveal_family', '单入口揭示／展开', 0.90, { controlCount: 1, panelCount: 1 });
+    }
+    if (checkboxes.length >= 2 && checkedRules >= 2) {
+        return interactionFamilyRecord('multi_checkbox_family', '多点揭示／清单状态', 0.84, { controlCount: checkboxes.length, panelCount: checkedRules });
+    }
+    if (innerDetailsCount >= 1) {
+        return interactionFamilyRecord('inner_details_family', '内部折叠／分层阅读', 0.88, { controlCount: innerDetailsCount, panelCount: innerDetailsCount });
+    }
+    if (/href\s*=\s*["']#[^"']+["']/i.test(text) && /:target\b/i.test(text)) {
+        return interactionFamilyRecord('target_navigation_family', '锚点／目标状态切换', 0.86, { controlCount: count(/href\s*=\s*["']#/gi, text), panelCount: count(/:target\b/gi, text) });
+    }
+    if (/\bpopovertarget\s*=|\bcommandfor\s*=/i.test(text)) {
+        return interactionFamilyRecord('popover_family', '弹层／局部浮出', 0.88, { controlCount: count(/popovertarget|commandfor/gi, text), panelCount: count(/\bpopover(?:\s|=|>)/gi, text) });
+    }
+    if (detectEffectiveInteraction(text)) {
+        return interactionFamilyRecord('css_state_family', '其他 CSS 状态交互', 0.58, { controlCount: controls.length, panelCount: checkedRules });
+    }
+    return interactionFamilyRecord();
 }
 
 function detectInteractionMissing(html = '') {
@@ -815,6 +909,7 @@ function buildVisualSkeleton(html, plain, metrics) {
         `reading_family: ${detectReadingPath(html, metrics.spatialSignalCount)}`,
         `unit_family: ${detectInfoUnit(html, metrics.dom, metrics.repeated)}`,
         `space_family: ${detectSpaceFamily(html, metrics.spatialSignalCount)}`,
+        `interaction_family: ${metrics.interactionFamily?.label || '未识别交互家族'}`,
         `mood: ${detectMood(html, plain)}`,
     ].join('；');
 }
@@ -838,7 +933,7 @@ function detectInnerDetailsUsed(root, html = '') {
 
 export function scanRabbitMirrorHtml(messageHtml, renderedToto = null) {
     const match = String(messageHtml || '').match(TOTO_RE);
-    if (!match) return { signature: '', skeleton: '', paletteFingerprint: null };
+    if (!match) return { signature: '', skeleton: '', riskFlags: [], paletteFingerprint: null, interactionFamily: interactionFamilyRecord() };
     const html = match[0];
     const plain = stripTags(html);
     const tagCount = count(/<\w+\b/g, html);
@@ -890,9 +985,10 @@ export function scanRabbitMirrorHtml(messageHtml, renderedToto = null) {
     const summary = [mediaStrength, ...structural.slice(0, 6), textDensity, ...effects]
         .filter(Boolean)
         .join('；');
-    const skeleton = buildVisualSkeleton(html, plain, { dom, repeated, spatialSignalCount });
+    const interactionFamily = detectInteractionFamily(root, html);
+    const skeleton = buildVisualSkeleton(html, plain, { dom, repeated, spatialSignalCount, interactionFamily });
     const paletteFingerprint = detectPaletteFingerprint(html, renderedToto);
-    return { signature: summary.slice(0, 280), skeleton: skeleton.slice(0, 360), riskFlags, paletteFingerprint };
+    return { signature: summary.slice(0, 280), skeleton: skeleton.slice(0, 420), riskFlags, paletteFingerprint, interactionFamily };
 }
 
 function normalizedText(value) {
@@ -1032,13 +1128,16 @@ async function scanLatestAssistantMessage(mod) {
     const paletteFingerprint = result?.paletteFingerprint && typeof result.paletteFingerprint === 'object'
         ? result.paletteFingerprint
         : null;
-    if (signature || skeleton || riskFlags.length || paletteFingerprint) {
-        updateLatestVisualSignature(signature, skeleton, riskFlags, paletteFingerprint);
+    const interactionFamily = result?.interactionFamily && typeof result.interactionFamily === 'object'
+        ? result.interactionFamily
+        : null;
+    if (signature || skeleton || riskFlags.length || paletteFingerprint || interactionFamily) {
+        updateLatestVisualSignature(signature, skeleton, riskFlags, paletteFingerprint, interactionFamily);
         const feedbackResult = consumeInjectedFeedbackForSuccessfulRabbitMirror(message);
         if (feedbackResult?.consumed) {
             console.debug('[RabbitMirror] feedback cat consumed:', feedbackResult.remainingRounds);
         }
-        console.debug('[RabbitMirror] visual signature:', signature, skeleton, riskFlags, paletteFingerprint);
+        console.debug('[RabbitMirror] visual signature:', signature, skeleton, riskFlags, paletteFingerprint, interactionFamily);
     }
 }
 

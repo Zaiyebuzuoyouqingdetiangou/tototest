@@ -307,6 +307,34 @@ export function getActivePaletteCooldown(rounds = 5) {
     return { active: false, remaining: 0 };
 }
 
+function normalizeInteractionFamily(value) {
+    if (!value || typeof value !== 'object') return undefined;
+    const id = String(value.id || '').trim();
+    if (!id || id === 'none') return undefined;
+    return {
+        id: id.slice(0, 80),
+        label: String(value.label || id).slice(0, 120),
+        confidence: Math.max(0, Math.min(1, Number(value.confidence) || 0)),
+        controlCount: Math.max(0, Math.min(99, Number(value.controlCount) || 0)),
+        panelCount: Math.max(0, Math.min(99, Number(value.panelCount) || 0)),
+    };
+}
+
+export function getRecentInteractionFamilies(limit = 5) {
+    return getComboHistory(limit)
+        .map(item => normalizeInteractionFamily(item?.interactionFamily))
+        .filter(Boolean)
+        .slice(-Math.max(0, Number(limit) || 5));
+}
+
+export function getRecentInteractionFamilyCounts(limit = 5) {
+    const counts = {};
+    for (const family of getRecentInteractionFamilies(limit)) {
+        counts[family.id] = (counts[family.id] || 0) + 1;
+    }
+    return counts;
+}
+
 export function setPendingCombo(combo) {
     try {
         if (!combo) return;
@@ -317,7 +345,7 @@ export function setPendingCombo(combo) {
     }
 }
 
-export function commitPendingCombo(visualSignature = '', visualSkeleton = '', riskFlags = [], paletteFingerprint = null) {
+export function commitPendingCombo(visualSignature = '', visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null) {
     try {
         const raw = localStorage.getItem(PENDING_KEY);
         if (!raw) return;
@@ -333,6 +361,8 @@ export function commitPendingCombo(visualSignature = '', visualSkeleton = '', ri
             if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 360);
             if (Array.isArray(riskFlags) && riskFlags.length) last.riskFlags = [...new Set(riskFlags)].slice(0, 8);
             if (paletteFingerprint && typeof paletteFingerprint === 'object') last.paletteFingerprint = paletteFingerprint;
+            const normalizedFamily = normalizeInteractionFamily(interactionFamily);
+            if (normalizedFamily) last.interactionFamily = normalizedFamily;
             last.visualSignatureTs = now;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
             localStorage.removeItem(PENDING_KEY);
@@ -347,7 +377,8 @@ export function commitPendingCombo(visualSignature = '', visualSkeleton = '', ri
             visualSkeleton: visualSkeleton ? String(visualSkeleton).slice(0, 360) : pending.visualSkeleton,
             riskFlags: Array.isArray(riskFlags) ? [...new Set(riskFlags)].slice(0, 8) : [],
             paletteFingerprint: paletteFingerprint && typeof paletteFingerprint === 'object' ? paletteFingerprint : undefined,
-            visualSignatureTs: visualSignature || visualSkeleton || (Array.isArray(riskFlags) && riskFlags.length) || paletteFingerprint ? now : undefined,
+            interactionFamily: normalizeInteractionFamily(interactionFamily),
+            visualSignatureTs: visualSignature || visualSkeleton || (Array.isArray(riskFlags) && riskFlags.length) || paletteFingerprint || normalizeInteractionFamily(interactionFamily) ? now : undefined,
         });
         localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
         localStorage.removeItem(PENDING_KEY);
@@ -388,10 +419,10 @@ export function clearLastCombo() {
     } catch {}
 }
 
-export function updateLatestVisualSignature(visualSignature, visualSkeleton = '', riskFlags = [], paletteFingerprint = null) {
-    if (!visualSignature && !visualSkeleton && !(Array.isArray(riskFlags) && riskFlags.length) && !paletteFingerprint) return;
+export function updateLatestVisualSignature(visualSignature, visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null) {
+    if (!visualSignature && !visualSkeleton && !(Array.isArray(riskFlags) && riskFlags.length) && !paletteFingerprint && !normalizeInteractionFamily(interactionFamily)) return;
     try {
-        commitPendingCombo(visualSignature, visualSkeleton, riskFlags, paletteFingerprint);
+        commitPendingCombo(visualSignature, visualSkeleton, riskFlags, paletteFingerprint, interactionFamily);
         const history = readHistory();
         if (!history.length) return;
         const last = history[history.length - 1];
@@ -399,6 +430,8 @@ export function updateLatestVisualSignature(visualSignature, visualSkeleton = ''
         if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 360);
         if (Array.isArray(riskFlags) && riskFlags.length) last.riskFlags = [...new Set(riskFlags)].slice(0, 8);
         if (paletteFingerprint && typeof paletteFingerprint === 'object') last.paletteFingerprint = paletteFingerprint;
+        const normalizedFamily = normalizeInteractionFamily(interactionFamily);
+        if (normalizedFamily) last.interactionFamily = normalizedFamily;
         last.visualSignatureTs = Date.now();
         localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
     } catch (error) {

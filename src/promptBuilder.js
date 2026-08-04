@@ -1,9 +1,9 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.1.0b14h68t';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.1.0b14h68t';
-import { pickCombination } from './picker.js?rmv=1.1.0b14h68t';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=1.1.0b14h68t';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.1.0b14h68t';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.1.0b14h68t';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.25';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.25';
+import { pickCombination } from './picker.js?rmv=1.2.25';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.25';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.25';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.25';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -126,7 +126,8 @@ function shortVisualAvoidance(combo, limit = 3) {
         const formats = (item.formatIds || []).join(' + ') || '未记录';
         const riskCount = Array.isArray(item.riskFlags) ? item.riskFlags.length : 0;
         const signature = item.visualSignature ? truncate(item.visualSignature, 110) : '已记录视觉骨架';
-        return `${index + 1}. 近期展现形式：${formats}；避让摘要：${signature}${riskCount ? `；结构风险 ${riskCount} 项` : ''}`;
+        const interaction = item?.interactionFamily?.label ? `；交互骨架：${truncate(item.interactionFamily.label, 42)}` : '';
+        return `${index + 1}. 近期展现形式：${formats}；避让摘要：${signature}${interaction}${riskCount ? `；结构风险 ${riskCount} 项` : ''}`;
     }).join('\n');
 }
 
@@ -171,6 +172,58 @@ function recentRiskCorrection() {
     return `\n真实视觉纠偏【由插件扫描实际 HTML/CSS 后触发，只给抽象方向】:\n${lines.map(x => `  - "${x}"`).join('\n')}`;
 }
 
+
+function interactionFamilyCooldownSnapshot() {
+    const recent = getRecentInteractionFamilies(5);
+    if (!recent.length) return null;
+    const counts = recent.reduce((map, family) => {
+        map[family.id] = (map[family.id] || 0) + 1;
+        return map;
+    }, {});
+    const lastTwo = recent.slice(-2);
+    const repeatedLatest = lastTwo.length === 2 && lastTwo[0].id === lastTwo[1].id ? lastTwo[1].id : '';
+    const candidates = [
+        ['tabbed_radio_family', 2],
+        ['multi_control_panel_family', 2],
+        ['checkbox_reveal_family', 3],
+        ['multi_checkbox_family', 3],
+        ['inner_details_family', 3],
+        ['flip_card_family', 3],
+    ];
+    const target = candidates.find(([id, threshold]) => (counts[id] || 0) >= threshold || repeatedLatest === id)?.[0] || '';
+    if (!target) return null;
+
+    const descriptions = {
+        tabbed_radio_family: '并列标签／多按钮切页',
+        multi_control_panel_family: '多控件状态面板',
+        checkbox_reveal_family: '单入口显隐揭示',
+        multi_checkbox_family: '多点勾选／清单揭示',
+        inner_details_family: '内部折叠分层',
+        flip_card_family: '翻面／双面切换',
+    };
+    const exactBan = target === 'tabbed_radio_family'
+        ? '禁止再次使用多个同组 radio＋并列标签／按钮＋同位置 panel 切换正文；改变按钮数量仍算同一骨架。'
+        : `不得继续复用“${descriptions[target] || target}”作为主要交互骨架。`;
+    return {
+        target,
+        label: descriptions[target] || target,
+        count: counts[target] || 0,
+        exactBan,
+    };
+}
+
+function interactionFamilyCooldownRule() {
+    const snapshot = interactionFamilyCooldownSnapshot();
+    if (!snapshot) return '';
+    return String.raw`
+交互形态冷却【由近期实际 HTML/CSS 识别；本轮强制换家族】:
+  - 近期重复交互家族：${snapshot.label}（近五轮 ${snapshot.count} 次）。
+  - ${snapshot.exactBan}
+  - 禁止仅更换标题、颜色、按钮文案、按钮数量或面板内容后继续复用同一操作路径。
+  - 本轮新的交互必须从本轮展现形式的真实使用方式、空间关系、物件行为、叙事推进与内容节奏中自行推导；不得从固定候选清单中挑选，也不得为了躲避冷却机械改套另一种常见组件。
+  - 未被现有识别器归类的新交互完全允许；交互家族名称只用于发现近期重复，不是生成模板或可选菜单。
+  - 只需一条完整链，不得为“看起来复杂”堆叠无关控件。radio、checkbox、details 本身没有被永久禁止；只有在它们不再构成上述重复骨架、且媒介本体确实需要时才可使用。`;
+}
 
 function paletteCooldownRule() {
     const cooldown = getActivePaletteCooldown(5);
@@ -237,7 +290,7 @@ function complexInteractiveCore() {
   - 内容承载优先于复杂度：含主要正文、长句、段落或关键反馈的节点及其承载父级必须参与正常文档流并由内容撑高；禁止用 position:absolute/fixed、固定 px/vh 高度、height:100%、transform 位移或 overflow:hidden/clip 作为正文承载骨架，只有纯装饰、短标签与图形层可脱离文档流。
   - 需要状态叠层时，优先使用能由内容撑高的 grid 同格叠层、正常流显隐或媒介内部明确可操作的滚动／分页；禁止让两个含长正文的状态以 absolute 叠放在固定画布内。若使用内部 details/summary 表示正反面或状态替换，打开后 summary 不得继续以 height:100% 占据整块面板并把后续状态推到裁切区；正面必须收起或退出占位，暗面须在同一媒介区域内可见，并提供可触摸的返回方式。输出前按 360px 手机窄屏自检，每个状态的最后一行必须仍位于所属卡片、画框或页面边界内。
   - 交互必须由真实可触发对象、对应状态机制与受控内容共同构成；第二状态须在内容、关系、结构、空间、视觉层级、材质、时间进程、观察方式、角色反应或后续可操作范围中的至少一项发生清晰且有意义的变化；不同操作不得无故得到完全相同的反馈。
-  - 交互形态、规模与阶段须由本轮展现形式自身的结构、功能、使用方式与叙事产生；checkbox、翻面、弹窗、按钮组、标签页等仅在媒介天然适合时使用，不得作为默认骨架换皮复用；非一次性动作的首次操作不得耗尽全部体验。
+  - 交互形态、规模与阶段须由本轮展现形式自身的结构、功能、使用方式与叙事产生；checkbox、翻面、弹窗、按钮组、标签页等仅在媒介天然适合时使用，不得作为默认骨架换皮复用；尤其禁止把“三枚并列按钮／标签→三块同位置正文切换”当成万能答案，除非本轮媒介天然就是频道、档位或分页系统且近期没有重复；非一次性动作的首次操作不得耗尽全部体验。
   - 仅变色、描边、阴影、轻微位移、伪选项、无关交互堆叠，或非一次性媒介中一次显隐后立即结束，不算完整交互。
   - 交互须真实存在并可触摸触发，hover/active 只能辅助，不能单独充当本轮必需的完整交互；装饰不得遮挡操作对象。仅当媒介天然需要分层阅读时才可使用内部 details；禁止 onclick/onmouseover/onmouseout 等事件属性与内联 JavaScript，必须使用宿主可保留的 HTML/CSS 状态机制构成状态与反馈。`;
 }
@@ -373,6 +426,58 @@ function stateBarIsolationRule() {
   正文已有的状态栏、属性栏或数据栏只用于理解剧情信息，不得复刻其字段、顺序、标签、配色、卡片结构与信息组织；兔子镜必须按本轮展现形式重新构成。`;
 }
 
+
+function compactLockItems(items, kind) {
+    if (!Array.isArray(items) || !items.length) return kind === 'theme' ? '当前对话语境' : '未记录';
+    return items.slice(0, 3).map(item => {
+        const title = asText(item?.title || item?.id || '未命名');
+        const summary = truncate(item?.summary || item?.raw || '', 120);
+        return summary ? `${title}：${summary}` : title;
+    }).join('｜');
+}
+
+function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
+    const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
+    const themes = mode === 'format_only' ? '当前聊天与刚完成的助手正文' : compactLockItems(combo?.themes, 'theme');
+    const formats = compactLockItems(combo?.formats, 'presentation');
+    const avoidance = settings?.avoidRepeat ? shortVisualAvoidance(combo, 3) : '未启用近期视觉避让。';
+    const interaction = interactionFamilyCooldownSnapshot();
+    const palette = getActivePaletteCooldown(5);
+    const recentFlags = getRecentRiskFlags(5);
+    const innerDetailsBlocked = recentFlags.includes('inner_details_used');
+    const riskCorrection = truncate(recentRiskCorrection().replace(/^\s*真实视觉纠偏[^:]*:\s*/u, ''), 620);
+    const directiveText = settings?.userDirectivePriority && directive?.rawDirective
+        ? truncateDirectiveText(directive.rawDirective, 700)
+        : '';
+
+    const avoidLines = [
+        interaction ? `交互冷却：${interaction.label}（近五轮 ${interaction.count} 次）；${interaction.exactBan}` : '',
+        palette?.active ? `配色冷却：剩余 ${palette.remaining} 轮；主要承载面改用中／高明度，不延续低明度底盘。` : '',
+        innerDetailsBlocked ? '内部折叠冷却：本轮最外层兔子镜内部不得再使用 details/summary。' : '',
+        riskCorrection ? `近期真实输出纠偏：${riskCorrection}` : '',
+    ].filter(Boolean);
+
+    return String.raw`<兔子镜最终执行锁 data-source="independent-api-near-output">
+【本轮必须落实】
+- 抽取模式：${samplingModeLabel(combo, settings)}。
+- 内容构思锁：以“${themes}”作为观察角度、关系组织与细节取材；必须从当前助手正文提取具体动作、情绪、关系变化或物件痕迹，不得只把主题写进标题。
+- UI／媒介构思锁：以“${formats}”作为首个主要视觉本体；DOM/CSS 必须真实呈现其形态、材质、空间关系、阅读路径和操作方式，不得退化为通用卡片、信息面板或只换皮的标签页。
+${directiveText ? `- 用户本轮点菜仍为最高优先，必须同时落实：${directiveText}` : ''}
+
+【近期必须避开】
+${avoidance}
+${avoidLines.length ? avoidLines.map(line => `- ${line}`).join('\n') : '- 当前没有额外冷却；仍不得复用近期相同的视觉骨架与操作路径。'}
+- 新交互必须从本轮媒介本体自行生长；不得从固定组件清单中挑选，也不得为躲避冷却机械轮换另一种常见模板。无法被现有识别器归类的全新交互完全允许。
+
+【输出前逐项自检】
+1. 第一眼能否看出本轮展现形式，而不是只看到标题、按钮组或普通面板；
+2. 本轮主题是否真正进入内容、关系和细节，而不是只成为标签；
+3. 是否复用了近期视觉骨架、阅读路径、配色底盘或交互家族；
+4. 交互是否作用于媒介内部真实对象，并产生可保持、可辨认的第二状态；
+5. 只输出一面完整兔子镜，直接以 <toto> 开始，以 </toto> 结束。
+</兔子镜最终执行锁>`;
+}
+
 function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback }) {
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
@@ -400,6 +505,7 @@ ${selectedFormats}`);
     chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
     chunks.push(presentationEmbodimentRule());
     chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
+    chunks.push(interactionFamilyCooldownRule());
     chunks.push(innerDetailsCooldownRule());
     chunks.push(paletteCooldownRule());
     chunks.push(visualColorTruthRule());
@@ -427,12 +533,12 @@ ${shortVisualAvoidance(combo, 3)}`);
 
 export function buildRabbitMirrorPromptDetails(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '', generationContext = null) {
     if (!settings?.enabled || !settings?.autoRabbitMirrorInjection || settings?.mode === 'off') {
-        return { prompt: '', metadata: Object.freeze({ generationType: String(generationType || 'normal') }) };
+        return { prompt: '', executionLock: '', metadata: Object.freeze({ generationType: String(generationType || 'normal') }) };
     }
     const { combo, directive, disabled } = pickCombination(settings, generationScopeKey, generationContext);
     if (disabled) {
         if (settings.debug) console.debug('[RabbitMirror] skipped by user directive');
-        return { prompt: '', metadata: Object.freeze({ generationType: String(generationType || 'normal'), disabled: true }) };
+        return { prompt: '', executionLock: '', metadata: Object.freeze({ generationType: String(generationType || 'normal'), disabled: true }) };
     }
 
     const rawPolicy = normalizedRawPolicy(settings.rawPolicy);
@@ -452,6 +558,8 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
         samplingMode: combo?.samplingMode || settings?.samplingMode || 'classic',
         themeIds: Array.isArray(combo?.themeIds) ? [...combo.themeIds] : [],
         formatIds: Array.isArray(combo?.formatIds) ? [...combo.formatIds] : [],
+        themeLabels: Array.isArray(combo?.themes) ? combo.themes.map(item => `${item?.id || '?'} ${item?.title || '未命名'}`) : [],
+        formatLabels: Array.isArray(combo?.formats) ? combo.formats.map(item => `${item?.id || '?'} ${item?.title || '未命名'}`) : [],
         selectedThemeChars: selectedThemes.length,
         selectedFormatChars: selectedFormats.length,
         motherLibraryChars: selectedThemeResult.retrievedChars + selectedFormatResult.retrievedChars,
@@ -475,7 +583,8 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
     if (settings.debug) {
         console.debug('[RabbitMirror] generationType:', generationType, 'combo:', combo, 'rawPolicy:', rawPolicy, 'rawRetrieved:', { themes: selectedThemeResult, formats: selectedFormatResult }, 'memorySources:', memoryMaterial?.sources || [], 'prompt chars:', prompt.length);
     }
-    return { prompt, metadata };
+    const executionLock = buildIndependentFinalExecutionLock({ combo, settings, directive });
+    return { prompt, executionLock, metadata };
 }
 
 export function buildRabbitMirrorPrompt(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '', generationContext = null) {

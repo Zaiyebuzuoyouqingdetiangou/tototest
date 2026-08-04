@@ -1,14 +1,65 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.1.0b14h68t';
-import { clearLastCombo } from './storage.js?rmv=1.1.0b14h68t';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.1.0b14h68t';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.1.0b14h68t';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.1.0b14h68t';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.1.0b14h68t';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.1.0b14h68t';
-import { fetchIndependentModels, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.1.0b14h68t';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.2.25';
+import { clearLastCombo } from './storage.js?rmv=1.2.25';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.2.25';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.2.25';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.2.25';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.2.25';
 
-const SETTINGS_UI_VERSION = '1.1.0-beta.14.68-test';
-const RUNTIME_VERSION = '1.1.0-beta.14.68-test';
+
+const API_REQUEST_DIAGNOSTIC_EVENT = 'rabbitmirror:independent-api-diagnostic';
+const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
+let outputSanitizerModulePromise = null;
+let independentApiModulePromise = null;
+
+async function ensureDeferredRuntime() {
+    const ensure = globalThis.__rabbitMirrorEnsureHeavyRuntime;
+    if (typeof ensure === 'function') await ensure();
+}
+
+async function loadOutputSanitizerModule() {
+    await ensureDeferredRuntime();
+    if (!outputSanitizerModulePromise) outputSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.2.25');
+    return outputSanitizerModulePromise;
+}
+
+async function loadIndependentApiModule() {
+    await ensureDeferredRuntime();
+    if (!independentApiModulePromise) independentApiModulePromise = import('./independentApi.js?rmv=1.2.25');
+    return independentApiModulePromise;
+}
+
+function getLastIndependentApiRequestDiagnostic() {
+    try {
+        const value = JSON.parse(localStorage.getItem(API_REQUEST_DIAGNOSTIC_STORE_KEY) || 'null');
+        return value && typeof value === 'object' ? value : null;
+    } catch {
+        return null;
+    }
+}
+
+function refreshRabbitMirrorGenerationMode() {
+    void loadIndependentApiModule().then(mod => mod.refreshRabbitMirrorGenerationMode?.()).catch(error => console.debug('[RabbitMirror] generation mode refresh skipped:', error));
+}
+async function fetchIndependentModels() {
+    const mod = await loadIndependentApiModule();
+    return mod.fetchIndependentModels();
+}
+async function testIndependentConnection() {
+    const mod = await loadIndependentApiModule();
+    return mod.testIndependentConnection();
+}
+function refreshFeedbackCats() {
+    void loadOutputSanitizerModule().then(mod => mod.refreshFeedbackCats?.()).catch(error => console.debug('[RabbitMirror] feedback cat refresh skipped:', error));
+}
+function refreshMaintenanceRabbits() {
+    void loadOutputSanitizerModule().then(mod => mod.refreshMaintenanceRabbits?.()).catch(error => console.debug('[RabbitMirror] maintenance refresh skipped:', error));
+}
+function configureMaintenanceAutoSafeMode(enabled) {
+    void loadOutputSanitizerModule().then(mod => mod.configureMaintenanceAutoSafeMode?.(enabled)).catch(error => console.debug('[RabbitMirror] maintenance mode refresh skipped:', error));
+}
+
+const SETTINGS_UI_VERSION = '1.2.25';
+const RUNTIME_VERSION = '1.2.25';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -36,6 +87,37 @@ function escapeHtml(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+function independentApiProfileLabel(diagnostic) {
+    if (!diagnostic?.profile) return '尚无实际生成记录';
+    const messageMode = diagnostic.systemMessageSent ? 'system＋user' : '仅 user';
+    const temperatureMode = diagnostic.temperatureSent
+        ? `已发送温度 ${Number(diagnostic.configuredTemperature ?? 0.8)}`
+        : `未发送温度（设置值 ${Number(diagnostic.configuredTemperature ?? 0.8)}）`;
+    const streamMode = diagnostic.streamSent ? '流式' : '非流式';
+    const status = diagnostic.ok ? '成功' : `失败 HTTP ${diagnostic.status || '?'}`;
+    const transport = diagnostic.responseTransport
+        ? `｜${diagnostic.responseTransport}${diagnostic.responseEndReason ? `/${diagnostic.responseEndReason}` : ''}`
+        : '';
+    const chargeGuard = diagnostic.automaticProfileFallback === false ? '｜单次请求保护' : '';
+    const outcome = diagnostic.completionAccepted === true
+        ? '｜兔子镜已接收'
+        : diagnostic.failureStage ? `｜解析失败：${diagnostic.failureStage}` : '';
+    return `${status}｜${messageMode}｜${temperatureMode}｜${diagnostic.tokenField || '未发送输出上限'}｜${streamMode}${transport}${chargeGuard}${outcome}`;
+}
+
+function renderIndependentApiDiagnostic(diagnostic = getLastIndependentApiRequestDiagnostic()) {
+    const target = $('#rh_independent_api_diagnostic');
+    if (!target.length) return;
+    const text = independentApiProfileLabel(diagnostic);
+    const attempts = Array.isArray(diagnostic?.attempts) && diagnostic.attempts.length > 1
+        ? `；本次尝试 ${diagnostic.attempts.length} 种兼容参数`
+        : '';
+    const themes = Array.isArray(diagnostic?.themeLabels) ? diagnostic.themeLabels.join('＋') : '';
+    const formats = Array.isArray(diagnostic?.formatLabels) ? diagnostic.formatLabels.join('＋') : '';
+    const selection = themes || formats ? `<br><b>本轮实际抽取：</b>${escapeHtml(themes || '仅当前语境')}｜${escapeHtml(formats || '未记录')}` : '';
+    target.html(`<b>最近一次实际请求：</b>${escapeHtml(text)}${escapeHtml(attempts)}${selection}`);
 }
 
 
@@ -67,13 +149,13 @@ function renderTokenMeter(record = getLastRabbitMirrorTokenRecord()) {
     if (!record) {
         main.text('尚无生成记录');
         exact.text('发送下一轮消息后自动更新。');
-        detail.text('只统计 RabbitMirror 自己写入的 Prompt。');
+        detail.text('只统计兔子镜小剧场自己写入的 Prompt。');
         return;
     }
     if (record.status !== 'injected') {
         main.text('0 Token');
         exact.text(tokenMeterNoInjectionLabel(record.reason));
-        detail.text('未向模型追加 RabbitMirror Prompt。');
+        detail.text('未向模型追加兔子镜小剧场 Prompt。');
         return;
     }
 
@@ -187,7 +269,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[TEST・生成方式切换・维修兔 v2.09-test]</span></b><span class="rabbit-mirror-toto-watermark">Toto Beta v1.1</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">Toto</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -224,6 +306,8 @@ export function initRabbitMirrorUI() {
               <label>温度 <input id="rh_independent_temperature" class="text_pole" type="number" min="0" max="2" step="0.1" style="width:82px;"></label>
               <label>最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
             </div>
+            <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议从 <b>1.0</b> 开始：0.9～1.1 通常兼顾执行力与变化；高于 1.2 更容易出现结构、CSS 或内容失控。实际是否发送以生成后的请求状态为准。</div>
+            <div id="rh_independent_api_diagnostic" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);opacity:.78;font-size:11px;line-height:1.5;word-break:break-word;">最近一次实际请求：尚无记录</div>
             <div style="opacity:.66;font-size:11px;line-height:1.45;">API Key 仅保存在当前 SillyTavern 浏览器设置中。模型列表、连接检测与生成会通过 SillyTavern 自带的“自定义 Chat Completions”后端通道请求，不需要另装服务端插件，也不受浏览器 CORS 限制。</div>
           </div>
         </div>
@@ -232,11 +316,11 @@ export function initRabbitMirrorUI() {
 
       <div id="rh_token_meter" class="rabbit-mirror-token-meter" aria-live="polite">
         <div class="rabbit-mirror-token-meter-head">
-          <b>本轮 RabbitMirror 注入</b>
+          <b>本轮兔子镜小剧场注入</b>
           <span data-rh-token-meter-main>尚无生成记录</span>
         </div>
         <div data-rh-token-meter-exact class="rabbit-mirror-token-meter-exact">发送下一轮消息后自动更新。</div>
-        <div data-rh-token-meter-detail class="rabbit-mirror-token-meter-detail">只统计 RabbitMirror 自己写入的 Prompt。</div>
+        <div data-rh-token-meter-detail class="rabbit-mirror-token-meter-detail">只统计兔子镜小剧场自己写入的 Prompt。</div>
         <div class="rabbit-mirror-token-meter-note">字符数为精确值；Token 因模型分词器不同只能估算，因此同时给出保守范围。统计面板本身不会注入模型。</div>
       </div>
 
@@ -278,7 +362,7 @@ export function initRabbitMirrorUI() {
       <details class="rabbit-mirror-section rabbit-mirror-memory-test">
         <summary><span>共同回忆资料来源</span><span class="rabbit-mirror-section-note">TEST</span></summary>
         <div class="rabbit-mirror-section-content">
-          <label class="checkbox_label"><input id="rh_memory_scan_enabled" type="checkbox"> 启用额外资料来源（测试）</label>
+          <label class="checkbox_label"><input id="rh_memory_scan_enabled" type="checkbox"> 启用额外资料来源（实验性）</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.45;">开启后，兔子镜可能生成回忆杀；仅在实际出现回忆杀时增加额外 Token。</div>
           <button id="rh_memory_scan_now" class="menu_button" type="button">扫描可用资料来源</button>
           <div style="margin-top:6px;opacity:.68;font-size:11px;line-height:1.45;">扫描公开、正规的记忆插件接口 API。</div>
@@ -293,7 +377,7 @@ export function initRabbitMirrorUI() {
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.5;">用于纠正兔子镜的美化效果；仅在实际提交美化反馈时增加额外 Token。</div>
           <label class="checkbox_label" style="font-weight:700;"><input id="rh_maintenance_rabbit" type="checkbox"> 🐇 启用维修兔</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.78;font-size:12px;line-height:1.5;">兔子镜出问题时，可使用维修兔进行检查和修复；维修兔本身不会增加模型 Token。</div>
-          <label class="checkbox_label" style="font-weight:700;"><input id="rh_maintenance_auto_safe" type="checkbox"> 🧪 维修兔自动巡逻（测试）</label>
+          <label class="checkbox_label" style="font-weight:700;"><input id="rh_maintenance_auto_safe" type="checkbox"> 🧪 维修兔自动巡逻（实验性）</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.5;">仅对开启后新生成或重新生成的兔子镜，自动执行一次高置信、局部、可重复验证的安全修复。排版重排、结构改造和内容判断仍需手动确认；全程本地运行，不增加 Token。</div>
         </div>
       </details>
@@ -334,6 +418,11 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_model').html(settings.independentApiModel ? `<option value="${escapeHtml(settings.independentApiModel)}">${escapeHtml(settings.independentApiModel)}</option>` : '<option value="">请先拉取模型</option>').val(settings.independentApiModel || '');
     const syncGenerationModeFields = () => { const independent = getSettings().generationSource === 'independent'; $('#rh_independent_api_fields').toggle(independent); $('#rh_follow_display_row').toggle(!independent); };
     syncGenerationModeFields();
+    renderIndependentApiDiagnostic();
+    try { globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup?.(); } catch {}
+    const independentDiagnosticListener = event => renderIndependentApiDiagnostic(event?.detail || null);
+    globalThis.addEventListener?.(API_REQUEST_DIAGNOSTIC_EVENT, independentDiagnosticListener);
+    globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup = () => globalThis.removeEventListener?.(API_REQUEST_DIAGNOSTIC_EVENT, independentDiagnosticListener);
     checked('#rh_feedback_cat', settings.feedbackCatEnabled);
     checked('#rh_maintenance_rabbit', settings.maintenanceRabbitEnabled);
     checked('#rh_maintenance_auto_safe', settings.maintenanceRabbitAutoSafeEnabled);
@@ -355,7 +444,17 @@ export function initRabbitMirrorUI() {
     });
     $('input[name="rh_follow_display"]').on('change', e => { updateSettings({ followDisplayMode: e.target.value === 'external' ? 'external' : 'inline' }); refreshRabbitMirrorGenerationMode(); });
     $('input[name="rh_independent_display"]').on('change', e => { updateSettings({ independentDisplayMode: e.target.value === 'external_then_inline' ? 'external_then_inline' : 'external' }); refreshRabbitMirrorGenerationMode(); });
-    const saveIndependentFields = () => updateSettings({ independentApiBaseUrl: $('#rh_independent_base').val(), independentApiKey: $('#rh_independent_key').val(), independentApiModel: $('#rh_independent_model').val(), independentApiTemperature: Number($('#rh_independent_temperature').val()) || 0.8, independentApiMaxTokens: Number($('#rh_independent_max_tokens').val()) || 12000 });
+    const saveIndependentFields = () => {
+        const temperature = Number($('#rh_independent_temperature').val());
+        const maxTokens = Number($('#rh_independent_max_tokens').val());
+        updateSettings({
+            independentApiBaseUrl: $('#rh_independent_base').val(),
+            independentApiKey: $('#rh_independent_key').val(),
+            independentApiModel: $('#rh_independent_model').val(),
+            independentApiTemperature: Number.isFinite(temperature) ? temperature : 0.8,
+            independentApiMaxTokens: Number.isFinite(maxTokens) && maxTokens > 0 ? maxTokens : 12000,
+        });
+    };
     // Do not serialize the whole extension settings object on every mobile input event.
     // Safari may emit repeated input/autofill events as the drawer opens, which made the UI stutter.
     $('#rh_independent_base, #rh_independent_key').on('change blur', saveIndependentFields);
@@ -398,7 +497,7 @@ export function initRabbitMirrorUI() {
         configureMaintenanceAutoSafeMode(enabled);
         refreshMaintenanceRabbits();
         toastr?.[enabled ? 'info' : 'success']?.(enabled
-            ? '自动巡逻测试已开启：只处理之后新生成／重新生成兔子镜中的高置信安全问题；布局与结构问题仍需手动确认。'
+            ? '实验性自动巡逻已开启：只处理之后新生成／重新生成兔子镜中的高置信安全问题；布局与结构问题仍需手动确认。'
             : '自动巡逻已关闭：维修兔恢复为纯手动模式。');
     });
 
@@ -481,5 +580,7 @@ export function destroyRabbitMirrorUI() {
     uiMountRetryCount = 0;
     try { globalThis.__rabbitMirrorTokenMeterUiCleanup?.(); } catch {}
     globalThis.__rabbitMirrorTokenMeterUiCleanup = null;
+    try { globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup?.(); } catch {}
+    globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup = null;
     $('#rabbit_mirror_theater_settings').remove();
 }

@@ -1,3 +1,240 @@
+# 1.2.25
+
+- 以用户确认能够生成的 1.2.9（文件名 1.2.8(1)）为传输对照：独立 API 响应恢复为完整缓冲读取，不再使用增量 `ReadableStream` 收尾。
+- 保留 1.2.24 的单次收费保护：同一正文自动生成只发送一次 POST，不执行后台 profile 轮换重试。
+- 兼容迁移 1.2.9 已经验证成功的 schema-2 API profile；旧版非流式 profile 名会映射为当前等价名称，不通过额外请求重新探测。
+- 兔子镜身份仍只由 `chat + mesid + swipe + 实际 mes 正文哈希` 决定；`display_text`、正则美化和后补 reasoning 不会再制造新正文或再次请求。
+- 请求结果严格保存到发起时的正文身份；正文 A 在途中变成 B 时，A 的结果不会接管或覆盖 B。
+- 移除旧版失效请求结束后的自动重新排队；真正的新正文按新身份生成一次，手动重生仍可明确替换。
+
+# 1.2.24
+
+- 测试仓库适配：扩展主页改为 `https://github.com/Zaiyebuzuoyouqingdetiangou/tototest`，并关闭自动更新；不修改扩展显示名、ZIP 名或 1.2.24 的功能代码。
+- 修复独立 API 在部分代理 / SillyTavern 传输链上已经收到完整兔子镜，却卡在响应流 `cancel()` 收尾、界面长期停在“正在生成中”的问题。完整镜面一旦读到即进入后续解析与落地，不再等待阻塞式收尾。
+- 修复同一条消息正文从 A 变成 B 时，旧请求结果会接管到新正文身份、导致兔子镜内容错挂或看起来“A 过一会儿变成 B”的问题。独立 API 结果重新严格绑定 `chat + mesid + swipe + 正文哈希`，旧请求不再覆盖新正文。
+- 调整独立 API profile 记忆时机：只有真正解析出完整兔子镜后，才把本次请求参数记为成功模式；HTTP 200 但没有成功落地时，不再提前记住错误 profile。
+- 保留“同一正文自动只请求一次”的收费保护；真正换成新的正文后，会按新的正文身份单独生成新的兔子镜。
+
+# 1.2.23
+
+- 正式修复：损坏的未编码 SVG Data URI 位于空装饰层时，保全清洗不再误删该装饰层自己的闭合标签。
+- 兜底分支会保留 SVG URL 之后的安全 inline CSS（例如 `pointer-events:none`、`z-index`）及明确存在的宿主闭合标签，避免绝对定位装饰层包住全部正文并令父容器高度塌为零。
+- 只处理已被判定为损坏的 raw/escaped SVG Data URI；健康的 base64、百分号编码资源保持不变。
+- 未修改 Prompt、随机抽取、Token、主／副 API 请求、正文、Swipe、显示模式、点菜、挨打猫或其他交互修复。
+
+# 1.2.22
+
+- 修复独立 API 请求途中，状态栏、正文后处理或其他扩展改写 `message.mes` 后，已计费请求仍绑定旧正文指纹，当前页面只剩“正在生成中”占位壳的问题。
+- 请求生命周期改为稳定绑定 `chat + mesid + swipe`；同一条回复的后处理变化会接管最新正文指纹，不会取消、丢弃或重复发送已计费请求。
+- 成功结果和失败状态都会写入当前最新正文指纹，并更新当前可见外置／内嵌壳。
+- 真正的 Swipe、重说、聊天切换和主动取消仍会终止旧请求，不会把旧镜面挂到新回复。
+- 诊断新增 `sourceChangedDuringRequest`、`originalSourceHash` 与 `adoptedSourceHash`。
+- 正文完成后的占位壳若 90 秒内仍未进入请求阶段，会明确转为失败并显示手动重试，不再永久停留在“正在生成中”。
+
+# 1.2.22
+
+- 修复独立 API 已经失败、超时或响应体永久不收尾时，界面仍一直停留在“兔子镜：正在生成中”的问题。
+- 5 分钟请求看门狗现在使用独立的 Promise 终止链；即使 SillyTavern／代理忽略 AbortController，队列和界面也会强制进入明确失败状态。
+- 失败状态按 chat + mesid + swipe + 正文指纹在当前运行期保留；消息 DOM 重绘、手机恢复或去重对账不会再把“生成失败”重新覆盖成“正在生成中”。
+- 区分真正的正文切换取消与同一正文请求失败：前者静默离开，后者必须显示错误原因与手动重试按钮。
+- 仍保持每面自动生成最多 1 次 POST；失败、超时和页面恢复均不会自动再次扣费。
+- 同一正文一旦进入终止失败状态，所有宿主事件与自动调度都会被拦截，只有用户明确点击“重新生成兔子镜”才会清除失败锁并再次请求。
+- 更新时检测到旧版遗留的“正在生成中”外壳，会改成“状态无法确认”的可重试错误，不会因安装新包自动再扣一次。
+
+# 1.2.20
+
+- 独立 API 单次收费保护：每面自动生成最多只发送一次 POST，不再在后台切换参数 profile 连续重试。
+- 改为增量读取并兼容 SSE、JSON、NDJSON、直接 HTML；完整 `<toto>` / `<details>` 到达后即可本地收尾。
+- HTTP 200 后会从正文、reasoning、SSE 帧和原始响应多路抢救兔子镜；失败会明确显示阶段，绝不自动再次请求。
+- 请求途中页面或消息 DOM 重挂载时，已付费结果保存到原正文身份缓存，不再丢弃后自动重抽。
+- 移除 stale 请求结束后的自动重新排队。
+
+# 1.2.19
+
+- 修复 1.2.18 在部分 OpenAI 兼容 Gemini 代理上“请求已经到达副 API，但 RabbitMirror 一直不落地”的问题：请求与响应收尾恢复为 1.2.3 已验证的完整缓冲读取方式。
+- 保留 1.2.10 以后加入的正文指纹、防重复请求、显示恢复、缓存迁移、双通道限流与请求诊断；只回退不稳定的响应传输层，不回滚其他修复。
+- API profile 架构升级为 schema 5，安装后会忽略旧版记住的传输模式并重新从 `system + user + temperature + max_tokens + stream:true` 探测。
+- 新增 SillyTavern 1.16.0 兼容与低负载路径，同时继续兼容 1.13.0 及后续版本：大型模块延后到浏览器空闲阶段加载，避免与酒馆首次大聊天渲染争抢主线程。
+- 维修兔／挨打猫启动与宿主事件不再反复扫描完整聊天；默认只处理最近 16 条已渲染消息，DOM 变化仍按实际变动消息局部安装。
+- 独立 API 的常规恢复、定位和去重只核对最近 24 条消息及已经挂载外置镜面的 owner，不再每次对账都遍历整个聊天数组或完整消息 DOM。
+- 手动点击“刷新维修兔／挨打猫”时仍可执行完整聊天刷新，不删除历史镜面功能。
+- 不修改 Prompt、随机抽取、温度、正文、Swipe、显示模式、缓存身份或交互规则。
+
+# 1.2.18
+
+- 修复独立 API“外置后内嵌”成功后外框不明显或被内容背景吃掉的问题：内嵌宿主恢复 6px 同色系留边、可见边线、圆角和阴影；只改变宿主外观，不改生成内容。
+- 对比 1.2.3 后确认：1.2.3 的副 API 首选 `stream:true` 的 `system + user + temperature + max_tokens` 请求；1.2.14 起改成非流式优先后，部分 Gemini／OpenAI 兼容代理会接受请求并返回 HTTP 200，却无法形成可收尾的本地响应，因此界面长期停在“生成中”且不会进入后续回退。
+- 恢复 1.2.3 已验证的流式请求优先级，同时保留 1.2.15–1.2.17 的增量响应解析、无换行末帧识别、完整 `<toto>` 提前收尾、双通道限流和请求诊断。
+- 非流式模式仍作为后备兼容方案；API profile 架构升级，安装后会忽略旧版记住的非流式优先记录并重新探测一次。
+- 不修改 Prompt、随机抽取、温度数值、正文、Swipe、缓存身份、纯外置位置、维修兔或挨打猫。
+
+# 1.2.17
+
+- 修复独立 API 已返回完整 SSE／NDJSON 末帧，但代理没有追加换行且继续保持连接时，兔子镜永久停留在“生成中”的问题。
+- 响应读取器现在会在每个网络分块后尝试解析待处理的最后一帧；只有该帧已是完整合法 JSON 时才消费，半截 JSON 会继续安全等待下一块。
+- 完整末帧中一旦出现 `<toto>...</toto>`，立即结束本地读取并进入解析、缓存与界面替换，不再等待换行、`[DONE]` 或连接关闭。
+- 兼容错误标记为 `text/event-stream`、实际直接返回完整 HTML 的代理。
+- 不修改 Prompt、随机抽取、温度、队列并发、显示模式、正文、Swipe、维修兔或缓存身份。
+
+# 1.2.16
+
+- 修复手机端“外置后内嵌”兔子镜与 SillyTavern Swipe 翻页层重叠，标题可见但触摸被截走的问题。
+- 为内嵌兔子镜增加移动端 Swipe 安全区域、48px 标题触摸高度与独立点击层级；纯外置和 Swipe 功能不变。
+
+# 1.2.15
+
+- 修复独立 API 已经收到请求／响应，但兔子镜仍长期停在“生成中”的收尾链路。
+- 响应读取改为增量解析：兼容 JSON、SSE、NDJSON 与代理错误返回流式内容的情况。
+- 一旦读取到完整 `<toto>...</toto>`，立即结束本地等待并关闭残留响应流，不再等待上游连接自行断开。
+- 支持 `[DONE]` 标记与完整 JSON 提前收尾，避免模型已经生成完成但代理连接保持开启。
+- 增强 Gemini／OpenAI 兼容响应中的嵌套 `content`、`parts`、`text.value` 文本解析。
+- 最近一次实际请求诊断新增响应传输方式、结束原因、分块数与接收字符数。
+- 不修改 Prompt、随机抽取、温度、显示模式、正文、Swipe、维修兔或独立 API 并发上限。
+
+# 1.2.14
+
+- 修复 1.2.13 的单通道串行队列形成单点阻塞：第一条独立 API 请求若停在流式连接，后续所有消息都会一直排队。
+- 独立 API 队列改为最多两条并行；任意一条异常等待不会再冻结整个聊天中的后续兔子镜，同时仍限制并发，避免四条请求一起挤入代理。
+- 独立 API 默认优先请求 `stream:false` 的完整 JSON。兔子镜本来不会把中间 token 实时写到页面，关闭流式不损失显示能力，并可避开 SSE 已生成完成却迟迟不关闭的卡死。
+- 保留带温度、system＋user 与两种 token 字段的完整兼容探测；非流式不支持时仍会回退到流式模式。
+- API 兼容记录架构升级，安装后会重新探测一次，避免继续沿用 1.2.13 记住的流式 profile。
+- 未修改 Prompt、随机抽取、温度数值、显示模式、正文、Swipe、维修兔或挨打猫。
+
+# 1.2.13
+
+- 修复手机端 SillyTavern 的 `is_send_press`／生成标记未及时释放时，独立 API 任务连续停留在“正在生成中”但实际没有发出请求的问题。
+- 将主回复生成状态拆分为短时事件提示、DOM 流式证据与可能滞留的软标记：正文稳定后，软标记最多再阻塞 12 秒；疑似残留的 DOM 生成标记最多阻塞 45 秒。
+- 独立 API 新增运行时串行队列，同一时间只发出一条请求；连续多条回复会显示队列位置并按顺序生成，避免四条同时拥塞代理或模型。
+- 等待阶段现在明确区分“等待正文完成”“等待正文稳定”“等待独立 API 队列”“正在调用独立 API”“正在接收兔子镜”；只有进入调用阶段才代表网络请求已经发出。
+- 独立 API 的 5 分钟超时从真正发出请求时开始计算，不再把排队等待时间算入模型请求超时。
+- 页面热更新会恢复已经挂载的旧加载壳并重新排队；等待正文超过安全上限时会显示可重试错误，不再永久留下模糊的“生成中”。
+- 未修改 Prompt、随机抽取、温度、显示模式、正文、Swipe、缓存身份、维修兔或挨打猫。
+
+# 1.2.12
+
+- 修复独立 API 兔子镜在用户点击、维修兔验证或临时交互兜底后，把“已触发状态”写回永久缓存的问题。
+- 新增独立结果的干净初始交互基线：只保留模型原始 HTML 中明确存在的 `checked`、`selected` 与内部 `open` 状态。
+- 保存维修结果前会撤回 `aria-pressed`、临时激活属性、checked 伪元素补丁和可逆内联样式；结构修复仍可保存。
+- 升级时自动清理 1.2.11 及更早缓存中的运行时激活痕迹，刷新后从干净初始状态重新安装交互，不重新调用副 API。
+- 未修改 Prompt、随机抽取、温度、显示模式、正文、Swipe 或生成触发逻辑。
+
+# 1.2.12
+
+- 修复独立 API 的“纯外置”与“外置后内嵌”在同一面兔子镜上出现不同宿主配色的问题。
+- 外置后内嵌完成后仅移动原宿主，不再把宿主重置为透明、无边框、无阴影；继续复用同一组 `--rm-shell-*` 调色变量。
+- 保留两种模式原有的位置与宽度差异，不重新取色、不重新生成，也不增加 API 请求。
+
+# 1.2.10
+
+- 修复更换美化、显示正则、`display_text` 或延迟 reasoning 更新后，独立 API 兔子镜被误判为新版正文并自动重新生成的问题。
+- 独立 API 的自动生成身份改为 `chat + mesid + swipe + message.mes 正文指纹`；`display_text` 与 reasoning 仍可作为上下文读取，但不再改变缓存身份、请求身份或 owner 身份。
+- `MESSAGE_UPDATED`、`CHARACTER_MESSAGE_RENDERED`、`pageshow`、`focus` 与 `visibilitychange` 现在只负责恢复、去重和重新定位，禁止从这些显示／页面恢复信号启动网络请求。
+- 保留 `MESSAGE_RECEIVED`、生成结束、Swipe、真实正文重说和挨打猫手动重说的合法生成入口。
+- 自动迁移 1.2.9 以“正文＋display_text＋reasoning”保存的独立 API 缓存；正文未变时继续复用原兔子镜，不因升级额外生成。
+- 未修改随机抽取、Prompt、温度、主 API、显示模式、正文、Swipe 数据、维修兔或挨打猫功能。
+
+# 1.2.9
+
+- 修复“纯外置”在页面刷新、手机恢复、BFCache 或消息 DOM 重绘后变成内嵌的问题。
+- 去重完成后会重新读取当前“纯外置／外置后内嵌”设置，并只移动现有独立 API shell 到正确位置。
+- 不重新生成、不新增 API 请求，不修改随机抽取、Prompt、正文、Swipe 或缓存身份。
+- 扩展显示名与压缩包名继续固定为“兔子镜小剧场”；内部版本字段保留用于更新识别。
+
+# 兔子镜小剧场更新记录
+
+## 1.2.9 — 名称统一与更新配置（2026-08-02）
+
+- 扩展管理页面的显示名称固定为“兔子镜小剧场”，不再附带英文名或版本号。
+- 设置页标题固定为“兔子镜小剧场”，作者水印固定为“Toto”。
+- 发布压缩包固定命名为 `兔子镜小剧场.zip`，以后版本继续覆盖同名文件。
+- `manifest.json` 的内部版本继续递增，用于更新判断、缓存刷新与诊断；内部版本不属于扩展名称。
+- 开启扩展清单的 `auto_update`，并保持原仓库地址、内部模块名、设置键与运行标识不变。
+- README 与许可证统一使用“兔子镜小剧场”作为产品名称。
+- 未修改 Prompt、随机抽取、独立 API、主 API、缓存身份、外置／内嵌、Swipe、挨打猫或维修兔功能。
+
+## 1.2.7 — 手机恢复与跨设备重绘去重（2026-08-02）
+
+- 修复手机重新打开页面、Safari BFCache 恢复或 SillyTavern 重建消息 DOM 后，同一兔子镜可能同时留下“正文内嵌一份＋外置圆框一份”的问题。
+- 跟随当前 API＋外置显示现在会优先复用已经存在的同 owner 外置 shell，并把新重绘出来的正文 `<details>` 移回该 shell，而不是再保留一份内嵌副本。
+- 独立 API模式会按 owner key 与语义指纹核对正文内的意外副本；只有确认属于同一成品时才删除内嵌重复，不影响同一条回复中内容不同的其他镜面。
+- 正文内嵌模式下若发现与正文镜面内容完全相同的遗留外置 shell，以正文内嵌版本为准并清理空锚点。
+- `pageshow`、页面重新聚焦与从后台恢复时，所有启用中的显示模式都会执行一次有限去重／重新锚定；独立 API的原有后台续跑逻辑保持不变。
+- 未新增轮询、MutationObserver、API 请求或生成次数；不修改随机抽取、Prompt、温度、正文、Swipe、缓存身份、维修兔或挨打猫。
+
+---
+
+## 1.2.6 — 副 API随机执行锁与请求模式透明化（2026-08-02）
+
+- 在副 API用户消息最末尾新增“兔子镜最终执行锁”，汇总本轮实际抽中的主题、展现形式、内容构思重点、UI／媒介构思重点，以及近期实际视觉、交互、配色和内部折叠避让。
+- 最终执行锁不会重新随机，也不会把前十轮全文重复注入；本轮完整组合负责“必须做什么”，前几轮压缩记录负责“必须避开什么”。
+- 明确要求主题进入具体内容、关系和细节，展现形式成为首个主要视觉本体；输出前逐项检查是否退化成通用卡片、信息面板、按钮组或换皮标签页。
+- 独立 API设置面板新增“最近一次实际请求”状态，显示 system＋user／仅 user、温度是否真正发送、输出上限字段、流式模式、兼容尝试次数，以及本轮实际抽取结果。
+- 全链路诊断新增独立 API最近一次请求参数、实际抽取主题／展现形式与执行锁字符数，便于区分“抽签重复”和“抽签不同但模型执行收敛”。
+- 旧版保存的裸字符串兼容模式在升级后会重新探测标准 `system＋user＋temperature` 请求；API地址、模型或温度变化时也会重新探测。降级模式每六小时允许再次验证标准模式，成功后自动退出降级。
+- 修复温度设置为 `0` 时被错误回退成 `0.8` 的问题。
+- 不修改随机池、抽取概率、主 API Prompt、正文、Swipe、显示模式、维修兔、挨打猫或缓存身份。副 API最终执行锁会增加少量副 API输入 Token，但不增加主 API Token，也不额外生成第二面兔子镜。
+
+---
+
+## 1.2.5 — 交互冷却去模板菜单化（2026-08-02）
+
+- 保留 v1.2.4 的交互家族识别与近期重复冷却，不删除复杂交互能力，也不永久禁止 radio、checkbox 或 details。
+- 删除 Prompt 中“拉帘、空间热点、时间进程、滚动窗口、材质变化”等固定替代示例清单，避免模型把冷却理解成有限组件菜单。
+- 冷却触发后只指出近期重复的操作路径；新交互必须从本轮展现形式的真实使用方式、空间关系、物件行为、叙事推进与内容节奏中自行推导。
+- 明确允许未被现有识别器归类的全新交互；交互家族标签只用于发现重复，不是生成模板、候选库或轮换表。
+- 未修改主／副 API、显示模式、缓存、维修兔、挨打猫、正文、Swipe、扫描频率或 Token 行为。
+
+---
+
+## 1.2.4 — 交互家族冷却与三按钮模板去重（2026-08-02）
+
+- 新增本地“交互家族”识别，记录并列 radio 标签页、多控件状态面板、单入口揭示、多点勾选、内部折叠、翻面、锚点与弹层等实际 HTML/CSS 骨架。
+- 当近五轮连续重复同一交互家族时，下一轮 Prompt 会强制更换交互家族；尤其阻止“多个同组 radio＋并列按钮／标签＋同位置正文面板”仅换标题、颜色和按钮数量后继续复用。
+- 强化通用交互规则：三枚并列按钮切换三块正文不再被允许作为万能默认答案，但 radio、checkbox 与 details 并未永久禁用；媒介天然需要且近期未重复时仍可使用。
+- 近期视觉避让摘要现在同时带入实际交互骨架，模型不再只看到主题、配色和版式差异。
+- 交互家族只在生成完成后由插件做有限的一次性本地扫描并写入现有历史，不新增轮询、MutationObserver、API 请求或 Token。
+- 未修改主／副 API请求、切换分界、缓存身份、外置／内嵌显示、维修兔交互修复、正文或 Swipe 数据。
+
+---
+
+## 1.2.3 — 跟随 API切换到独立 API重复生成修复（2026-08-01）
+
+- 修复从“跟随当前 API”切换到“独立 API”时，切换前已存在且已经带有主 API兔子镜的旧回复仍可能被独立 API再次生成的问题。
+- 切换分界从单纯的消息编号升级为“聊天＋mesid＋Swipe＋正文主文本指纹”的确切版本锁；残留的生成开始／结束事件不能再提前解除。
+- 只有新回复、正文实际重说或Swipe／正文指纹确实变化时，才允许独立 API自动生成；挨打猫手动重说仍走明确的强制路径。
+- 独立 API占位框也遵守同一分界，切换瞬间不会先冒出“正在生成中”再误请求。
+- 加强主 API兔子镜存在检测，兼容内嵌、外置和不同DOM包裹形式。
+- 不修改Prompt、正文、Swipe数据、独立API缓存格式、显示样式或外框取色。
+
+---
+
+## 1.2.1 — 来源切换缓存恢复修复（2026-08-01）
+
+- 修复首次从独立 API切换到“跟随当前 API＋正文下方”时，既有独立 API兔子镜可能暂时全部消失的问题。
+- 跟随内嵌模式现在只要当前聊天存在可恢复的独立 API缓存，即使宿主刚被 SillyTavern 的 DOM重建移除，也会保留轻量消息观察器。
+- 来源切换后增加两次有限的一次性被动恢复（120ms／850ms），用于覆盖同步竞态；不会持续轮询、不会调用 API，也不会增加 Token。
+- 切换生成来源仍然只影响之后的新回复，既有主 API／独立 API兔子镜继续共存。
+
+---
+
+## 1.2
+
+## 1.2.0 — 正式公开版（2026-08-01）
+
+- 以 `1.1.0-beta.14.68-test` 的实际源码作为功能基线，转换为公开仓库正式版本。
+- 新增跟随当前 API／独立 API 双生成方式，以及各自的正文内嵌、外置和外置后内嵌显示。
+- 模式切换只决定之后的新回复；已有主 API与独立 API兔子镜尽量共存并按精确聊天、消息、Swipe与正文版本恢复。
+- 独立 API加入稳定正文等待、重复请求隔离、失败可重说、逐回复历史和挨打猫事务式重生成状态。
+- 外置圆框按镜面主背景生成同色系配色；纯外置与等待状态保留可见圆框，外置后内嵌成功后自然融入正文。
+- 维修兔结果可写回独立镜面缓存，正文、`message.mes`、`display_text` 与Swipe数据保持隔离。
+- 动态视觉场景强化模型执行顺序，并合并生成结束附近的视觉扫描调度；不使用持续扫描。
+- 正式版元数据、运行时版本、模块缓存标识、主页、设置页品牌和公开文档统一更新为 v1.2。
+- 保留原有有限个人使用许可证；本次转换不改变许可范围。
+
+---
+
+# v1.2 开发历史
+
 ## 1.1.0-beta.14.68-test — 主副 API 切换分界修复
 
 - 从“跟随当前 API”切换到“独立 API”时，只影响切换后的新回复；切换瞬间已经存在的正文版本不会被副 API自动补生成。
@@ -128,7 +365,7 @@
 - 显示模式切换不会重新请求副 API，也不会新增历史版本。
 
 ## 1.1.0-beta.14.44-test
-- Added a cross-module/global in-flight lock keyed by chat, message, swipe and正文 fingerprint so duplicate trigger paths cannot start two independent RabbitMirror requests.
+- Added a cross-module/global in-flight lock keyed by chat, message, swipe and正文 fingerprint so duplicate trigger paths cannot start two independent 兔子镜小剧场 requests.
 - Added DOM identity deduplication and startup recovery that keeps one newest valid host per reply.
 - Added collapsed legacy-host recovery: invalid/empty ready shells are rebuilt from the saved complete HTML, preserving open state.
 
@@ -140,7 +377,7 @@
 - 不修改圆润染色框、挨打猫重说与历史、维修回退、Prompt 或 Token 逻辑。
 
 ## 1.1.0-beta.14.42-test
-- Independent API generation now polls the selected reply source and requires a 2.6-second continuous stable window after regeneration events, preventing an early reasoning-pass RabbitMirror and a later duplicate.
+- Independent API generation now polls the selected reply source and requires a 2.6-second continuous stable window after regeneration events, preventing an early reasoning-pass 兔子镜小剧场 and a later duplicate.
 - Maintenance Rabbit captures the current mirror DOM before a repair route changes it.
 - Added “返回修复前” to Maintenance Rabbit; it restores only the current mirror and leaves chat text/history untouched.
 
@@ -205,14 +442,14 @@
 - 独立 API 默认最大输出改为 12000；已有用户手动设置不强制覆盖。
 - 未修改 Prompt、美化母本、点菜、Token、正文、display_text 与历史 Swipe。
 
-# RabbitMirror 1.1.0-beta.14.35-test
+## 1.1.0-beta.14.35-test
 
 - 修复 SillyTavern Swipe／“重新生成”替换整条 `.mes` 后，独立外置 shell 停留在旧 DOM 槽位、视觉上跑到新正文上方的问题。
 - 外置 shell 仍只绑定 `chatId + mesid + swipeId`，不新建内置副本；当前 owner 节点被替换后，只在 shell 位于新 owner 之前时重新锚定到正文之后。
 - 消息替换的短暂空档会隐藏旧 shell；新正文出现后恢复，若消息确实被删除则延迟清理孤儿 shell。
 - `MESSAGE_SWIPED`、生成结束／停止事件会同步触发宿主重新锚定；不修改正文、外置宽度、Prompt、Token 或兔子镜内部自适配。
 
-# RabbitMirror 1.1.0-beta.14.31-test
+## 1.1.0-beta.14.31-test
 
 - 修复独立 API 外置结果的最终净化入口：完整 `<details>` 不再依赖“作品长度/标签数量”启发式判断，成功结果、旧缓存和现存外置 DOM 都会强制经过逐镜 class、keyframe 与损坏标签清理。
 - 修复“CSS 已有逐镜前缀，但 `<divclass=...>` 修复后仍保留原始 class”问题：为当前 scope 的旧前缀 class 建立后缀别名，恢复对应样式。
@@ -220,7 +457,7 @@
 - 增加已净化 HTML 的小型内存缓存，避免同一条长兔子镜在酒馆重绘时重复执行整套字符串清理。
 - 外置宽度、内置自适配、Prompt、美化母本、点菜、Token、副 API 请求与自动维修业务规则未修改。
 
-# RabbitMirror 1.1.0-beta.14.30-test
+## 1.1.0-beta.14.30-test
 
 ## beta.14.30 — 动画、交互 ID 与损坏标签隔离
 
@@ -248,13 +485,13 @@
 - 外置 shell 自身提供持续存在的边框、圆角与背景；loading、ready、error 以及折叠／展开状态均使用同一有框模块，不再在生成完成后退化为无边框标题。
 - 生成结果、Prompt、美化母本、点菜、Token、自动维修业务规则和 `userRequestOverrideRules.js` 未修改。
 
-# RabbitMirror 1.1.0-beta.14.26-test
+## 1.1.0-beta.14.26-test
 
 - 独立 API 兔子镜改为 `#chat` 下、整条消息之后的专属 sibling shell，不再挂入 `.mes_text`、状态栏或其他插件容器。
 - loading、ready、error 始终复用同一 shell；完成态只替换 shell 内部内容，不再重排宿主。
 - shell 绑定 chat / mesid / swipe，并由消息级查询恢复；新消息与其他插件插入节点不会删除或搬动旧 shell。
 - 维修兔、挨打猫与诊断链可通过 shell owner 元数据定位原消息，不依赖 `closest(.mes)`。
-- 外置 shell 全宽、无额外 padding/max-width，并使用 RabbitMirror 专属命名空间和 `isolation:isolate`，降低与其他插件样式及 DOM 管理冲突。
+- 外置 shell 全宽、无额外 padding/max-width，并使用 兔子镜小剧场 专属命名空间和 `isolation:isolate`，降低与其他插件样式及 DOM 管理冲突。
 
 ## 1.1.0-beta.14.25-test
 - 独立 API 每条助手消息/Swipe 使用稳定槽位保存，外置宿主不会因正文哈希或后续消息变化丢失。
@@ -297,7 +534,7 @@
 
 ## 1.1.0-beta.14.22-test
 
-- 撤销必须额外安装 RabbitMirror Server Plugin 的方案。
+- 撤销必须额外安装 兔子镜小剧场服务端桥接插件 的方案。
 - 模型列表、测试连接、失败检测、重新生成和正式生成统一复用 SillyTavern 内置 `/api/backends/chat-completions/status` 与 `/api/backends/chat-completions/generate`。
 - 副 API Key 通过 Custom Chat Completions 的自定义请求头传递；不修改酒馆当前主 API 设置，也不写入 SillyTavern secrets。
 - 不使用浏览器跨域直连、通用 `/proxy/` 或 `enableServerPlugins`，只安装一个前端 ZIP 即可。
@@ -311,12 +548,12 @@
 
 ## 1.1.0-beta.14.22-test
 
-- 独立 API 模型列表、连接检测与正式生成统一改走 RabbitMirror 服务端桥接插件。
+- 独立 API 模型列表、连接检测与正式生成统一改走 兔子镜小剧场 服务端桥接插件。
 - 不再依赖浏览器 CORS，也不再访问 SillyTavern 通用 `/proxy/`。
 - 新增配套 `server-plugin-rabbitmirror-independent-api`，路由为 `/api/plugins/rabbitmirror-independent-api/fetch`。
 - 服务端桥接插件缺失时给出明确安装提示，不再静默回退到错误连接方式。
 
-# RabbitMirror Changelog
+# 兔子镜小剧场更新记录
 
 ## 1.1.0-beta.14.22-test
 - Independent API requests are now direct-only across model fetch, generation, retry and diagnostics.
@@ -328,7 +565,7 @@
 - Fixed settings drawer stutter on mobile: removed automatic memory-provider scanning when the UI mounts or opens.
 - Independent API fields no longer save the full extension settings object on every `input`/autofill event; text credentials save on change/blur and selectors/numbers save on change.
 - Added layout/paint containment for settings sections and disabled the summary arrow transition on mobile.
-- No generation, Prompt, picker, token, RabbitMirror output, independent API request, maintenance rabbit, or feedback cat behavior changed.
+- No generation, Prompt, picker, token, 兔子镜小剧场 output, independent API request, maintenance rabbit, or feedback cat behavior changed.
 
 ## 1.1.0-beta.14.22-test
 
@@ -372,9 +609,9 @@
 - 外置兔子镜恢复为与正文内一致的原生 `<details><summary>【兔子镜：标题】</summary>` 折叠形态，仅改变挂载位置。
 - 移除外置状态栏中的时间、角色信息、图标与二次开关，不再包裹额外主题 UI；兔子镜继续使用自身背景与配色。
 - 外置运行时仅在“独立 API”或“跟随当前 API + 外置”模式下安装；正文内模式不安装聊天区观察器或宿主事件监听。
-- MutationObserver 改为 120ms 去抖的消息级增量同步，忽略 RabbitMirror 自己新增的外置节点与工具入口，不再每次 DOM 变化扫描整段聊天。
+- MutationObserver 改为 120ms 去抖的消息级增量同步，忽略 兔子镜小剧场 自己新增的外置节点与工具入口，不再每次 DOM 变化扫描整段聊天。
 - 宿主 eventSource 回调保存引用并在模式切换/停用/热更新时逐一解除；新增全局 cleanup，防止多版本热更新后监听累积。
-- `syncMessages` 每轮只读取一次独立输出缓存；普通插件面板开关不再触发 RabbitMirror 全聊天重建。
+- `syncMessages` 每轮只读取一次独立输出缓存；普通插件面板开关不再触发 兔子镜小剧场 全聊天重建。
 
 ## 1.1.0-beta.14.13-test
 
@@ -397,7 +634,7 @@
 - 接受完整裸 `<details>` 兔子镜，不再强制服务商必须保留 `<toto>` 外壳。
 - 对空正文、非完整兔子镜与输出截断分别显示更准确的失败原因和 finish_reason。
 
-# RabbitMirror 1.1.0-beta.14.13-test
+## 1.1.0-beta.14.13-test
 
 - 测试仓新增“维修兔自动巡逻（测试）”本地开关，默认关闭。
 - 开启时只对之后新生成或重新生成的兔子镜自动尝试一次高置信安全修复。
@@ -405,14 +642,14 @@
 - 手机排版、网格重排、静态内容改交互、源码恢复、内容猜测仍保持手动。
 - 自动巡逻完全在本地运行，不增加 Prompt 或 Token。
 
-# RabbitMirror 1.1.0-beta.14.2
+## 1.1.0-beta.14.2
 
 - 修复模型在 CSS 中写出 `.trigger:checked`，却遗漏将该 class 放到唯一隐藏 checkbox/radio 上时，label 可勾选但前后层永远不切换的问题。
 - 仅在原始源码可证明：缺失 class 唯一、候选控件唯一、控件已有 label，且补上 class 后至少一至两条局部 `:checked` 规则能命中有正文的状态层时恢复。
 - 只给当前兔子镜中的对应控件补回模型已经引用的 class；不执行脚本、不创建新分支、不改写正文，也不影响其他镜面。
 - 维修兔诊断新增“checked缺失控制类恢复”统计；Prompt、点菜、随机抽取、母本库、Token、挨打猫及工具入口稳定性逻辑未改。
 
-# RabbitMirror 1.1.0-beta.14.1
+## 1.1.0-beta.14.1
 
 - 正式仓库 SillyTavern 适配热修：维修兔与挨打猫改用独立工具入口容器，并以运行时内联 `!important` 样式隔离兔子镜自身的 `button`、`summary > *`、透明度、位移与裁切规则。
 - 维修兔状态图标改为真实按钮文本，不再只依赖 `::before`，避免伪元素被宿主或局部 CSS 清除后入口看似消失。
@@ -532,7 +769,7 @@
 
 ## 1.0.0-beta.1 — Beta v1.0
 
-- 发布 RabbitMirror Beta v1.0。
+- 发布 兔子镜小剧场 Beta v1.0。
 - 简化设置页说明，让功能和 Token 影响更容易理解。
 - “发散孵化模式”更名为“随机发挥模式”。
 - “Visual Scenery”显示名称改为“动态视觉场景”，不公开具体实现方式。
@@ -543,8 +780,8 @@
 - 生成 Prompt、母本预算和正常每轮注入逻辑均未增加。
 
 ## 1.1.0-beta.14.13-test
-- Added mutually exclusive RabbitMirror generation modes: follow the current API, or use a separately configured OpenAI-compatible API/model.
-- Independent mode clears the current-model RabbitMirror injection and automatically generates one message-level external RabbitMirror after an assistant response.
+- Added mutually exclusive 兔子镜小剧场 generation modes: follow the current API, or use a separately configured OpenAI-compatible API/model.
+- Independent mode clears the current-model 兔子镜小剧场 injection and automatically generates one message-level external 兔子镜小剧场 after an assistant response.
 - Added model-list retrieval, connection testing, fixed model selection, temperature and maximum-output controls.
 - Independent context bundle includes chat messages, available stored reasoning fields, character card, Persona, world-info/author-note and extension-prompt context when exposed by SillyTavern.
 - Added external presentation for follow-current-API mode without rewriting stored chat message text.

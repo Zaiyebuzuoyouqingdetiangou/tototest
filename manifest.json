@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（TEST・双来源共存・维修兔 v2.10-test）",
+  "display_name": "兔子镜小剧场",
   "loading_order": 99,
-  "js": "index.js?rmv=1.1.0b14h68t",
-  "css": "style.css?rmv=1.1.0b14h68t",
+  "js": "index.js?rmv=1.2.25",
+  "css": "style.css?rmv=1.2.25",
   "author": "Toto",
-  "version": "1.1.0-beta.14.68-test",
+  "version": "1.2.25",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "挨打猫重说时保留旧兔子镜，并在纯外置与自然内嵌状态显示明确的正在重新生成提示。"
+  "description": "兔子镜小剧场：为 SillyTavern 对话生成可交互的小剧场，并支持跟随当前 API 或独立 API。"
 }

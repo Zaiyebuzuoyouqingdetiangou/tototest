@@ -70,7 +70,10 @@ export function getSettings() {
     settings.independentApiBaseUrl = String(settings.independentApiBaseUrl || '').trim();
     settings.independentApiKey = String(settings.independentApiKey || '').trim();
     settings.independentApiModel = String(settings.independentApiModel || '').trim();
-    settings.independentApiTemperature = Math.max(0, Math.min(2, Number(settings.independentApiTemperature) || 0.8));
+    {
+        const temperature = Number(settings.independentApiTemperature);
+        settings.independentApiTemperature = Math.max(0, Math.min(2, Number.isFinite(temperature) ? temperature : 0.8));
+    }
     settings.independentApiMaxTokens = Math.max(512, Math.min(32000, Number(settings.independentApiMaxTokens) || 12000));
 
     if (settings.showCot === undefined && settings.showWonderland !== undefined) {
