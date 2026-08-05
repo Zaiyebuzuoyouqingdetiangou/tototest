@@ -1,14 +1,14 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.2.26';
-import { clearLastCombo } from './storage.js?rmv=1.2.26';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.2.26';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.2.26';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.2.26';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.2.26';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.2.26';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.2.26';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.2.30';
+import { clearLastCombo } from './storage.js?rmv=1.2.30';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.2.30';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.2.30';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.2.30';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.2.30';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.2.30';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.2.30';
 
-const SETTINGS_UI_VERSION = '1.2.26';
-const RUNTIME_VERSION = '1.2.26';
+const SETTINGS_UI_VERSION = '1.2.30';
+const RUNTIME_VERSION = '1.2.30';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;

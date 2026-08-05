@@ -278,33 +278,42 @@ export function getRecentPaletteFingerprints(limit = 3) {
         .slice(-Math.max(0, Number(limit) || 3));
 }
 
-function isDarkPaletteTrigger(fingerprint) {
+function isWarmLightLowChromaPalette(fingerprint) {
     if (!fingerprint || typeof fingerprint !== 'object') return false;
     const confidence = Number(fingerprint.confidence || 0);
-    const darkAreaRatio = Number(fingerprint.darkAreaRatio || 0);
-    const averageLuminance = Number(fingerprint.averageLuminance || 255);
-    return confidence >= 0.5
-        && fingerprint.brightness === 'dark'
-        && (darkAreaRatio >= 0.55 || averageLuminance <= 105);
+    const luminance = Number(fingerprint.averageLuminance || 0);
+    const brightness = String(fingerprint.brightness || '');
+    const temperature = String(fingerprint.temperature || '');
+    const saturation = String(fingerprint.saturation || '');
+    const hue = String(fingerprint.hueFamily || '');
+    const warmFamily = temperature === 'warm' || ['red', 'orange', 'yellow', 'pink'].includes(hue);
+    const lightEnough = brightness === 'light' || luminance >= 174;
+    return confidence >= 0.42 && warmFamily && lightEnough && ['low', 'medium'].includes(saturation);
 }
 
-// 一次低明度主承载输出触发后续五轮冷却；冷却期内若再次命中则重新从五轮开始。
+function recentWarmLightTrigger(history, windowSize = 3, threshold = 2) {
+    const recent = history.slice(-Math.max(2, Number(windowSize) || 3));
+    const matches = recent.filter(item => isWarmLightLowChromaPalette(item?.paletteFingerprint));
+    if (matches.length < Math.max(2, Number(threshold) || 2)) return null;
+    return matches[matches.length - 1]?.paletteFingerprint || null;
+}
+
+// 近期若连续出现相近的暖色浅底，会触发轻量的配色家族冷却；
+// 不再对深色／近黑单独设常驻避让，由本轮媒介自然决定明暗关系。
 export function getActivePaletteCooldown(rounds = 5) {
     const cooldownRounds = Math.max(1, Number(rounds) || 5);
     const history = readHistory();
-    for (let index = history.length - 1; index >= 0; index -= 1) {
-        const fingerprint = history[index]?.paletteFingerprint;
-        if (!isDarkPaletteTrigger(fingerprint)) continue;
-        const completedSinceTrigger = history.length - 1 - index;
-        if (completedSinceTrigger >= cooldownRounds) return { active: false, remaining: 0 };
+    const warmTrigger = recentWarmLightTrigger(history, 3, 2);
+    if (warmTrigger) {
         return {
             active: true,
-            remaining: cooldownRounds - completedSinceTrigger,
-            completedSinceTrigger,
-            fingerprint,
+            kind: 'warm_light',
+            remaining: Math.min(3, cooldownRounds),
+            completedSinceTrigger: 0,
+            fingerprint: warmTrigger,
         };
     }
-    return { active: false, remaining: 0 };
+    return { active: false, remaining: 0, kind: '' };
 }
 
 function normalizeInteractionFamily(value) {

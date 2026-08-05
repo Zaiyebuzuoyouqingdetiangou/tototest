@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.26';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.26';
+import { getSettings } from './settings.js?rmv=1.2.30';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.30';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.2.26';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.26';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.26';
+} from './feedbackCat.js?rmv=1.2.30';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.30';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.30';
 
 
-const RUNTIME_VERSION = '1.2.26';
+const RUNTIME_VERSION = '1.2.30';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9799,6 +9799,8 @@ const MOBILE_LAYOUT_MATRIX_PRESERVE_ATTR = 'data-rm-mobile-matrix-preserve';
 const MOBILE_LAYOUT_MATRIX_ACTIVE_ATTR = 'data-rm-mobile-matrix-active';
 const MOBILE_LAYOUT_MATRIX_CELL_ATTR = 'data-rm-mobile-matrix-cell';
 const MOBILE_LAYOUT_FLEX_WRAP_ATTR = 'data-rm-mobile-flex-wrap';
+const MOBILE_LAYOUT_STATE_ROW_ATTR = 'data-rm-mobile-state-row';
+const MOBILE_LAYOUT_STATE_ROW_GUARD_STYLE_ATTR = 'data-rabbit-mirror-mobile-state-row-guard';
 const MOBILE_LAYOUT_FLEX_STACK_ATTR = 'data-rm-mobile-flex-stack';
 const MOBILE_LAYOUT_SINGLE_COLUMN_ATTR = 'data-rm-mobile-single-column';
 const MOBILE_LAYOUT_FLUID_TITLE_ATTR = 'data-rm-mobile-fluid-title';
@@ -9825,6 +9827,7 @@ const MOBILE_LAYOUT_TARGET_ATTRS = Object.freeze([
     MOBILE_LAYOUT_MATRIX_ACTIVE_ATTR,
     MOBILE_LAYOUT_MATRIX_CELL_ATTR,
     MOBILE_LAYOUT_FLEX_WRAP_ATTR,
+    MOBILE_LAYOUT_STATE_ROW_ATTR,
     MOBILE_LAYOUT_FLEX_STACK_ATTR,
     MOBILE_LAYOUT_SINGLE_COLUMN_ATTR,
     MOBILE_LAYOUT_FLUID_TITLE_ATTR,
@@ -9850,7 +9853,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.26-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.30-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -14730,6 +14733,116 @@ function maintenanceMobileLayoutElementInRelationTree(element, relationInfos) {
     return relationInfos.some(info => info.branch === element || info.branch.contains?.(element));
 }
 
+function maintenanceMobileLayoutStateRowInfo(element) {
+    if (!element?.children) return null;
+    const directChildren = [...element.children].filter(child => !maintenanceMobileLayoutIsInternal(child));
+    const inputs = directChildren.filter(child => child.matches?.('input[type="radio"][id], input[type="checkbox"][id]'));
+    if (inputs.length < 2) return null;
+    const labels = [];
+    for (const input of inputs) {
+        const label = directChildren.find(child => child.matches?.('label[for]') && String(child.getAttribute('for') || '') === String(input.id || ''));
+        if (!label) return null;
+        labels.push(label);
+    }
+    if (new Set(labels).size !== labels.length) return null;
+    const structured = labels.some(label => label.children.length >= 2 && maintenanceMobileLayoutTextLength(label) >= 24);
+    const hiddenStateContent = labels.some(label => [...label.querySelectorAll('*')].some(node => {
+        const style = maintenanceMobileLayoutComputedStyle(node);
+        if (!style) return false;
+        return Number.parseFloat(style.opacity || '1') <= 0.05
+            || String(style.pointerEvents || '').toLowerCase() === 'none'
+            || maintenanceMobileLayoutLengthPx(style.maxHeight, 640) <= 1 && String(style.overflow || '').toLowerCase() === 'hidden';
+    }));
+    if (!structured && !hiddenStateContent) return null;
+    return { element, inputs, labels };
+}
+
+function repairMaintenanceMobileStateRowClasses(info) {
+    const labels = Array.isArray(info?.labels) ? info.labels : [];
+    if (labels.length < 2) return 0;
+    let changed = 0;
+    const tokenCounts = new Map();
+    for (const label of labels) {
+        for (const token of getClassTokens(label)) tokenCounts.set(token, (tokenCounts.get(token) || 0) + 1);
+    }
+    const sharedPanelTokens = [...tokenCounts.entries()]
+        .filter(([token, count]) => count >= Math.max(2, labels.length - 1) && /(?:^|[-_])(?:panel|slide|pane|item)(?:$|[-_])/i.test(token))
+        .map(([token]) => token);
+    for (const label of labels) {
+        for (const token of sharedPanelTokens) {
+            if (label.classList.contains(token)) continue;
+            label.classList.add(token);
+            changed += 1;
+        }
+    }
+    const prefixCounts = new Map();
+    for (const label of labels) {
+        for (const token of getClassTokens(label)) {
+            const match = token.match(/^(.*-p)(\d+)$/i);
+            if (!match) continue;
+            const entry = prefixCounts.get(match[1]) || new Set();
+            entry.add(Number(match[2]));
+            prefixCounts.set(match[1], entry);
+        }
+    }
+    const statePrefix = [...prefixCounts.entries()].find(([, numbers]) => numbers.size >= 2)?.[0] || '';
+    if (statePrefix) {
+        labels.forEach((label, index) => {
+            const hasStateClass = getClassTokens(label).some(token => token.startsWith(statePrefix) && /\d+$/.test(token));
+            if (hasStateClass) return;
+            label.classList.add(`${statePrefix}${index + 1}`);
+            changed += 1;
+        });
+    }
+    return changed;
+}
+
+function maintenanceMobileStateRowGuardCss(scopeToken) {
+    const scope = `[${MOBILE_LAYOUT_SCOPE_ATTR}="${scopeToken}"]`;
+    return `@media (max-width: ${MOBILE_LAYOUT_BREAKPOINT_PX}px) {
+${scope} [${MOBILE_LAYOUT_STATE_ROW_ATTR}] { flex-wrap: nowrap !important; min-width: 0 !important; max-width: 100% !important; align-items: stretch !important; overflow-x: auto !important; overflow-y: hidden !important; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
+${scope} [${MOBILE_LAYOUT_STATE_ROW_ATTR}] > label { max-width: none !important; box-sizing: border-box !important; }
+}`;
+}
+
+function repairLegacyMaintenanceMobileStateRows(scope) {
+    if (!scope?.querySelectorAll) return 0;
+    const roots = [];
+    if (scope.hasAttribute?.(MOBILE_LAYOUT_SCOPE_ATTR)) roots.push(scope);
+    roots.push(...scope.querySelectorAll(`[${MOBILE_LAYOUT_SCOPE_ATTR}]`));
+    let changed = 0;
+    for (const root of [...new Set(roots)]) {
+        const scopeToken = String(root.getAttribute(MOBILE_LAYOUT_SCOPE_ATTR) || '');
+        if (!scopeToken) continue;
+        const candidates = [root, ...root.querySelectorAll(`[${MOBILE_LAYOUT_FLEX_WRAP_ATTR}], [${MOBILE_LAYOUT_STATE_ROW_ATTR}]`)];
+        let guarded = false;
+        for (const element of [...new Set(candidates)]) {
+            const info = maintenanceMobileLayoutStateRowInfo(element);
+            if (!info) continue;
+            if (element.hasAttribute(MOBILE_LAYOUT_FLEX_WRAP_ATTR)) {
+                element.removeAttribute(MOBILE_LAYOUT_FLEX_WRAP_ATTR);
+                changed += 1;
+            }
+            if (!element.hasAttribute(MOBILE_LAYOUT_STATE_ROW_ATTR)) {
+                element.setAttribute(MOBILE_LAYOUT_STATE_ROW_ATTR, 'true');
+                changed += 1;
+            }
+            changed += repairMaintenanceMobileStateRowClasses(info);
+            guarded = true;
+        }
+        if (!guarded) continue;
+        let style = root.querySelector(`:scope > style[${MOBILE_LAYOUT_STATE_ROW_GUARD_STYLE_ATTR}]`);
+        if (!style) {
+            style = document.createElement('style');
+            style.setAttribute(MOBILE_LAYOUT_STATE_ROW_GUARD_STYLE_ATTR, 'true');
+            root.appendChild(style);
+            changed += 1;
+        }
+        style.textContent = maintenanceMobileStateRowGuardCss(scopeToken);
+    }
+    return changed;
+}
+
 function maintenanceMobileLayoutCss(scopeToken) {
     const scope = `[${MOBILE_LAYOUT_SCOPE_ATTR}="${scopeToken}"]`;
     return `@media (max-width: ${MOBILE_LAYOUT_BREAKPOINT_PX}px) {
@@ -14741,6 +14854,8 @@ ${scope} [${MOBILE_LAYOUT_MATRIX_PRESERVE_ATTR}][${MOBILE_LAYOUT_MATRIX_ACTIVE_A
 ${scope} [${MOBILE_LAYOUT_MATRIX_CELL_ATTR}] { min-width: 0 !important; max-width: 100% !important; box-sizing: border-box !important; overflow: hidden !important; padding-left: clamp(10px, 3vw, 16px) !important; padding-right: clamp(10px, 3vw, 16px) !important; overflow-wrap: anywhere !important; word-break: break-word !important; }
 ${scope} [${MOBILE_LAYOUT_MATRIX_PRESERVE_ATTR}][${MOBILE_LAYOUT_MATRIX_ACTIVE_ATTR}] [${MOBILE_LAYOUT_MATRIX_CELL_ATTR}] { height: auto !important; min-height: 0 !important; }
 ${scope} [${MOBILE_LAYOUT_FLEX_WRAP_ATTR}] { flex-wrap: wrap !important; min-width: 0 !important; }
+${scope} [${MOBILE_LAYOUT_STATE_ROW_ATTR}] { flex-wrap: nowrap !important; min-width: 0 !important; max-width: 100% !important; align-items: stretch !important; overflow-x: auto !important; overflow-y: hidden !important; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
+${scope} [${MOBILE_LAYOUT_STATE_ROW_ATTR}] > label { max-width: none !important; box-sizing: border-box !important; }
 ${scope} [${MOBILE_LAYOUT_FLEX_STACK_ATTR}] { flex-direction: column !important; align-items: stretch !important; min-width: 0 !important; }
 ${scope} [${MOBILE_LAYOUT_SINGLE_COLUMN_ATTR}] { column-count: 1 !important; column-width: auto !important; }
 ${scope} [${MOBILE_LAYOUT_FLUID_TITLE_ATTR}] { font-size: clamp(1.25rem, 7vw, 2rem) !important; line-height: 1.18 !important; overflow-wrap: anywhere !important; word-break: break-word !important; }
@@ -15044,12 +15159,18 @@ function installMaintenanceMobileLayoutRescue(root) {
                 nonShrinkWidth += Math.max(0, nonShrinkCount - 1) * gap;
                 const constrainedChildren = nonShrinkCount >= 2 && nonShrinkWidth > referenceWidth + 3;
                 if (wrap === 'nowrap' && (overflowsSelf || childOverflow || hasLargeHeading || constrainedChildren)) {
-                    for (const child of flowChildren) maintenanceMobileLayoutMark(child, MOBILE_LAYOUT_MIN_ATTR, marked);
-                    const textHeavyChildren = flowChildren.filter(child => maintenanceMobileLayoutTextLength(child) >= 18).length;
-                    if (flowChildren.length <= 3 && textHeavyChildren >= 2) {
-                        maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_FLEX_STACK_ATTR, marked);
+                    const stateRowInfo = maintenanceMobileLayoutStateRowInfo(element);
+                    if (stateRowInfo) {
+                        repairMaintenanceMobileStateRowClasses(stateRowInfo);
+                        maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_STATE_ROW_ATTR, marked);
                     } else {
-                        maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_FLEX_WRAP_ATTR, marked);
+                        for (const child of flowChildren) maintenanceMobileLayoutMark(child, MOBILE_LAYOUT_MIN_ATTR, marked);
+                        const textHeavyChildren = flowChildren.filter(child => maintenanceMobileLayoutTextLength(child) >= 18).length;
+                        if (flowChildren.length <= 3 && textHeavyChildren >= 2) {
+                            maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_FLEX_STACK_ATTR, marked);
+                        } else {
+                            maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_FLEX_WRAP_ATTR, marked);
+                        }
                     }
                 }
             }
@@ -16094,6 +16215,10 @@ export function refreshFeedbackCats() {
 
 export function refreshRabbitMirrorToolsInScope(scope) {
     if (!scope?.querySelectorAll) return;
+    // Older “显示不全” repairs could wrap a radio/checkbox-driven horizontal
+    // state row and turn it into a very tall empty frame. Repair only that
+    // proven bad pattern before installing the tools; ordinary flex rows remain untouched.
+    repairLegacyMaintenanceMobileStateRows(scope);
     installMaintenanceRabbitsInScope(scope);
 }
 

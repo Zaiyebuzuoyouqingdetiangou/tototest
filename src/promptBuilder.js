@@ -1,9 +1,9 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.26';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.26';
-import { pickCombination } from './picker.js?rmv=1.2.26';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.26';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.26';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.26';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.30';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.30';
+import { pickCombination } from './picker.js?rmv=1.2.30';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.30';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.30';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.30';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -228,11 +228,14 @@ function interactionFamilyCooldownRule() {
 function paletteCooldownRule() {
     const cooldown = getActivePaletteCooldown(5);
     if (!cooldown?.active) return '';
-    return String.raw`
-配色冷却【由近期实际输出触发，剩余 ${cooldown.remaining} 轮】:
-  - 本轮主要承载面的整体明度必须改为中明度或高明度，不得延续近期的低明度底盘。
-  - 色彩仍须从本轮展现形式的材质、环境、光线与空间关系中产生，不得只把旧方案机械反相或更换强调色。
-  - 局部低明度细节可以保留，但其面积与视觉权重不得主导整体；文字、边界、阴影与强调色须随新的承载关系重新组织。`;
+    if (cooldown.kind === 'warm_light') {
+        return String.raw`
+配色家族冷却【近期实际输出的综合色彩关系过于相近，剩余 ${cooldown.remaining} 轮】:
+  - 本轮配色必须从当前正文、媒介、环境、材质与情绪重新推导，并与最近作品的整体色彩关系形成明显区别。
+  - 不得只更换强调色、标题色或局部点缀；主承载面、边界、文字、阴影、材质与交互反馈应共同形成新的综合色彩关系。
+  - 不预设、推荐或禁止任何具体色相；深色、浅色、冷色、暖色、中性色或综合色均可，但必须由本轮内容自然决定。`;
+    }
+    return '';
 }
 
 function hardStartupReserve() {
@@ -452,7 +455,9 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
 
     const avoidLines = [
         interaction ? `交互冷却：${interaction.label}（近五轮 ${interaction.count} 次）；${interaction.exactBan}` : '',
-        palette?.active ? `配色冷却：剩余 ${palette.remaining} 轮；主要承载面改用中／高明度，不延续低明度底盘。` : '',
+        palette?.active
+            ? `配色家族冷却：近期作品的综合色彩关系过于相近；本轮须从当前正文与媒介重新推导整体配色，并在主承载面、文字、边界、材质与交互反馈上形成明显区别。`
+            : '',
         innerDetailsBlocked ? '内部折叠冷却：本轮最外层兔子镜内部不得再使用 details/summary。' : '',
         riskCorrection ? `近期真实输出纠偏：${riskCorrection}` : '',
     ].filter(Boolean);
