@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.31';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.31';
+import { getSettings } from './settings.js?rmv=1.2.32';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.32';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.2.31';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.31';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.31';
+} from './feedbackCat.js?rmv=1.2.32';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.32';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.32';
 
 
-const RUNTIME_VERSION = '1.2.31';
+const RUNTIME_VERSION = '1.2.32';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9853,7 +9853,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.31-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.32-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
