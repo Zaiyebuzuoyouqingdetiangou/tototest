@@ -1,14 +1,14 @@
-import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=1.2.30';
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=1.2.30';
-import { clearLastCombo } from './src/storage.js?rmv=1.2.30';
-import { initVisualScanner, destroyVisualScanner } from './src/visualScanner.js?rmv=1.2.30';
-import { initOutputSanitizer, destroyOutputSanitizer } from './src/outputSanitizer.js?rmv=1.2.30';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.2.30';
-import { getSettings } from './src/settings.js?rmv=1.2.30';
-import { clearRabbitMirrorGenerationSnapshots } from './src/generationGuard.js?rmv=1.2.30';
-import { initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './src/independentApi.js?rmv=1.2.30';
+import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=1.2.31';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=1.2.31';
+import { clearLastCombo } from './src/storage.js?rmv=1.2.31';
+import { initVisualScanner, destroyVisualScanner } from './src/visualScanner.js?rmv=1.2.31';
+import { initOutputSanitizer, destroyOutputSanitizer } from './src/outputSanitizer.js?rmv=1.2.31';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.2.31';
+import { getSettings } from './src/settings.js?rmv=1.2.31';
+import { clearRabbitMirrorGenerationSnapshots } from './src/generationGuard.js?rmv=1.2.31';
+import { initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './src/independentApi.js?rmv=1.2.31';
 
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.2.30';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.2.31';
 
 // Claim the active runtime before UI/DOM initialization. Versioned module URLs ensure this file and its internal graph cannot be satisfied by a stale hot-reload cache.
 try { globalThis.__rabbitMirrorFeedbackCatSyncCleanup?.(); } catch {}

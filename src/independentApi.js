@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.2.30';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.30';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.30';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.30';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.30';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.30';
+import { getSettings } from './settings.js?rmv=1.2.31';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.31';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.31';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.31';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.31';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.31';
 
-const RUNTIME_VERSION = '1.2.30';
+const RUNTIME_VERSION = '1.2.31';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -1229,7 +1229,11 @@ function ensureExternalTools(host){
  removeIndependentResayButtons(host);
 }
 function readyDetailsFromHost(host){
- const details=host?.querySelector?.(':scope > details');
+ // The product lock may only trust an explicitly completed host. A loading
+  // host can still contain the previous A during a manual resay, and a fresh
+  // placeholder contains enough text to fool a generic DOM-content check.
+ if(!host || host.dataset?.rmState!=='ready') return null;
+ const details=host.querySelector?.(':scope > details');
  return usableReadyDetails(details) ? details : null;
 }
 function readyRecordFromHost(host,observed,model=''){
@@ -1435,6 +1439,11 @@ function buildExternalHost(key,html,state,source){
 }
 function usableReadyDetails(details){
  if(!details || details.tagName!=='DETAILS') return false;
+ // Loading/error shells are structural placeholders, never completed mirrors.
+ // Treating their summary/body text as a usable result makes the A/B product
+ // lock return before the independent API request is even sent.
+ if(details.classList?.contains('rabbit-mirror-external-placeholder')) return false;
+ if(details.hasAttribute?.('data-rabbit-mirror-placeholder')) return false;
  const summary=details.querySelector?.(':scope > summary');
  if(!summary || !String(summary.textContent||'').trim()) return false;
  return [...details.childNodes].some(node=>{
@@ -1456,6 +1465,11 @@ function independentStoredHtmlRestorable(html=''){
   template.innerHTML=source;
   const details=template.content.querySelector('details');
   if(!details || details.tagName!=='DETAILS') return false;
+  // 1.2.29/1.2.31 could accidentally persist a loading placeholder as the
+  // final A product. Reject it during cache/history recovery so the exact
+  //正文 may make its one legitimate API request and overwrite the bad record.
+  if(details.classList?.contains('rabbit-mirror-external-placeholder')) return false;
+  if(details.hasAttribute?.('data-rabbit-mirror-placeholder')) return false;
   const summary=details.querySelector?.(':scope > summary');
   if(!summary || !String(summary.textContent||'').trim()) return false;
   // Historical mirrors often keep their real body hidden until a checkbox,
