@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.40';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.40';
+import { getSettings } from './settings.js?rmv=1.2.41';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.41';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.2.40';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.40';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.40';
+} from './feedbackCat.js?rmv=1.2.41';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.41';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.41';
 
 
-const RUNTIME_VERSION = '1.2.40';
+const RUNTIME_VERSION = '1.2.41';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9970,7 +9970,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.40-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.41-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -14616,7 +14616,58 @@ function maintenanceMobileLayoutHorizontalMediaHint(element) {
     if (!element) return false;
     if (element.matches?.('table,thead,tbody,tr,canvas')) return true;
     const signature = `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('role') || ''} ${element.getAttribute?.('aria-label') || ''}`;
-    return /(?:table|timeline|track|chart|graph|map|board|calendar|schedule|kanban|matrix|gallery|carousel|slider|race|score|仪表|时间轴|赛道|地图|表格|棋盘|画布|日历)/i.test(signature);
+    return /(?:table|timeline|track|chart|graph|map|board|calendar|schedule|kanban|matrix|gallery|carousel|slider|race|score|monopoly|game[-_ ]?board|仪表|时间轴|赛道|地图|表格|棋盘|游戏板|大富翁|画布|日历)/i.test(signature);
+}
+
+// 固定格位、棋盘、地图、座位图等空间型 Grid 不能像文章卡片一样折成单列。
+// 一旦直接子节点使用 grid-column/grid-row 指定位置，或存在依赖 Grid 坐标的绝对定位覆盖物，
+// 改写列数会让隐式列、棋子/标记位置和阅读路径一起错位；此类结构宁可局部滚动，也要保形。
+function maintenanceMobileLayoutSpatialGridInfo(element, style = null, directChildren = null) {
+    if (!element) return null;
+    const computed = style || maintenanceMobileLayoutComputedStyle(element);
+    if (!String(computed?.display || '').toLowerCase().includes('grid')) return null;
+    const columnTracks = maintenanceMobileLayoutSplitTracks(computed?.gridTemplateColumns);
+    if (columnTracks.length < 2) return null;
+    const rowTracks = maintenanceMobileLayoutSplitTracks(computed?.gridTemplateRows);
+    const children = Array.isArray(directChildren)
+        ? directChildren
+        : [...(element.children || [])].filter(child => !maintenanceMobileLayoutIsInternal(child));
+
+    const placedChildren = children.filter(child => {
+        const inline = String(child.getAttribute?.('style') || '').toLowerCase();
+        if (/(?:^|;)\s*grid-(?:column|row)(?:-start|-end)?\s*:/.test(inline)) return true;
+        const childStyle = maintenanceMobileLayoutComputedStyle(child);
+        if (!childStyle) return false;
+        return [childStyle.gridColumnStart, childStyle.gridColumnEnd, childStyle.gridRowStart, childStyle.gridRowEnd]
+            .map(value => String(value || '').trim().toLowerCase())
+            .some(value => value && value !== 'auto');
+    });
+    const anchoredOverlays = children.filter(child => {
+        const childStyle = maintenanceMobileLayoutComputedStyle(child);
+        const position = String(childStyle?.position || '').toLowerCase();
+        if (position !== 'absolute' && position !== 'fixed') return false;
+        const inline = String(child.getAttribute?.('style') || '').toLowerCase();
+        return /(?:^|;)\s*(?:left|right|top|bottom)\s*:/.test(inline);
+    });
+    const hasTemplateAreas = String(computed?.gridTemplateAreas || '').trim().toLowerCase() !== 'none'
+        && String(computed?.gridTemplateAreas || '').trim() !== '';
+    const semanticText = `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('aria-label') || ''} ${element.parentElement?.textContent || ''}`
+        .replace(/\s+/g, ' ')
+        .slice(0, 1200);
+    const semanticHint = /(?:monopoly|game[-_ ]?board|board|map|track|race|calendar|schedule|seat|棋盘|游戏板|大富翁|地图|赛道|座位|日历|棋子|格子)/i.test(semanticText);
+
+    const explicitSpatialPlacement = placedChildren.length >= 2
+        || (placedChildren.length >= 1 && anchoredOverlays.length >= 1)
+        || hasTemplateAreas;
+    const semanticSpatialLayout = semanticHint
+        && rowTracks.length >= 2
+        && children.length >= 3
+        && children.length <= 24
+        && (maintenanceMobileLayoutHasFixedTrack(computed?.gridTemplateColumns)
+            || maintenanceMobileLayoutHasFixedTrack(computed?.gridTemplateRows));
+    if (!explicitSpatialPlacement && !semanticSpatialLayout) return null;
+    if (rowTracks.length <= 1 && placedChildren.length < 2 && !anchoredOverlays.length && !hasTemplateAreas) return null;
+    return { columnTracks, rowTracks, placedChildren, anchoredOverlays, semanticHint };
 }
 
 
@@ -15019,6 +15070,7 @@ function inspectMaintenanceMobileLayout(root) {
     const rootRect = maintenanceMobileLayoutRect(root);
     const referenceWidth = Math.max(280, Math.min(
         Number(rootRect?.width || 0) || Number(root.parentElement?.clientWidth || 0) || viewportWidth || MOBILE_LAYOUT_BREAKPOINT_PX,
+        viewportWidth || MOBILE_LAYOUT_BREAKPOINT_PX,
         MOBILE_LAYOUT_BREAKPOINT_PX,
     ));
     const buckets = {
@@ -15070,6 +15122,7 @@ function inspectMaintenanceMobileLayout(root) {
             const tracks = maintenanceMobileLayoutSplitTracks(template);
             const textHeavy = maintenanceMobileLayoutTextLength(element) >= 120;
             const matrixInfo = maintenanceMobileLayoutSemanticMatrixInfo(element, style);
+            const spatialGridInfo = maintenanceMobileLayoutSpatialGridInfo(element, style);
             if (matrixInfo) {
                 const matrixInputs = maintenanceMobileLayoutMatrixInputs(root, matrixInfo.cells);
                 const active = matrixInputs.some(input => input.checked);
@@ -15078,7 +15131,10 @@ function inspectMaintenanceMobileLayout(root) {
                     || maintenanceMobileLayoutLengthPx(style.maxHeight, referenceWidth) > 0
                     || maintenanceMobileLayoutLengthPx(style.height, referenceWidth) > 0;
                 if (active && (cellClipped || constrained)) buckets.matrix.add(element);
-            } else if (tracks.length > 1 && (overflowsSelf || maintenanceMobileLayoutHasFixedTrack(template) || textHeavy)) {
+            } else if (spatialGridInfo) {
+                // 空间型 Grid 只报告真实横向溢出，不作为“应折成单列”的普通 Grid 候选。
+                if (overflowsSelf || overflowsViewport) buckets.horizontalOverflow.add(element);
+            } else if (tracks.length > 1 && (overflowsSelf || overflowsViewport || textHeavy)) {
                 buckets.grid.add(element);
             }
         }
@@ -15180,8 +15236,13 @@ function installMaintenanceMobileLayoutRescue(root) {
     }
 
     const rootRect = maintenanceMobileLayoutRect(root);
+    const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
+    const viewportLimit = viewportWidth > 0 && viewportWidth <= MOBILE_LAYOUT_BREAKPOINT_PX + 40
+        ? viewportWidth
+        : MOBILE_LAYOUT_BREAKPOINT_PX;
     const referenceWidth = Math.max(280, Math.min(
-        Number(rootRect?.width || 0) || Number(root.parentElement?.clientWidth || 0) || Number(globalThis.innerWidth || 0) || MOBILE_LAYOUT_BREAKPOINT_PX,
+        Number(rootRect?.width || 0) || Number(root.parentElement?.clientWidth || 0) || viewportWidth || MOBILE_LAYOUT_BREAKPOINT_PX,
+        viewportLimit,
         MOBILE_LAYOUT_BREAKPOINT_PX,
     ));
     const marked = new Set();
@@ -15228,15 +15289,20 @@ function installMaintenanceMobileLayoutRescue(root) {
             const template = String(style.gridTemplateColumns || '').trim();
             const tracks = maintenanceMobileLayoutSplitTracks(template);
             const matrixInfo = maintenanceMobileLayoutSemanticMatrixInfo(element, style, directChildren);
+            const spatialGridInfo = maintenanceMobileLayoutSpatialGridInfo(element, style, directChildren);
             if (element.hasAttribute(PASSPORT_DOCUMENT_PAGES_ATTR)) {
                 for (const child of directChildren) maintenanceMobileLayoutMark(child, MOBILE_LAYOUT_MIN_ATTR, marked);
             } else if (matrixInfo) {
                 maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_MATRIX_PRESERVE_ATTR, marked);
                 for (const cell of matrixInfo.cells) maintenanceMobileLayoutMark(cell, MOBILE_LAYOUT_MATRIX_CELL_ATTR, marked);
                 matrixEntries.push({ matrix: element, inputs: maintenanceMobileLayoutMatrixInputs(root, matrixInfo.cells) });
+            } else if (spatialGridInfo) {
+                // 棋盘/地图/显式格位 Grid 保留列数与坐标。能放下时完全不改；真正超宽时只在自身局部滚动。
+                for (const child of directChildren) maintenanceMobileLayoutMark(child, MOBILE_LAYOUT_MIN_ATTR, marked);
+                if (overflowsSelf || overflowsRoot) maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_SCROLL_ATTR, marked);
             } else {
                 for (const child of directChildren) maintenanceMobileLayoutMark(child, MOBILE_LAYOUT_MIN_ATTR, marked);
-                if (tracks.length > 1 && (maintenanceMobileLayoutHasFixedTrack(template) || overflowsSelf || overflowsRoot)) {
+                if (tracks.length > 1 && (overflowsSelf || overflowsRoot)) {
                     if (maintenanceMobileLayoutHorizontalMediaHint(element)) {
                         maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_SCROLL_ATTR, marked);
                     } else {
