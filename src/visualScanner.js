@@ -1,11 +1,11 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=1.2.41';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.41';
-import { getSettings } from './settings.js?rmv=1.2.41';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.2.42';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.42';
+import { getSettings } from './settings.js?rmv=1.2.42';
 import {
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.2.41';
+} from './generationGuard.js?rmv=1.2.42';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -389,11 +389,14 @@ function detectInteractionFamily(root, html = '') {
 }
 
 function detectInteractionMissing(html = '') {
-    return !detectEffectiveInteraction(html);
+    const text = String(html || '');
+    if (visualSceneryAuditExpected(text)) return false;
+    return !detectEffectiveInteraction(text);
 }
 
 function detectFakeInteraction(html = '', plain = '') {
-    return !detectEffectiveInteraction(html) && detectInteractionSignals(html, plain);
+    const text = String(html || '');
+    return !detectEffectiveInteraction(text) && detectInteractionSignals(text, plain);
 }
 
 function detectWeakSpatialComplexity(html = '', plain = '') {
@@ -438,14 +441,14 @@ function inspectVisualSceneryMotion(html = '', spatialSignalCount = 0) {
     const keyframeCount = count(/@(?:-webkit-)?keyframes\b/gi, text);
     const animationDeclarationCount = count(/(?:^|[;{])\s*(?:-webkit-)?animation(?:-name)?\s*:/gi, text);
     const infiniteCount = count(/\binfinite\b/gi, text);
-    const meaningfulKeyframeMotion = /@(?:-webkit-)?keyframes[\s\S]{0,2400}?(?:translate(?:3d|x|y)?\s*\(|rotate(?:3d|x|y)?\s*\(|scale(?:3d|x|y)?\s*\(|clip-path\s*:|mask(?:-position|-size)?\s*:|background-position\s*:|stroke-dashoffset\s*:|offset-distance\s*:)/i.test(text);
+    const meaningfulKeyframeMotion = /@(?:-webkit-)?keyframes[\s\S]{0,2400}?(?:translate(?:3d|x|y)?\s*\(|rotate(?:3d|x|y)?\s*\(|scale(?:3d|x|y)?\s*\(|clip-path\s*:|mask(?:-position|-size)?\s*:|background-position\s*:|stroke-dashoffset\s*:|offset-distance\s*:|filter\s*:|opacity\s*:)/i.test(text);
     const layeredSceneSignals = count(/position\s*:\s*absolute|z-index\s*:|grid-area\s*:|clip-path\s*:|mask\s*:|radial-gradient|linear-gradient|<svg\b/gi, text);
 
     if (!hasMarker) flags.push('visual_scenery_marker_missing');
     if (keyframeCount < 1 || animationDeclarationCount < 1 || infiniteCount < 1 || !meaningfulKeyframeMotion) {
         flags.push('weak_visual_scenery_motion');
     }
-    if (animationDeclarationCount < 2 || spatialSignalCount < 3 || layeredSceneSignals < 4) {
+    if (spatialSignalCount < 2 && layeredSceneSignals < 3) {
         flags.push('weak_visual_scenery_layers');
     }
     return flags;

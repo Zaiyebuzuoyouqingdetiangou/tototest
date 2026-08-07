@@ -1,9 +1,9 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.41';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.41';
-import { pickCombination } from './picker.js?rmv=1.2.41';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.41';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.41';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.41';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.42';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.42';
+import { pickCombination } from './picker.js?rmv=1.2.42';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.42';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.42';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.42';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -161,7 +161,7 @@ function recentRiskCorrection() {
 
     const hasWeakVisualScenery = flags.some(flag => ['visual_scenery_marker_missing', 'weak_visual_scenery_motion', 'weak_visual_scenery_layers'].includes(flag));
     if (hasWeakVisualScenery) {
-        lines.push('近期动态视觉场景退化为静态页面、弱动效或单层头图。本轮必须先完成有前中后景的完整舞台，让主要主体与环境层在打开后立即持续运动，再把一条可保持交互寄生于场景对象；不得用播放器外观、进度条、微粒或静态卡片冒充动态画面。');
+        lines.push('近期动态视觉场景曾退化为假场景、静态页面或弱动效。本轮必须先让场景本体成立，并选择最值得被看见的主体、环境或光影做真实持续动画；允许纯视觉呈现，不必为了达标硬凑前中后景清单、双动画或外挂操作面板。');
     }
 
     if ((counts.same_block_stack || 0) >= 2 || (counts.info_page_degrade || 0) >= 2 || (counts.flat_vertical_flow || 0) >= 2) {
@@ -299,14 +299,13 @@ function complexInteractiveCore() {
 function visualScenerySceneFirstCore() {
     return String.raw`
 Visual Scenery 场景优先级【覆盖通用交互骨架的执行顺序】:
-  - 本轮第一优先级是先让一幅完整动态场景本体成立，再把交互自然寄生在场景对象上；不得为了满足“复杂交互”先搭建按钮组、标签页、仪表盘、信息卡、播放器或说明面板。
-  - 施工顺序必须是：①建立一个自适应手机宽度的完整舞台；②明确背景层、中景主体层、前景遮挡／叙事层；③让占据主要视觉权重的主体或环境关系持续运动；④再选择场景内真实存在的一个对象作为可触摸入口，使画面产生可保持的第二状态。
+  - 本轮第一优先级是先让一幅完整动态场景本体成立；不得为了满足“复杂交互”先搭建按钮组、标签页、仪表盘、信息卡、播放器或说明面板。
+  - Visual Scenery 允许纯视觉呈现，不强制加入交互；只要画面本身已经完整、可辨认并持续运动，即可成立。若自然适合追加交互，交互也只能寄生于场景内部真实存在的对象、关系或观看路径。
   - 首个主要场景根节点必须标记 data-rm-visual-scenery="true"，方便插件只读验收；该属性不产生可见文字，也不得被当作标题或说明。
-  - 至少一条主动画必须同时具备真实 @keyframes、可见元素上的 animation 声明、infinite 循环，并在打开后 1 秒内产生肉眼可见的位移、缩放、旋转、形变、遮罩推进、流体变化或光影扫动。只写 transform、transition、动画名、SVG、微尘闪烁或低对比呼吸不算主动画。
-  - 除主动画外，至少再有一个与场景空间有关的协同动态层，例如环境光、帘幕、影子、液面、雾、雨、丝线、纸片、轨迹或前景遮挡；两个动态层须共同服务同一构图，不能只是散落的小点。
-  - 场景未操作时就必须完整、清晰、持续活动；交互只能推进、揭示或改变场景，不能作为显示核心画面的前置条件。
-  - 允许场景画布中的纯装饰与短标签使用定位和裁切；主要正文与交互反馈仍须进入正常文档流并完整撑高，不能被固定高度或 overflow:hidden 截断。
-  - 交互要求收敛为一条与场景本体一致的完整链即可：场景对象→触摸操作→可保持的画面／关系／时间状态变化→明确反馈→可返回或继续。不得额外堆叠与场景无关的复杂控件。`;
+  - 至少一处占据明确视觉权重的主体、关系结构、环境要素或光影机制，必须同时具备真实 @keyframes、可见元素上的 animation 声明、infinite 循环，并在打开后 1 秒内产生肉眼可见的位移、缩放、旋转、形变、遮罩推进、流体变化或光影扫动。只写 transform、transition、动画名、SVG、微尘闪烁或低对比呼吸不算有效动态。
+  - 画面应先从正文中挑出最值得被看见、最自然会动的对象来承担动态；可以只有一处核心动态，也可以有若干协同动态，但不得为了凑规则机械堆叠前中后景清单、双动画套餐或装饰性微粒。
+  - 场景未操作时就必须完整、清晰、持续活动；若附带交互，交互只能推进、揭示或改变场景，不能作为显示核心画面的前置条件。
+  - 允许场景画布中的纯装饰与短标签使用定位和裁切；主要正文与交互反馈若存在，仍须进入正常文档流并完整撑高，不能被固定高度或 overflow:hidden 截断。`;
 }
 
 
@@ -332,8 +331,8 @@ function visualSceneryInteractionLinkRule() {
     return String.raw`
 Visual Scenery 动态与交互:
   - 画面打开后必须通过完整、持续且肉眼可见的 CSS 动画成立，核心内容不得依赖用户操作才能出现。
-  - 必须同时具备上述完整交互链；第二状态须发生清晰且有意义的内容、关系、结构、空间、材质、时间进程或观察方式变化；动画与交互不能互相替代。
-  - 交互须发生在画面本体内部，不得另加脱离场景的操作面板或大段说明；用户未操作时仍须具有完整构图、清晰主体与持续生命感。`;
+  - 纯视觉呈现完全允许，不强制补做交互；若场景本体已经成立，不得为了交作业额外加按钮栏、分页、控制台或进度条。
+  - 若本轮自然出现交互，交互须发生在画面本体内部，并对内容、关系、结构、空间、材质、时间进程或观察方式带来清晰且有意义的变化；动画与交互不能互相替代。`;
 }
 
 
@@ -441,7 +440,8 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const themes = mode === 'format_only' ? '当前聊天与刚完成的助手正文' : compactLockItems(combo?.themes, 'theme');
     const formats = compactLockItems(combo?.formats, 'presentation');
     const avoidance = settings?.avoidRepeat ? shortVisualAvoidance(combo, 3) : '未启用近期视觉避让。';
-    const interaction = interactionFamilyCooldownSnapshot();
+    const visualSceneryMode = !!(settings?.forceVisualScenery || hasVisualScenery(combo));
+    const interaction = visualSceneryMode ? null : interactionFamilyCooldownSnapshot();
     const palette = getActivePaletteCooldown(5);
     const recentFlags = getRecentRiskFlags(5);
     const innerDetailsBlocked = recentFlags.includes('inner_details_used');
@@ -457,6 +457,13 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
         riskCorrection ? `近期真实输出纠偏：${riskCorrection}` : '',
     ].filter(Boolean);
 
+    const interactionDirective = visualSceneryMode
+        ? 'Visual Scenery 可纯视觉呈现；若场景本体已经完整成立，可以不额外加入交互。若确需交互，只能寄生于场景内部真实对象。'
+        : '新交互必须从本轮媒介本体自行生长；不得从固定组件清单中挑选，也不得为躲避冷却机械轮换另一种常见模板。无法被现有识别器归类的全新交互完全允许。';
+    const check4 = visualSceneryMode
+        ? '若本轮采用纯视觉呈现，画面本身是否已经完整成立并具有真实持续动态；若添加交互，交互是否寄生于场景内部对象而非外加面板；'
+        : '交互是否作用于媒介内部真实对象，并产生可保持、可辨认的第二状态；';
+
     return String.raw`<兔子镜最终执行锁 data-source="independent-api-near-output">
 【本轮必须落实】
 - 抽取模式：${samplingModeLabel(combo, settings)}。
@@ -467,13 +474,13 @@ ${directiveText ? `- 用户本轮点菜仍为最高优先，必须同时落实�
 【近期必须避开】
 ${avoidance}
 ${avoidLines.length ? avoidLines.map(line => `- ${line}`).join('\n') : '- 当前没有额外冷却；仍不得复用近期相同的视觉骨架与操作路径。'}
-- 新交互必须从本轮媒介本体自行生长；不得从固定组件清单中挑选，也不得为躲避冷却机械轮换另一种常见模板。无法被现有识别器归类的全新交互完全允许。
+- ${interactionDirective}
 
 【输出前逐项自检】
 1. 第一眼能否看出本轮展现形式，而不是只看到标题、按钮组或普通面板；
 2. 本轮主题是否真正进入内容、关系和细节，而不是只成为标签；
 3. 是否复用了近期视觉骨架、阅读路径、配色底盘或交互家族；
-4. 交互是否作用于媒介内部真实对象，并产生可保持、可辨认的第二状态；
+4. ${check4}
 5. 只输出一面完整兔子镜，直接以 <toto> 开始，以 </toto> 结束。
 </兔子镜最终执行锁>`;
 }
@@ -505,7 +512,7 @@ ${selectedFormats}`);
     chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
     chunks.push(presentationEmbodimentRule());
     chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
-    chunks.push(interactionFamilyCooldownRule());
+    if (!visualSceneryMode) chunks.push(interactionFamilyCooldownRule());
     chunks.push(innerDetailsCooldownRule());
     chunks.push(paletteCooldownRule());
     chunks.push(visualColorTruthRule());
