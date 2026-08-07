@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.2.39';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.39';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.39';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.39';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.39';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.39';
+import { getSettings } from './settings.js?rmv=1.2.40';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.40';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.40';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.40';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.40';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.40';
 
-const RUNTIME_VERSION = '1.2.39';
+const RUNTIME_VERSION = '1.2.40';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -1572,7 +1572,7 @@ function independentStoredHtmlRestorable(html=''){
   template.innerHTML=source;
   const details=template.content.querySelector('details');
   if(!details || details.tagName!=='DETAILS') return false;
-  // 1.2.29/1.2.39 could accidentally persist a loading placeholder as the
+  // 1.2.29/1.2.40 could accidentally persist a loading placeholder as the
   // final A product. Reject it during cache/history recovery so the exact
   //正文 may make its one legitimate API request and overwrite the bad record.
   if(details.classList?.contains('rabbit-mirror-external-placeholder')) return false;

@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.39';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.39';
+import { getSettings } from './settings.js?rmv=1.2.40';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.40';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.2.39';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.39';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.39';
+} from './feedbackCat.js?rmv=1.2.40';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.40';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.40';
 
 
-const RUNTIME_VERSION = '1.2.39';
+const RUNTIME_VERSION = '1.2.40';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9970,7 +9970,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.39-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.40-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -14975,7 +14975,7 @@ ${scope} [${MOBILE_LAYOUT_STATE_ROW_ATTR}] { flex-wrap: nowrap !important; min-w
 ${scope} [${MOBILE_LAYOUT_STATE_ROW_ATTR}] > label { max-width: none !important; box-sizing: border-box !important; }
 ${scope} [${MOBILE_LAYOUT_FLEX_STACK_ATTR}] { flex-direction: column !important; align-items: stretch !important; min-width: 0 !important; }
 ${scope} [${MOBILE_LAYOUT_SINGLE_COLUMN_ATTR}] { column-count: 1 !important; column-width: auto !important; }
-${scope} [${MOBILE_LAYOUT_FLUID_TITLE_ATTR}] { font-size: clamp(1.25rem, 7vw, 2rem) !important; line-height: 1.18 !important; overflow-wrap: anywhere !important; word-break: break-word !important; }
+${scope} [${MOBILE_LAYOUT_FLUID_TITLE_ATTR}] { font-size: clamp(1.1rem, 5.2vw, 1.5rem) !important; line-height: 1.18 !important; overflow-wrap: anywhere !important; word-break: break-word !important; }
 ${scope} [${MOBILE_LAYOUT_COMPACT_PADDING_ATTR}] { padding-left: clamp(10px, 4vw, 20px) !important; padding-right: clamp(10px, 4vw, 20px) !important; }
 ${scope} [${MOBILE_LAYOUT_COMPACT_GAP_ATTR}] { gap: clamp(10px, 3vw, 20px) !important; }
 ${scope} [${MOBILE_LAYOUT_MEDIA_ATTR}] { max-width: 100% !important; box-sizing: border-box !important; }
@@ -15300,8 +15300,13 @@ function installMaintenanceMobileLayoutRescue(root) {
 
         if (element.matches?.('h1,h2,h3')) {
             const fontSize = maintenanceMobileLayoutLengthPx(style.fontSize, referenceWidth);
-            if (fontSize >= 28 || overflowsSelf || overflowsRoot || maintenanceMobileLayoutTextLength(element) >= 20) {
+            // 只有真正偏大的标题才缩字号。旧逻辑把“文字较长”也当成大标题，
+            // 会把原本 1.2rem 的标题在 440px 手机上反而放大到约 30px。
+            if (fontSize >= 24) {
                 maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_FLUID_TITLE_ATTR, marked);
+            } else if (overflowsSelf || overflowsRoot) {
+                // 小字号标题若只是长文本溢出，只允许断行，不得放大字号。
+                maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_BREAK_TEXT_ATTR, marked);
             }
         }
 
@@ -17124,8 +17129,15 @@ function normalizeQuotedCssSvgDataUris(cssText) {
     return source;
 }
 
+function repairJoinedCssLengthTokens(value) {
+    return String(value || '').replace(
+        /(-?(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem|em|vw|vh|vmin|vmax|%))(?=-?(?:\d|\.\d))/gi,
+        '$1 ',
+    );
+}
+
 function repairMalformedCssDeclarations(cssText) {
-    return String(cssText || '').replace(
+    let repaired = String(cssText || '').replace(
         /(^|[;{])(\s*)transform\s*:\s*([^;{}]+)(;|(?=}))/gi,
         (full, boundary, spacing, rawValue, terminator) => {
             const important = /\s*!important\s*$/i.test(rawValue);
@@ -17141,6 +17153,31 @@ function repairMalformedCssDeclarations(cssText) {
             return `${boundary}${spacing}${declarations.join(';')}${terminator === ';' ? ';' : ''}`;
         },
     );
+
+    // 模型偶尔把 box-model 的相邻长度值粘在一起，例如
+    // padding:30px20px / margin:0 0 10px0。这里只修明确允许多值的属性，
+    // 不做全 CSS 猜测，避免误伤 URL、色值或自定义标识符。
+    // 不消费声明后的分号，这样同一 rule 中连续多个坏声明可以在一次扫描里全部修复。
+    repaired = repaired.replace(
+        /(^|[;{])(\s*)((?:padding|margin|inset|gap|row-gap|column-gap|border-radius|scroll-margin|scroll-padding))\s*:\s*([^;{}]+)(?=;|})/gi,
+        (full, boundary, spacing, property, rawValue) => {
+            const value = repairJoinedCssLengthTokens(rawValue);
+            if (value === rawValue) return full;
+            return `${boundary}${spacing}${property}: ${String(value).trim()}`;
+        },
+    );
+
+    // transition:all0.7s 是另一类常见粘连；仅修保留字 all 与时长之间的缺空格。
+    repaired = repaired.replace(
+        /(^|[;{])(\s*)transition\s*:\s*([^;{}]+)(;|(?=}))/gi,
+        (full, boundary, spacing, rawValue, terminator) => {
+            const value = String(rawValue || '').replace(/\ball(?=\d*\.?\d+(?:ms|s)\b)/gi, 'all ');
+            if (value === rawValue) return full;
+            return `${boundary}${spacing}transition: ${value.trim()}${terminator === ';' ? ';' : ''}`;
+        },
+    );
+
+    return repaired;
 }
 
 function repairPlainTextCssInHtml(htmlText) {
@@ -17605,11 +17642,33 @@ function scopeRabbitMirrorCssText(cssText, scopeSelector, classMap, checkedState
     return rewriteRabbitMirrorAnimationDeclarations(definitionsRewritten, keyframeMap);
 }
 
+function splitJoinedRabbitMirrorClassToken(token, classMap) {
+    const source = String(token || '').trim();
+    if (!source || classMap.has(source)) return null;
+    const candidates = new Set();
+    for (const [left, leftMapped] of classMap.entries()) {
+        if (!left || left.length < 4 || left.length >= source.length || !source.startsWith(left)) continue;
+        const right = source.slice(left.length);
+        if (right.length < 4) continue;
+        const rightMapped = classMap.get(right);
+        if (!rightMapped) continue;
+        candidates.add(`${leftMapped}\u0000${rightMapped}`);
+    }
+    if (candidates.size !== 1) return null;
+    return [...candidates][0].split('\u0000');
+}
+
 function rewriteRabbitMirrorClassAttributes(htmlText, classMap) {
     if (!classMap?.size) return String(htmlText || '');
     return String(htmlText || '').replace(CLASS_ATTR_RE, (match, quote, classValue) => {
         const tokens = String(classValue || '').split(/\s+/).filter(Boolean);
-        const rewritten = tokens.map(token => classMap.get(token) || token);
+        const rewritten = tokens.flatMap((token) => {
+            const mapped = classMap.get(token);
+            if (mapped) return [mapped];
+            // 高置信修复模型把两个已知 class 粘成一个 token 的情况，
+            // 例如 rm-content-secretrm-layer。只有唯一拆分时才动。
+            return splitJoinedRabbitMirrorClassToken(token, classMap) || [token];
+        });
         return rewritten.length ? ` class=${quote}${rewritten.join(' ')}${quote}` : '';
     });
 }
