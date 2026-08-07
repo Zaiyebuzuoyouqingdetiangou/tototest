@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.32';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.32';
+import { getSettings } from './settings.js?rmv=1.2.39';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.39';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.2.32';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.32';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.32';
+} from './feedbackCat.js?rmv=1.2.39';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.39';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.39';
 
 
-const RUNTIME_VERSION = '1.2.32';
+const RUNTIME_VERSION = '1.2.39';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -169,6 +169,7 @@ const interactionScopeStates = new WeakMap();
 const SCOPED_INTERACTION_ID_RE = /^(rm-[a-z0-9]+-[a-z0-9]+-[a-z0-9]{5}-)(.+)$/i;
 const RADIO_GROUP_RESCUE_ATTR = 'data-rabbit-mirror-radio-group-rescue';
 const RADIO_GROUP_ROOT_ATTR = 'data-rabbit-mirror-radio-group-count';
+const INTERACTION_REFERENCE_ALIAS_REPAIR_ATTR = 'data-rabbit-mirror-interaction-reference-alias-count';
 const RAW_RADIO_RESET_RESCUE_ATTR = 'data-rabbit-mirror-radio-reset-rescue';
 const RAW_RADIO_RESET_ROOT_ATTR = 'data-rabbit-mirror-radio-reset-count';
 const RAW_RADIO_RESET_LAST_ATTR = 'data-rabbit-mirror-radio-reset-last';
@@ -9480,6 +9481,118 @@ function collectCurrentIdsToScope(toto, elementsById, mappedValues = new Set()) 
     return { controls, idsToScope };
 }
 
+function interactionReferenceAliasTokens(value = '') {
+    return String(value || '')
+        .toLowerCase()
+        .split(/[-_:]+/)
+        .filter(Boolean)
+        .filter((token, index) => !(index === 0 && token === 'rm'));
+}
+
+function interactionReferenceAliasScore(referenceId, sourceId) {
+    const reference = String(referenceId || '').trim();
+    const source = String(sourceId || '').trim();
+    if (!reference || !source) return 0;
+    if (reference === source) return 1000;
+    if (source.endsWith(`-${reference}`)) return 950;
+    if (reference.endsWith(`-${source}`)) return 900;
+
+    const refTokens = interactionReferenceAliasTokens(reference);
+    const sourceTokens = interactionReferenceAliasTokens(source);
+    if (!refTokens.length || !sourceTokens.length) return 0;
+    if (refTokens[refTokens.length - 1] !== sourceTokens[sourceTokens.length - 1]) return 0;
+
+    let suffix = 0;
+    while (suffix < refTokens.length && suffix < sourceTokens.length
+        && refTokens[refTokens.length - 1 - suffix] === sourceTokens[sourceTokens.length - 1 - suffix]) {
+        suffix += 1;
+    }
+
+    const isSubsequence = (shorter, longer) => {
+        let cursor = 0;
+        for (const token of longer) {
+            if (token === shorter[cursor]) cursor += 1;
+            if (cursor >= shorter.length) return true;
+        }
+        return false;
+    };
+    const shorter = refTokens.length <= sourceTokens.length ? refTokens : sourceTokens;
+    const longer = shorter === refTokens ? sourceTokens : refTokens;
+    const subsequence = isSubsequence(shorter, longer);
+
+    // 只接受高置信的“中间漏掉一个命名片段”或“前缀不同但末端语义一致”。
+    // 例如模型把 input id="rm-ero-rad-1" 的引用写成 for="rm-rad-1"。
+    // 要求至少两个连续尾部 token 一致，并且较短 token 序列是较长序列的子序列；
+    // 同时必须唯一命中，避免把 tab-1 误接到其他不相关控件。
+    if (suffix < 2 || !subsequence) return 0;
+    const distance = Math.abs(refTokens.length - sourceTokens.length);
+    if (distance > 2) return 0;
+    return 700 + suffix * 20 - distance * 5;
+}
+
+function collectBrokenInteractionReferenceIds(toto) {
+    const references = new Set();
+    if (!toto?.querySelectorAll) return references;
+
+    toto.querySelectorAll('label[for]').forEach(label => {
+        const value = String(label.getAttribute('for') || '').trim();
+        if (value) references.add(value);
+    });
+    for (const attr of ['aria-controls', 'aria-labelledby', 'aria-describedby']) {
+        toto.querySelectorAll(`[${attr}]`).forEach(el => {
+            String(el.getAttribute(attr) || '').split(/\s+/).filter(Boolean).forEach(value => references.add(value));
+        });
+    }
+    toto.querySelectorAll('[href^="#"], [xlink\\:href^="#"]').forEach(el => {
+        for (const attr of ['href', 'xlink:href']) {
+            const value = String(el.getAttribute(attr) || '').trim();
+            if (value.startsWith('#') && value.length > 1) references.add(value.slice(1));
+        }
+    });
+
+    getRabbitMirrorLocalStyleElements(toto).forEach(styleEl => {
+        const css = String(styleEl.textContent || '');
+        for (const match of css.matchAll(/#([A-Za-z_-][\w-]*)/g)) references.add(match[1]);
+        for (const match of css.matchAll(/\[\s*(?:id|for|aria-controls|aria-labelledby|aria-describedby)\s*=\s*["']([^"']+)["']\s*\]/gi)) {
+            String(match[1] || '').split(/\s+/).filter(Boolean).forEach(value => references.add(value));
+        }
+    });
+    return references;
+}
+
+function augmentInteractionReferenceAliases(toto, idMap) {
+    if (!toto?.querySelectorAll || !idMap?.size) return 0;
+    const liveIds = new Set([...toto.querySelectorAll('[id]')].map(el => String(el.id || '').trim()).filter(Boolean));
+    const candidateByValue = new Map();
+    for (const [sourceId, currentId] of idMap.entries()) {
+        const source = String(sourceId || '').trim();
+        const current = String(currentId || '').trim();
+        if (!source || !current || !liveIds.has(current)) continue;
+        const existing = candidateByValue.get(current);
+        if (!existing || source.length > existing.sourceId.length) candidateByValue.set(current, { sourceId: source, currentId: current });
+    }
+    const candidates = [...candidateByValue.values()];
+    if (!candidates.length) return 0;
+
+    let changed = 0;
+    for (const referenceId of collectBrokenInteractionReferenceIds(toto)) {
+        if (!referenceId || idMap.has(referenceId) || liveIds.has(referenceId)) continue;
+        const ranked = candidates
+            .map(candidate => ({ ...candidate, score: interactionReferenceAliasScore(referenceId, candidate.sourceId) }))
+            .filter(candidate => candidate.score > 0)
+            .sort((a, b) => b.score - a.score);
+        if (!ranked.length) continue;
+        const best = ranked[0];
+        const competingValue = ranked.find(candidate => candidate.currentId !== best.currentId && candidate.score >= best.score);
+        if (competingValue) continue;
+        idMap.set(referenceId, best.currentId);
+        changed += 1;
+    }
+    if (changed) toto.setAttribute?.(INTERACTION_REFERENCE_ALIAS_REPAIR_ATTR, String(changed));
+    else if (!toto.querySelector?.(`label[for]:not([for=""])`)) toto.removeAttribute?.(INTERACTION_REFERENCE_ALIAS_REPAIR_ATTR);
+    return changed;
+}
+
 function synchronizeInteractionReferences(toto, idMap) {
     if (!idMap?.size) return;
 
@@ -9681,6 +9794,10 @@ function scopeRabbitMirrorInteractionIds(toto, { installRescue = true } = {}) {
         if (name && !name.startsWith(state.prefix)) input.name = `${state.prefix}${name}`;
     });
 
+    // 模型偶尔让 input 的真实 id 比 label/CSS 引用多一个中间命名片段，
+    // 例如 id="rm-ero-rad-1"，却写成 for="rm-rad-1" 与 [id="rm-rad-1"]。
+    // 在正式同步前建立唯一、高置信别名；只改引用，不改控件本身。
+    augmentInteractionReferenceAliases(toto, state.idMap);
     synchronizeInteractionReferences(toto, state.idMap);
     if (installRescue) installIntelligentInteractionRescue(toto);
     toto.dataset.rabbitMirrorInteractionScoped = 'true';
@@ -9853,7 +9970,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.32-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.39-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
