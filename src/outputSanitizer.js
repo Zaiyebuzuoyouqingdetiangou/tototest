@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.46';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.46';
+import { getSettings } from './settings.js?rmv=1.2.48';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.48';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.2.46';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.46';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.46';
+} from './feedbackCat.js?rmv=1.2.48';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.48';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.48';
 
 
-const RUNTIME_VERSION = '1.2.46';
+const RUNTIME_VERSION = '1.2.48';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -7867,6 +7867,120 @@ function associatedLabelsForInput(root, input) {
     return [...labels];
 }
 
+const REVERSIBLE_RADIO_GROUP_ATTR = 'data-rabbit-mirror-reversible-radio-group';
+const REVERSIBLE_RADIO_ROOT_ATTR = 'data-rabbit-mirror-reversible-radio-count';
+const REVERSIBLE_RADIO_LAST_ATTR = 'data-rabbit-mirror-reversible-radio-last';
+const REVERSIBLE_RADIO_BASELINE_ATTR = 'data-rm-reversible-radio-initial-checked';
+const reversibleRadioGroupStates = new WeakMap();
+
+function reversibleRadioGroupKey(input) {
+    const name = String(input?.getAttribute?.('name') || '').trim();
+    if (name) return `name:${name}`;
+    const id = String(input?.id || '').trim();
+    return id ? `id:${id}` : '';
+}
+
+function restoreReversibleRadioBaseline(root, group) {
+    if (!root || !group?.radios?.length) return false;
+    const changedRadios = [];
+    for (const radio of group.radios) {
+        if (!radio?.isConnected || !root.contains?.(radio)) continue;
+        const shouldCheck = group.baselineChecked.has(radio);
+        if (!!radio.checked !== shouldCheck) {
+            radio.checked = shouldCheck;
+            if (!shouldCheck) restoreInteractionInlineOverrides(radio);
+            changedRadios.push(radio);
+        }
+        radio.setAttribute('aria-pressed', shouldCheck ? 'true' : 'false');
+    }
+    if (changedRadios.length) {
+        for (const radio of changedRadios) dispatchRescuedInputState(radio);
+        const preferred = group.radios.find(radio => group.baselineChecked.has(radio)) || null;
+        if (preferred) applyCheckedVisualFallback(root, preferred);
+    }
+    root.setAttribute(REVERSIBLE_RADIO_LAST_ATTR, changedRadios.length ? 'restored-baseline' : 'baseline-already-active');
+    return true;
+}
+
+function installReversibleRadioGroupFallback(root) {
+    if (!root?.querySelectorAll) return 0;
+    const radios = [...root.querySelectorAll('input[type="radio"]')].filter(radio => !radio.disabled);
+    if (!radios.length) {
+        root.removeAttribute?.(REVERSIBLE_RADIO_ROOT_ATTR);
+        return 0;
+    }
+
+    let state = reversibleRadioGroupStates.get(root);
+    if (!state) {
+        state = { groups: new Map(), onClick: null };
+        reversibleRadioGroupStates.set(root, state);
+    }
+
+    const grouped = new Map();
+    for (const radio of radios) {
+        const key = reversibleRadioGroupKey(radio);
+        if (!key) continue;
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key).push(radio);
+    }
+
+    for (const [key, groupRadios] of grouped) {
+        let group = state.groups.get(key);
+        const sameNodes = group?.radios?.length === groupRadios.length
+            && groupRadios.every((radio, index) => group.radios[index] === radio);
+        if (!group || !sameNodes) {
+            const baselineChecked = new Set();
+            for (const radio of groupRadios) {
+                let baseline = radio.getAttribute?.(REVERSIBLE_RADIO_BASELINE_ATTR);
+                if (baseline !== 'true' && baseline !== 'false') {
+                    baseline = radio.checked ? 'true' : 'false';
+                    radio.setAttribute?.(REVERSIBLE_RADIO_BASELINE_ATTR, baseline);
+                }
+                if (baseline === 'true') baselineChecked.add(radio);
+            }
+            group = {
+                key,
+                radios: groupRadios,
+                baselineChecked,
+            };
+            state.groups.set(key, group);
+        } else {
+            group.radios = groupRadios;
+        }
+        for (const radio of groupRadios) radio.setAttribute(REVERSIBLE_RADIO_GROUP_ATTR, key);
+    }
+    for (const key of [...state.groups.keys()]) {
+        if (!grouped.has(key)) state.groups.delete(key);
+    }
+
+    if (!state.onClick) {
+        state.onClick = event => {
+            const label = event.target?.closest?.('label');
+            if (!label || !root.contains?.(label)) return;
+            const nestedInteractive = event.target?.closest?.('button,a[href],input,select,textarea,[role="button"]');
+            if (nestedInteractive && nestedInteractive !== label && label.contains?.(nestedInteractive)) return;
+
+            let radio = null;
+            const forId = String(label.getAttribute?.('for') || '').trim();
+            if (forId) radio = [...root.querySelectorAll('input[type="radio"][id]')].find(item => item.id === forId) || null;
+            if (!radio) radio = label.querySelector?.('input[type="radio"]') || null;
+            if (!radio || !radio.checked) return;
+
+            const key = reversibleRadioGroupKey(radio);
+            const group = state.groups.get(key);
+            if (!group) return;
+            event.preventDefault();
+            restoreReversibleRadioBaseline(root, group);
+        };
+        root.addEventListener('click', state.onClick, true);
+    }
+
+    const count = state.groups.size;
+    if (count) root.setAttribute(REVERSIBLE_RADIO_ROOT_ATTR, String(count));
+    else root.removeAttribute(REVERSIBLE_RADIO_ROOT_ATTR);
+    return count;
+}
+
 function inputHasVisibleNativeToggle(input) {
     if (!input) return false;
     const snapshot = getRenderedStyleSnapshot(input);
@@ -8664,6 +8778,9 @@ function installIntelligentInteractionRescue(root) {
 
     const capabilities = detectInteractionCapabilities(root);
     if (capabilities.checked) {
+        // radio 原生再次点击已选项不会取消，导致大量单选式场景进入第二状态后无法返回。
+        // 记录首次安装时的组内初始 checked 基线；再次点按当前已选 label 时恢复该基线，不编造新内容。
+        installReversibleRadioGroupFallback(root);
         // 无 label 的透明 checkbox 若只依赖父容器 :focus-within 显示背面，
         // 在触屏 WebView 中焦点会立即丢失或无法再次关闭。把同一套现有 CSS
         // 映射到本地持久状态属性；只接管明确承担第二层内容的高置信结构。
@@ -9975,7 +10092,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.46-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.48-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -10109,6 +10226,7 @@ function diagnosticRouteSummary(root) {
         channelDialCycle: Number.parseInt(root?.getAttribute?.(CHANNEL_DIAL_CYCLE_COUNT_ATTR) || '0', 10) || 0,
         reversibleChecked: Number.parseInt(root?.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) || 0,
         radioGroups: Number.parseInt(root?.getAttribute?.(RADIO_GROUP_ROOT_ATTR) || '0', 10) || 0,
+        reversibleRadio: Number.parseInt(root?.getAttribute?.(REVERSIBLE_RADIO_ROOT_ATTR) || '0', 10) || 0,
         radioReset: Number.parseInt(root?.getAttribute?.(RAW_RADIO_RESET_ROOT_ATTR) || '0', 10) || 0,
         expandedOpacity: root?.querySelectorAll?.(`[${EXPANDED_OPACITY_RESCUE_ATTR}]`)?.length || 0,
         containerReveal: renderedContainerInternalRevealStates.get(root)?.entries?.size || 0,
@@ -10136,7 +10254,7 @@ function diagnosticRouteSummary(root) {
 function diagnosticInferReason(root, inputs, targets, state = null) {
     const routes = diagnosticRouteSummary(root);
     const depth = maintenanceCheckedInteractionDepth(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.missingCheckedClass + routes.crossParentChecked + routes.checkedHasState + routes.detachedCheckedHas + routes.pairedCheckedState + routes.exclusiveStackedState + routes.channelDialCycle + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.focusWithinPersistent + routes.unlabeledChecked + routes.labeledCheckedVerify + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.staticChoiceSelection + routes.structuredStaticDisclosure + routes.fillInChoice + routes.passportDocument + routes.decorativeOverlayPassThrough;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.missingCheckedClass + routes.crossParentChecked + routes.checkedHasState + routes.detachedCheckedHas + routes.pairedCheckedState + routes.exclusiveStackedState + routes.channelDialCycle + routes.reversibleRadio + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.focusWithinPersistent + routes.unlabeledChecked + routes.labeledCheckedVerify + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.staticChoiceSelection + routes.structuredStaticDisclosure + routes.fillInChoice + routes.passportDocument + routes.decorativeOverlayPassThrough;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -11006,6 +11124,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `频道旋钮循环 entries=${routes.channelDialCycle} listener=${routes.channelDialCycle ? 'true' : 'false'}`,
         `单向checked回退 entries=${routes.reversibleChecked} listener=${routes.reversibleChecked ? 'true' : 'false'}`,
         `radio同组恢复 groups=${routes.radioGroups} listener=${routes.radioGroups ? 'true' : 'false'}`,
+        `radio可逆返回 groups=${routes.reversibleRadio} listener=${routes.reversibleRadio ? 'true' : 'false'} last=${root.getAttribute?.(REVERSIBLE_RADIO_LAST_ATTR) || '(尚未再次点按已选项)'}`,
         `radio取消程序恢复 entries=${routes.radioReset} listener=${routes.radioReset ? 'true' : 'false'} last=${root.getAttribute?.(RAW_RADIO_RESET_LAST_ATTR) || '(尚未点击验证)'}`,
         `checked交互深度 rules=${checkedDepth.checkedRuleCount} selectionOnly=${checkedDepth.selectionStyleRuleCount} secondLayer=${checkedDepth.meaningfulCheckedRuleCount} fallback=${checkedDepth.selectionOnlyFallbackCount}`,
         `伪类交互深度 rules=${pseudoDepth.pseudoRuleCount} visualOnly=${pseudoDepth.visualOnlyPseudoRuleCount} secondLayer=${pseudoDepth.meaningfulPseudoRuleCount}`,
@@ -15556,7 +15675,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.09';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.10';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -15601,6 +15720,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         const exclusiveStackedStateCount = Number.parseInt(target.getAttribute?.(EXCLUSIVE_STACKED_STATE_COUNT_ATTR) || '0', 10) || 0;
         const channelDialCycleCount = Number.parseInt(target.getAttribute?.(CHANNEL_DIAL_CYCLE_COUNT_ATTR) || '0', 10) || 0;
         const reversibleCheckedCount = Number.parseInt(target.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) || 0;
+        const reversibleRadioCount = Number.parseInt(target.getAttribute?.(REVERSIBLE_RADIO_ROOT_ATTR) || '0', 10) || 0;
         const focusWithinPersistentCount = Number.parseInt(target.getAttribute?.(FOCUS_WITHIN_PERSISTENT_ROOT_ATTR) || '0', 10) || 0;
         const selectionFallbackCount = installSelectionOnlyStateFallback(target);
         const inertActionRepairCount = installInertActionButtonFallback(target);
@@ -15640,6 +15760,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             || exclusiveStackedStateCount > 0
             || channelDialCycleCount > 0
             || reversibleCheckedCount > 0
+            || reversibleRadioCount > 0
             || focusWithinPersistentCount > 0
             || meaningfulCheckedRoute;
         if (genuinelyRescued) target.dataset.rabbitMirrorInteractionRescued = 'true';
@@ -16024,6 +16145,7 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
     // 避免误判时把所有第二层内容提前展开或锁死交互。
     const safeInstallers = [
         ['radio-reset-local-scope', installRawMessageRadioResetProgramRescue],
+        ['radio-reversible-return', installReversibleRadioGroupFallback],
         ['missing-checked-control-class', installMissingCheckedSubjectClassRescue],
         ['webkit-3d-flip-compat', installWebKit3DFlipRescue],
         ['visual-scenery-mobile-overflow', installVisualSceneryMobileNarrativeOverflowRescue],

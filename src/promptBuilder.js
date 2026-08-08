@@ -1,9 +1,9 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.46';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.46';
-import { pickCombination } from './picker.js?rmv=1.2.46';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.46';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.46';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.46';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.48';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.48';
+import { pickCombination } from './picker.js?rmv=1.2.48';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.48';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.48';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.48';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -290,7 +290,7 @@ function complexInteractiveCore() {
     return String.raw`
 复杂交互视觉核心:
   - 兔子镜必须是复杂精美的微型交互媒介作品，不能退化为普通信息页、单列内容块、简单表单或文字摘要。
-  - 除最外层折叠外，每轮必须实际存在至少一组从本轮叙事核心、媒介本体或画面内部关系自然生长的完整交互链：可操作对象→明确操作→可识别且可保持的状态变化→对应的内容、关系或结构反馈→可继续推进、分支、组合、切换或返回。
+  - 除最外层折叠外，每轮必须实际存在至少一组从本轮叙事核心、媒介本体或画面内部关系自然生长的完整交互链：可操作对象→明确操作→可识别且可保持的状态变化→对应的内容、关系或结构反馈→可继续推进、分支、组合、切换或返回。除剧情本身明确属于一次性不可逆动作外，主要交互进入任何非初始状态后都必须能回到初始状态：优先再次触发同一对象恢复，或在当前状态内保留明确可触摸的返回入口；不得让唯一触发器永久消失，也不得让 radio／状态层进入后无取消路径。
   - 交互产生、替换或推进后的主要正文与关键反馈，须由本轮展现形式自身的内容区域完整承载，并在对应状态中保持可读、可达；具体承载方式由媒介本体决定，不得因裁切、遮挡或脱离所属区域而显示不全。
   - 内容承载优先于复杂度：含主要正文、长句、段落或关键反馈的节点及其承载父级必须参与正常文档流并由内容撑高；禁止用 position:absolute/fixed、固定 px/vh 高度、height:100%、transform 位移或 overflow:hidden/clip 作为正文承载骨架，只有纯装饰、短标签与图形层可脱离文档流。
   - 需要状态叠层时，优先使用能由内容撑高的 grid 同格叠层、正常流显隐或媒介内部明确可操作的滚动／分页；禁止让两个含长正文的状态以 absolute 叠放在固定画布内。若使用内部 details/summary 表示正反面或状态替换，打开后 summary 不得继续以 height:100% 占据整块面板并把后续状态推到裁切区；正面必须收起或退出占位，暗面须在同一媒介区域内可见，并提供可触摸的返回方式。输出前按 360px 手机窄屏自检，每个状态的最后一行必须仍位于所属卡片、画框或页面边界内。
@@ -308,7 +308,7 @@ Visual Scenery 场景优先级【覆盖通用交互骨架的执行顺序】:
   - 画面可表现现实、回忆、幻想、未来畅想、可能性或象征情境，不必复刻当前现场；但必须落实为可辨认的具体对象、人物、环境、空间关系或正在发生的情境，抽象色块、渐变、光斑、线条与几何形只能辅助。
   - 首个主要场景根节点必须标记 data-rm-visual-scenery="true"，方便插件只读验收；该属性不产生可见文字，也不得被当作标题或说明。
   - 至少一处占据明确视觉权重的主体、关系结构或环境层，必须同时具备真实 @keyframes、可见元素上的 animation 声明、infinite 循环，并在打开后 1 秒内产生肉眼可见的位移、缩放、旋转、形变、遮罩推进、流体变化或光影扫动。
-  - 场景必须同时具有一条与画面本体一致的有效交互链：场景对象→触摸／点击等操作→可保持的画面、关系、时间或内容变化→明确反馈；仅 hover/active、变色、描边或轻微位移不算本轮必需交互。
+  - 场景必须同时具有一条与画面本体一致的有效交互链：场景对象→触摸／点击等操作→可保持的画面、关系、时间或内容变化→明确反馈；除明确的一次性叙事动作外，进入第二状态后必须能再次触发同一对象或使用当前画面内的返回入口恢复初始状态。仅 hover/active、变色、描边或轻微位移不算本轮必需交互。
   - 场景未操作时就必须完整、清晰、持续活动；交互用于推进、揭示、切换或改变场景，不能作为显示核心画面的前置条件。
   - 允许场景画布中的纯装饰与短标签使用定位和裁切；主要正文与交互反馈若较长，须进入正常文档流并完整撑高，不能被固定高度或 overflow:hidden 截断。`;
 }
@@ -461,14 +461,14 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     ].filter(Boolean);
 
     const interactionDirective = visualSceneryMode
-        ? 'Visual Scenery 必须包含场景内有效交互：由具体场景对象触发，并实际改变、揭示、切换或推进画面内容；hover/active 只能辅助。'
-        : '新交互必须从本轮媒介本体自行生长；不得从固定组件清单中挑选，也不得为躲避冷却机械轮换另一种常见模板。无法被现有识别器归类的全新交互完全允许。';
+        ? 'Visual Scenery 必须包含场景内有效交互：由具体场景对象触发，并实际改变、揭示、切换或推进画面内容；除明确的一次性叙事动作外，交互后必须能够恢复到初始画面；hover/active 只能辅助。'
+        : '新交互必须从本轮媒介本体自行生长；不得从固定组件清单中挑选，也不得为躲避冷却机械轮换另一种常见模板。除明确的一次性叙事动作外，任何主要交互的第二状态都必须保留回到初始状态的路径。无法被现有识别器归类的全新交互完全允许。';
     const visualSceneryHardLock = visualSceneryMode
         ? '- Visual Scenery 画面硬锁：去掉文字后仍须看得出具体场景、对象与正在发生的情境；抽象色块、渐变、光斑、线条和几何形只能辅助，不能当主体。画布内不得塞长正文，连续正文放到画布外正常流；关键内容不能依赖 hover，也不能被固定高度裁切。'
         : '';
     const check4 = visualSceneryMode
-        ? 'Visual Scenery 去掉文字后是否仍能看出具体场景与事件；是否存在场景内可触摸的有效交互并产生可保持变化；360px 手机无需 hover 是否能看到关键内容且没有正文裁切；'
-        : '交互是否作用于媒介内部真实对象，并产生可保持、可辨认的第二状态；';
+        ? 'Visual Scenery 去掉文字后是否仍能看出具体场景与事件；是否存在场景内可触摸的有效交互并产生可保持变化；非一次性交互能否从第二状态恢复初始画面；360px 手机无需 hover 是否能看到关键内容且没有正文裁切；'
+        : '交互是否作用于媒介内部真实对象，并产生可保持、可辨认的第二状态；除一次性叙事动作外，第二状态是否始终能返回初始状态；';
 
     return String.raw`<兔子镜最终执行锁 data-source="independent-api-near-output">
 【本轮必须落实】

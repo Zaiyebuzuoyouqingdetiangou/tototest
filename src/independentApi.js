@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.2.46';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.46';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.46';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.46';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.46';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.46';
+import { getSettings } from './settings.js?rmv=1.2.48';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.48';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.48';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.48';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.48';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.48';
 
-const RUNTIME_VERSION = '1.2.46';
+const RUNTIME_VERSION = '1.2.48';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -843,6 +843,74 @@ function independentPaletteBrightnessFamily(palette){
  }
  return '';
 }
+function independentPaletteToneProfile(palette){
+ if(!palette || typeof palette!=='object') return null;
+ const brightnessFamily=independentPaletteBrightnessFamily(palette);
+ const confidence=Number(palette.confidence||0);
+ if(!brightnessFamily && Number.isFinite(confidence) && confidence>0 && confidence<0.4) return null;
+ const hueFamily=String(palette.hueFamily||'neutral').trim().toLowerCase()||'neutral';
+ const saturation=String(palette.saturation||'').trim().toLowerCase()||'low';
+ const temperature=String(palette.temperature||'neutral').trim().toLowerCase()||'neutral';
+ const averageLuminance=Number(palette.averageLuminance);
+ const surfaceBand=brightnessFamily==='dark'
+  ? 'dark'
+  : (Number.isFinite(averageLuminance)
+    ? (averageLuminance>=188 ? 'pale' : averageLuminance>=132 ? 'soft' : 'mid')
+    : (brightnessFamily==='light' ? 'pale' : 'soft'));
+ let toneLean='neutral';
+ if(saturation==='low'){
+  if(temperature==='cool' || ['green','cyan','blue','purple'].includes(hueFamily)) toneLean='cool_muted';
+  else if(temperature==='warm' || ['red','orange','yellow','pink'].includes(hueFamily)) toneLean='warm_muted';
+  else toneLean='neutral_muted';
+ }else if(hueFamily==='neutral'){
+  toneLean=temperature==='cool' ? 'cool_neutral' : (temperature==='warm' ? 'warm_neutral' : 'neutral');
+ }else if(['green','cyan','blue','purple'].includes(hueFamily)) toneLean='cool_color';
+ else if(['red','orange','yellow','pink'].includes(hueFamily)) toneLean='warm_color';
+ else toneLean=hueFamily;
+ const signature=[surfaceBand,toneLean,saturation].join(':');
+ return {
+  signature,
+  surfaceBand,
+  toneLean,
+  saturation,
+  brightnessFamily:brightnessFamily||'',
+  hueFamily,
+  temperature,
+  averageLuminance:Number.isFinite(averageLuminance)?Math.round(averageLuminance):null,
+  confidence:Number.isFinite(confidence)?confidence:0,
+ };
+}
+function independentPaletteToneSimilarity(a,b){
+ if(!a || !b) return 0;
+ let score=0;
+ if(a.surfaceBand===b.surfaceBand) score+=2;
+ else if(['pale','soft'].includes(a.surfaceBand) && ['pale','soft'].includes(b.surfaceBand)) score+=1;
+ if(a.saturation===b.saturation) score+=2;
+ else if(['low','medium'].includes(a.saturation) && ['low','medium'].includes(b.saturation)) score+=1;
+ if(a.toneLean===b.toneLean) score+=2;
+ else if(String(a.toneLean).includes('cool') && String(b.toneLean).includes('cool')) score+=1;
+ else if(String(a.toneLean).includes('warm') && String(b.toneLean).includes('warm')) score+=1;
+ else if(/muted/.test(String(a.toneLean)) && /muted/.test(String(b.toneLean))) score+=1;
+ if(a.brightnessFamily && a.brightnessFamily===b.brightnessFamily) score+=1;
+ return score;
+}
+function independentPaletteToneRepeats(a,b){
+ if(!a || !b) return false;
+ const score=independentPaletteToneSimilarity(a,b);
+ if(a.saturation==='low' && b.saturation==='low' && a.surfaceBand!=='dark' && b.surfaceBand!=='dark' && /(cool|neutral)/.test(String(a.toneLean)) && /(cool|neutral)/.test(String(b.toneLean))) return score>=4;
+ return score>=5;
+}
+function independentPaletteToneLabel(profile){
+ if(!profile) return '';
+ const surfaceMap={dark:'深色',pale:'浅亮',soft:'柔和中浅',mid:'中明度'};
+ const toneMap={
+  cool_muted:'冷淡低饱和',warm_muted:'暖淡低饱和',neutral_muted:'中性低饱和',
+  cool_neutral:'偏冷中性',warm_neutral:'偏暖中性',neutral:'中性',
+  cool_color:'冷色',warm_color:'暖色'
+ };
+ const satMap={low:'低饱和',medium:'中饱和',high:'高饱和'};
+ return [surfaceMap[profile.surfaceBand]||profile.surfaceBand,toneMap[profile.toneLean]||profile.toneLean,satMap[profile.saturation]||profile.saturation].filter(Boolean).join(' / ');
+}
 function recentIndependentRecordsForCurrentChat(limit=5,ctx=getContext()){
  const prefix=`${chatKey(ctx)}:`;
  return Object.entries(readStore())
@@ -855,13 +923,19 @@ function independentPaletteGuardState(ctx=getContext()){
  const records=recentIndependentRecordsForCurrentChat(5,ctx);
  const samples=records.map(({key,item})=>{
   const palette=item.paletteFingerprint||independentPaletteFingerprintFromHtml(item.html);
-  return {key,palette,brightnessFamily:independentPaletteBrightnessFamily(palette)};
+  return {
+   key,
+   palette,
+   brightnessFamily:independentPaletteBrightnessFamily(palette),
+   toneProfile:independentPaletteToneProfile(palette),
+  };
  });
  // Preserve the exact finished-result sequence. An ambiguous/unclassified newest
  // result must break the streak rather than being filtered out and making two
  // older mirrors look artificially consecutive.
  const latest=samples[0]?.palette||null;
  const latestBrightnessFamily=String(samples[0]?.brightnessFamily||'');
+ const latestToneProfile=samples[0]?.toneProfile||null;
  let brightnessStreak=0;
  if(latestBrightnessFamily){
   for(const sample of samples){
@@ -869,11 +943,37 @@ function independentPaletteGuardState(ctx=getContext()){
    brightnessStreak++;
   }
  }
- // Independent-only luminance-family cooldown. Two consecutive finished mirrors
- // in the same main-carrier brightness family are allowed; the third may not
- // reuse that family. Accent/text colors do not change the family. Because the
- // next family is never prescribed, this is not a dark->light->mid rotation.
- // A genuinely different finished result breaks the streak naturally.
+ let toneStreak=0;
+ if(latestToneProfile){
+  for(const sample of samples){
+   if(!sample.toneProfile || !independentPaletteToneRepeats(latestToneProfile,sample.toneProfile)) break;
+   toneStreak++;
+  }
+ }
+ if(toneStreak>=2){
+  const toneLabel=independentPaletteToneLabel(latestToneProfile);
+  const prompt=`独立 API 实际成品整体色调重复纠偏【仅本轮，依据最近两面真实渲染结果】:
+- 最近两面独立 API 成品被可靠识别为相近的整体视觉色调家族${toneLabel?`（${toneLabel}）`:''}。本轮不得继续沿用相近的整体色调印象，必须从当前正文、展现形式、媒介、环境与材质重新推导新的主承载面气质。
+- 判断不只看明暗，还要同时看主要承载面的明度、冷暖、色相倾向、饱和度与主底色观感；像连续灰白、灰绿、灰蓝、淡冷白、低饱和雾面等近似底盘，都视为同类重复。
+- 只更换文字、强调色、描边、图标、局部小装饰或小面积点缀，不能视为脱离重复；必须让主背景／主底盘／主承载面的整体色调真正变化。
+- 不指定下一轮必须采用哪一种具体颜色，也不得为了躲避纠偏而硬套彩虹色；配色仍须服务本轮叙事与媒介落地，但必须明显摆脱最近连续成品的整体色调惯性。`;
+  return {
+   active:true,
+   kind:'tone_streak',
+   prompt,
+   toneStreak,
+   toneFamily:String(latestToneProfile?.signature||''),
+   toneLabel,
+   brightnessStreak,
+   brightnessFamily:latestBrightnessFamily,
+   darkStreak:latestBrightnessFamily==='dark'?brightnessStreak:0,
+   recentCount:samples.length,
+   latestBrightness:String(latest?.brightness||''),
+   latestConfidence:Number(latest?.confidence||0),
+  };
+ }
+ // Fallback: if tone profiling is unavailable but brightness repetition is clear,
+ // keep the older safeguard rather than dropping correction entirely.
  if(brightnessStreak>=2){
   const prompt=`独立 API 实际成品明度重复纠偏【仅本轮，依据最近两面真实渲染结果】:
 - 最近两面独立 API 成品的主要承载面被可靠识别为同一整体明度家族。本轮主要承载面不得继续重复该明度家族，必须从当前正文、展现形式、媒介、环境与材质重新推导不同的整体明度关系。
@@ -883,9 +983,11 @@ function independentPaletteGuardState(ctx=getContext()){
    active:true,
    kind:'brightness_streak',
    prompt,
+   toneStreak,
+   toneFamily:String(latestToneProfile?.signature||''),
+   toneLabel:independentPaletteToneLabel(latestToneProfile),
    brightnessStreak,
    brightnessFamily:latestBrightnessFamily,
-   // Kept for backwards-compatible diagnostics that still display this field.
    darkStreak:latestBrightnessFamily==='dark'?brightnessStreak:0,
    recentCount:samples.length,
    latestBrightness:String(latest?.brightness||''),
@@ -896,6 +998,9 @@ function independentPaletteGuardState(ctx=getContext()){
   active:false,
   kind:'',
   prompt:'',
+  toneStreak,
+  toneFamily:String(latestToneProfile?.signature||''),
+  toneLabel:independentPaletteToneLabel(latestToneProfile),
   brightnessStreak,
   brightnessFamily:latestBrightnessFamily,
   darkStreak:latestBrightnessFamily==='dark'?brightnessStreak:0,
@@ -954,6 +1059,9 @@ ${executionLock}${paletteNearOutput}
   executionLockChars:executionLock.length,
   independentPaletteGuardActive:!!paletteGuard.active,
   independentPaletteGuardKind:String(paletteGuard.kind||''),
+  independentPaletteToneFamily:String(paletteGuard.toneFamily||''),
+  independentPaletteToneLabel:String(paletteGuard.toneLabel||''),
+  independentPaletteToneStreak:Number(paletteGuard.toneStreak||0),
   independentPaletteBrightnessFamily:String(paletteGuard.brightnessFamily||''),
   independentPaletteBrightnessStreak:Number(paletteGuard.brightnessStreak||0),
   independentPaletteDarkStreak:Number(paletteGuard.darkStreak||0),

@@ -1,11 +1,11 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=1.2.46';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.46';
-import { getSettings } from './settings.js?rmv=1.2.46';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.2.48';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.48';
+import { getSettings } from './settings.js?rmv=1.2.48';
 import {
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.2.46';
+} from './generationGuard.js?rmv=1.2.48';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
