@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.2.50';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.50';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.50';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.50';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.50';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.50';
+import { getSettings } from './settings.js?rmv=1.2.53';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.53';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue } from './outputSanitizer.js?rmv=1.2.53';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.53';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.53';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.53';
 
-const RUNTIME_VERSION = '1.2.50';
+const RUNTIME_VERSION = '1.2.53';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -212,12 +212,23 @@ function readChatOutputMetadata(ctx=getContext()){
  const metadata=chatMetadataObject(ctx); if(!metadata) return emptyChatOutputMetadata();
  return normalizeChatOutputMetadata(metadata[CHAT_OUTPUT_METADATA_KEY]);
 }
+const chatMetadataSaveChains=new Map();
 function saveChatOutputMetadata(ctx=getContext()){
- try{
-  const result=ctx?.saveMetadata?.();
-  if(result&&typeof result.catch==='function') result.catch(error=>console.warn('[RabbitMirror] 独立 API 跨设备兔子镜保存失败:',error));
-  return true;
- }catch(error){ console.warn('[RabbitMirror] 独立 API 跨设备兔子镜保存失败:',error); return false; }
+ const save=ctx?.saveMetadata;
+ if(typeof save!=='function') return false;
+ // Chat metadata writes are deliberately fire-and-forget from the generation
+ // path, but writes for the same chat must not race each other. Per-chat queues
+ // prevent a slower earlier save from landing after a newer repair snapshot,
+ // while unrelated chats never block one another.
+ const key=String(chatKey(ctx)||'chat');
+ const previous=chatMetadataSaveChains.get(key)||Promise.resolve();
+ const next=previous
+  .catch(()=>{})
+  .then(()=>save.call(ctx))
+  .catch(error=>console.warn('[RabbitMirror] 独立 API 跨设备兔子镜保存失败:',error));
+ chatMetadataSaveChains.set(key,next);
+ next.finally(()=>{ if(chatMetadataSaveChains.get(key)===next) chatMetadataSaveChains.delete(key); });
+ return true;
 }
 function chatOwnerKey(index,swipe=0){
  const i=Number(index), s=Number(swipe);
@@ -256,7 +267,8 @@ function chatPersistenceSlot(ctx,index,swipe,record){
  return sourceHash?`${chatKey(ctx)}:${Number(index)}:${Number(swipe)}:${sourceHash}`:'';
 }
 function mergeChatOutputsIntoLocalStore(ctx,store){
- const state=readChatOutputMetadata(ctx); let changed=false;
+ const state=readChatOutputMetadata(ctx); const metadata=chatMetadataObject(ctx);
+ let storeChanged=false; let metadataChanged=false;
  for(const [ownerKey,raw] of Object.entries(state.owners||{})){
   const owner=parseChatOwnerKey(ownerKey); if(!owner) continue;
   const base=`${chatKey(ctx)}:${owner.index}:${owner.swipe}`;
@@ -264,12 +276,22 @@ function mergeChatOutputsIntoLocalStore(ctx,store){
   const record=compactChatPersistedRecord(raw); if(!record?.html || !independentStoredHtmlRestorable(record.html)) continue;
   const slot=chatPersistenceSlot(ctx,owner.index,owner.swipe,record); if(!slot) continue;
   const existing=store?.[slot];
-  if(!existing?.html || !independentStoredHtmlRestorable(existing.html) || String(existing.html)!==String(record.html)){
-   saveRecordForSlot(store,slot,record,{dropLegacy:false}); changed=true;
+  const existingReady=existing?.html && independentStoredHtmlRestorable(existing.html) ? compactChatPersistedRecord(existing) : null;
+  const localIsNewer=!!existingReady && Number(existingReady.ts||0)>Number(record.ts||0);
+  if(localIsNewer){
+   // A maintenance repair is first committed to the live/local snapshot. If an
+   // older chatMetadata copy is observed before the queued server save finishes,
+   // keep the newer local HTML authoritative and immediately heal metadata.
+   if(String(existingReady.html||'')!==String(record.html||'')){
+    state.owners[ownerKey]=existingReady; metadataChanged=true;
+   }
+  }else if(!existingReady || String(existingReady.html||'')!==String(record.html||'')){
+   saveRecordForSlot(store,slot,record,{dropLegacy:false}); storeChanged=true;
   }
-  setOwnerLockForBase(base,slot,String(record.sourceHash||record.bodyHash||''));
+  setOwnerLockForBase(base,slot,String((localIsNewer?existingReady:record)?.sourceHash||(localIsNewer?existingReady:record)?.bodyHash||''));
  }
- return changed;
+ if(metadataChanged && metadata){ metadata[CHAT_OUTPUT_METADATA_KEY]=state; saveChatOutputMetadata(ctx); }
+ return {storeChanged,metadataChanged};
 }
 function migrateLegacyLocalOutputsToChatMetadata(ctx,store){
  const metadata=chatMetadataObject(ctx); if(!metadata) return {metadataChanged:false,storeChanged:false};
@@ -295,7 +317,10 @@ function migrateLegacyLocalOutputsToChatMetadata(ctx,store){
 function synchronizeIndependentChatPersistence(ctx,store){
  const imported=mergeChatOutputsIntoLocalStore(ctx,store);
  const migrated=migrateLegacyLocalOutputsToChatMetadata(ctx,store);
- return {storeChanged:!!(imported||migrated.storeChanged),metadataChanged:!!migrated.metadataChanged};
+ return {
+  storeChanged:!!(imported.storeChanged||migrated.storeChanged),
+  metadataChanged:!!(imported.metadataChanged||migrated.metadataChanged),
+ };
 }
 function independentContextChatMetadata(ctx){
  const source=ctx?.chatMetadata || globalThis.chat_metadata || null;
@@ -1560,7 +1585,7 @@ function extractReadyDetails(html=''){
   }
   repairRabbitMirrorScopedClassAliasesInScope(details);
   repairLabelTargets(details);
-  isolateRabbitMirrorInteractionIds(details);
+  activateRabbitMirrorInteractionRescue(details);
   details.setAttribute(INDEPENDENT_SANITIZER_ATTR,RUNTIME_VERSION);
  }
  return details;
@@ -1593,6 +1618,8 @@ function removeIndependentResayButtons(host){
 function ensureExternalTools(host){
  if(!host?.isConnected) return;
  stampExternalDetailsOwnership(host);
+ const details=host.querySelector?.(':scope > details');
+ try{ if(details) activateRabbitMirrorInteractionRescue(details); }catch(error){ console.debug('[RabbitMirror] external interaction activation skipped:',error); }
  try{ refreshRabbitMirrorToolsInScope(host); }catch(error){ console.debug('[RabbitMirror] external tool preparation skipped:',error); }
  removeIndependentResayButtons(host);
 }
@@ -2455,9 +2482,10 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  if(st.enabled===false || st.autoRabbitMirrorInjection===false || st.generationSource!=='independent' || runtimeMode()!=='independent') return;
  if(!force && (suppressesAutomaticGeneration(ctx,index) || hasExistingFollowRabbitMirror(ctx,index,msg))) return;
  const el=messageElement(index);
+ // Keep cross-device migration/reconciliation out of the paid request critical
+ // path. Normal sync passes handle it; generation only reads the already-present
+ // owner snapshot and proceeds without scanning/saving the whole chat first.
  let store=readStore();
- const persistenceSync=synchronizeIndependentChatPersistence(ctx,store);
- if(persistenceSync.storeChanged) writeStore(store);
  const persistedOwner=persistedOwnerForMessage(ctx,index,msg);
  const persistedSuppressed=!!persistedOwner?.deleted;
  const persistedReady=!persistedSuppressed&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)?persistedOwner:null;
@@ -3379,10 +3407,13 @@ function clearGenerationPolls(){
  for(const entry of generationPolls.values()){ entry.cancelled=true; if(entry.timer) clearTimeout(entry.timer); }
  generationPolls.clear();
 }
-function clearScheduledGeneration(){
+function clearLatestGenerationScheduling(){
  if(latestGenerationTimer){ clearTimeout(latestGenerationTimer); latestGenerationTimer=null; }
- clearGenerationPolls();
  clearGenerationPlaceholderPoll();
+}
+function clearScheduledGeneration(){
+ clearLatestGenerationScheduling();
+ clearGenerationPolls();
 }
 function scheduleLatest(delay=520){
  if(latestGenerationTimer) clearTimeout(latestGenerationTimer);
@@ -3485,7 +3516,10 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
      const handler=()=>{
        hostGenerationInProgress=true;
        hostGenerationHintStartedAt=Date.now();
-       clearScheduledGeneration();
+       // A new assistant reply must not cancel the previous reply's already
+       // queued RabbitMirror poll. Each message owns its own poll/flight; only
+       // the transient latest/placeholder scheduler is replaced here.
+       clearLatestGenerationScheduling();
        scheduleGenerationPlaceholderPoll(60);
        const ctx=getContext();
        const lastIndex=Array.isArray(ctx.chat)?ctx.chat.length-1:-1;

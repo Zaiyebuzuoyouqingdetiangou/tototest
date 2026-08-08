@@ -1,3 +1,7 @@
+export const MEDIA_NATIVE_CONTENT_RULE = String.raw`
+媒介内容转译:
+  - 从本轮正文中找出最值得由该媒介承载的核心，把关键人物、物件、关系、变化或信息尽可能转译成媒介原生的部件、痕迹、状态或空间位置，并利用位置、比例、层叠、方向、留白、材质或状态关系组织，使信息真正发生在媒介中，而不是留作额外说明或装进通用内容页。`;
+
 export const MEDIA_SELF_JUDGMENT_RULES = String.raw`
 媒介本体强制成立:
   enforcement_level: "mandatory"

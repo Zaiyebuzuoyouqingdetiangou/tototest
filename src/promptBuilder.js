@@ -1,9 +1,11 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.50';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.50';
-import { pickCombination } from './picker.js?rmv=1.2.50';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.50';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.50';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.50';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.53';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.53';
+import { DYNAMIC_COMMITMENT_RULES } from '../data/raw/dynamicCommitmentRules.js?rmv=1.2.53';
+import { MEDIA_NATIVE_CONTENT_RULE } from '../data/raw/mediaSelfJudgmentRules.js?rmv=1.2.53';
+import { pickCombination } from './picker.js?rmv=1.2.53';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.53';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.53';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.53';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -81,6 +83,14 @@ function samplingModeLabel(combo, settings) {
 
 function hasVisualScenery(combo) {
     return combo?.formats?.some(item => item.id === '10.2.2' || String(item.title || '').toLowerCase().includes('visual scenery'));
+}
+
+function hasDynamicCommitment(combo) {
+    const dynamicPattern = /(持续动态|动态\s*(?:CSS|视觉|画面|场景)|动画(?:效果|结构)?|倒计时|自动(?:播放|滚动)|循环(?:播放|运动|动画)|持续(?:运动|变化|流动)|旋转动画)/iu;
+    return combo?.formats?.some(item => {
+        const text = `${item?.id || ''} ${item?.title || ''} ${item?.summary || ''} ${item?.raw || ''}`;
+        return dynamicPattern.test(text);
+    });
 }
 
 
@@ -304,13 +314,10 @@ function complexInteractiveCore() {
 function visualScenerySceneFirstCore() {
     return String.raw`
 Visual Scenery 场景优先级【覆盖通用交互骨架的执行顺序】:
-  - 本轮第一优先级是先让一幅完整动态场景本体成立；不得为了满足交互先搭建按钮组、标签页、仪表盘、信息卡、播放器或说明面板。
-  - 画面可表现现实、回忆、幻想、未来畅想、可能性或象征情境，不必复刻当前现场；但必须落实为可辨认的具体对象、人物、环境、空间关系或正在发生的情境，抽象色块、渐变、光斑、线条与几何形只能辅助。
+  - 本轮第一优先级是先让完整画面本体成立；不得为了满足交互先搭建按钮组、标签页、仪表盘、信息卡、播放器或说明面板。
   - 首个主要场景根节点必须标记 data-rm-visual-scenery="true"，方便插件只读验收；该属性不产生可见文字，也不得被当作标题或说明。
-  - 至少一处占据明确视觉权重的主体、关系结构或环境层，必须同时具备真实 @keyframes、可见元素上的 animation 声明、infinite 循环，并在打开后 1 秒内产生肉眼可见的位移、缩放、旋转、形变、遮罩推进、流体变化或光影扫动。
-  - 场景必须同时具有一条与画面本体一致的有效交互链：场景对象→触摸／点击等操作→可保持的画面、关系、时间或内容变化→明确反馈；除明确的一次性叙事动作外，进入第二状态后必须能再次触发同一对象或使用当前画面内的返回入口恢复初始状态。仅 hover/active、变色、描边或轻微位移不算本轮必需交互。
-  - 场景未操作时就必须完整、清晰、持续活动；交互用于推进、揭示、切换或改变场景，不能作为显示核心画面的前置条件。
-  - 允许场景画布中的纯装饰与短标签使用定位和裁切；主要正文与交互反馈若较长，须进入正常文档流并完整撑高，不能被固定高度或 overflow:hidden 截断。`;
+  - 场景未操作时就必须完整、清晰；交互用于推进、揭示、切换或改变场景，不能作为显示核心画面的前置条件。
+  - 允许画布中的纯装饰与短标签使用定位和裁切；主要正文与交互反馈若较长，须进入正常文档流并完整撑高，不能被固定高度或 overflow:hidden 截断。`;
 }
 
 function innerDetailsCooldownRule() {
@@ -333,10 +340,9 @@ function visibleChineseHardLock() {
 
 function visualSceneryInteractionLinkRule() {
     return String.raw`
-Visual Scenery 动态与交互:
-  - 画面打开后必须通过完整、持续且肉眼可见的 CSS 动画成立，核心画面不得依赖用户操作才能出现。
+Visual Scenery 场景交互:
   - 本轮必须有至少一种可触摸／点击的有效交互，并实际改变、揭示、切换或推进画面内容；交互须作用于场景内部真实存在的对象或关系，不得外挂独立操作面板。
-  - 交互状态应使用宿主可稳定保留的 HTML/CSS 机制实现；hover/active 只能辅助，不能单独充当本轮必需交互。`;
+  - 除明确的一次性叙事动作外，进入非初始状态后必须保留自然回到初始画面的路径；hover/active 只能辅助，不能单独充当本轮必需交互。`;
 }
 
 function htmlSafetyCore() {
@@ -492,7 +498,7 @@ ${avoidLines.length ? avoidLines.map(line => `- ${line}`).join('\n') : '- 当前
 </兔子镜最终执行锁>`;
 }
 
-function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback }) {
+function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, dynamicCommitmentMode, tarotRulesText, directive, memoryMaterial, activeFeedback }) {
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
@@ -518,7 +524,9 @@ ${selectedFormats}`);
     chunks.push(sharedMemoryMaterialRule(memoryMaterial));
     chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
     chunks.push(presentationEmbodimentRule());
+    chunks.push(MEDIA_NATIVE_CONTENT_RULE);
     chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
+    if (dynamicCommitmentMode) chunks.push(DYNAMIC_COMMITMENT_RULES);
     if (!visualSceneryMode) chunks.push(interactionFamilyCooldownRule());
     chunks.push(innerDetailsCooldownRule());
     chunks.push(paletteCooldownRule());
@@ -561,11 +569,12 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
     const selectedThemes = selectedThemeResult.text;
     const selectedFormats = selectedFormatResult.text;
     const visualSceneryMode = !!(settings.forceVisualScenery || hasVisualScenery(combo));
+    const dynamicCommitmentMode = !!(visualSceneryMode || hasDynamicCommitment(combo));
     const tarotRulesText = isTarotRelated(combo) ? TAROT_IMAGE_RULES : '';
     const memoryMaterial = hasSharedMemoryTheme(combo)
         ? readSelectedMemoryForPrompt(settings, settings.memoryMaxChars || 2200)
         : null;
-    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback });
+    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, dynamicCommitmentMode, tarotRulesText, directive, memoryMaterial, activeFeedback });
     const metadata = Object.freeze({
         generationType: String(generationType || 'normal'),
         rawPolicy,
@@ -581,6 +590,7 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
         memoryChars: String(memoryMaterial?.text || '').length,
         memorySources: Array.isArray(memoryMaterial?.sources) ? [...memoryMaterial.sources] : [],
         visualSceneryMode,
+        dynamicCommitmentRules: dynamicCommitmentMode,
         tarotRules: !!tarotRulesText,
         userDirectiveApplied: !!directive,
         customThemeCount: Array.isArray(directive?.customThemes) ? directive.customThemes.length : 0,

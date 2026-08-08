@@ -59,6 +59,8 @@
 
 主 API 只生成正文，不注入兔子镜 Prompt。正文与可用推理稳定后，兔子镜小剧场通过 SillyTavern 自带的 Custom Chat Completions 后端通道，请求用户配置的 OpenAI 兼容 API。
 
+当前版本直接使用 SillyTavern 自带的 `/api/backends/chat-completions/status` 与 `/api/backends/chat-completions/generate` 服务端转发，不需要额外安装 `server-plugin-rabbitmirror-independent-api`。
+
 需要填写：
 
 - API 地址；
