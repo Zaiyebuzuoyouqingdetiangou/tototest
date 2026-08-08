@@ -1,12 +1,12 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.65';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.65';
-import { DYNAMIC_COMMITMENT_RULES } from '../data/raw/dynamicCommitmentRules.js?rmv=1.2.65';
-import { MEDIA_NATIVE_CONTENT_RULE } from '../data/raw/mediaSelfJudgmentRules.js?rmv=1.2.65';
-import { CREATIVE_EXPANSION_RULES } from '../data/raw/creativeExpansionRules.js?rmv=1.2.65';
-import { pickCombination } from './picker.js?rmv=1.2.65';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.65';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.65';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.65';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.66';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.66';
+import { DYNAMIC_COMMITMENT_RULES } from '../data/raw/dynamicCommitmentRules.js?rmv=1.2.66';
+import { MEDIA_NATIVE_CONTENT_RULE } from '../data/raw/mediaSelfJudgmentRules.js?rmv=1.2.66';
+import { CREATIVE_EXPANSION_RULES } from '../data/raw/creativeExpansionRules.js?rmv=1.2.66';
+import { pickCombination } from './picker.js?rmv=1.2.66';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.66';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.66';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.66';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();

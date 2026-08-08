@@ -1,11 +1,11 @@
-import { getCurrentChatKey, recordPaletteObservation, updateLatestVisualSignature } from './storage.js?rmv=1.2.65';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.65';
-import { getSettings } from './settings.js?rmv=1.2.65';
+import { getCurrentChatKey, recordPaletteObservation, updateLatestVisualSignature } from './storage.js?rmv=1.2.66';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.66';
+import { getSettings } from './settings.js?rmv=1.2.66';
 import {
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.2.65';
+} from './generationGuard.js?rmv=1.2.66';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -766,7 +766,125 @@ function hueFamilyOf(hue) {
     return 'pink';
 }
 
-function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = false) {
+function paletteBrightnessBandFromLuminance(luminance) {
+    const value = Number(luminance);
+    if (value < 105) return 'dark';
+    if (value > 185) return 'light';
+    return 'mid';
+}
+
+function paletteTemperatureForColor(color, hsl) {
+    const family = hsl.s >= 0.12 ? hueFamilyOf(hsl.h) : 'neutral';
+    if (['red', 'orange', 'yellow', 'pink'].includes(family)) return 'warm';
+    if (['green', 'cyan', 'blue', 'purple'].includes(family)) return 'cool';
+    const delta = Number(color.r || 0) - Number(color.b || 0);
+    if (delta >= 12) return 'warm';
+    if (delta <= -12) return 'cool';
+    return 'neutral';
+}
+
+function paletteSurfaceDescriptor(color) {
+    if (!color) return null;
+    const luminance = luminanceFromRgb(color.r, color.g, color.b);
+    const hsl = rgbToHsl(color.r, color.g, color.b);
+    const hueFamily = hsl.s >= 0.12 ? hueFamilyOf(hsl.h) : 'neutral';
+    const temperature = paletteTemperatureForColor(color, hsl);
+    const saturation = hsl.s < 0.26 ? 'low' : (hsl.s < 0.56 ? 'medium' : 'high');
+    return {
+        brightness: paletteBrightnessBandFromLuminance(luminance),
+        hueFamily,
+        temperature,
+        saturation,
+        dominantHue: hueFamily === 'neutral' ? null : Math.round(hsl.h),
+        luminance: Math.round(luminance),
+        saturationValue: Number(hsl.s.toFixed(2)),
+    };
+}
+
+function paletteDescriptorFamily(descriptor) {
+    if (!descriptor) return 'none';
+    const hue = descriptor.hueFamily && descriptor.hueFamily !== 'neutral'
+        ? descriptor.hueFamily
+        : `neutral-${descriptor.temperature || 'neutral'}`;
+    return `${descriptor.brightness || 'mid'}:${hue}`;
+}
+
+function summarizePaletteGroups(samples = []) {
+    const groups = new Map();
+    for (const sample of samples) {
+        const descriptor = paletteSurfaceDescriptor(sample?.color);
+        const weight = Number(sample?.weight || 0);
+        if (!descriptor || !Number.isFinite(weight) || weight <= 0) continue;
+        const key = paletteDescriptorFamily(descriptor);
+        const group = groups.get(key) || {
+            key,
+            weight: 0,
+            descriptor,
+            hueX: 0,
+            hueY: 0,
+            hueWeight: 0,
+            luminanceSum: 0,
+            saturationSum: 0,
+        };
+        group.weight += weight;
+        group.luminanceSum += descriptor.luminance * weight;
+        group.saturationSum += descriptor.saturationValue * weight;
+        if (descriptor.dominantHue !== null && descriptor.dominantHue !== undefined) {
+            const radians = descriptor.dominantHue * Math.PI / 180;
+            group.hueX += Math.cos(radians) * weight;
+            group.hueY += Math.sin(radians) * weight;
+            group.hueWeight += weight;
+        }
+        groups.set(key, group);
+    }
+    return [...groups.values()]
+        .map(group => {
+            const dominantHue = group.hueWeight > 0
+                ? (Math.atan2(group.hueY, group.hueX) * 180 / Math.PI + 360) % 360
+                : null;
+            return {
+                ...group.descriptor,
+                dominantHue: Number.isFinite(dominantHue) ? Math.round(dominantHue) : group.descriptor.dominantHue,
+                luminance: Math.round(group.luminanceSum / Math.max(group.weight, 0.0001)),
+                saturationValue: Number((group.saturationSum / Math.max(group.weight, 0.0001)).toFixed(2)),
+                family: group.key,
+                weight: Number(group.weight.toFixed(2)),
+            };
+        })
+        .sort((a, b) => b.weight - a.weight);
+}
+
+function buildPaletteSkeleton(surfaceSamples = [], accentSamples = []) {
+    if (!surfaceSamples.length) return null;
+    const rootSamples = surfaceSamples.filter(sample => sample?.isRoot);
+    const allGroups = summarizePaletteGroups(surfaceSamples);
+    const rootGroups = summarizePaletteGroups(rootSamples);
+    const base = rootGroups[0] || allGroups[0] || null;
+    if (!base) return null;
+
+    const secondary = allGroups.find(group => group.family !== base.family && group.weight >= Math.max(0.05, base.weight * 0.035)) || null;
+    const accentGroups = summarizePaletteGroups(accentSamples)
+        .filter(group => group.hueFamily !== 'neutral')
+        .filter(group => group.hueFamily !== base.hueFamily && group.hueFamily !== secondary?.hueFamily);
+    const accent = accentGroups[0] || null;
+    const contrast = secondary ? `${base.brightness}-${secondary.brightness}` : `${base.brightness}-single`;
+    const accentFamily = accent?.hueFamily || 'none';
+    const signature = `base=${base.family};secondary=${secondary?.family || 'none'};contrast=${contrast};accent=${accentFamily}`;
+    return {
+        base,
+        secondary,
+        accent: accent ? {
+            hueFamily: accent.hueFamily,
+            temperature: accent.temperature,
+            saturation: accent.saturation,
+            dominantHue: accent.dominantHue,
+        } : null,
+        contrast,
+        signature,
+    };
+}
+
+function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = false, paletteSkeleton = null) {
     const usable = (samples || []).filter(sample => sample?.color && Number(sample.weight) > 0);
     if (!usable.length) return null;
     let totalWeight = 0;
@@ -843,6 +961,7 @@ function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = f
         dominantHue: Number.isFinite(dominantHue) ? Math.round(dominantHue) : null,
         confidence: Number(confidence.toFixed(2)),
         source,
+        paletteSkeleton: paletteSkeleton || null,
     };
 }
 
@@ -884,6 +1003,71 @@ function paletteHueDistance(left, right) {
     return diff;
 }
 
+function paletteDescriptorSimilarity(left, right) {
+    if (!left || !right) return 0;
+    let score = 0;
+    if (left.brightness === right.brightness) score += 0.27;
+    else if (new Set([left.brightness, right.brightness]).has('mid')) score += 0.08;
+
+    const leftFamily = String(left.hueFamily || 'neutral');
+    const rightFamily = String(right.hueFamily || 'neutral');
+    const hueDistance = paletteHueDistance(left, right);
+    if (leftFamily === rightFamily) {
+        score += leftFamily === 'neutral' ? 0.34 : 0.38;
+    } else if (hueDistance !== null) {
+        score += hueDistance <= 18 ? 0.36 : (hueDistance <= 34 ? 0.27 : (hueDistance <= 48 ? 0.14 : 0));
+    } else if (leftFamily === 'neutral' && rightFamily === 'neutral'
+        && String(left.temperature || 'neutral') === String(right.temperature || 'neutral')) {
+        score += 0.30;
+    }
+
+    if (String(left.temperature || 'neutral') === String(right.temperature || 'neutral')) score += 0.08;
+    if (String(left.saturation || 'medium') === String(right.saturation || 'medium')) score += 0.08;
+    else if ([left.saturation, right.saturation].includes('medium')) score += 0.03;
+
+    const lumDiff = Math.abs(Number(left.luminance ?? 128) - Number(right.luminance ?? 128));
+    score += lumDiff <= 20 ? 0.12 : (lumDiff <= 38 ? 0.07 : (lumDiff <= 58 ? 0.03 : 0));
+    const satDiff = Math.abs(Number(left.saturationValue ?? 0.3) - Number(right.saturationValue ?? 0.3));
+    score += satDiff <= 0.08 ? 0.07 : (satDiff <= 0.18 ? 0.03 : 0);
+    return Number(Math.min(1, score).toFixed(2));
+}
+
+function paletteSkeletonSimilarity(left, right) {
+    const a = left?.paletteSkeleton;
+    const b = right?.paletteSkeleton;
+    if (!a?.base || !b?.base) return null;
+    const baseScore = paletteDescriptorSimilarity(a.base, b.base);
+    let secondaryScore = 0;
+    let secondaryWeight = 0;
+    if (a.secondary && b.secondary) {
+        secondaryScore = paletteDescriptorSimilarity(a.secondary, b.secondary);
+        secondaryWeight = 0.28;
+    } else if (!a.secondary && !b.secondary) {
+        secondaryScore = 1;
+        secondaryWeight = 0.12;
+    }
+    const contrastScore = String(a.contrast || '') === String(b.contrast || '') ? 1 : 0;
+    const accentA = String(a.accent?.hueFamily || 'none');
+    const accentB = String(b.accent?.hueFamily || 'none');
+    let accentScore = 0;
+    if (accentA === accentB) accentScore = 1;
+    else if (accentA === 'none' || accentB === 'none') accentScore = 0.35;
+    else {
+        const accentDistance = paletteHueDistance(a.accent, b.accent);
+        accentScore = accentDistance !== null && accentDistance <= 38 ? 0.55 : 0;
+    }
+
+    const baseWeight = 0.50;
+    const contrastWeight = secondaryWeight ? 0.12 : 0.18;
+    const accentWeight = 1 - baseWeight - secondaryWeight - contrastWeight;
+    return Number(Math.min(1,
+        baseScore * baseWeight
+        + secondaryScore * secondaryWeight
+        + contrastScore * contrastWeight
+        + accentScore * accentWeight
+    ).toFixed(2));
+}
+
 export function paletteSimilarityScore(left, right) {
     if (!left || !right || typeof left !== 'object' || typeof right !== 'object') return 0;
     let score = 0;
@@ -914,7 +1098,15 @@ export function paletteSimilarityScore(left, right) {
         score += 0;
     }
 
-    return Number(Math.min(1, score).toFixed(2));
+    const aggregateScore = Number(Math.min(1, score).toFixed(2));
+    const skeletonScore = paletteSkeletonSimilarity(left, right);
+    // Human perception follows the whole palette scaffold (base + large structural plane
+    // + contrast + accent), not only whichever single color wins the aggregate area vote.
+    // Keep the old aggregate detector as a fallback, but let a strong scaffold match
+    // catch cases such as the same warm-paper + charcoal structure with slightly different accents.
+    return skeletonScore === null
+        ? aggregateScore
+        : Number(Math.max(aggregateScore, skeletonScore).toFixed(2));
 }
 
 export function paletteRepeatStatus(current, observations = [], { minPreviousMatches = 2, threshold = 0.76 } = {}) {
@@ -972,6 +1164,8 @@ function renderedPaletteFingerprint(toto) {
         .slice(0, 28);
 
     const samples = [];
+    const surfaceSamples = [];
+    const accentSamples = [];
     let mainBackgroundFound = false;
     for (const item of candidates) {
         let style;
@@ -991,20 +1185,50 @@ function renderedPaletteFingerprint(toto) {
         const area = item.area || rootArea * 0.08;
         const baseWeight = isRoot ? rootArea * 2.2 : Math.min(area, rootArea * 0.48);
         const colorWeight = baseWeight / colors.length;
-        colors.forEach(color => samples.push({ color, weight: colorWeight }));
+        colors.forEach(color => {
+            samples.push({ color, weight: colorWeight });
+            surfaceSamples.push({ color, weight: colorWeight, isRoot });
+        });
     }
-    return classifyPaletteSamples(samples, 'rendered', mainBackgroundFound);
+
+    // Foreground/border colors are sampled only as low-weight accent evidence. They must
+    // never outweigh large material surfaces, but they help distinguish a recurring
+    // whole-palette scaffold such as warm paper + charcoal planes + red accents.
+    const accentCandidates = [root, ...root.querySelectorAll('summary,h1,h2,h3,h4,p,span,strong,em,small,button,label,li,[class*="accent"],[class*="status"]')]
+        .slice(0, 72);
+    for (const element of accentCandidates) {
+        let style;
+        try { style = getStyle(element); } catch { continue; }
+        if (!style || style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) < 0.05) continue;
+        const area = Math.max(64, elementArea(element));
+        const weight = Math.min(rootArea * 0.035, area * 0.18);
+        const colors = [
+            ...extractCssColors(style.color),
+            ...extractCssColors(style.borderTopColor),
+            ...extractCssColors(style.outlineColor),
+        ];
+        colors.forEach(color => accentSamples.push({ color, weight }));
+    }
+
+    const paletteSkeleton = buildPaletteSkeleton(surfaceSamples, accentSamples);
+    return classifyPaletteSamples(samples, 'rendered', mainBackgroundFound, paletteSkeleton);
 }
 
 function rawPaletteFingerprint(html) {
     const values = extractBackgroundValues(html);
     const samples = [];
+    const surfaceSamples = [];
     values.slice(0, 24).forEach((value, index) => {
         const colors = extractCssColors(value);
         const baseWeight = index === 0 ? 5 : (index < 5 ? 1.5 : 0.7);
-        colors.forEach(color => samples.push({ color, weight: baseWeight / Math.max(1, colors.length) }));
+        colors.forEach(color => {
+            const weight = baseWeight / Math.max(1, colors.length);
+            samples.push({ color, weight });
+            surfaceSamples.push({ color, weight, isRoot: index === 0 });
+        });
     });
-    return classifyPaletteSamples(samples, 'raw', values.length > 0);
+    const paletteSkeleton = buildPaletteSkeleton(surfaceSamples, []);
+    return classifyPaletteSamples(samples, 'raw', values.length > 0, paletteSkeleton);
 }
 
 function detectPaletteFingerprint(html, renderedToto = null) {
