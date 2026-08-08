@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.48';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.48';
+import { getSettings } from './settings.js?rmv=1.2.50';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.50';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.2.48';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.48';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.48';
+} from './feedbackCat.js?rmv=1.2.50';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.50';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.50';
 
 
-const RUNTIME_VERSION = '1.2.48';
+const RUNTIME_VERSION = '1.2.50';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9982,6 +9982,44 @@ const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_MENU_ATTR = 'data-rabbit-mirror-maintenance-menu';
 const INDEPENDENT_REPAIR_PERSIST_EVENT = 'rabbitmirror:independent-repair-persist';
+const INDEPENDENT_LIVE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-live-repair';
+const INDEPENDENT_LIVE_REPAIR_UNTIL_ATTR = 'data-rabbit-mirror-maintenance-live-repair-until';
+function markIndependentMaintenanceLiveRepair(root, ttl = 5000) {
+    const host = root?.matches?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]')
+        ? root
+        : root?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]');
+    if (!host?.isConnected) return null;
+    const until = Date.now() + Math.max(1200, Number(ttl) || 5000);
+    host.setAttribute(INDEPENDENT_LIVE_REPAIR_ATTR, 'true');
+    host.setAttribute(INDEPENDENT_LIVE_REPAIR_UNTIL_ATTR, String(until));
+    if (host.__rabbitMirrorMaintenanceLiveRepairTimer) clearTimeout(host.__rabbitMirrorMaintenanceLiveRepairTimer);
+    host.__rabbitMirrorMaintenanceLiveRepairTimer = setTimeout(() => {
+        host.__rabbitMirrorMaintenanceLiveRepairTimer = 0;
+        const currentUntil = Number(host.getAttribute(INDEPENDENT_LIVE_REPAIR_UNTIL_ATTR) || 0);
+        if (currentUntil > Date.now()) return;
+        host.removeAttribute(INDEPENDENT_LIVE_REPAIR_ATTR);
+        host.removeAttribute(INDEPENDENT_LIVE_REPAIR_UNTIL_ATTR);
+    }, Math.max(1300, until - Date.now() + 80));
+    return host;
+}
+function releaseIndependentMaintenanceLiveRepair(root, delay = 700) {
+    const host = root?.matches?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]')
+        ? root
+        : root?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]');
+    if (!host?.isConnected) return false;
+    const until = Date.now() + Math.max(250, Number(delay) || 700);
+    host.setAttribute(INDEPENDENT_LIVE_REPAIR_ATTR, 'true');
+    host.setAttribute(INDEPENDENT_LIVE_REPAIR_UNTIL_ATTR, String(until));
+    if (host.__rabbitMirrorMaintenanceLiveRepairTimer) clearTimeout(host.__rabbitMirrorMaintenanceLiveRepairTimer);
+    host.__rabbitMirrorMaintenanceLiveRepairTimer = setTimeout(() => {
+        host.__rabbitMirrorMaintenanceLiveRepairTimer = 0;
+        const currentUntil = Number(host.getAttribute(INDEPENDENT_LIVE_REPAIR_UNTIL_ATTR) || 0);
+        if (currentUntil > Date.now()) return;
+        host.removeAttribute(INDEPENDENT_LIVE_REPAIR_ATTR);
+        host.removeAttribute(INDEPENDENT_LIVE_REPAIR_UNTIL_ATTR);
+    }, Math.max(320, until - Date.now() + 80));
+    return true;
+}
 const maintenancePreRepairSnapshots = new Map();
 const MAINTENANCE_AUTO_SAFE_ATTR = 'data-rabbit-mirror-auto-safe-maintenance';
 const MAINTENANCE_AUTO_SAFE_RESULT_ATTR = 'data-rabbit-mirror-auto-safe-result';
@@ -10092,7 +10130,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.48-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.50-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -15675,7 +15713,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.10';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.11';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -15874,6 +15912,7 @@ function scheduleMaintenanceScopedFollowups(root, summaryText, messageIndex, mod
         setTimeout(() => {
             const liveRoot = findLiveMaintenanceRoot(root, summaryText, messageIndex);
             if (!liveRoot?.isConnected) return;
+            markIndependentMaintenanceLiveRepair(liveRoot, 2600);
             const inspection = maintenanceUserRepairInspection(liveRoot, mode);
             const sourceResult = sourceModes.has(mode)
                 ? repairMaintenanceMessageSource(liveRoot, inspection)
@@ -15911,6 +15950,12 @@ function notifyIndependentRepairPersistence(root) {
     const host = root?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]');
     if (!host?.isConnected || typeof document === 'undefined' || typeof CustomEvent === 'undefined') return false;
     document.dispatchEvent(new CustomEvent(INDEPENDENT_REPAIR_PERSIST_EVENT, { detail: { root, host } }));
+    // Keep the repaired live DOM authoritative until the synchronous persistence
+    // bridge has copied it into both local cache and chat metadata. A nearby
+    // SillyTavern/message mutation may otherwise remount the pre-repair cached HTML
+    // a few hundred milliseconds later, making the interaction appear to "heal"
+    // and then immediately break again.
+    releaseIndependentMaintenanceLiveRepair(host, 900);
     return true;
 }
 
@@ -15926,6 +15971,7 @@ function runMaintenanceAutomaticRepairPlan(root, button) {
         setMaintenanceRabbitState(button, state, initialInspection.reason || '未发现可自动维修的高置信问题');
         return false;
     }
+    markIndependentMaintenanceLiveRepair(root, 5200);
     const captured = captureMaintenancePreRepairSnapshot(root);
     if (captured) {
         root = captured.root || root;
@@ -16189,6 +16235,7 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
 function runMaintenanceUserRepair(root, button, mode) {
     if (!root?.isConnected || !button?.isConnected) return false;
     if (mode === 'auto') return runMaintenanceAutomaticRepairPlan(root, button);
+    markIndependentMaintenanceLiveRepair(root, 5200);
     const captured = captureMaintenancePreRepairSnapshot(root);
     if (captured) {
         root = captured.root || root;

@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.2.48';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.48';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.48';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.48';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.48';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.48';
+import { getSettings } from './settings.js?rmv=1.2.50';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.50';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.50';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.50';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.50';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.50';
 
-const RUNTIME_VERSION = '1.2.48';
+const RUNTIME_VERSION = '1.2.50';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -22,6 +22,18 @@ const RESAY_ATTR = 'data-rabbit-mirror-resay';
 const RESAY_EVENT = 'rabbitmirror:resay';
 const HISTORY_EVENT = 'rabbitmirror:history';
 const INDEPENDENT_REPAIR_PERSIST_EVENT = 'rabbitmirror:independent-repair-persist';
+const INDEPENDENT_LIVE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-live-repair';
+const INDEPENDENT_LIVE_REPAIR_UNTIL_ATTR = 'data-rabbit-mirror-maintenance-live-repair-until';
+function independentMaintenanceLiveRepairLocked(host){
+ if(!host?.isConnected || host.getAttribute?.(INDEPENDENT_LIVE_REPAIR_ATTR)!=='true') return false;
+ const until=Number(host.getAttribute?.(INDEPENDENT_LIVE_REPAIR_UNTIL_ATTR)||0);
+ if(until && until<=Date.now()){
+  host.removeAttribute?.(INDEPENDENT_LIVE_REPAIR_ATTR);
+  host.removeAttribute?.(INDEPENDENT_LIVE_REPAIR_UNTIL_ATTR);
+  return false;
+ }
+ return true;
+}
 const HISTORY_STORE_KEY = 'rabbit_mirror_independent_history_v1';
 const CHAT_OUTPUT_METADATA_KEY = 'rabbit_mirror_independent_outputs_v2';
 const CHAT_OUTPUT_METADATA_SCHEMA = 2;
@@ -1528,6 +1540,24 @@ function extractReadyDetails(html=''){
  template.innerHTML=prepareIndependentReadyHtml(html);
  const details=template.content.querySelector('details') || null;
  if(details){
+  // Independent API outputs are allowed to place <style> as a sibling of <details>
+  // inside <toto>. The external renderer returns only the <details> node, so those
+  // sibling styles used to be discarded here. That leaves the scene with bare
+  // checkbox/text DOM, makes :checked interaction rules disappear, and prevents
+  // both native return labels and the maintenance rabbit from seeing a real route.
+  // Preserve only styles that belong to this prepared fragment by moving them
+  // inside the returned details. The CSS has already been per-mirror scoped by
+  // prepareIndependentReadyHtml(), so this cannot leak into neighboring messages.
+  const detachedStyles=[...template.content.querySelectorAll('style')]
+   .filter(style=>!details.contains(style));
+  if(detachedStyles.length){
+   const summary=details.querySelector(':scope > summary');
+   const reference=summary?.nextSibling || details.firstChild;
+   for(const style of detachedStyles){
+    if(reference) details.insertBefore(style,reference);
+    else details.append(style);
+   }
+  }
   repairRabbitMirrorScopedClassAliasesInScope(details);
   repairLabelTargets(details);
   isolateRabbitMirrorInteractionIds(details);
@@ -2185,6 +2215,15 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
  const currentReady=usableReadyDetails(current) ? current : null;
  if(state==='ready'){
    clearExternalHostFreshSourceState(host);
+   // While the maintenance rabbit is repairing an independent mirror, the live
+   // DOM is the authoritative working copy. Do not let a routine sync/remount
+   // replace it with the older cached/chatMetadata HTML before the repair-persist
+   // bridge has committed the new snapshot.
+   if(currentReady && independentMaintenanceLiveRepairLocked(host)){
+     if(wasOpen) currentReady.setAttribute('open','');
+     ensureExternalTools(host);
+     return host;
+   }
    const sameReadySource=currentReady && host.dataset.rmState==='ready' && String(host.__rabbitMirrorIndependentSource||'')===String(html||'');
    host.__rabbitMirrorIndependentSource = String(html||'');
    if(sameReadySource){
