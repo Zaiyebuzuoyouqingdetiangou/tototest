@@ -1,12 +1,12 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.66';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.66';
-import { DYNAMIC_COMMITMENT_RULES } from '../data/raw/dynamicCommitmentRules.js?rmv=1.2.66';
-import { MEDIA_NATIVE_CONTENT_RULE } from '../data/raw/mediaSelfJudgmentRules.js?rmv=1.2.66';
-import { CREATIVE_EXPANSION_RULES } from '../data/raw/creativeExpansionRules.js?rmv=1.2.66';
-import { pickCombination } from './picker.js?rmv=1.2.66';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.66';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.66';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.66';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.67';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.67';
+import { DYNAMIC_COMMITMENT_RULES } from '../data/raw/dynamicCommitmentRules.js?rmv=1.2.67';
+import { MEDIA_NATIVE_CONTENT_RULE } from '../data/raw/mediaSelfJudgmentRules.js?rmv=1.2.67';
+import { CREATIVE_EXPANSION_RULES } from '../data/raw/creativeExpansionRules.js?rmv=1.2.67';
+import { pickCombination } from './picker.js?rmv=1.2.67';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.67';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.67';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.67';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -473,7 +473,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const forcedVisualSceneryMode = !!settings?.forceVisualScenery;
     const visualSceneryMode = !!(forcedVisualSceneryMode || hasVisualScenery(combo));
     const interaction = visualSceneryMode ? null : interactionFamilyCooldownSnapshot();
-    const palette = getActivePaletteCooldown(5);
+    const palette = visualSceneryMode ? null : getActivePaletteCooldown(5);
     const recentFlags = getRecentRiskFlags(5);
     const innerDetailsBlocked = recentFlags.includes('inner_details_used');
     const riskCorrection = truncate(recentRiskCorrection().replace(/^\s*真实视觉纠偏[^:]*:\s*/u, ''), 620);
@@ -527,7 +527,7 @@ ${avoidLines.length ? avoidLines.map(line => `- ${line}`).join('\n') : '- 当前
 </兔子镜最终执行锁>`;
 }
 
-function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, dynamicCommitmentMode, tarotRulesText, directive, memoryMaterial, activeFeedback }) {
+function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, dynamicCommitmentMode, tarotRulesText, directive, memoryMaterial, activeFeedback, independentMode = false }) {
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
@@ -559,7 +559,7 @@ ${selectedFormats}`);
     if (dynamicCommitmentMode) chunks.push(DYNAMIC_COMMITMENT_RULES);
     if (!visualSceneryMode) chunks.push(interactionFamilyCooldownRule());
     chunks.push(innerDetailsCooldownRule());
-    chunks.push(paletteCooldownRule());
+    if (!(independentMode && visualSceneryMode)) chunks.push(paletteCooldownRule());
     chunks.push(visualColorTruthRule());
     chunks.push(stateBarIsolationRule());
 
@@ -599,12 +599,13 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
     const selectedThemes = selectedThemeResult.text;
     const selectedFormats = selectedFormatResult.text;
     const visualSceneryMode = !!(settings.forceVisualScenery || hasVisualScenery(combo));
+    const independentMode = String(generationContext?.source || '').toLowerCase() === 'independent';
     const dynamicCommitmentMode = !!(visualSceneryMode || hasDynamicCommitment(combo));
     const tarotRulesText = isTarotRelated(combo) ? TAROT_IMAGE_RULES : '';
     const memoryMaterial = hasSharedMemoryTheme(combo)
         ? readSelectedMemoryForPrompt(settings, settings.memoryMaxChars || 2200)
         : null;
-    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, dynamicCommitmentMode, tarotRulesText, directive, memoryMaterial, activeFeedback });
+    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, dynamicCommitmentMode, tarotRulesText, directive, memoryMaterial, activeFeedback, independentMode });
     const metadata = Object.freeze({
         generationType: String(generationType || 'normal'),
         rawPolicy,
@@ -620,6 +621,7 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
         memoryChars: String(memoryMaterial?.text || '').length,
         memorySources: Array.isArray(memoryMaterial?.sources) ? [...memoryMaterial.sources] : [],
         visualSceneryMode,
+        independentMode,
         dynamicCommitmentRules: dynamicCommitmentMode,
         tarotRules: !!tarotRulesText,
         userDirectiveApplied: !!directive,

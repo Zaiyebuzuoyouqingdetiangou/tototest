@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.2.66';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.66';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue } from './outputSanitizer.js?rmv=1.2.66';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.66';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.66';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.66';
+import { getSettings } from './settings.js?rmv=1.2.67';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.67';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue } from './outputSanitizer.js?rmv=1.2.67';
+import { paletteFamilyOfFingerprint, paletteSimilarityScore, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.67';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.67';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.67';
 
-const RUNTIME_VERSION = '1.2.66';
+const RUNTIME_VERSION = '1.2.67';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -956,7 +956,65 @@ function recentIndependentRecordsForCurrentChat(limit=5,ctx=getContext()){
   .sort((a,b)=>Number(b.item?.ts||0)-Number(a.item?.ts||0))
   .slice(0,Math.max(1,Number(limit)||5));
 }
-function independentPaletteGuardState(ctx=getContext()){
+function independentRecordIsVisualScenery(item){
+ if(!item || typeof item!=='object') return false;
+ if(item.apiRequest?.visualSceneryMode===true) return true;
+ if(Array.isArray(item.apiRequest?.formatIds) && item.apiRequest.formatIds.map(String).includes('10.2.2')) return true;
+ return /data-rm-visual-scenery\s*=\s*["']true["']/i.test(String(item.html||''));
+}
+function independentVisualSceneryPaletteGuardState(ctx=getContext()){
+ const records=recentIndependentRecordsForCurrentChat(10,ctx)
+  .filter(({item})=>independentRecordIsVisualScenery(item))
+  .slice(0,4);
+ const samples=records.map(({key,item})=>({
+  key,
+  palette:item.paletteFingerprint||independentPaletteFingerprintFromHtml(item.html),
+ }));
+ const latest=samples[0]?.palette||null;
+ const previous=samples[1]?.palette||null;
+ const latestConfidence=Number(latest?.confidence||0);
+ const previousConfidence=Number(previous?.confidence||0);
+ const similarity=(latest && previous && latestConfidence>=0.5 && previousConfidence>=0.5)
+  ? Number(paletteSimilarityScore(latest,previous)||0)
+  : 0;
+ const repeated=similarity>=0.72;
+ if(repeated){
+  const prompt='动态视觉配色去重【仅本轮】：最近两面真实成品的整体配色骨架属于同一综合色调家族，近期已重复。本轮仍由场景、材质、环境、光线与叙事自行决定配色，只避开该家族；其余色域不预设、不限缩，不能只换小面积强调色冒充换配色。';
+  const brightnessFamily=independentPaletteBrightnessFamily(latest);
+  return {
+   active:true,
+   kind:'visual_scenery_palette_repeat',
+   prompt,
+   toneStreak:2,
+   toneFamily:paletteFamilyOfFingerprint(latest),
+   toneLabel:'综合色调骨架连续重复',
+   brightnessStreak:brightnessFamily && brightnessFamily===independentPaletteBrightnessFamily(previous)?2:1,
+   brightnessFamily,
+   darkStreak:brightnessFamily==='dark' ? (brightnessFamily===independentPaletteBrightnessFamily(previous)?2:1) : 0,
+   recentCount:samples.length,
+   latestBrightness:String(latest?.brightness||''),
+   latestConfidence,
+   similarity,
+  };
+ }
+ return {
+  active:false,
+  kind:'visual_scenery_palette_observe',
+  prompt:'',
+  toneStreak:0,
+  toneFamily:paletteFamilyOfFingerprint(latest),
+  toneLabel:'',
+  brightnessStreak:0,
+  brightnessFamily:independentPaletteBrightnessFamily(latest),
+  darkStreak:0,
+  recentCount:samples.length,
+  latestBrightness:String(latest?.brightness||''),
+  latestConfidence,
+  similarity,
+ };
+}
+function independentPaletteGuardState(ctx=getContext(),options={}){
+ if(options?.visualSceneryMode) return independentVisualSceneryPaletteGuardState(ctx);
  const records=recentIndependentRecordsForCurrentChat(5,ctx);
  const samples=records.map(({key,item})=>{
   const palette=item.paletteFingerprint||independentPaletteFingerprintFromHtml(item.html);
@@ -1059,14 +1117,15 @@ async function callIndependentApi(ctx,index,msg,signal=null){
  const activeFeedback=st.feedbackCatEnabled!==false ? getActiveFeedbackForCurrentChat(ctx.chat) : null;
  const feedbackPrompt=activeFeedback ? buildFeedbackCatPrompt(activeFeedback) : '';
  const feedbackFinalCheck=activeFeedback ? buildFeedbackCatFinalCheck(activeFeedback) : '';
- const details=buildRabbitMirrorPromptDetails(st,'normal',null,generationScopeKey,{chat:ctx.chat});
+ const details=buildRabbitMirrorPromptDetails(st,'normal',null,generationScopeKey,{chat:ctx.chat,source:'independent'});
  const basePrompt=details.prompt;
  const feedbackBlock=feedbackPrompt ? `
 
 ${feedbackPrompt}${feedbackFinalCheck?`
 
 ${feedbackFinalCheck}`:''}` : '';
- const paletteGuard=independentPaletteGuardState(ctx);
+ const visualSceneryMode=!!details.metadata?.visualSceneryMode;
+ const paletteGuard=independentPaletteGuardState(ctx,{visualSceneryMode});
  const systemPrompt=`${basePrompt}${feedbackBlock}
 
 独立生成要求:
@@ -1094,6 +1153,7 @@ ${executionLock}${paletteNearOutput}
   themeLabels:Array.isArray(details.metadata?.themeLabels)?details.metadata.themeLabels:[],
   formatLabels:Array.isArray(details.metadata?.formatLabels)?details.metadata.formatLabels:[],
   executionLockChars:executionLock.length,
+  visualSceneryMode,
   independentPaletteGuardActive:!!paletteGuard.active,
   independentPaletteGuardKind:String(paletteGuard.kind||''),
   independentPaletteToneFamily:String(paletteGuard.toneFamily||''),
@@ -1106,6 +1166,7 @@ ${executionLock}${paletteNearOutput}
   independentPaletteLatestBrightness:String(paletteGuard.latestBrightness||''),
   independentPaletteLatestConfidence:Number(paletteGuard.latestConfidence||0),
   independentPaletteGuardChars:String(paletteGuard.prompt||'').length,
+  independentPaletteSimilarityScore:Number(paletteGuard.similarity||0),
  };
  const {response:r,result,profile,attempts,requestDiagnostic}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,diagnosticContext:requestSelectionDiagnostic});
  if(!r.ok){
