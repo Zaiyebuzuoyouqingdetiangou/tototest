@@ -1,11 +1,12 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.59';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.59';
-import { DYNAMIC_COMMITMENT_RULES } from '../data/raw/dynamicCommitmentRules.js?rmv=1.2.59';
-import { MEDIA_NATIVE_CONTENT_RULE } from '../data/raw/mediaSelfJudgmentRules.js?rmv=1.2.59';
-import { pickCombination } from './picker.js?rmv=1.2.59';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.59';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.59';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.59';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.60';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.60';
+import { DYNAMIC_COMMITMENT_RULES } from '../data/raw/dynamicCommitmentRules.js?rmv=1.2.60';
+import { MEDIA_NATIVE_CONTENT_RULE } from '../data/raw/mediaSelfJudgmentRules.js?rmv=1.2.60';
+import { CREATIVE_EXPANSION_RULES } from '../data/raw/creativeExpansionRules.js?rmv=1.2.60';
+import { pickCombination } from './picker.js?rmv=1.2.60';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.60';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.60';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.60';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -279,17 +280,15 @@ function coreOutputProtocol() {
 }
 
 function compactCreativeRule(enabled, formatOnly = false) {
+    if (enabled) {
+        return formatOnly
+            ? `${CREATIVE_EXPANSION_RULES}\n仅展现形式边界: 不补造独立题材分类，内容素材只取自当前对话语境。`
+            : CREATIVE_EXPANSION_RULES;
+    }
     if (formatOnly) {
-        return enabled ? String.raw`
-仅展现形式发散:
-  本轮只把展现形式当作媒介、阅读路径和视觉结构的灵感种子；可以发散材质、空间、交互痕迹与细节，但不得额外调用或补造独立题材分类。内容素材只取自当前对话语境。` : String.raw`
+        return String.raw`
 仅展现形式收敛:
   本轮只围绕展现形式生成媒介结构与视觉读法，不另起题材分类，不在标题、summary 或正文中标注额外类别；内容素材只取自当前对话语境。`;
-    }
-    if (enabled) {
-        return String.raw`
-发散孵化:
-  抽取结果是灵感种子，不是封闭模板；保留核心气味、媒介痕迹与关系逻辑，可扩展库外媒介、材质、空间、交互痕迹与兔子镜内部叙事细节；须可追溯本轮抽取，且不得反向改写主回复。`;
     }
     return String.raw`
 经典收敛:
@@ -481,6 +480,13 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const directiveText = settings?.userDirectivePriority && directive?.rawDirective
         ? truncateDirectiveText(directive.rawDirective, 700)
         : '';
+    const creativeExpansionMode = !!settings?.creativeExpansionMode;
+    const contentConstructionLock = creativeExpansionMode
+        ? `创意种子锁：以“${themes}”保留至少一个可辨认的情绪、关系或叙事基因；可向母本库外生长，不得只复述主题说明或拼贴关键词。`
+        : `内容构思锁：以“${themes}”作为观察角度、关系组织与细节取材；必须从当前助手正文提取具体动作、情绪、关系变化或物件痕迹，不得只把主题写进标题。`;
+    const mediaConstructionLock = creativeExpansionMode
+        ? `媒介种子锁：以“${formats}”保留可追溯的观看、使用或结构基因；最终媒介允许重组、异化或扩展成库外新结构，但不得退化为通用卡片、信息面板或母本换皮。`
+        : `UI／媒介构思锁：以“${formats}”作为首个主要视觉本体；DOM/CSS 必须真实呈现其形态、材质、空间关系、阅读路径和操作方式，不得退化为通用卡片、信息面板或只换皮的标签页。`;
 
     const avoidLines = [
         interaction ? `交互冷却：${interaction.label}（近五轮 ${interaction.count} 次）；${interaction.exactBan}` : '',
@@ -502,8 +508,8 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     return String.raw`<兔子镜最终执行锁 data-source="independent-api-near-output">
 【本轮必须落实】
 - 抽取模式：${samplingModeLabel(combo, settings)}。
-- 内容构思锁：以“${themes}”作为观察角度、关系组织与细节取材；必须从当前助手正文提取具体动作、情绪、关系变化或物件痕迹，不得只把主题写进标题。
-- UI／媒介构思锁：以“${formats}”作为首个主要视觉本体；DOM/CSS 必须真实呈现其形态、材质、空间关系、阅读路径和操作方式，不得退化为通用卡片、信息面板或只换皮的标签页。
+- ${contentConstructionLock}
+- ${mediaConstructionLock}
 ${visualSceneryHardLock}
 ${directiveText ? `- 用户本轮点菜仍为最高优先，必须同时落实：${directiveText}` : ''}
 
@@ -513,8 +519,8 @@ ${avoidLines.length ? avoidLines.map(line => `- ${line}`).join('\n') : '- 当前
 - ${interactionDirective}
 
 【输出前逐项自检】
-1. 第一眼能否看出本轮展现形式，而不是只看到标题、按钮组或普通面板；
-2. 本轮主题是否真正进入内容、关系和细节，而不是只成为标签；
+1. ${creativeExpansionMode ? '第一眼能否看出从本轮媒介种子生长出的可追溯结构，同时不是母本换皮或通用面板；' : '第一眼能否看出本轮展现形式，而不是只看到标题、按钮组或普通面板；'}
+2. ${creativeExpansionMode ? '本轮主题核心是否仍可追溯，并且是否产生了超出母本直译的新结构、关系或表达；' : '本轮主题是否真正进入内容、关系和细节，而不是只成为标签；'}
 3. 是否复用了近期视觉骨架、阅读路径、配色底盘或交互家族；
 4. ${check4}
 5. 只输出一面完整兔子镜，直接以 <toto> 开始，以 </toto> 结束。
