@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.60';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.60';
+import { getSettings } from './settings.js?rmv=1.2.62';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.62';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.2.60';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.60';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.60';
+} from './feedbackCat.js?rmv=1.2.62';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.62';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.62';
 
 
-const RUNTIME_VERSION = '1.2.60';
+const RUNTIME_VERSION = '1.2.62';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -6175,12 +6175,55 @@ function parseSafeSelfClassToggleProgram(source, trigger, root, rawTrigger = nul
     };
 }
 
+// 宿主会剥离模型写在点击热区上的 inline onclick。
+// 仅回读极窄的 this.closest('.fixed-class').classList.toggle('fixed-state') 形态，
+// 并要求原始 CSS 与渲染后 CSS 都真实存在对应状态 class；绝不执行原始 JavaScript。
+function parseSafeClosestClassToggleProgram(source, trigger, root, rawTrigger = null, rawRoot = null) {
+    const script = String(source || '');
+    const match = /^\s*this\s*\.\s*closest\(\s*(['"])(\.[a-zA-Z_][\w-]*)\1\s*\)\s*\.\s*classList\s*\.\s*toggle\(\s*(['"])([a-zA-Z_][\w-]*)\3\s*\)\s*;?\s*$/i.exec(script);
+    if (!match || !trigger || !root || !rawTrigger || !rawRoot) return null;
+
+    const rawSelector = match[2];
+    const rawClassName = match[4];
+    let rawTarget = null;
+    try { rawTarget = rawTrigger.closest(rawSelector); } catch { return null; }
+    if (!rawTarget || (rawTarget !== rawRoot && !rawRoot.contains?.(rawTarget))) return null;
+
+    const target = rawTarget === rawRoot
+        ? root
+        : resolveRenderedCounterpart(rawRoot, root, rawTarget, '*');
+    if (!target?.classList || (target !== root && !root.contains?.(target))) return null;
+
+    const rawTokens = [...(rawTarget.classList || [])];
+    const prefix = inferRenderedClassPrefix(target, rawTokens.length ? rawTokens : [rawSelector.slice(1)], root);
+    const className = target.classList.contains(rawClassName)
+        ? rawClassName
+        : `${prefix || ''}${rawClassName}`;
+
+    const rawCssText = [...(rawRoot.querySelectorAll?.('style') || [])].map(style => style.textContent || '').join('\n');
+    const renderedCssText = [...(root.querySelectorAll?.('style') || [])].map(style => style.textContent || '').join('\n');
+    const rawEvidence = new RegExp(`\\.${escapeRegExp(rawClassName)}(?![\\w-])`).test(rawCssText);
+    const renderedEvidence = new RegExp(`\\.${escapeRegExp(className)}(?![\\w-])`).test(renderedCssText);
+    if (!rawEvidence || !renderedEvidence) return null;
+
+    return {
+        kind: 'closest-class-toggle',
+        trigger,
+        target,
+        className,
+        active: target.classList.contains(className),
+    };
+}
+
 function parseSelfMutationProgram(source, trigger, root, rawTrigger = null, rawRoot = null) {
     const script = String(source || '');
     if (!script) return null;
 
     const classToggleProgram = parseSafeSelfClassToggleProgram(script, trigger, root, rawTrigger);
     if (classToggleProgram) return classToggleProgram;
+
+    const closestClassToggleProgram = parseSafeClosestClassToggleProgram(script, trigger, root, rawTrigger, rawRoot);
+    if (closestClassToggleProgram) return closestClassToggleProgram;
 
     const attributeProgram = parseSafeAttributeGroupToggleProgram(script, trigger, root, rawTrigger, rawRoot);
     if (attributeProgram) return attributeProgram;
@@ -6221,6 +6264,13 @@ function applyRawSelfMutationEntry(entry, active) {
 
     if (entry.kind === 'class-toggle') {
         entry.trigger.classList.toggle(entry.className, entry.active);
+        entry.trigger.setAttribute('aria-pressed', entry.active ? 'true' : 'false');
+        entry.trigger.setAttribute(RAW_SELF_MUTATION_ACTIVE_ATTR, entry.active ? 'true' : 'false');
+        return;
+    }
+
+    if (entry.kind === 'closest-class-toggle') {
+        entry.target?.classList?.toggle?.(entry.className, entry.active);
         entry.trigger.setAttribute('aria-pressed', entry.active ? 'true' : 'false');
         entry.trigger.setAttribute(RAW_SELF_MUTATION_ACTIVE_ATTR, entry.active ? 'true' : 'false');
         return;
@@ -6352,7 +6402,7 @@ function installRawMessageSelfMutationRescue(root) {
     let installed = 0;
     for (const rawTrigger of rawRoot.querySelectorAll('[onclick]')) {
         const source = rawTrigger.getAttribute('onclick') || '';
-        if (!/this\s*\.(?:innerHTML|innerText|textContent|style|nextElementSibling|previousElementSibling|parentElement|parentNode|querySelector|setAttribute|getAttribute|classList)/i.test(source)) continue;
+        if (!/this\s*\.(?:innerHTML|innerText|textContent|style|nextElementSibling|previousElementSibling|parentElement|parentNode|querySelector|closest|setAttribute|getAttribute|classList)/i.test(source)) continue;
         const renderedTrigger = resolveRenderedCounterpart(rawRoot, root, rawTrigger, 'div, span, section, article, figure, aside, button');
         if (!renderedTrigger || state.entries.has(renderedTrigger)) continue;
         const entry = parseSelfMutationProgram(source, renderedTrigger, root, rawTrigger, rawRoot);
@@ -10185,7 +10235,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.60-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.62-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -15878,7 +15928,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.14';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.15';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
