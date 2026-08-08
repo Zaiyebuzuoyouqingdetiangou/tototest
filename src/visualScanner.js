@@ -1,11 +1,11 @@
-import { getCurrentChatKey, recordPaletteObservation, updateLatestVisualSignature } from './storage.js?rmv=1.2.64';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.64';
-import { getSettings } from './settings.js?rmv=1.2.64';
+import { getCurrentChatKey, recordPaletteObservation, updateLatestVisualSignature } from './storage.js?rmv=1.2.65';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.65';
+import { getSettings } from './settings.js?rmv=1.2.65';
 import {
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.2.64';
+} from './generationGuard.js?rmv=1.2.65';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -777,6 +777,8 @@ function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = f
     let chromaticWeight = 0;
     let warmWeight = 0;
     let coolWeight = 0;
+    let hueVectorX = 0;
+    let hueVectorY = 0;
     const hueWeights = new Map();
 
     for (const sample of usable) {
@@ -795,6 +797,9 @@ function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = f
             const chroma = weight * Math.max(0.25, hsl.s);
             const family = hueFamilyOf(hsl.h);
             chromaticWeight += chroma;
+            const hueRadians = hsl.h * Math.PI / 180;
+            hueVectorX += Math.cos(hueRadians) * chroma;
+            hueVectorY += Math.sin(hueRadians) * chroma;
             hueWeights.set(family, (hueWeights.get(family) || 0) + chroma);
             if (['red', 'orange', 'yellow', 'pink'].includes(family)) warmWeight += chroma;
             else if (['green', 'cyan', 'blue', 'purple'].includes(family)) coolWeight += chroma;
@@ -811,8 +816,13 @@ function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = f
         : (lightAreaRatio >= 0.55 || averageLuminance > 184 ? 'light' : 'mid');
 
     let hueFamily = 'neutral';
-    if (chromaticWeight >= totalWeight * 0.12 && hueWeights.size) {
+    let dominantHue = null;
+    if (chromaticWeight >= totalWeight * 0.10 && hueWeights.size) {
         hueFamily = [...hueWeights.entries()].sort((a, b) => b[1] - a[1])[0][0];
+        const vectorStrength = Math.hypot(hueVectorX, hueVectorY);
+        if (vectorStrength >= chromaticWeight * 0.22) {
+            dominantHue = (Math.atan2(hueVectorY, hueVectorX) * 180 / Math.PI + 360) % 360;
+        }
     }
     const saturation = averageSaturation < 0.26 ? 'low' : (averageSaturation < 0.56 ? 'medium' : 'high');
     const temperature = warmWeight > coolWeight * 1.2
@@ -830,6 +840,7 @@ function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = f
         lightAreaRatio: Number(lightAreaRatio.toFixed(2)),
         averageLuminance: Math.round(averageLuminance),
         averageSaturation: Number(averageSaturation.toFixed(2)),
+        dominantHue: Number.isFinite(dominantHue) ? Math.round(dominantHue) : null,
         confidence: Number(confidence.toFixed(2)),
         source,
     };
@@ -841,38 +852,68 @@ export function paletteFamilyOfFingerprint(fingerprint) {
     const brightness = ['dark', 'mid', 'light'].includes(fingerprint.brightness) ? fingerprint.brightness : 'mid';
     const saturation = ['low', 'medium', 'high'].includes(fingerprint.saturation) ? fingerprint.saturation : 'medium';
     const temperature = ['warm', 'cool', 'neutral'].includes(fingerprint.temperature) ? fingerprint.temperature : 'neutral';
-    let temperatureGroup = temperature;
-    if (saturation === 'low') temperatureGroup = temperature === 'cool' ? 'cool-neutral' : 'warm-neutral';
-    const hue = saturation === 'low' ? 'muted' : String(fingerprint.hueFamily || 'neutral');
-    return `${brightness}:${temperatureGroup}:${saturation}:${hue}`;
+    const rawHue = String(fingerprint.hueFamily || 'neutral');
+    // Pastel pink/green/blue are still real color families. The previous implementation flattened every
+    // low-saturation result to “muted”, which made different pale hues look identical
+    // to the repeat detector and encouraged gray/ivory corrections. Keep a reliable
+    // chromatic family even when saturation is low; only true near-neutrals collapse.
+    const hue = rawHue !== 'neutral' && Number(fingerprint.averageSaturation || 0) >= 0.10
+        ? rawHue
+        : (temperature === 'cool' ? 'neutral-cool' : (temperature === 'warm' ? 'neutral-warm' : 'neutral'));
+    return `${brightness}:${temperature}:${saturation}:${hue}`;
 }
 
 function paletteTemperatureGroup(fingerprint) {
     const saturation = String(fingerprint?.saturation || 'medium');
     const temperature = String(fingerprint?.temperature || 'neutral');
-    if (saturation === 'low') return temperature === 'cool' ? 'cool-neutral' : 'warm-neutral';
+    if (saturation === 'low' && String(fingerprint?.hueFamily || 'neutral') === 'neutral') {
+        return temperature === 'cool' ? 'cool-neutral' : (temperature === 'warm' ? 'warm-neutral' : 'neutral');
+    }
     return temperature;
+}
+
+function paletteHueDistance(left, right) {
+    const leftValue = left?.dominantHue;
+    const rightValue = right?.dominantHue;
+    if (leftValue === null || leftValue === undefined || leftValue === ''
+        || rightValue === null || rightValue === undefined || rightValue === '') return null;
+    const a = Number(leftValue);
+    const b = Number(rightValue);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+    const diff = Math.abs((((a - b) % 360) + 540) % 360 - 180);
+    return diff;
 }
 
 export function paletteSimilarityScore(left, right) {
     if (!left || !right || typeof left !== 'object' || typeof right !== 'object') return 0;
     let score = 0;
-    if (left.brightness === right.brightness) score += 0.26;
-    else if (new Set([left.brightness, right.brightness]).has('mid')) score += 0.08;
-    if (left.saturation === right.saturation) score += 0.22;
-    else if ([left.saturation, right.saturation].includes('medium')) score += 0.08;
+    if (left.brightness === right.brightness) score += 0.24;
+    else if (new Set([left.brightness, right.brightness]).has('mid')) score += 0.07;
+    if (left.saturation === right.saturation) score += 0.14;
+    else if ([left.saturation, right.saturation].includes('medium')) score += 0.05;
+
     const leftTemp = paletteTemperatureGroup(left);
     const rightTemp = paletteTemperatureGroup(right);
-    if (leftTemp === rightTemp) score += 0.22;
+    if (leftTemp === rightTemp) score += 0.08;
+
     const lumDiff = Math.abs(Number(left.averageLuminance ?? 128) - Number(right.averageLuminance ?? 128));
-    score += lumDiff <= 18 ? 0.14 : (lumDiff <= 34 ? 0.08 : (lumDiff <= 52 ? 0.03 : 0));
+    score += lumDiff <= 18 ? 0.12 : (lumDiff <= 34 ? 0.07 : (lumDiff <= 52 ? 0.03 : 0));
     const satDiff = Math.abs(Number(left.averageSaturation ?? 0.3) - Number(right.averageSaturation ?? 0.3));
-    score += satDiff <= 0.07 ? 0.08 : (satDiff <= 0.15 ? 0.04 : 0);
-    if (left.saturation !== 'low' || right.saturation !== 'low') {
-        if (left.hueFamily === right.hueFamily) score += 0.08;
-    } else if (leftTemp === rightTemp) {
-        score += 0.08;
+    score += satDiff <= 0.07 ? 0.06 : (satDiff <= 0.15 ? 0.03 : 0);
+
+    const leftHueFamily = String(left.hueFamily || 'neutral');
+    const rightHueFamily = String(right.hueFamily || 'neutral');
+    const hueDistance = paletteHueDistance(left, right);
+    if (hueDistance !== null) {
+        score += hueDistance <= 18 ? 0.30 : (hueDistance <= 30 ? 0.18 : (hueDistance <= 45 ? 0.08 : 0));
+    } else if (leftHueFamily === rightHueFamily) {
+        score += leftHueFamily === 'neutral' ? 0.28 : 0.24;
+    } else if (leftHueFamily === 'neutral' || rightHueFamily === 'neutral') {
+        // A colored large surface and a neutral large surface should not be treated as
+        // the same palette merely because both are pale or dark.
+        score += 0;
     }
+
     return Number(Math.min(1, score).toFixed(2));
 }
 
