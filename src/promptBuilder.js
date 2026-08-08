@@ -1,11 +1,11 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.53';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.53';
-import { DYNAMIC_COMMITMENT_RULES } from '../data/raw/dynamicCommitmentRules.js?rmv=1.2.53';
-import { MEDIA_NATIVE_CONTENT_RULE } from '../data/raw/mediaSelfJudgmentRules.js?rmv=1.2.53';
-import { pickCombination } from './picker.js?rmv=1.2.53';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.53';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.53';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.53';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.54';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.54';
+import { DYNAMIC_COMMITMENT_RULES } from '../data/raw/dynamicCommitmentRules.js?rmv=1.2.54';
+import { MEDIA_NATIVE_CONTENT_RULE } from '../data/raw/mediaSelfJudgmentRules.js?rmv=1.2.54';
+import { pickCombination } from './picker.js?rmv=1.2.54';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.54';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.54';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.54';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -314,10 +314,18 @@ function complexInteractiveCore() {
 function visualScenerySceneFirstCore() {
     return String.raw`
 Visual Scenery 场景优先级【覆盖通用交互骨架的执行顺序】:
-  - 本轮第一优先级是先让完整画面本体成立；不得为了满足交互先搭建按钮组、标签页、仪表盘、信息卡、播放器或说明面板。
+  - 本轮第一优先级是先让完整动态场景本体成立，再把交互自然寄生在场景对象上；不得为了满足交互先搭建按钮组、标签页、仪表盘、信息卡、播放器或说明面板。
   - 首个主要场景根节点必须标记 data-rm-visual-scenery="true"，方便插件只读验收；该属性不产生可见文字，也不得被当作标题或说明。
   - 场景未操作时就必须完整、清晰；交互用于推进、揭示、切换或改变场景，不能作为显示核心画面的前置条件。
   - 允许画布中的纯装饰与短标签使用定位和裁切；主要正文与交互反馈若较长，须进入正常文档流并完整撑高，不能被固定高度或 overflow:hidden 截断。`;
+}
+
+function forcedVisualSceneryExclusiveLock(settings) {
+    if (!settings?.forceVisualScenery) return '';
+    return String.raw`
+10.2.2 独占展现形式锁:
+  - 动态视觉模式已开启，本轮唯一展现形式为 10.2.2 Visual Scenery；题材只能决定场景中的人物、物件、关系、情境、观察角度与叙事素材，不得改变主要视觉媒介。
+  - 整体主要视觉本体与主要阅读路径必须由 Visual Scenery 决定；不得以日志、档案、报告、聊天界面、播放器或其他展现形式作为页面主骨架，也不得先搭另一种展现形式再附加一块动态场景。`;
 }
 
 function innerDetailsCooldownRule() {
@@ -449,7 +457,8 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const themes = mode === 'format_only' ? '当前聊天与刚完成的助手正文' : compactLockItems(combo?.themes, 'theme');
     const formats = compactLockItems(combo?.formats, 'presentation');
     const avoidance = settings?.avoidRepeat ? shortVisualAvoidance(combo, 3) : '未启用近期视觉避让。';
-    const visualSceneryMode = !!(settings?.forceVisualScenery || hasVisualScenery(combo));
+    const forcedVisualSceneryMode = !!settings?.forceVisualScenery;
+    const visualSceneryMode = !!(forcedVisualSceneryMode || hasVisualScenery(combo));
     const interaction = visualSceneryMode ? null : interactionFamilyCooldownSnapshot();
     const palette = getActivePaletteCooldown(5);
     const recentFlags = getRecentRiskFlags(5);
@@ -470,10 +479,10 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
         ? 'Visual Scenery 必须包含场景内有效交互：由具体场景对象触发，并实际改变、揭示、切换或推进画面内容；除明确的一次性叙事动作外，交互后必须能够恢复到初始画面；hover/active 只能辅助。'
         : '新交互必须从本轮媒介本体自行生长；不得从固定组件清单中挑选，也不得为躲避冷却机械轮换另一种常见模板。除明确的一次性叙事动作外，任何主要交互的第二状态都必须保留回到初始状态的路径。无法被现有识别器归类的全新交互完全允许。';
     const visualSceneryHardLock = visualSceneryMode
-        ? '- Visual Scenery 画面硬锁：去掉文字后仍须看得出具体场景、对象与正在发生的情境；抽象色块、渐变、光斑、线条和几何形只能辅助，不能当主体。画布内不得塞长正文，连续正文放到画布外正常流；关键内容不能依赖 hover，也不能被固定高度裁切。'
+        ? `- Visual Scenery 画面硬锁：首个主要内容与整体主要视觉本体必须是一幅完整、统一、持续变化的动态视觉场景；用户未操作时就必须有持续、肉眼可见的真实动态。去掉文字后仍须看得出具体场景、对象与正在发生的情境；抽象色块、渐变、光斑、线条和几何形只能辅助，不能当主体。${forcedVisualSceneryMode ? '动态视觉模式下本轮唯一展现形式锁定为 10.2.2；日志、档案、报告、聊天界面、播放器或其他展现形式只能成为场景中的内容或物件，不能成为页面主骨架，也不能先搭其他展现形式再附加一块动态场景。' : ''}画布内不得塞长正文，连续正文放到画布外正常流；关键内容不能依赖 hover，也不能被固定高度裁切。`
         : '';
     const check4 = visualSceneryMode
-        ? 'Visual Scenery 去掉文字后是否仍能看出具体场景与事件；是否存在场景内可触摸的有效交互并产生可保持变化；非一次性交互能否从第二状态恢复初始画面；360px 手机无需 hover 是否能看到关键内容且没有正文裁切；'
+        ? `Visual Scenery 去掉文字后是否仍能看出具体场景与事件；用户未操作时画面本体是否已有持续、肉眼可见的真实动态；${forcedVisualSceneryMode ? '整体主骨架是否仍唯一属于 10.2.2，而非日志、档案、报告、聊天界面、播放器或其他展现形式；' : ''}是否存在场景内可触摸的有效交互并产生可保持变化；非一次性交互能否从第二状态恢复初始画面；360px 手机无需 hover 是否能看到关键内容且没有正文裁切；`
         : '交互是否作用于媒介内部真实对象，并产生可保持、可辨认的第二状态；除一次性叙事动作外，第二状态是否始终能返回初始状态；';
 
     return String.raw`<兔子镜最终执行锁 data-source="independent-api-near-output">
@@ -526,6 +535,7 @@ ${selectedFormats}`);
     chunks.push(presentationEmbodimentRule());
     chunks.push(MEDIA_NATIVE_CONTENT_RULE);
     chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
+    chunks.push(forcedVisualSceneryExclusiveLock(settings));
     if (dynamicCommitmentMode) chunks.push(DYNAMIC_COMMITMENT_RULES);
     if (!visualSceneryMode) chunks.push(interactionFamilyCooldownRule());
     chunks.push(innerDetailsCooldownRule());

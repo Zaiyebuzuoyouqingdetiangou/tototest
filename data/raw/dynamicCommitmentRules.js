@@ -1,6 +1,6 @@
 export const DYNAMIC_COMMITMENT_RULES = String.raw`
 动态承诺兑现:
-  enforcement_level: "guidance"
+  enforcement_level: "mandatory"
   core_concept: "若本轮展现形式或视觉构思承诺了动态、时间推进、连续变化或运动感，必须通过当前环境可渲染的视觉机制真实兑现；动态应属于媒介本体，而不是只存在于文字说明或无关装饰中。"
 
   rule:

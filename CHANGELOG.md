@@ -1,3 +1,10 @@
+# 1.2.54
+
+- 动态视觉模式继续由 picker 强制只选 `10.2.2 Visual Scenery`，并新增仅在该开关开启时生效的展现形式独占锁：题材中的档案、报告、聊天、播放器等词只能成为场景内容或物件，不得抢占页面主骨架。
+- 恢复旧满意版中已验证有效的“先让完整动态场景本体成立，再把交互自然寄生在场景对象上”语义，但不恢复固定三层、固定动画数量、1 秒、`@keyframes + infinite` 等模板化技术配方。
+- Visual Scenery 最终硬锁补回“未操作即持续、肉眼可见的真实动态”自检；`DYNAMIC_COMMITMENT_RULES` 在被注入时提升为 `mandatory`。
+- 不修改 `presentationEmbodimentRule()` 与 `complexInteractiveCore()` 的现有美化、色彩、材质、光影、留白和普通交互底盘。
+
 # 1.2.53
 
 - 以 1.2.52 为唯一功能基线继续修运行时，不回滚 1.2.52 的媒介内容转译、Visual Scenery 与 Prompt 精简改动。
