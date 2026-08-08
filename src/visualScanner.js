@@ -1,11 +1,11 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=1.2.42';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.42';
-import { getSettings } from './settings.js?rmv=1.2.42';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.2.45';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.45';
+import { getSettings } from './settings.js?rmv=1.2.45';
 import {
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.2.42';
+} from './generationGuard.js?rmv=1.2.45';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -390,7 +390,6 @@ function detectInteractionFamily(root, html = '') {
 
 function detectInteractionMissing(html = '') {
     const text = String(html || '');
-    if (visualSceneryAuditExpected(text)) return false;
     return !detectEffectiveInteraction(text);
 }
 
@@ -433,7 +432,7 @@ function visualSceneryAuditExpected(html = '') {
     try { return !!getSettings()?.forceVisualScenery; } catch { return false; }
 }
 
-function inspectVisualSceneryMotion(html = '', spatialSignalCount = 0) {
+function inspectVisualSceneryMotion(root, html = '', spatialSignalCount = 0) {
     const text = String(html || '');
     if (!visualSceneryAuditExpected(text)) return [];
     const flags = [];
@@ -450,6 +449,28 @@ function inspectVisualSceneryMotion(html = '', spatialSignalCount = 0) {
     }
     if (spatialSignalCount < 2 && layeredSceneSignals < 3) {
         flags.push('weak_visual_scenery_layers');
+    }
+
+    // Visual Scenery 的画面本体不能靠大段文字充当“墙、人物、风景”本身。
+    // 这里仅做只读风险记录，不改输出；后续一轮会把该风险写进最终执行锁。
+    const scene = root?.querySelector?.('[data-rm-visual-scenery="true"]') || null;
+    if (scene) {
+        const compactSceneText = String(scene.textContent || '').replace(/\s+/g, '').trim();
+        const directTextLength = element => [...(element?.childNodes || [])]
+            .filter(node => node?.nodeType === 3)
+            .map(node => String(node.nodeValue || '').replace(/\s+/g, ''))
+            .join('').length;
+        const textBlocks = [...scene.querySelectorAll('div,p,section,article,aside,blockquote,figcaption,span')]
+            .filter(element => directTextLength(element) >= 42);
+        const sceneElementCount = Math.max(1, scene.querySelectorAll('*').length);
+        if (compactSceneText.length >= 150 && (textBlocks.length >= 2 || compactSceneText.length > sceneElementCount * 16)) {
+            flags.push('visual_scenery_text_dominant');
+        }
+        if (compactSceneText.length >= 100
+            && /(?:height|max-height)\s*:\s*\d+(?:\.\d+)?(?:px|vh|svh|dvh)\b/i.test(text)
+            && /overflow(?:-y)?\s*:\s*(?:hidden|clip)\b/i.test(text)) {
+            flags.push('visual_scenery_text_clipping_risk');
+        }
     }
     return flags;
 }
@@ -477,7 +498,7 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     if (interactionMissing) flags.push('missing_interaction');
     if (fakeInteraction) flags.push('fake_interaction');
     if (detectVisualPromiseWithoutMechanism(html, plain)) flags.push('visual_promise_unfulfilled');
-    flags.push(...inspectVisualSceneryMotion(html, spatialSignalCount));
+    flags.push(...inspectVisualSceneryMotion(root, html, spatialSignalCount));
     return [...new Set(flags)];
 }
 
@@ -980,6 +1001,8 @@ export function scanRabbitMirrorHtml(messageHtml, renderedToto = null) {
     if (riskFlags.includes('missing_interaction')) structural.push('缺少有效内部交互');
     if (riskFlags.includes('fake_interaction')) structural.push('伪交互/仅悬停装饰风险');
     if (riskFlags.includes('visual_promise_unfulfilled')) structural.push('视觉承诺未兑现风险');
+    if (riskFlags.includes('visual_scenery_text_dominant')) structural.push('动态画面文字主导风险');
+    if (riskFlags.includes('visual_scenery_text_clipping_risk')) structural.push('动态画面长正文裁切风险');
     structural.push(...dom.summaryFlags);
 
     const mediaStrength = (/clip-path|mask|<svg\b|<path\b|position\s*:\s*absolute|transform\s*:|border-radius\s*:\s*50%|aspect-ratio|radial-gradient|conic-gradient/i.test(html) && tagCount >= 35)

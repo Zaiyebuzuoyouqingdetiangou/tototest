@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.2.42';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.42';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.42';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.42';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.42';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.42';
+import { getSettings } from './settings.js?rmv=1.2.45';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.45';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.45';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.45';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.45';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.45';
 
-const RUNTIME_VERSION = '1.2.42';
+const RUNTIME_VERSION = '1.2.45';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -1298,6 +1298,7 @@ function extractReadyDetails(html=''){
  template.innerHTML=prepareIndependentReadyHtml(html);
  const details=template.content.querySelector('details') || null;
  if(details){
+  repairRabbitMirrorScopedClassAliasesInScope(details);
   repairLabelTargets(details);
   isolateRabbitMirrorInteractionIds(details);
   details.setAttribute(INDEPENDENT_SANITIZER_ATTR,RUNTIME_VERSION);

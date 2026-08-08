@@ -1,9 +1,9 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.42';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.42';
-import { pickCombination } from './picker.js?rmv=1.2.42';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.42';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.42';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.42';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.45';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.45';
+import { pickCombination } from './picker.js?rmv=1.2.45';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.45';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.45';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.45';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -161,7 +161,12 @@ function recentRiskCorrection() {
 
     const hasWeakVisualScenery = flags.some(flag => ['visual_scenery_marker_missing', 'weak_visual_scenery_motion', 'weak_visual_scenery_layers'].includes(flag));
     if (hasWeakVisualScenery) {
-        lines.push('近期动态视觉场景曾退化为假场景、静态页面或弱动效。本轮必须先让场景本体成立，并选择最值得被看见的主体、环境或光影做真实持续动画；允许纯视觉呈现，不必为了达标硬凑前中后景清单、双动画或外挂操作面板。');
+        lines.push('近期动态视觉场景曾退化为假场景、静态页面或弱动效。本轮必须先建立可辨认的完整动态舞台，让具体场景对象承担主要视觉与持续动画，并保留一条场景内有效交互；不得用抽象色块、光斑、几何图形、微粒或外挂操作面板冒充场景。');
+    }
+
+    const hasTextHeavyVisualScenery = flags.some(flag => ['visual_scenery_text_dominant', 'visual_scenery_text_clipping_risk'].includes(flag));
+    if (hasTextHeavyVisualScenery) {
+        lines.push('近期动态视觉场景把长正文、纵排文字或说明文字当成了主要画面，甚至塞进固定高度画布造成裁切。本轮临时删掉所有可见文字后，剩余 DOM/CSS 仍必须是一幅完整、可辨认、会持续运动的画面；画布内只保留极短题签、坐标或短句，连续正文必须移到画布外的正常文档流完整撑高。');
     }
 
     if ((counts.same_block_stack || 0) >= 2 || (counts.info_page_degrade || 0) >= 2 || (counts.flat_vertical_flow || 0) >= 2) {
@@ -299,15 +304,14 @@ function complexInteractiveCore() {
 function visualScenerySceneFirstCore() {
     return String.raw`
 Visual Scenery 场景优先级【覆盖通用交互骨架的执行顺序】:
-  - 本轮第一优先级是先让一幅完整动态场景本体成立；不得为了满足“复杂交互”先搭建按钮组、标签页、仪表盘、信息卡、播放器或说明面板。
-  - Visual Scenery 允许纯视觉呈现，不强制加入交互；只要画面本身已经完整、可辨认并持续运动，即可成立。若自然适合追加交互，交互也只能寄生于场景内部真实存在的对象、关系或观看路径。
+  - 本轮第一优先级是先让一幅完整动态场景本体成立；不得为了满足交互先搭建按钮组、标签页、仪表盘、信息卡、播放器或说明面板。
+  - 画面可表现现实、回忆、幻想、未来畅想、可能性或象征情境，不必复刻当前现场；但必须落实为可辨认的具体对象、人物、环境、空间关系或正在发生的情境，抽象色块、渐变、光斑、线条与几何形只能辅助。
   - 首个主要场景根节点必须标记 data-rm-visual-scenery="true"，方便插件只读验收；该属性不产生可见文字，也不得被当作标题或说明。
-  - 至少一处占据明确视觉权重的主体、关系结构、环境要素或光影机制，必须同时具备真实 @keyframes、可见元素上的 animation 声明、infinite 循环，并在打开后 1 秒内产生肉眼可见的位移、缩放、旋转、形变、遮罩推进、流体变化或光影扫动。只写 transform、transition、动画名、SVG、微尘闪烁或低对比呼吸不算有效动态。
-  - 画面应先从正文中挑出最值得被看见、最自然会动的对象来承担动态；可以只有一处核心动态，也可以有若干协同动态，但不得为了凑规则机械堆叠前中后景清单、双动画套餐或装饰性微粒。
-  - 场景未操作时就必须完整、清晰、持续活动；若附带交互，交互只能推进、揭示或改变场景，不能作为显示核心画面的前置条件。
-  - 允许场景画布中的纯装饰与短标签使用定位和裁切；主要正文与交互反馈若存在，仍须进入正常文档流并完整撑高，不能被固定高度或 overflow:hidden 截断。`;
+  - 至少一处占据明确视觉权重的主体、关系结构或环境层，必须同时具备真实 @keyframes、可见元素上的 animation 声明、infinite 循环，并在打开后 1 秒内产生肉眼可见的位移、缩放、旋转、形变、遮罩推进、流体变化或光影扫动。
+  - 场景必须同时具有一条与画面本体一致的有效交互链：场景对象→触摸／点击等操作→可保持的画面、关系、时间或内容变化→明确反馈；仅 hover/active、变色、描边或轻微位移不算本轮必需交互。
+  - 场景未操作时就必须完整、清晰、持续活动；交互用于推进、揭示、切换或改变场景，不能作为显示核心画面的前置条件。
+  - 允许场景画布中的纯装饰与短标签使用定位和裁切；主要正文与交互反馈若较长，须进入正常文档流并完整撑高，不能被固定高度或 overflow:hidden 截断。`;
 }
-
 
 function innerDetailsCooldownRule() {
     const recentFlags = getRecentRiskFlags(5);
@@ -330,11 +334,10 @@ function visibleChineseHardLock() {
 function visualSceneryInteractionLinkRule() {
     return String.raw`
 Visual Scenery 动态与交互:
-  - 画面打开后必须通过完整、持续且肉眼可见的 CSS 动画成立，核心内容不得依赖用户操作才能出现。
-  - 纯视觉呈现完全允许，不强制补做交互；若场景本体已经成立，不得为了交作业额外加按钮栏、分页、控制台或进度条。
-  - 若本轮自然出现交互，交互须发生在画面本体内部，并对内容、关系、结构、空间、材质、时间进程或观察方式带来清晰且有意义的变化；动画与交互不能互相替代。`;
+  - 画面打开后必须通过完整、持续且肉眼可见的 CSS 动画成立，核心画面不得依赖用户操作才能出现。
+  - 本轮必须有至少一种可触摸／点击的有效交互，并实际改变、揭示、切换或推进画面内容；交互须作用于场景内部真实存在的对象或关系，不得外挂独立操作面板。
+  - 交互状态应使用宿主可稳定保留的 HTML/CSS 机制实现；hover/active 只能辅助，不能单独充当本轮必需交互。`;
 }
-
 
 function htmlSafetyCore() {
     return String.raw`
@@ -458,10 +461,13 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     ].filter(Boolean);
 
     const interactionDirective = visualSceneryMode
-        ? 'Visual Scenery 可纯视觉呈现；若场景本体已经完整成立，可以不额外加入交互。若确需交互，只能寄生于场景内部真实对象。'
+        ? 'Visual Scenery 必须包含场景内有效交互：由具体场景对象触发，并实际改变、揭示、切换或推进画面内容；hover/active 只能辅助。'
         : '新交互必须从本轮媒介本体自行生长；不得从固定组件清单中挑选，也不得为躲避冷却机械轮换另一种常见模板。无法被现有识别器归类的全新交互完全允许。';
+    const visualSceneryHardLock = visualSceneryMode
+        ? '- Visual Scenery 画面硬锁：去掉文字后仍须看得出具体场景、对象与正在发生的情境；抽象色块、渐变、光斑、线条和几何形只能辅助，不能当主体。画布内不得塞长正文，连续正文放到画布外正常流；关键内容不能依赖 hover，也不能被固定高度裁切。'
+        : '';
     const check4 = visualSceneryMode
-        ? '若本轮采用纯视觉呈现，画面本身是否已经完整成立并具有真实持续动态；若添加交互，交互是否寄生于场景内部对象而非外加面板；'
+        ? 'Visual Scenery 去掉文字后是否仍能看出具体场景与事件；是否存在场景内可触摸的有效交互并产生可保持变化；360px 手机无需 hover 是否能看到关键内容且没有正文裁切；'
         : '交互是否作用于媒介内部真实对象，并产生可保持、可辨认的第二状态；';
 
     return String.raw`<兔子镜最终执行锁 data-source="independent-api-near-output">
@@ -469,6 +475,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
 - 抽取模式：${samplingModeLabel(combo, settings)}。
 - 内容构思锁：以“${themes}”作为观察角度、关系组织与细节取材；必须从当前助手正文提取具体动作、情绪、关系变化或物件痕迹，不得只把主题写进标题。
 - UI／媒介构思锁：以“${formats}”作为首个主要视觉本体；DOM/CSS 必须真实呈现其形态、材质、空间关系、阅读路径和操作方式，不得退化为通用卡片、信息面板或只换皮的标签页。
+${visualSceneryHardLock}
 ${directiveText ? `- 用户本轮点菜仍为最高优先，必须同时落实：${directiveText}` : ''}
 
 【近期必须避开】

@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.42';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.42';
+import { getSettings } from './settings.js?rmv=1.2.45';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.45';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.2.42';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.42';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.42';
+} from './feedbackCat.js?rmv=1.2.45';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.45';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.45';
 
 
-const RUNTIME_VERSION = '1.2.42';
+const RUNTIME_VERSION = '1.2.45';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9935,6 +9935,11 @@ const MOBILE_LAYOUT_RELATION_BRANCH_ATTR = 'data-rm-mobile-relation-branch';
 const MOBILE_LAYOUT_RELATION_CELL_ATTR = 'data-rm-mobile-relation-cell';
 const MOBILE_LAYOUT_RELATION_DETAIL_ATTR = 'data-rm-mobile-relation-detail';
 const MOBILE_LAYOUT_RELATION_SIDE_ATTR = 'data-rm-mobile-relation-side';
+const VISUAL_SCENERY_MOBILE_OVERFLOW_HOST_ATTR = 'data-rm-mobile-visual-scenery-overflow-host';
+const VISUAL_SCENERY_MOBILE_OVERFLOW_COPY_ATTR = 'data-rm-mobile-visual-scenery-overflow-copy';
+const VISUAL_SCENERY_MOBILE_OVERFLOW_SOURCE_ATTR = 'data-rm-mobile-visual-scenery-overflow-source';
+const VISUAL_SCENERY_MOBILE_OVERFLOW_STYLE_ATTR = 'data-rabbit-mirror-visual-scenery-overflow-rescue';
+const VISUAL_SCENERY_MOBILE_OVERFLOW_COUNT_ATTR = 'data-rabbit-mirror-visual-scenery-overflow-count';
 const MOBILE_LAYOUT_BREAKPOINT_PX = 640;
 const MOBILE_LAYOUT_TARGET_ATTRS = Object.freeze([
     MOBILE_LAYOUT_FIT_ATTR,
@@ -9970,7 +9975,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.42-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.45-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -11037,6 +11042,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `电视／终端屏幕保形=${mobileLayout.screenShellCount || 0}`,
         `内部details弹出结果裁切=${nestedDetailsPopupCandidateCount} repaired=${root.getAttribute?.(NESTED_DETAILS_POPUP_COUNT_ATTR) || '0'}`,
         `手机端行内批注=${mobileInlineAnnotationCandidateCount} repaired=${root.getAttribute?.(MOBILE_INLINE_ANNOTATION_COUNT_ATTR) || '0'}`,
+        `动态视觉长正文越界=${mobileLayout.visualSceneryOverflowCount || 0} repaired=${root.getAttribute?.(VISUAL_SCENERY_MOBILE_OVERFLOW_COUNT_ATTR) || '0'}`,
         `repairScope=${root.getAttribute?.(MOBILE_LAYOUT_SCOPE_ATTR) || '(无)'} patched=${root.getAttribute?.(MOBILE_LAYOUT_RESCUE_COUNT_ATTR) || '0'}`,
         '',
         '[捕获事件]',
@@ -15011,6 +15017,110 @@ function repairLegacyMaintenanceMobileStateRows(scope) {
     return changed;
 }
 
+function visualSceneryMobileOverflowCandidateRecords(root) {
+    if (!root?.querySelectorAll) return [];
+    const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
+    if (viewportWidth > MOBILE_LAYOUT_BREAKPOINT_PX + 40) return [];
+    const records = [];
+    for (const scene of root.querySelectorAll('[data-rm-visual-scenery="true"]')) {
+        const sceneStyle = maintenanceMobileLayoutComputedStyle(scene);
+        const sceneRect = maintenanceMobileLayoutRect(scene);
+        if (!sceneStyle || !sceneRect || sceneRect.height <= 40) continue;
+        const overflow = `${sceneStyle.overflow || ''} ${sceneStyle.overflowX || ''} ${sceneStyle.overflowY || ''}`.toLowerCase();
+        if (!/(?:hidden|clip)/.test(overflow)) continue;
+
+        const candidates = [];
+        for (const element of scene.querySelectorAll('div,p,section,article,aside,blockquote,figcaption,span')) {
+            if (maintenanceMobileLayoutIsInternal(element)) continue;
+            if (maintenanceDirectTextLength(element) < 48) continue;
+            const style = maintenanceMobileLayoutComputedStyle(element);
+            const position = String(style?.position || '').toLowerCase();
+            if (position !== 'absolute' && position !== 'fixed') continue;
+            const rect = maintenanceMobileLayoutRect(element);
+            if (!rect || rect.height <= 1) continue;
+            const textRects = maintenanceVisibleTextRects(element);
+            const lowestTextBottom = textRects.reduce((max, textRect) => Math.max(max, Number(textRect?.bottom || 0)), 0);
+            const highestTextTop = textRects.reduce((min, textRect) => Math.min(min, Number(textRect?.top || sceneRect.top)), sceneRect.top);
+            const bottom = Math.max(Number(rect.bottom || 0), lowestTextBottom);
+            const top = Math.min(Number(rect.top || sceneRect.top), highestTextTop);
+            const ownOverflow = Number(element.scrollHeight || 0) > Number(element.clientHeight || 0) + 3;
+            if (bottom <= sceneRect.bottom + 3 && top >= sceneRect.top - 3 && !ownOverflow) continue;
+            candidates.push(element);
+        }
+        if (candidates.length) records.push({ scene, candidates: candidates.slice(0, 4) });
+    }
+    return records;
+}
+
+function cleanVisualSceneryOverflowClone(clone) {
+    if (!clone?.querySelectorAll) return clone;
+    const nodes = [clone, ...clone.querySelectorAll('*')];
+    for (const node of nodes) {
+        if (!node?.attributes) continue;
+        for (const attr of [...node.attributes]) {
+            const name = String(attr.name || '').toLowerCase();
+            if (name === VISUAL_SCENERY_MOBILE_OVERFLOW_COPY_ATTR) continue;
+            if (name === 'style' || name === 'class' || name === 'id' || name === 'for' || name === 'name' || name === 'tabindex'
+                || name.startsWith('on') || name.startsWith('data-rabbit-mirror-') || name.startsWith('data-rm-')) {
+                node.removeAttribute(attr.name);
+            }
+        }
+    }
+    clone.querySelectorAll('script,style,iframe,input,button,select,textarea,option').forEach(node => node.remove());
+    return clone;
+}
+
+function ensureVisualSceneryMobileOverflowStyle(root) {
+    let style = root.querySelector(`:scope > style[${VISUAL_SCENERY_MOBILE_OVERFLOW_STYLE_ATTR}]`);
+    if (!style) {
+        style = document.createElement('style');
+        style.setAttribute(VISUAL_SCENERY_MOBILE_OVERFLOW_STYLE_ATTR, 'true');
+        root.appendChild(style);
+    }
+    style.textContent = `[${VISUAL_SCENERY_MOBILE_OVERFLOW_HOST_ATTR}] { display:none; }
+@media (max-width: ${MOBILE_LAYOUT_BREAKPOINT_PX}px) {
+[${VISUAL_SCENERY_MOBILE_OVERFLOW_SOURCE_ATTR}] { visibility:hidden !important; pointer-events:none !important; }
+[${VISUAL_SCENERY_MOBILE_OVERFLOW_HOST_ATTR}] { display:block !important; position:relative !important; width:100% !important; max-width:100% !important; min-width:0 !important; height:auto !important; max-height:none !important; margin:12px 0 0 !important; padding:0 !important; overflow:visible !important; box-sizing:border-box !important; }
+[${VISUAL_SCENERY_MOBILE_OVERFLOW_COPY_ATTR}] { display:block !important; position:static !important; inset:auto !important; width:auto !important; max-width:100% !important; min-width:0 !important; height:auto !important; max-height:none !important; margin:0 !important; padding:8px 4px 10px !important; overflow:visible !important; opacity:1 !important; transform:none !important; white-space:normal !important; overflow-wrap:anywhere !important; word-break:break-word !important; line-height:1.8 !important; color:inherit !important; background:transparent !important; box-shadow:none !important; }
+[${VISUAL_SCENERY_MOBILE_OVERFLOW_COPY_ATTR}] + [${VISUAL_SCENERY_MOBILE_OVERFLOW_COPY_ATTR}] { margin-top:8px !important; }
+}`;
+    return style;
+}
+
+function installVisualSceneryMobileNarrativeOverflowRescue(root) {
+    if (!root?.querySelectorAll || !root?.isConnected) return 0;
+    root.querySelectorAll(`[${VISUAL_SCENERY_MOBILE_OVERFLOW_HOST_ATTR}]`).forEach(node => node.remove());
+    root.querySelectorAll(`[${VISUAL_SCENERY_MOBILE_OVERFLOW_SOURCE_ATTR}]`).forEach(node => node.removeAttribute(VISUAL_SCENERY_MOBILE_OVERFLOW_SOURCE_ATTR));
+    root.removeAttribute(VISUAL_SCENERY_MOBILE_OVERFLOW_COUNT_ATTR);
+
+    const records = visualSceneryMobileOverflowCandidateRecords(root);
+    if (!records.length) return 0;
+    ensureVisualSceneryMobileOverflowStyle(root);
+    let repaired = 0;
+    for (const { scene, candidates } of records) {
+        let anchor = scene;
+        while (anchor.parentElement && anchor.parentElement !== root && !anchor.parentElement.matches?.('details,toto')) {
+            anchor = anchor.parentElement;
+        }
+        const host = document.createElement('div');
+        host.setAttribute(VISUAL_SCENERY_MOBILE_OVERFLOW_HOST_ATTR, 'true');
+        let copied = 0;
+        for (const source of candidates) {
+            if (!source?.isConnected) continue;
+            const copy = cleanVisualSceneryOverflowClone(source.cloneNode(true));
+            copy.setAttribute(VISUAL_SCENERY_MOBILE_OVERFLOW_COPY_ATTR, 'true');
+            source.setAttribute(VISUAL_SCENERY_MOBILE_OVERFLOW_SOURCE_ATTR, 'true');
+            host.appendChild(copy);
+            copied += 1;
+        }
+        if (!copied) continue;
+        anchor.insertAdjacentElement('afterend', host);
+        repaired += copied;
+    }
+    if (repaired > 0) root.setAttribute(VISUAL_SCENERY_MOBILE_OVERFLOW_COUNT_ATTR, String(repaired));
+    return repaired;
+}
+
 function maintenanceMobileLayoutCss(scopeToken) {
     const scope = `[${MOBILE_LAYOUT_SCOPE_ATTR}="${scopeToken}"]`;
     return `@media (max-width: ${MOBILE_LAYOUT_BREAKPOINT_PX}px) {
@@ -15061,6 +15171,7 @@ function inspectMaintenanceMobileLayout(root) {
         sectionStackCount: 0,
         screenShellCount: 0,
         relationTreeCount: 0,
+        visualSceneryOverflowCount: 0,
     };
     if (!root?.querySelectorAll) return empty;
     const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
@@ -15203,9 +15314,11 @@ function inspectMaintenanceMobileLayout(root) {
         }
     }
 
+    const visualSceneryOverflowCount = visualSceneryMobileOverflowCandidateRecords(root)
+        .reduce((sum, record) => sum + (record?.candidates?.length || 0), 0);
     const unique = new Set(Object.values(buckets).flatMap(set => [...set]));
     return {
-        candidateCount: unique.size,
+        candidateCount: unique.size + visualSceneryOverflowCount,
         viewportWidth,
         narrowViewport,
         horizontalOverflowCount: buckets.horizontalOverflow.size,
@@ -15220,6 +15333,7 @@ function inspectMaintenanceMobileLayout(root) {
         sectionStackCount: sectionStackHosts.length,
         screenShellCount: screenShellHosts.length,
         relationTreeCount: relationTreeInfos.length,
+        visualSceneryOverflowCount,
     };
 }
 
@@ -15412,6 +15526,7 @@ function installMaintenanceMobileLayoutRescue(root) {
 
     installMaintenanceMobileMatrixStateRescue(root, matrixEntries);
     installMaintenanceMobileStateContentRescue(root, marked, referenceWidth);
+    const visualSceneryOverflowRepairCount = installVisualSceneryMobileNarrativeOverflowRescue(root);
 
     let rescueStyle = root.querySelector(`style[${MOBILE_LAYOUT_RESCUE_STYLE_ATTR}]`);
     if (!rescueStyle) {
@@ -15420,7 +15535,7 @@ function installMaintenanceMobileLayoutRescue(root) {
         root.appendChild(rescueStyle);
     }
     rescueStyle.textContent = maintenanceMobileLayoutCss(scopeToken);
-    const count = marked.size;
+    const count = marked.size + visualSceneryOverflowRepairCount;
     root.setAttribute(MOBILE_LAYOUT_RESCUE_COUNT_ATTR, String(count));
     return count;
 }
@@ -15911,6 +16026,7 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
         ['radio-reset-local-scope', installRawMessageRadioResetProgramRescue],
         ['missing-checked-control-class', installMissingCheckedSubjectClassRescue],
         ['webkit-3d-flip-compat', installWebKit3DFlipRescue],
+        ['visual-scenery-mobile-overflow', installVisualSceneryMobileNarrativeOverflowRescue],
     ];
     for (const [id, installer] of safeInstallers) {
         try {
@@ -16401,8 +16517,68 @@ export function refreshFeedbackCats() {
     installMaintenanceRabbitsInChatDom();
 }
 
+
+function collectScopedClassAliasesForHost(host) {
+    if (!host?.querySelectorAll || !host?.getAttribute) return new Map();
+    const scopeToken = String(host.getAttribute(RABBIT_MIRROR_CSS_SCOPE_ATTR) || '').trim();
+    if (!scopeToken) return new Map();
+    const classPrefix = `rmc-${scopeToken.replace(/^rmcss-/i, '')}-`;
+    const aliases = new Map();
+    const ambiguous = new Set();
+    const escapedPrefix = escapeRegExp(classPrefix);
+    const classRe = new RegExp(`\\.(${escapedPrefix}[A-Za-z_][\\w-]*)`, 'g');
+    for (const style of host.querySelectorAll('style')) {
+        const css = String(style.textContent || '');
+        classRe.lastIndex = 0;
+        let match;
+        while ((match = classRe.exec(css))) {
+            const mapped = String(match[1] || '');
+            const raw = mapped.slice(classPrefix.length);
+            if (!raw) continue;
+            const previous = aliases.get(raw);
+            if (previous && previous !== mapped) ambiguous.add(raw);
+            else if (!previous) aliases.set(raw, mapped);
+        }
+    }
+    for (const raw of ambiguous) aliases.delete(raw);
+    return aliases;
+}
+
+export function repairRabbitMirrorScopedClassAliasesInScope(scope) {
+    if (!scope?.querySelectorAll) return 0;
+    const hosts = [];
+    if (scope.matches?.(`[${RABBIT_MIRROR_CSS_SCOPE_ATTR}]`)) hosts.push(scope);
+    for (const host of scope.querySelectorAll(`[${RABBIT_MIRROR_CSS_SCOPE_ATTR}]`)) {
+        if (!hosts.includes(host)) hosts.push(host);
+    }
+    let changed = 0;
+    for (const host of hosts) {
+        const aliases = collectScopedClassAliasesForHost(host);
+        if (!aliases.size) continue;
+        const elements = [];
+        if (host.hasAttribute?.('class')) elements.push(host);
+        for (const element of host.querySelectorAll('[class]')) elements.push(element);
+        for (const element of elements) {
+            const original = String(element.getAttribute('class') || '').split(/\s+/).filter(Boolean);
+            if (!original.length) continue;
+            let localChanged = false;
+            const rewritten = original.map((token) => {
+                const mapped = aliases.get(token);
+                if (!mapped || mapped === token) return token;
+                localChanged = true;
+                return mapped;
+            });
+            if (!localChanged) continue;
+            element.setAttribute('class', [...new Set(rewritten)].join(' '));
+            changed += 1;
+        }
+    }
+    return changed;
+}
+
 export function refreshRabbitMirrorToolsInScope(scope) {
     if (!scope?.querySelectorAll) return;
+    repairRabbitMirrorScopedClassAliasesInScope(scope);
     // Older “显示不全” repairs could wrap a radio/checkbox-driven horizontal
     // state row and turn it into a very tall empty frame. Repair only that
     // proven bad pattern before installing the tools; ordinary flex rows remain untouched.
@@ -17233,13 +17409,58 @@ function repairMalformedCssDeclarations(cssText) {
         },
     );
 
-    // transition:all0.7s 是另一类常见粘连；仅修保留字 all 与时长之间的缺空格。
+    // transition:all0.7s / transition:transform1.5s 是另一类常见粘连；
+    // 仅修 CSS 过渡属性关键字与紧随其后的时长，避免猜测自定义标识符。
     repaired = repaired.replace(
         /(^|[;{])(\s*)transition\s*:\s*([^;{}]+)(;|(?=}))/gi,
         (full, boundary, spacing, rawValue, terminator) => {
-            const value = String(rawValue || '').replace(/\ball(?=\d*\.?\d+(?:ms|s)\b)/gi, 'all ');
+            const value = String(rawValue || '').replace(
+                /\b(all|transform|opacity|filter|width|height|max-height|min-height|left|right|top|bottom|color|background|background-color|box-shadow|clip-path)(?=\d*\.?\d+(?:ms|s)\b)/gi,
+                '$1 ',
+            );
             if (value === rawValue) return full;
             return `${boundary}${spacing}transition: ${value.trim()}${terminator === ';' ? ';' : ''}`;
+        },
+    );
+
+    // transform 函数之间必须分隔；模型偶尔会输出 rotate(0deg)translateY(0)。
+    repaired = repaired.replace(
+        /(^|[;{])(\s*)transform\s*:\s*([^;{}]+)(;|(?=}))/gi,
+        (full, boundary, spacing, rawValue, terminator) => {
+            const value = String(rawValue || '').replace(/\)(?=[a-z-]+\()/gi, ') ');
+            if (value === rawValue) return full;
+            return `${boundary}${spacing}transform: ${value.trim()}${terminator === ';' ? ';' : ''}`;
+        },
+    );
+
+    // 渐变色标也会出现 rgba(...)100% 这种粘连，只在 background 声明中补空格。
+    repaired = repaired.replace(
+        /(^|[;{])(\s*)(background(?:-image)?)\s*:\s*([^;{}]+)(;|(?=}))/gi,
+        (full, boundary, spacing, property, rawValue, terminator) => {
+            const value = String(rawValue || '').replace(/\)(?=\d+(?:\.\d+)?%)/g, ') ');
+            if (value === rawValue) return full;
+            return `${boundary}${spacing}${property}: ${value.trim()}${terminator === ';' ? ';' : ''}`;
+        },
+    );
+
+    // 只修 CSS 保留字之间的高置信粘连，不猜测作者意图。
+    repaired = repaired.replace(
+        /(^|[;{])(\s*)((?:-webkit-)?animation(?:-name)?)\s*:\s*([^;{}]+)(?=;|})/gi,
+        (full, boundary, spacing, property, rawValue) => {
+            const value = String(rawValue || '')
+                .replace(/\b(linear|ease|ease-in|ease-out|ease-in-out)(?=infinite(?:alternate(?:-reverse)?)?\b)/gi, '$1 ')
+                .replace(/\binfinite(?=alternate(?:-reverse)?\b)/gi, 'infinite ');
+            if (value === rawValue) return full;
+            return `${boundary}${spacing}${property}: ${value.trim()}`;
+        },
+    );
+    repaired = repaired.replace(/\btransparent(?=\d+(?:\.\d+)?%)/gi, 'transparent ');
+    repaired = repaired.replace(
+        /(^|[;{])(\s*)box-shadow\s*:\s*([^;{}]+)(?=;|})/gi,
+        (full, boundary, spacing, rawValue) => {
+            const value = String(rawValue || '').replace(/\b0\s+0(?=\d+(?:\.\d+)?(?:px|r?em|vh|vw|vmin|vmax|%)\b)/gi, '0 0 ');
+            if (value === rawValue) return full;
+            return `${boundary}${spacing}box-shadow: ${value.trim()}`;
         },
     );
 
