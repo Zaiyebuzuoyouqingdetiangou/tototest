@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.2.45';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.45';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.45';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.45';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.45';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.45';
+import { getSettings } from './settings.js?rmv=1.2.46';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.46';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.46';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.46';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.46';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.46';
 
-const RUNTIME_VERSION = '1.2.45';
+const RUNTIME_VERSION = '1.2.46';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -23,6 +23,8 @@ const RESAY_EVENT = 'rabbitmirror:resay';
 const HISTORY_EVENT = 'rabbitmirror:history';
 const INDEPENDENT_REPAIR_PERSIST_EVENT = 'rabbitmirror:independent-repair-persist';
 const HISTORY_STORE_KEY = 'rabbit_mirror_independent_history_v1';
+const CHAT_OUTPUT_METADATA_KEY = 'rabbit_mirror_independent_outputs_v2';
+const CHAT_OUTPUT_METADATA_SCHEMA = 2;
 const HISTORY_PANEL_ATTR = 'data-rabbit-mirror-history-panel';
 const ACTION_BRIDGE_KEY = '__rabbitMirrorIndependentActionsV1';
 let hostModule = null;
@@ -167,6 +169,126 @@ function appendHistoryEntry(slot,value){
 function historyEntriesForSlot(slot){
  const list=readHistoryStore().slots?.[slot];
  return (Array.isArray(list)?list:[]).map(normalizeHistoryEntry).filter(Boolean).sort((a,b)=>Number(b.ts||0)-Number(a.ts||0));
+}
+function emptyChatOutputMetadata(){ return {version:CHAT_OUTPUT_METADATA_SCHEMA,owners:{}}; }
+function chatMetadataObject(ctx=getContext()){
+ const value=ctx?.chatMetadata || globalThis.chat_metadata;
+ return value&&typeof value==='object'?value:null;
+}
+function compactChatPersistedRecord(value){
+ if(!value?.html) return null;
+ const record=normalizeHistoryEntry(value); if(!record?.html) return null;
+ return {
+  html:String(record.html||''), sourceHash:String(record.sourceHash||''), bodyHash:String(record.bodyHash||''),
+  displayHash:String(record.displayHash||''), reasoningHash:String(record.reasoningHash||''), ts:Number(record.ts||Date.now()),
+  model:String(record.model||''), runtime:String(record.runtime||RUNTIME_VERSION), executionLockChars:Number(record.executionLockChars||0),
+  paletteFingerprint:record.paletteFingerprint&&typeof record.paletteFingerprint==='object'?{...record.paletteFingerprint}:null,
+  repairedByMaintenance:!!value?.repairedByMaintenance,
+ };
+}
+function normalizeChatOutputMetadata(value){
+ const next=emptyChatOutputMetadata();
+ const owners=value&&typeof value==='object'&&value.owners&&typeof value.owners==='object'?value.owners:{};
+ for(const [key,raw] of Object.entries(owners)){
+  if(!/^\d+:\d+$/.test(String(key||'')) || !raw || typeof raw!=='object') continue;
+  if(raw.deleted===true){ next.owners[key]={deleted:true,ts:Number(raw.ts||0),runtime:String(raw.runtime||RUNTIME_VERSION)}; continue; }
+  const record=compactChatPersistedRecord(raw); if(record) next.owners[key]=record;
+ }
+ return next;
+}
+function readChatOutputMetadata(ctx=getContext()){
+ const metadata=chatMetadataObject(ctx); if(!metadata) return emptyChatOutputMetadata();
+ return normalizeChatOutputMetadata(metadata[CHAT_OUTPUT_METADATA_KEY]);
+}
+function saveChatOutputMetadata(ctx=getContext()){
+ try{
+  const result=ctx?.saveMetadata?.();
+  if(result&&typeof result.catch==='function') result.catch(error=>console.warn('[RabbitMirror] 独立 API 跨设备兔子镜保存失败:',error));
+  return true;
+ }catch(error){ console.warn('[RabbitMirror] 独立 API 跨设备兔子镜保存失败:',error); return false; }
+}
+function chatOwnerKey(index,swipe=0){
+ const i=Number(index), s=Number(swipe);
+ return Number.isInteger(i)&&i>=0&&Number.isInteger(s)&&s>=0?`${i}:${s}`:'';
+}
+function parseChatOwnerKey(value=''){
+ const match=String(value||'').match(/^(\d+):(\d+)$/); if(!match) return null;
+ return {index:Number(match[1]),swipe:Number(match[2])};
+}
+function persistedOwnerForMessage(ctx,index,msg){
+ const key=chatOwnerKey(index,swipeId(msg)); if(!key) return null;
+ const metadata=chatMetadataObject(ctx); const raw=metadata?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[key];
+ if(!raw||typeof raw!=='object') return null;
+ if(raw.deleted===true) return {deleted:true,ts:Number(raw.ts||0),runtime:String(raw.runtime||RUNTIME_VERSION)};
+ return compactChatPersistedRecord(raw);
+}
+function writePersistedOwner(ctx,index,msg,value,{overwrite=true}={}){
+ const metadata=chatMetadataObject(ctx); const ownerKey=chatOwnerKey(index,swipeId(msg));
+ if(!metadata||!ownerKey) return false;
+ let state=metadata[CHAT_OUTPUT_METADATA_KEY];
+ if(!state||typeof state!=='object'||!state.owners||typeof state.owners!=='object') state=emptyChatOutputMetadata();
+ const existing=state.owners?.[ownerKey];
+ if(!overwrite && existing) return false;
+ let next=null;
+ if(value?.deleted===true) next={deleted:true,ts:Number(value.ts||Date.now()),runtime:RUNTIME_VERSION};
+ else next=compactChatPersistedRecord(value);
+ if(!next) return false;
+ if(existing && JSON.stringify(existing)===JSON.stringify(next)) return false;
+ state.version=CHAT_OUTPUT_METADATA_SCHEMA; state.owners[ownerKey]=next; metadata[CHAT_OUTPUT_METADATA_KEY]=state; saveChatOutputMetadata(ctx); return true;
+}
+function suppressPersistedOwnerForResay(ctx,index,msg){
+ return writePersistedOwner(ctx,index,msg,{deleted:true,ts:Date.now()},{overwrite:true});
+}
+function chatPersistenceSlot(ctx,index,swipe,record){
+ const sourceHash=String(record?.sourceHash||record?.bodyHash||'').trim();
+ return sourceHash?`${chatKey(ctx)}:${Number(index)}:${Number(swipe)}:${sourceHash}`:'';
+}
+function mergeChatOutputsIntoLocalStore(ctx,store){
+ const state=readChatOutputMetadata(ctx); let changed=false;
+ for(const [ownerKey,raw] of Object.entries(state.owners||{})){
+  const owner=parseChatOwnerKey(ownerKey); if(!owner) continue;
+  const base=`${chatKey(ctx)}:${owner.index}:${owner.swipe}`;
+  if(raw?.deleted===true){ clearOwnerLockForBase(base); continue; }
+  const record=compactChatPersistedRecord(raw); if(!record?.html || !independentStoredHtmlRestorable(record.html)) continue;
+  const slot=chatPersistenceSlot(ctx,owner.index,owner.swipe,record); if(!slot) continue;
+  const existing=store?.[slot];
+  if(!existing?.html || !independentStoredHtmlRestorable(existing.html) || String(existing.html)!==String(record.html)){
+   saveRecordForSlot(store,slot,record,{dropLegacy:false}); changed=true;
+  }
+  setOwnerLockForBase(base,slot,String(record.sourceHash||record.bodyHash||''));
+ }
+ return changed;
+}
+function migrateLegacyLocalOutputsToChatMetadata(ctx,store){
+ const metadata=chatMetadataObject(ctx); if(!metadata) return {metadataChanged:false,storeChanged:false};
+ const state=readChatOutputMetadata(ctx); let metadataChanged=false; let storeChanged=false;
+ for(const {m,i} of assistantMessages(ctx)){
+  const ownerKey=chatOwnerKey(i,swipeId(m)); if(!ownerKey || Object.prototype.hasOwnProperty.call(state.owners,ownerKey)) continue;
+  const observed=observeMessageSourceRevision(ctx,i,m);
+  const base=messageBaseSlotKey(ctx,i,m);
+  const locked=lockedIndependentRecordForBase(base,store);
+  let record=locked?.record||null;
+  if(!record?.html){
+   const recovered=recoverSavedRecord(store,observed.slot,observed);
+   if(recovered.storeChanged) storeChanged=true;
+   record=recovered.saved||null;
+  }
+  const compact=compactChatPersistedRecord(record);
+  if(!compact?.html || !independentStoredHtmlRestorable(compact.html)) continue;
+  state.owners[ownerKey]=compact; metadataChanged=true;
+ }
+ if(metadataChanged){ metadata[CHAT_OUTPUT_METADATA_KEY]=state; saveChatOutputMetadata(ctx); }
+ return {metadataChanged,storeChanged};
+}
+function synchronizeIndependentChatPersistence(ctx,store){
+ const imported=mergeChatOutputsIntoLocalStore(ctx,store);
+ const migrated=migrateLegacyLocalOutputsToChatMetadata(ctx,store);
+ return {storeChanged:!!(imported||migrated.storeChanged),metadataChanged:!!migrated.metadataChanged};
+}
+function independentContextChatMetadata(ctx){
+ const source=ctx?.chatMetadata || globalThis.chat_metadata || null;
+ if(!source || typeof source!=='object') return source;
+ const copy={...source}; delete copy[CHAT_OUTPUT_METADATA_KEY]; return copy;
 }
 function migrateLegacyDeletedRecords(){
  const store=readStore(); let changed=false;
@@ -385,7 +507,7 @@ function contextBundle(ctx,targetIndex){
  const char=ctx.characters?.[ctx.characterId] || ctx.character || null;
  const persona={name:ctx.name1||globalThis.name1||'', description:ctx.powerUserSettings?.persona_description||globalThis.power_user?.persona_description||ctx.personaDescription||'', avatar:ctx.powerUserSettings?.persona_description_position||''};
  const prompts=ctx.extensionPrompts || globalThis.extension_prompts || {};
- const world={worldInfo:ctx.worldInfo||ctx.world_info||null, extensionPrompts:prompts, chatMetadata:ctx.chatMetadata||globalThis.chat_metadata||null, authorNote:ctx.authorNote||ctx.note||null};
+ const world={worldInfo:ctx.worldInfo||ctx.world_info||null, extensionPrompts:prompts, chatMetadata:independentContextChatMetadata(ctx), authorNote:ctx.authorNote||ctx.note||null};
  const bundle=`【当前聊天逐轮正文与可用推理】\n${transcript}\n\n【当前角色卡】\n${safeJson(char,9000)}\n\n【当前 Persona】\n${safeJson(persona,6000)}\n\n【当前世界书、作者注释与实际扩展提示】\n${safeJson(world,18000)}`;
  return bundle.length>CONTEXT_TOTAL_BUDGET ? `${bundle.slice(0,22000)}\n…[上下文中段裁剪]…\n${bundle.slice(-(CONTEXT_TOTAL_BUDGET-22000))}` : bundle;
 }
@@ -2187,8 +2309,19 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  if(!force && (suppressesAutomaticGeneration(ctx,index) || hasExistingFollowRabbitMirror(ctx,index,msg))) return;
  const el=messageElement(index);
  let store=readStore();
- if(force) clearOwnerLockForBase(baseSlot);
- else{
+ const persistenceSync=synchronizeIndependentChatPersistence(ctx,store);
+ if(persistenceSync.storeChanged) writeStore(store);
+ const persistedOwner=persistedOwnerForMessage(ctx,index,msg);
+ const persistedSuppressed=!!persistedOwner?.deleted;
+ const persistedReady=!persistedSuppressed&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)?persistedOwner:null;
+ if(force){ suppressPersistedOwnerForResay(ctx,index,msg); clearOwnerLockForBase(baseSlot); }
+ else if(persistedReady){
+  const persistedSlot=chatPersistenceSlot(ctx,index,swipeId(msg),persistedReady)||slot;
+  if(!store?.[persistedSlot]?.html){ saveRecordForSlot(store,persistedSlot,persistedReady,{dropLegacy:false}); writeStore(store); }
+  setOwnerLockForBase(baseSlot,persistedSlot,String(persistedReady.sourceHash||persistedReady.bodyHash||sourceHash));
+  if(el) ensureExternalUi(el,key,persistedReady.html,'ready','independent',sourceHash);
+  return persistedReady;
+ } else if(!persistedSuppressed){
   const locked=lockedIndependentRecordForBase(baseSlot,store);
   if(locked?.record?.html){
    if(el) ensureExternalUi(el,key,locked.record.html,'ready','independent',sourceHash);
@@ -2197,21 +2330,23 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  }
  cancelSupersededFlightsForBase(baseSlot,sourceHash);
  const recoveredAtGeneration=recoverSavedRecord(store,slot,observed);
- let saved=recoveredAtGeneration.saved;
+ let saved=persistedSuppressed&&!force?null:recoveredAtGeneration.saved;
  if(recoveredAtGeneration.storeChanged) writeStore(store);
  const mountedHost=el ? collapseDuplicateIdentityHosts(el,key,'independent',sourceHash) : null;
  const mountedReady=readyRecordFromHost(mountedHost,observed,st.independentApiModel);
- if(mountedReady?.html && !force){
+ if(mountedReady?.html && !force && !persistedSuppressed){
   const mountedSlot=String(mountedHost?.dataset?.rmKey||slot);
   const mountedStore=readStore();
   if(!mountedStore?.[mountedSlot]?.html){ saveRecordForSlot(mountedStore,mountedSlot,mountedReady,{dropLegacy:false}); writeStore(mountedStore); }
   setOwnerLockForBase(baseSlot,mountedSlot,String(mountedHost?.dataset?.rmSourceHash||sourceHash));
+  writePersistedOwner(ctx,index,msg,mountedReady,{overwrite:false});
   return mountedReady;
  }
  if(saved?.html && !force){
   const savedSourceHash=String(saved.sourceHash||'');
   if(savedRecordMatchesObserved(saved,observed) || (!savedSourceHash && !sourceAware)){
    setOwnerLockForBase(baseSlot,slot,sourceHash);
+   writePersistedOwner(ctx,index,msg,saved,{overwrite:false});
    if(el){ const restored=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash); rebuildCollapsedReadyHost(el,restored,key,'independent',saved.html,sourceHash); }
    return saved;
   }
@@ -2253,6 +2388,15 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   // result. Later DOM/source rewrites cannot replace A with B; explicit resay
   // clears this owner lock before starting.
   if(!force){
+   const serverOwner=persistedOwnerForMessage(ctx,index,msg);
+   const serverRecord=serverOwner?.deleted?null:(serverOwner?.html&&independentStoredHtmlRestorable(serverOwner.html)?serverOwner:null);
+   if(serverRecord?.html){
+    const serverSlot=chatPersistenceSlot(ctx,index,swipeId(msg),serverRecord)||slot;
+    const liveStore=readStore(); if(!liveStore?.[serverSlot]?.html){ saveRecordForSlot(liveStore,serverSlot,serverRecord,{dropLegacy:false}); writeStore(liveStore); }
+    setOwnerLockForBase(baseSlot,serverSlot,String(serverRecord.sourceHash||serverRecord.bodyHash||sourceHash));
+    const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,serverRecord.html,'ready','independent',sourceHash);
+    return serverRecord;
+   }
    const locked=lockedIndependentRecordForBase(baseSlot,readStore());
    if(locked?.record?.html){
     const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,locked.record.html,'ready','independent',sourceHash);
@@ -2272,6 +2416,7 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   appendHistoryEntry(slot,completed);
   const next=readStore(); saveRecordForSlot(next,slot,completed); writeStore(next);
   setOwnerLockForBase(baseSlot,slot,sourceHash);
+  writePersistedOwner(ctx,index,msg,completed,{overwrite:true});
   const liveEl=messageElement(index);
   if(liveEl) ensureExternalUi(liveEl,key,html,'ready','independent',sourceHash);
   return completed;
@@ -2492,6 +2637,8 @@ function persistIndependentRepairFromEvent(event) {
  };
  saveRecordForSlot(store,identity.slot,repaired);
  writeStore(store);
+ setOwnerLockForBase(identity.baseSlot,identity.slot,identity.sourceHash);
+ writePersistedOwner(identity.ctx,identity.index,identity.msg,repaired,{overwrite:true});
  host.__rabbitMirrorIndependentSource=html;
  host.dataset.rmSourceHash=identity.sourceHash;
  scheduleExternalShellTint(host,html);
@@ -2795,9 +2942,16 @@ function restoreIndependentMirrorPassively(ctx,store,el,index,msg){
  const key=recordKey(ctx,index,msg);
  let keep=collapseDuplicateIdentityHosts(el,key,'independent',observed.sourceHash);
  if(keep?.dataset?.rmState==='ready' && !usableReadyDetails(keep.querySelector?.(':scope > details'))){ keep.remove(); keep=null; }
- const recovered=recoverSavedRecord(store,observed.slot,observed);
+ const persistedOwner=persistedOwnerForMessage(ctx,index,msg);
+ const persistedReady=!persistedOwner?.deleted&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)&&savedRecordMatchesObserved(persistedOwner,observed)?persistedOwner:null;
+ const recovered=persistedReady?{saved:persistedReady,storeChanged:false}:persistedOwner?.deleted?{saved:null,storeChanged:false}:recoverSavedRecord(store,observed.slot,observed);
  let saved=recovered.saved;
  if(saved?.html && !savedRecordMatchesObserved(saved,observed)) saved=null;
+ if(persistedReady){
+  const persistedSlot=chatPersistenceSlot(ctx,index,swipeId(msg),persistedReady)||observed.slot;
+  if(!store?.[persistedSlot]?.html){ saveRecordForSlot(store,persistedSlot,persistedReady,{dropLegacy:false}); recovered.storeChanged=true; }
+  setOwnerLockForBase(messageBaseSlotKey(ctx,index,msg),persistedSlot,String(persistedReady.sourceHash||persistedReady.bodyHash||observed.sourceHash));
+ }
  if(saved?.html){
   const host=ensureExternalUi(el,key,saved.html,'ready','independent',observed.sourceHash);
   if(host){
@@ -2827,13 +2981,17 @@ function syncMessages(indices=null){
  syncRunning=true;
  try{
    const ctx=getContext(); const st=getSettings(); const mode=runtimeMode(); const store=readStore();
+   let storeChanged=false;
+   if(!(indices instanceof Set)){
+    const persistenceSync=synchronizeIndependentChatPersistence(ctx,store);
+    if(persistenceSync.storeChanged) storeChanged=true;
+   }
    const displayModeChanged=mode==='independent' ? consumeIndependentDisplayModeChange() : false;
    const allowed=indices instanceof Set?indices:null;
    const generationActive=mode==='independent' && hostGenerationLooksActive();
    const tailIndex=Array.isArray(ctx.chat)?ctx.chat.length-1:-1;
    const tailMessage=tailIndex>=0?ctx.chat?.[tailIndex]:null;
    const activeGenerationIndex=generationActive && tailMessage && !tailMessage.is_user && typeof tailMessage.mes==='string' ? tailIndex : -1;
-   let storeChanged=false;
    for(const {m,i} of assistantMessages(ctx)){
      if(allowed && !allowed.has(i)) continue;
      const el=messageElement(i); if(!el) continue;
@@ -2847,10 +3005,21 @@ function syncMessages(indices=null){
        for(const followHost of externalHosts(el).filter(n=>n.dataset.rmSource==='follow')) restoreFollowInline(followHost);
        const observed=observeMessageSourceRevision(ctx,i,m);
        const key=recordKey(ctx,i,m); const slot=observed.slot; const sourceHash=observed.sourceHash;
-       cancelSupersededFlightsForBase(messageBaseSlotKey(ctx,i,m),sourceHash);
+       const baseSlot=messageBaseSlotKey(ctx,i,m);
+       const persistedOwner=persistedOwnerForMessage(ctx,i,m);
+       const persistedSuppressed=!!persistedOwner?.deleted;
+       cancelSupersededFlightsForBase(baseSlot,sourceHash);
        cancelFlightsForSlot(slot,sourceHash);
-       let ownerLocked=lockedIndependentRecordForBase(messageBaseSlotKey(ctx,i,m),store);
-       const recoveredAtSync=ownerLocked?.record ? {saved:ownerLocked.record,storeChanged:false} : recoverSavedRecord(store,slot,observed);
+       const persistedReady=!persistedSuppressed&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)?persistedOwner:null;
+       if(persistedSuppressed) clearOwnerLockForBase(baseSlot);
+       let ownerLocked=null;
+       if(persistedReady){
+        const persistedSlot=chatPersistenceSlot(ctx,i,swipeId(m),persistedReady)||slot;
+        if(!store?.[persistedSlot]?.html){ saveRecordForSlot(store,persistedSlot,persistedReady,{dropLegacy:false}); storeChanged=true; }
+        setOwnerLockForBase(baseSlot,persistedSlot,String(persistedReady.sourceHash||persistedReady.bodyHash||sourceHash));
+        ownerLocked={record:persistedReady,lock:{slot:persistedSlot}};
+       } else if(!persistedSuppressed) ownerLocked=lockedIndependentRecordForBase(baseSlot,store);
+       const recoveredAtSync=persistedSuppressed?{saved:null,storeChanged:false}:ownerLocked?.record ? {saved:ownerLocked.record,storeChanged:false} : recoverSavedRecord(store,slot,observed);
        let saved=recoveredAtSync.saved;
        if(recoveredAtSync.storeChanged) storeChanged=true;
        let keep=collapseDuplicateIdentityHosts(el,key,'independent',sourceHash);
@@ -2867,7 +3036,7 @@ function syncMessages(indices=null){
        // user's visible A, even when a status bar or another extension has since
        // rewritten the underlying mes fingerprint. Seed the stable owner lock
        // from that visible result instead of requesting/repainting a B.
-       const mountedReadyAtSync=keep?.dataset?.rmState==='ready' ? readyRecordFromHost(keep,observed,st.independentApiModel) : null;
+       const mountedReadyAtSync=!persistedSuppressed && keep?.dataset?.rmState==='ready' ? readyRecordFromHost(keep,observed,st.independentApiModel) : null;
        if(mountedReadyAtSync?.html && !ownerLocked?.record){
          const mountedSlot=String(keep?.dataset?.rmKey||slot);
          const previous=store?.[mountedSlot];
@@ -2875,7 +3044,8 @@ function syncMessages(indices=null){
            if(previous?.html) appendHistoryEntry(mountedSlot,previous);
            saveRecordForSlot(store,mountedSlot,mountedReadyAtSync,{dropLegacy:false}); storeChanged=true;
          }
-         setOwnerLockForBase(messageBaseSlotKey(ctx,i,m),mountedSlot,String(keep?.dataset?.rmSourceHash||sourceHash));
+         setOwnerLockForBase(baseSlot,mountedSlot,String(keep?.dataset?.rmSourceHash||sourceHash));
+         writePersistedOwner(ctx,i,m,mountedReadyAtSync,{overwrite:false});
          ownerLocked={record:mountedReadyAtSync,lock:{slot:mountedSlot}};
          saved=mountedReadyAtSync;
        } else if(mountedReadyAtSync?.html && ownerLocked?.record){
@@ -2924,7 +3094,7 @@ function syncMessages(indices=null){
          keep.dataset.rmFreshSourceStatus='waiting';
        }
        if(saved?.html && (ownerLocked?.record || savedRecordMatchesObserved(saved,observed))){
-         if(!ownerLocked?.record){ setOwnerLockForBase(messageBaseSlotKey(ctx,i,m),slot,sourceHash); ownerLocked={record:saved,lock:{slot}}; }
+         if(!ownerLocked?.record){ setOwnerLockForBase(baseSlot,slot,sourceHash); writePersistedOwner(ctx,i,m,saved,{overwrite:false}); ownerLocked={record:saved,lock:{slot}}; }
          const host=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash);
          if(host){ rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,sourceHash); host.hidden=false; clearExternalHostFreshSourceState(host); }
        } else if(keep && !hostIsStale){
