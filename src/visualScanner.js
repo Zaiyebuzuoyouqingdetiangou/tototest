@@ -1,11 +1,11 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=1.2.54';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.54';
-import { getSettings } from './settings.js?rmv=1.2.54';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.2.59';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.59';
+import { getSettings } from './settings.js?rmv=1.2.59';
 import {
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.2.54';
+} from './generationGuard.js?rmv=1.2.59';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -432,6 +432,61 @@ function visualSceneryAuditExpected(html = '') {
     try { return !!getSettings()?.forceVisualScenery; } catch { return false; }
 }
 
+
+function cssRegexEscape(value = '') {
+    return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function visualSceneryAnimationProfiles(root, html = '') {
+    const text = String(html || '');
+    const scene = root?.querySelector?.('[data-rm-visual-scenery="true"]') || null;
+    const sceneClasses = scene ? [...(scene.classList || [])].map(String).filter(Boolean) : [];
+    const profiles = [];
+    const ruleRe = /([^{}@]+)\{([^{}]*(?:-webkit-)?animation(?:-name)?\s*:[^{}]*)\}/gi;
+    for (const match of text.matchAll(ruleRe)) {
+        const selector = String(match[1] || '').trim();
+        const body = String(match[2] || '');
+        const animationValue = String(body.match(/(?:-webkit-)?animation\s*:\s*([^;}]+)/i)?.[1] || '');
+        const durationMatch = animationValue.match(/(^|\s)(\d*\.?\d+)\s*(ms|s)\b/i);
+        const durationSeconds = durationMatch
+            ? Number(durationMatch[2]) * (String(durationMatch[3]).toLowerCase() === 'ms' ? 0.001 : 1)
+            : 0;
+        const hasFullLayerGeometry = /\binset\s*:\s*0(?:\D|$)/i.test(body)
+            || (/\bwidth\s*:\s*100%/i.test(body) && /\bheight\s*:\s*100%/i.test(body));
+        const smallWidth = Number(body.match(/\bwidth\s*:\s*(\d+(?:\.\d+)?)px\b/i)?.[1] || 0);
+        const smallHeight = Number(body.match(/\bheight\s*:\s*(\d+(?:\.\d+)?)px\b/i)?.[1] || 0);
+        const smallBox = smallWidth > 0 && smallHeight > 0 && smallWidth <= 180 && smallHeight <= 220;
+        const selectorTargetsSceneRoot = /\[data-rm-visual-scenery\s*=\s*["']true["']\]/i.test(selector)
+            || sceneClasses.some(className => {
+                const escaped = cssRegexEscape(className);
+                return new RegExp(`^\\s*\\.${escaped}(?=[:\\s,{>+~.#\\[]|$)`, 'i').test(selector)
+                    && !new RegExp(`^\\s*\\.${escaped}\\s+[.#\\[]`, 'i').test(selector);
+            });
+        profiles.push({ selector, body, durationSeconds, broad: selectorTargetsSceneRoot || hasFullLayerGeometry, smallBox });
+    }
+    return profiles;
+}
+
+function hasOnlySubtleTransformKeyframes(html = '') {
+    const text = String(html || '');
+    const keyframeText = [...text.matchAll(/@(?:-webkit-)?keyframes\b[\s\S]{0,2600}?(?=@(?:-webkit-)?keyframes\b|<\/style>|$)/gi)]
+        .map(match => match[0])
+        .join('\n');
+    if (!keyframeText) return false;
+    if (/\b(?:opacity|background-position|clip-path|mask(?:-position|-size)?|stroke-dashoffset|offset-distance|filter)\s*:/i.test(keyframeText)) return false;
+    const translations = [...keyframeText.matchAll(/translate(?:3d|x|y)?\s*\(\s*(-?\d+(?:\.\d+)?)px/gi)]
+        .map(match => Math.abs(Number(match[1]) || 0));
+    const rotations = [...keyframeText.matchAll(/rotate(?:3d|x|y)?\s*\(\s*(-?\d+(?:\.\d+)?)deg/gi)]
+        .map(match => Math.abs(Number(match[1]) || 0));
+    const scales = [...keyframeText.matchAll(/scale(?:3d|x|y)?\s*\(\s*(-?\d+(?:\.\d+)?)/gi)]
+        .map(match => Math.abs((Number(match[1]) || 1) - 1));
+    if (!translations.length && !rotations.length && !scales.length) return false;
+    const maxTranslation = Math.max(0, ...translations);
+    const maxRotation = Math.max(0, ...rotations);
+    const maxScaleDelta = Math.max(0, ...scales);
+    return maxTranslation <= 14 && maxRotation <= 5 && maxScaleDelta <= 0.06;
+}
+
 function inspectVisualSceneryMotion(root, html = '', spatialSignalCount = 0) {
     const text = String(html || '');
     if (!visualSceneryAuditExpected(text)) return [];
@@ -444,7 +499,12 @@ function inspectVisualSceneryMotion(root, html = '', spatialSignalCount = 0) {
     const layeredSceneSignals = count(/position\s*:\s*absolute|z-index\s*:|grid-area\s*:|clip-path\s*:|mask\s*:|radial-gradient|linear-gradient|<svg\b/gi, text);
 
     if (!hasMarker) flags.push('visual_scenery_marker_missing');
-    if (keyframeCount < 1 || animationDeclarationCount < 1 || infiniteCount < 1 || !meaningfulKeyframeMotion) {
+    const animationProfiles = visualSceneryAnimationProfiles(root, text);
+    const singleLocalWeakMotion = animationProfiles.length === 1
+        && !animationProfiles[0].broad
+        && (animationProfiles[0].smallBox
+            || (animationProfiles[0].durationSeconds >= 4 && hasOnlySubtleTransformKeyframes(text)));
+    if (keyframeCount < 1 || animationDeclarationCount < 1 || infiniteCount < 1 || !meaningfulKeyframeMotion || singleLocalWeakMotion) {
         flags.push('weak_visual_scenery_motion');
     }
     if (spatialSignalCount < 2 && layeredSceneSignals < 3) {
@@ -1001,6 +1061,8 @@ export function scanRabbitMirrorHtml(messageHtml, renderedToto = null) {
     if (riskFlags.includes('missing_interaction')) structural.push('缺少有效内部交互');
     if (riskFlags.includes('fake_interaction')) structural.push('伪交互/仅悬停装饰风险');
     if (riskFlags.includes('visual_promise_unfulfilled')) structural.push('视觉承诺未兑现风险');
+    if (riskFlags.includes('weak_visual_scenery_motion')) structural.push('动态视觉主体运动不足/仅局部弱动效风险');
+    if (riskFlags.includes('weak_visual_scenery_layers')) structural.push('动态视觉场景层级偏弱风险');
     if (riskFlags.includes('visual_scenery_text_dominant')) structural.push('动态画面文字主导风险');
     if (riskFlags.includes('visual_scenery_text_clipping_risk')) structural.push('动态画面长正文裁切风险');
     structural.push(...dom.summaryFlags);

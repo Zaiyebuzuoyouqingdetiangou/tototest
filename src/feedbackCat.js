@@ -4,7 +4,7 @@ const FEEDBACK_STORAGE_KEY = 'rabbit_mirror_theater:feedback_cat:v1';
 const FEEDBACK_PENDING_KEY = 'rabbit_mirror_theater:feedback_cat_pending:v2';
 const FEEDBACK_METADATA_KEY = 'rabbit_mirror_theater_feedback_cat_v2';
 const FEEDBACK_PROMPT_KEY = 'rabbit_mirror_theater:feedback_cat_prompt';
-const RUNTIME_VERSION = '1.2.54';
+const RUNTIME_VERSION = '1.2.59';
 const VALID_ROUNDS = new Set([1, 3, 10]);
 const VALID_TYPES = new Set(['color', 'structure', 'overall', 'interaction', 'language', 'custom']);
 
@@ -516,6 +516,48 @@ export function auditLanguageFeedbackCompliance(source) {
         foreignWords,
         reason: foreignWords.length ? `仍检测到可见外语：${foreignWords.join('、')}` : '',
     };
+}
+
+// Runtime balance audit is deliberately much softer than the explicit “一直说外语” feedback.
+// It does not require every visible token to be Chinese. It only flags outputs where English
+// clearly dominates the user-facing copy, so common abbreviations and a few stylistic words
+// remain available to the medium.
+export function auditVisibleLanguageBalanceText(text) {
+    const visible = String(text || '')
+        .replace(/https?:\/\/[^\s<>'"]+/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (!visible) {
+        return { foreignDominant: false, hanChars: 0, latinLetters: 0, foreignWordCount: 0, foreignWords: [], reason: '' };
+    }
+    const hanChars = (visible.match(/[\u3400-\u9fff]/g) || []).length;
+    const latinLetters = (visible.match(/[A-Za-z]/g) || []).length;
+    const words = visible.match(/\b[A-Za-z][A-Za-z0-9_-]{1,}\b/g) || [];
+    const meaningfulWords = words.filter(word => !LANGUAGE_VISIBLE_WORD_ALLOWLIST.has(word.toUpperCase()));
+    const foreignWords = [...new Set(meaningfulWords)].slice(0, 12);
+
+    // High-confidence only: at least several real English words, enough Latin text to form an
+    // interface/paragraph, and a strong dominance over Han characters. This intentionally does
+    // not flag mixed Chinese UI containing terms such as MVP/BPM/AI/API.
+    const nearlyNoChinese = hanChars <= 4 && meaningfulWords.length >= 5 && latinLetters >= 32;
+    const overwhelminglyEnglish = meaningfulWords.length >= 10
+        && latinLetters >= 80
+        && latinLetters >= Math.max(80, hanChars * 6);
+    const foreignDominant = nearlyNoChinese || overwhelminglyEnglish;
+    return {
+        foreignDominant,
+        hanChars,
+        latinLetters,
+        foreignWordCount: meaningfulWords.length,
+        foreignWords,
+        reason: foreignDominant
+            ? `可见文案明显以英文为主（中文字符=${hanChars}，英文字母=${latinLetters}，英文词≈${meaningfulWords.length}）`
+            : '',
+    };
+}
+
+export function auditRabbitMirrorLanguageBalance(source) {
+    return auditVisibleLanguageBalanceText(extractRabbitMirrorVisibleText(source));
 }
 
 export function consumeInjectedFeedbackForSuccessfulRabbitMirror(message) {

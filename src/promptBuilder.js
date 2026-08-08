@@ -1,11 +1,11 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.54';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.54';
-import { DYNAMIC_COMMITMENT_RULES } from '../data/raw/dynamicCommitmentRules.js?rmv=1.2.54';
-import { MEDIA_NATIVE_CONTENT_RULE } from '../data/raw/mediaSelfJudgmentRules.js?rmv=1.2.54';
-import { pickCombination } from './picker.js?rmv=1.2.54';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.54';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.54';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.54';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.59';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.59';
+import { DYNAMIC_COMMITMENT_RULES } from '../data/raw/dynamicCommitmentRules.js?rmv=1.2.59';
+import { MEDIA_NATIVE_CONTENT_RULE } from '../data/raw/mediaSelfJudgmentRules.js?rmv=1.2.59';
+import { pickCombination } from './picker.js?rmv=1.2.59';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.59';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.59';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.59';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -328,6 +328,20 @@ function forcedVisualSceneryExclusiveLock(settings) {
   - 整体主要视觉本体与主要阅读路径必须由 Visual Scenery 决定；不得以日志、档案、报告、聊天界面、播放器或其他展现形式作为页面主骨架，也不得先搭另一种展现形式再附加一块动态场景。`;
 }
 
+function buildFollowMainVisualSceneryFinalCheck({ settings, visualSceneryMode }) {
+    if (!visualSceneryMode) return '';
+    const exclusive = settings?.forceVisualScenery
+        ? '动态视觉模式已开启：兔子镜唯一展现形式仍须是 10.2.2 Visual Scenery，不得被题材中的日志、档案、报告、聊天、播放器等媒介词改造成其他页面骨架。'
+        : '';
+    return String.raw`<兔子镜跟随主API动态视觉最终核对>
+在完成主回复正文、准备输出最底部兔子镜之前，仅对兔子镜再检查一次：
+- Visual Scenery 的主要场景在用户未进行任何操作时，就必须持续、肉眼可见地动态变化；主要动态须发生在场景本体、环境、空间关系或具有叙事意义的对象上。
+- 只有一个很小的装饰物缓慢漂浮、微粒／弱光闪烁，或仅 hover、点击后变化、一次性 transition，均不足以单独兑现“动态视觉”；若整体第一眼仍近似静止，先重写兔子镜再输出。
+- 不规定动画技术、数量、层级、速度或固定模板，只要求主要画面确实在持续变化，并保留场景内可触摸的有效交互。
+${exclusive}
+</兔子镜跟随主API动态视觉最终核对>`;
+}
+
 function innerDetailsCooldownRule() {
     const recentFlags = getRecentRiskFlags(5);
     if (!recentFlags.includes('inner_details_used')) return '';
@@ -340,10 +354,10 @@ function innerDetailsCooldownRule() {
 
 function visibleChineseHardLock() {
     return String.raw`
-可见中文硬锁:
-  - 兔子镜内所有用户能看见的文字必须使用简体中文，包括 summary、标题、正文、按钮、标签、状态、警告、提示、角标、反馈文案和样式 content 生成的文字。
-  - 禁止纯英文界面、英文按钮、英文大写系统词和英文状态句；HTML 标签、CSS 属性、class/id/data、选择器和 URL 不适用。
-  - 若确实需要出现外语学习内容，必须采用「外语 [简体中文释义]」格式，且不能让外语成为按钮、标题或主界面的唯一文字。`;
+可见语言主次锁:
+  - 兔子镜面向用户的主要可见信息必须以简体中文为主；允许少量必要的通用缩写、专有名词、品牌/型号、曲名或极短风格词保留外语，不要求把每一个英文词机械翻译掉。
+  - summary、主标题、主要按钮、核心状态、警告、提示与主要说明不得整体变成纯英文界面；若一屏主要可见文案明显由英文占主导，先改成中文主信息，必要英文可作为短括注或点缀保留。
+  - HTML 标签、CSS 属性、class/id/data、选择器、URL 与代码标识不属于可见语言检查范围；不得为了制造“游戏感”“系统感”“科技感”而让英文大写词接管主要界面。`;
 }
 
 function visualSceneryInteractionLinkRule() {
@@ -565,12 +579,12 @@ ${shortVisualAvoidance(combo, 3)}`);
 
 export function buildRabbitMirrorPromptDetails(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '', generationContext = null) {
     if (!settings?.enabled || !settings?.autoRabbitMirrorInjection || settings?.mode === 'off') {
-        return { prompt: '', executionLock: '', metadata: Object.freeze({ generationType: String(generationType || 'normal') }) };
+        return { prompt: '', executionLock: '', followMainFinalCheck: '', metadata: Object.freeze({ generationType: String(generationType || 'normal') }) };
     }
     const { combo, directive, disabled } = pickCombination(settings, generationScopeKey, generationContext);
     if (disabled) {
         if (settings.debug) console.debug('[RabbitMirror] skipped by user directive');
-        return { prompt: '', executionLock: '', metadata: Object.freeze({ generationType: String(generationType || 'normal'), disabled: true }) };
+        return { prompt: '', executionLock: '', followMainFinalCheck: '', metadata: Object.freeze({ generationType: String(generationType || 'normal'), disabled: true }) };
     }
 
     const rawPolicy = normalizedRawPolicy(settings.rawPolicy);
@@ -618,7 +632,8 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
         console.debug('[RabbitMirror] generationType:', generationType, 'combo:', combo, 'rawPolicy:', rawPolicy, 'rawRetrieved:', { themes: selectedThemeResult, formats: selectedFormatResult }, 'memorySources:', memoryMaterial?.sources || [], 'prompt chars:', prompt.length);
     }
     const executionLock = buildIndependentFinalExecutionLock({ combo, settings, directive });
-    return { prompt, executionLock, metadata };
+    const followMainFinalCheck = buildFollowMainVisualSceneryFinalCheck({ settings, visualSceneryMode });
+    return { prompt, executionLock, followMainFinalCheck, metadata };
 }
 
 export function buildRabbitMirrorPrompt(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '', generationContext = null) {

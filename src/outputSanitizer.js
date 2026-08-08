@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.54';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.54';
+import { getSettings } from './settings.js?rmv=1.2.59';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.59';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,13 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.2.54';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.54';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.54';
+    auditVisibleLanguageBalanceText,
+} from './feedbackCat.js?rmv=1.2.59';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.59';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.59';
 
 
-const RUNTIME_VERSION = '1.2.54';
+const RUNTIME_VERSION = '1.2.59';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -463,6 +464,7 @@ function refreshFocusToCheckedRescue(root) {
 const CHECKED_TEXT_RULE_RESCUE_ATTR = 'data-rabbit-mirror-checked-text-rule-rescue';
 const CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR = 'data-rabbit-mirror-cross-parent-checked-rescue';
 const CROSS_PARENT_CHECKED_ROOT_ATTR = 'data-rabbit-mirror-cross-parent-checked-rules';
+const CROSS_PARENT_CHECKED_VERIFIED_ATTR = 'data-rabbit-mirror-cross-parent-checked-verified';
 const crossParentCheckedFallbackRoots = new WeakSet();
 const CHECKED_PSEUDO_RULE_RESCUE_STYLE_ATTR = 'data-rabbit-mirror-checked-pseudo-rule-rescue';
 const CHECKED_PSEUDO_RULE_TARGET_ATTR = 'data-rm-checked-pseudo-rule-target';
@@ -1034,6 +1036,16 @@ function findCrossParentCheckedRuleFallbackCandidates(root) {
     return candidates;
 }
 
+function crossParentCheckedCandidateFingerprint(candidate) {
+    return `${Number(candidate?.ruleCount) || 0}:${Number(candidate?.targetCount) || 0}`;
+}
+
+function crossParentCheckedCandidateVerified(candidate) {
+    if (!candidate?.input?.getAttribute) return false;
+    return String(candidate.input.getAttribute(CROSS_PARENT_CHECKED_VERIFIED_ATTR) || '')
+        === crossParentCheckedCandidateFingerprint(candidate);
+}
+
 function syncCrossParentCheckedRuleFallback(root) {
     if (!root?.querySelectorAll) return 0;
     const inputs = [...root.querySelectorAll(`[${CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR}]`)]
@@ -1080,10 +1092,19 @@ function installCrossParentCheckedRuleFallback(root) {
     for (const candidate of findCrossParentCheckedRuleFallbackCandidates(root)) {
         liveInputs.add(candidate.input);
         candidate.input.setAttribute(CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR, String(candidate.ruleCount));
+        // 验证标记绑定当前规则数与目标数。结构发生变化时旧验证会自动失效，
+        // 不能因为“曾经装过兜底”就永久冒充已验证可用。
+        if (candidate.input.hasAttribute(CROSS_PARENT_CHECKED_VERIFIED_ATTR)
+            && !crossParentCheckedCandidateVerified(candidate)) {
+            candidate.input.removeAttribute(CROSS_PARENT_CHECKED_VERIFIED_ATTR);
+        }
         ruleCount += candidate.ruleCount;
     }
     for (const input of root.querySelectorAll(`[${CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR}]`)) {
-        if (!liveInputs.has(input)) input.removeAttribute(CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR);
+        if (!liveInputs.has(input)) {
+            input.removeAttribute(CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR);
+            input.removeAttribute(CROSS_PARENT_CHECKED_VERIFIED_ATTR);
+        }
     }
     if (ruleCount) {
         root.setAttribute(CROSS_PARENT_CHECKED_ROOT_ATTR, String(ruleCount));
@@ -9384,6 +9405,18 @@ function scheduleMaintenanceLabeledCheckedProbe(root, diagnosticState) {
     }
 
     const sandboxRoot = sandbox.root;
+    const sandboxStateInputs = [...sandboxRoot.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
+    // cloneNode 不会复制 WeakMap 中保存的“修复前内联样式”，却会复制当前已修复后的
+    // style=...!important。若直接在副本里取消 checked，旧实现无法恢复原状态，
+    // 会把真正有效的跨父层兜底误测成 changed=0。先清理可识别的持久化兜底痕迹，
+    // 再按副本当前 checked 状态重新建立一份只属于沙盒的可逆记录。
+    clearPersistedCheckedInlineArtifacts(sandboxRoot, sandboxStateInputs);
+    for (const stateInput of sandboxStateInputs) {
+        if (stateInput.checked) applyCheckedVisualFallback(sandboxRoot, stateInput);
+        else restoreInteractionInlineOverrides(stateInput);
+        stateInput.setAttribute('aria-pressed', stateInput.checked ? 'true' : 'false');
+    }
+
     const input = [...sandboxRoot.querySelectorAll('input[type="checkbox"]')].find(candidate => (
         !candidate.disabled
         && inputHasAssociatedLabel(sandboxRoot, candidate)
@@ -9398,6 +9431,9 @@ function scheduleMaintenanceLabeledCheckedProbe(root, diagnosticState) {
 
     const originalChecked = !!input.checked;
     const intended = !originalChecked;
+    const sandboxInputIndex = sandboxStateInputs.indexOf(input);
+    const liveStateInputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
+    const liveInput = sandboxInputIndex >= 0 ? liveStateInputs[sandboxInputIndex] : null;
     const verification = prepareLabeledCheckedVerification(sandboxRoot, input);
     if (!verification.targets.some(entry => entry.secondState)) {
         sandbox.destroy();
@@ -9418,6 +9454,15 @@ function scheduleMaintenanceLabeledCheckedProbe(root, diagnosticState) {
         const matched = recordLabeledCheckedVerification(sandboxRoot, input, verification, intended, 'maintenance-sandbox-probe-observe', false);
         const evidence = String(sandboxRoot.getAttribute?.(LABELED_CHECKED_VERIFY_LAST_ATTR) || '');
         if (evidence) root.setAttribute?.(LABELED_CHECKED_VERIFY_LAST_ATTR, evidence);
+        if (liveInput?.hasAttribute?.(CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR)) {
+            const liveCandidate = findCrossParentCheckedRuleFallbackCandidates(root)
+                .find(candidate => candidate.input === liveInput);
+            if (matched && liveCandidate) {
+                liveInput.setAttribute(CROSS_PARENT_CHECKED_VERIFIED_ATTR, crossParentCheckedCandidateFingerprint(liveCandidate));
+            } else {
+                liveInput.removeAttribute(CROSS_PARENT_CHECKED_VERIFIED_ATTR);
+            }
+        }
         diagnosticState?.events?.push?.(`maintenance-sandbox-probe:observed checked=${input.checked} matched=${matched};真实控件保持原状`);
     }, 150);
 
@@ -10139,8 +10184,8 @@ const mobileInlineAnnotationRescueStates = new WeakMap();
 let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
-const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.54-FULL-CHAIN';
+const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.59-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -10930,6 +10975,32 @@ ${styleTexts}`;
     const rawSourceIntegrity = maintenanceRawSourceIntegrity(decodedRaw, root);
     const renderedUiTagCount = diagnosticQueryContentAll(body, 'div,section,article,label,input,button,p,span,h1,h2,h3,h4,h5,h6,ul,ol,li,table,form,details,summary,figure,main,header,footer,nav').length;
     const primaryDetails = root?.matches?.('details') ? root : root?.querySelector?.('details');
+
+    // 诊断页可以包含同一消息里的其它兔子镜、隐藏副本或工具节点。
+    // “当前镜面的控件是否丢失”必须只比较当前 summary 对应的原始镜面与当前 root，
+    // 不能再用整条 .mes_text 的 input 数量，否则别处残留的控件会把当前镜面的结构丢失遮住。
+    const rawMirrorRoot = chooseMatchingRawRabbitMirrorRoot(decodedRaw, root);
+    const currentMirrorScope = primaryDetails || root;
+    const languageBalance = rabbitMirrorLanguageBalance(currentMirrorScope);
+    const rawMirrorInputCount = rawMirrorRoot?.querySelectorAll?.('input,select,textarea')?.length || 0;
+    const rawMirrorStateInputCount = rawMirrorRoot?.querySelectorAll?.('input[type="checkbox"], input[type="radio"]')?.length || 0;
+    const rawMirrorLabelCount = rawMirrorRoot?.querySelectorAll?.('label')?.length || 0;
+    const renderedMirrorInputCount = diagnosticQueryContentAll(currentMirrorScope, 'input,select,textarea').length;
+    const renderedMirrorStateInputCount = diagnosticQueryContentAll(currentMirrorScope, 'input[type="checkbox"], input[type="radio"]').length;
+    const renderedMirrorLabelCount = diagnosticQueryContentAll(currentMirrorScope, 'label').length;
+    let rawMirrorInlineEvents = 0;
+    rawMirrorRoot?.querySelectorAll?.('*')?.forEach(element => {
+        for (const attr of [...(element.attributes || [])]) {
+            if (/^on[a-z]+$/i.test(attr.name)) rawMirrorInlineEvents += 1;
+        }
+    });
+    let renderedMirrorInlineEvents = 0;
+    currentMirrorScope?.querySelectorAll?.('*')?.forEach(element => {
+        if (diagnosticIsInternalUiNode(element)) return;
+        for (const attr of [...(element.attributes || [])]) {
+            if (/^on[a-z]+$/i.test(attr.name)) renderedMirrorInlineEvents += 1;
+        }
+    });
     const primarySummary = primaryDetails?.querySelector?.(':scope > summary') || primaryDetails?.querySelector?.('summary');
     const primaryRect = diagnosticRect(primaryDetails);
     const summaryRect = diagnosticRect(primarySummary);
@@ -10966,8 +11037,9 @@ ${styleTexts}`;
     ));
     const repairedDataUriSource = rescueDamagedDataUriRabbitMirrorOutput(decodedRaw);
     const damagedDataUriCandidate = repairedDataUriSource !== decodedRaw;
-    const controlsLost = rawInputCount > 0 && inputCount === 0;
-    const labelsLost = rawLabelCount > 0 && renderedLabelCount === 0;
+    const controlsLost = rawMirrorInputCount > 0 && renderedMirrorInputCount === 0;
+    const stateControlsLost = rawMirrorStateInputCount > 0 && renderedMirrorStateInputCount === 0;
+    const labelsLost = rawMirrorLabelCount > 0 && renderedMirrorLabelCount === 0;
     const severeStructureLoss = rawUiTagCount >= 8 && renderedUiTagCount + 5 < rawUiTagCount
         && renderedUiTagCount < Math.ceil(rawUiTagCount * 0.55);
     const structureTruncated = damagedDataUriCandidate && (controlsLost || labelsLost || severeStructureLoss);
@@ -10980,6 +11052,7 @@ ${styleTexts}`;
         || relevantHighlightedCount > 0
         || visibleBodyMissing
         || severeStructureLoss
+        || stateControlsLost
     )) || !!(renderedShellBodyMissing && recoverableBodySource));
     const currentMirrorRenderedEscapedTags = !!code?.currentMirrorNeedsSanitize
         || Number(code?.relevantCodeShells || 0) > 0
@@ -10995,6 +11068,7 @@ ${styleTexts}`;
         || !!code?.currentMirrorNeedsSanitize
         || visibleBodyMissing
         || severeStructureLoss
+        || stateControlsLost
         || rawSourceBodyMissing
     );
     let verdict = '当前链路未发现单一高置信故障点。';
@@ -11002,6 +11076,7 @@ ${styleTexts}`;
     else if (rawCssTruncated) verdict = '高置信：原始兔子镜在 <style> 中途截断，正文未生成；现有源码无法恢复缺失内容，只能显示截断说明并重新生成该条。';
     else if (rawSourceBodyMissing) verdict = '高置信：原始兔子镜只包含样式或空壳，没有可显示的正文主体；现有源码无法补回不存在的内容。';
     else if (structureTruncated) verdict = '高置信：损坏的 SVG Data URI 破坏了 inline style 属性边界，导致后续 DOM 被截断；应移除该背景声明并用原始源码临时重绘显示层。';
+    else if (stateControlsLost) verdict = '高置信：当前兔子镜原始源码存在 checkbox/radio，但当前镜面的状态控件已在宿主渲染中丢失；应从同标题原始镜面安全重建当前 DOM，再恢复其交互。';
     else if (damagedDataUriCandidate) verdict = '检测到疑似损坏的 SVG Data URI；当前结构尚未达到高置信截断阈值，但建议优先执行保主体清洗。';
     else if (sourceCandidate && hostCssParserError && rawUnencodedSvgDataUri) verdict = '高置信：宿主 CSS 解析器在原始 SVG Data URI 之后中断，后续 HTML 被代码壳接管；源码恢复时应先编码 SVG 数据并重绘当前显示层。';
     else if (sourceCandidate && hostCssParserError && rawCssIdSelectorCount > 0) verdict = '高置信：宿主 CSS 解析器在状态 ID 选择器附近中断，后续 HTML 被代码壳接管；源码恢复时应使用兼容选择器并重绘当前显示层。';
@@ -11028,7 +11103,15 @@ ${styleTexts}`;
         maintenanceFindingCount, maintenanceRepairOrder, maintenanceResolvedCount, maintenanceRemainingCount,
         hostCssParserError, hostCssParserErrorText, rawUnencodedSvgDataUri, rawCssCommentCount, rawCssIdSelectorCount,
         rawInputCount, rawLabelCount, renderedLabelCount, rawUiTagCount, renderedUiTagCount,
-        damagedDataUriCandidate, controlsLost, labelsLost, severeStructureLoss, structureTruncated,
+        rawMirrorInputCount, rawMirrorStateInputCount, rawMirrorLabelCount,
+        renderedMirrorInputCount, renderedMirrorStateInputCount, renderedMirrorLabelCount,
+        languageForeignDominant: !!languageBalance.foreignDominant,
+        languageHanChars: Number(languageBalance.hanChars || 0),
+        languageLatinLetters: Number(languageBalance.latinLetters || 0),
+        languageForeignWordCount: Number(languageBalance.foreignWordCount || 0),
+        languageForeignWords: Array.isArray(languageBalance.foreignWords) ? languageBalance.foreignWords : [],
+        rawMirrorInlineEvents, renderedMirrorInlineEvents,
+        damagedDataUriCandidate, controlsLost, stateControlsLost, labelsLost, severeStructureLoss, structureTruncated,
         visibleBodyMissing, rawSourceBodyMissing, rawCssTruncated, sourceTruncationNoticeInstalled,
         rawBodyTagCount: rawSourceIntegrity.rawBodyTagCount, rawBodyTextLength: rawSourceIntegrity.rawBodyTextLength,
         rawBodyElementCount: rawSourceIntegrity.rawBodyElementCount,
@@ -11105,10 +11188,12 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `buttons=${full.buttonCount} inputs=${full.inputCount} rabbitMirrors=${full.mirrorCount}`,
         `原始 inputs=${full.rawInputCount} labels=${full.rawLabelCount} UI标签≈${full.rawUiTagCount}`,
         `渲染 inputs=${full.inputCount} labels=${full.renderedLabelCount} UI标签≈${full.renderedUiTagCount}`,
+        `当前镜面状态控件 原始=${full.rawMirrorStateInputCount ?? 0} 渲染=${full.renderedMirrorStateInputCount ?? 0} 丢失=${!!full.stateControlsLost}`,
         `SVG Data URI损坏候选=${full.damagedDataUriCandidate} 结构截断=${full.structureTruncated}`,
         `原始源码主体缺失=${!!full.rawSourceBodyMissing} 空结构壳=${!!full.rawBodyEmptyShell} CSS中途截断=${!!full.rawCssTruncated} 截断说明=${!!full.sourceTruncationNoticeInstalled}`,
         `原始主体 文本=${full.rawBodyTextLength ?? 0} 元素=${full.rawBodyElementCount ?? 0} 语义/媒体=${full.rawBodySemanticElementCount ?? 0} 视觉程序=${full.rawBodyVisualProgramCount ?? 0}`,
         `展开后主体缺失=${full.visibleBodyMissing} 空结构壳=${!!full.renderedBodyEmptyShell} 主体子节点=${full.renderedBodyElementCount ?? 0} 文本=${full.renderedBodyTextLength ?? 0}`,
+        `可见语言 英文主导=${!!full.languageForeignDominant} 中文字符=${full.languageHanChars ?? 0} 英文字母=${full.languageLatinLetters ?? 0} 英文词≈${full.languageForeignWordCount ?? 0} 示例=${Array.isArray(full.languageForeignWords) && full.languageForeignWords.length ? full.languageForeignWords.slice(0, 8).join('/') : '(无)'}`,
         '',
         '[3. CSS 能力层]',
         `rules≈${full.cssRuleCount} keyframes=${full.animationCount}`,
@@ -11455,11 +11540,26 @@ function handleOneShotInteractionDiagnosticEvent(session, event) {
 }
 
 
+function rabbitMirrorLanguageBalance(root) {
+    if (!root) return auditVisibleLanguageBalanceText('');
+    try {
+        const clone = root.cloneNode?.(true);
+        if (clone?.querySelectorAll) {
+            clone.querySelectorAll(`style,script,[${TOOL_ENTRY_HOST_ATTR}],[${MAINTENANCE_RABBIT_ATTR}],[${FEEDBACK_CAT_ATTR}],[${RESAY_ATTR}],[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}],[${FEEDBACK_CAT_MENU_ATTR}]`).forEach(node => node.remove());
+            return auditVisibleLanguageBalanceText(clone.textContent || '');
+        }
+    } catch (error) {
+        console.debug('[RabbitMirror] language balance clone audit skipped:', error);
+    }
+    return auditVisibleLanguageBalanceText(root.textContent || '');
+}
+
 function maintenanceRabbitTitle(state, reason = '') {
     const details = reason ? `：${reason}` : '';
     if (state === MAINTENANCE_STATES.checking) return `维修兔正在巡逻${details}`;
     if (state === MAINTENANCE_STATES.healthy) return `维修兔：未发现需要维修的问题。点击可重新巡逻${details}`;
     if (state === MAINTENANCE_STATES.repairable) return `维修兔：发现可安全尝试修复的问题。点击开始维修${details}`;
+    if (state === MAINTENANCE_STATES.notice) return `维修兔：发现内容提示，不会自动改写正文${details}`;
     if (state === MAINTENANCE_STATES.unknown) return `维修兔：无法安全判断。点击生成全链路诊断${details}`;
     return '维修兔：点击巡逻';
 }
@@ -11467,6 +11567,7 @@ function maintenanceRabbitTitle(state, reason = '') {
 function maintenanceRabbitGlyph(state) {
     if (state === MAINTENANCE_STATES.healthy) return '🐇🟢';
     if (state === MAINTENANCE_STATES.repairable) return '🐇🟡';
+    if (state === MAINTENANCE_STATES.notice) return '🐇🟡';
     if (state === MAINTENANCE_STATES.unknown) return '🐇🔴';
     return '🐇⚪';
 }
@@ -12916,9 +13017,11 @@ function maintenanceReachableInteractionEvidence(root, routeSummary, checkedDept
 
 function maintenanceKnownInteractionEvidence(root, full, code) {
     const raw = decodeHtmlEntities(getRawAssistantMessageForRenderedRoot(root) || '');
-    const stateProgram = /\bon(?:click|change|input)\s*=|setAttribute\s*\(\s*['"]data-|classList\.(?:add|remove|toggle)|\.checked\s*=|:checked\b/i.test(raw);
-    const checkedControlsLost = full.controlsLost && full.checkedCount > 0;
-    const lostInlineStatePrograms = Math.max(0, Number(full.rawInlineEvents || 0) - Number(full.renderedInlineEvents || 0));
+    const rawRoot = chooseMatchingRawRabbitMirrorRoot(raw, root);
+    const rawMirrorHtml = String(rawRoot?.outerHTML || raw || '');
+    const stateProgram = /\bon(?:click|change|input)\s*=|setAttribute\s*\(\s*['"]data-|classList\.(?:add|remove|toggle)|\.checked\s*=|:checked\b/i.test(rawMirrorHtml);
+    const checkedControlsLost = !!full.stateControlsLost;
+    const lostInlineStatePrograms = Math.max(0, Number((full.rawMirrorInlineEvents ?? full.rawInlineEvents) || 0) - Number((full.renderedMirrorInlineEvents ?? full.renderedInlineEvents) || 0));
     const recoveredInlineStatePrograms = recoveredInlineStateProgramCount(root);
     const strippedStateProgram = lostInlineStatePrograms > recoveredInlineStatePrograms && stateProgram;
     const decorativeOverlayCandidateCount = findDecorativeOverlayPassThroughCandidates(root).length;
@@ -12954,8 +13057,15 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const selectionOnlyRepairCandidateCount = checkedDepth.checkedSelectionOnly
         ? findSelectionOnlyRadioFallbackCandidates(root).length
         : 0;
-    const crossParentCheckedRuleCandidateCount = findCrossParentCheckedRuleFallbackCandidates(root)
-        .filter(candidate => !candidate.input.hasAttribute(CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR))
+    const crossParentCheckedCandidates = findCrossParentCheckedRuleFallbackCandidates(root);
+    const crossParentCheckedRuleVerifiedCount = crossParentCheckedCandidates
+        .filter(candidate => crossParentCheckedCandidateVerified(candidate))
+        .length;
+    // “装上兜底”不等于“修复已验证”。只有当前规则/目标指纹通过隐藏副本的
+    // 第二状态实测后才从 finding 中移除；验证失败或尚未验证都会继续保留黄灯。
+    const crossParentCheckedRuleCandidateCount = crossParentCheckedCandidates
+        .filter(candidate => !candidate.input.hasAttribute(CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR)
+            || !crossParentCheckedCandidateVerified(candidate))
         .length;
     const checkedHasStateRuleCandidateCount = parseBrokenCheckedHasStateRules(root).length;
     const checkedHasStateRuleRescueCount = Number.parseInt(root.getAttribute?.(CHECKED_HAS_STATE_RULE_COUNT_ATTR) || '0', 10) || 0;
@@ -13004,7 +13114,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const unscopedControls = (full.inputCount > 0 || full.buttonCount > 0)
         && root.dataset?.rabbitMirrorInteractionScoped !== 'true';
     const reachability = maintenanceReachableInteractionEvidence(root, routeSummary, checkedDepth, pseudoDepth, raw);
-    return { checkedControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, missingCheckedSubjectClassCandidateCount, missingCheckedSubjectClassRescueCount, missingCheckedSubjectClassMissingCount, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, staticChoiceSelectionCandidateCount, staticChoiceSelectionRescueCount, structuredStaticDisclosureCandidateCount, structuredStaticDisclosureRescueCount, fillInChoiceCandidateCount, fillInChoiceRescueCount, focusWithinPersistentCandidateCount, focusWithinPersistentRescueCount, focusWithinPersistentMissingCount, crossParentCheckedRuleCandidateCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, detachedCheckedHasRuleCandidateCount, detachedCheckedHasRuleRescueCount, detachedCheckedHasRuleMissingCount, pairedCheckedStateCandidateCount, pairedCheckedStateRescueCount, pairedCheckedStateMissingCount, exclusiveStackedStateCandidateCount, exclusiveStackedStateRescueCount, exclusiveStackedStateMissingCount, channelDialCycleCandidateCount, channelDialCycleRescueCount, channelDialCycleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
+    return { checkedControlsLost, stateControlsLost: !!full.stateControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, missingCheckedSubjectClassCandidateCount, missingCheckedSubjectClassRescueCount, missingCheckedSubjectClassMissingCount, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, staticChoiceSelectionCandidateCount, staticChoiceSelectionRescueCount, structuredStaticDisclosureCandidateCount, structuredStaticDisclosureRescueCount, fillInChoiceCandidateCount, fillInChoiceRescueCount, focusWithinPersistentCandidateCount, focusWithinPersistentRescueCount, focusWithinPersistentMissingCount, crossParentCheckedRuleCandidateCount, crossParentCheckedRuleVerifiedCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, detachedCheckedHasRuleCandidateCount, detachedCheckedHasRuleRescueCount, detachedCheckedHasRuleMissingCount, pairedCheckedStateCandidateCount, pairedCheckedStateRescueCount, pairedCheckedStateMissingCount, exclusiveStackedStateCandidateCount, exclusiveStackedStateRescueCount, exclusiveStackedStateMissingCount, channelDialCycleCandidateCount, channelDialCycleRescueCount, channelDialCycleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
 }
 
 function maintenanceFallbackFullSummary(root) {
@@ -13039,6 +13149,11 @@ function maintenanceFallbackFullSummary(root) {
         renderedBodySemanticElementCount: 0,
         renderedBodyVisualProgramCount: 0,
         renderedBodyEmptyShell: false,
+        languageForeignDominant: false,
+        languageHanChars: 0,
+        languageLatinLetters: 0,
+        languageForeignWordCount: 0,
+        languageForeignWords: [],
         rawToto: false,
         rawHtml: false,
         controlsLost: false,
@@ -13198,7 +13313,17 @@ function buildMaintenanceFindings(root, {
         });
     }
 
-    if (interaction.checkedControlsLost) {
+    if (interaction.stateControlsLost) {
+        add({
+            id: 'state-control-structure-stripped', stage: 'source', mode: 'source',
+            label: '当前兔子镜的 checkbox/radio 被宿主剥离，原始同标题镜面仍保留完整控件结构',
+            evidence: [
+                `rawMirrorStateInputs=${Number(full.rawMirrorStateInputCount) || 0}`,
+                `renderedMirrorStateInputs=${Number(full.renderedMirrorStateInputCount) || 0}`,
+            ],
+            confidence: 1,
+        });
+    } else if (interaction.checkedControlsLost) {
         add({
             id: 'checked-controls-lost', stage: 'interaction', mode: 'interaction',
             label: 'CSS 仍依赖 checked 状态，但对应控件已经丢失',
@@ -13297,7 +13422,10 @@ function buildMaintenanceFindings(root, {
         add({
             id: 'cross-parent-checked-target', stage: 'interaction', mode: 'interaction',
             label: 'checked 目标位于触发器父层之外，原生兄弟选择器无法命中',
-            evidence: [`crossParentCheckedRuleCandidateCount=${Number(interaction.crossParentCheckedRuleCandidateCount)}`], confidence: 0.98,
+            evidence: [
+                `crossParentCheckedRuleCandidateCount=${Number(interaction.crossParentCheckedRuleCandidateCount)}`,
+                `crossParentCheckedRuleVerifiedCount=${Number(interaction.crossParentCheckedRuleVerifiedCount) || 0}`,
+            ], confidence: 0.98,
         });
     }
     if (Number(interaction.checkedHasStateRuleMissingCount) > 0) {
@@ -13419,7 +13547,7 @@ function inspectMaintenanceRabbit(root) {
     } catch (error) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
-        interaction = { checkedControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, missingCheckedSubjectClassCandidateCount: 0, missingCheckedSubjectClassRescueCount: 0, missingCheckedSubjectClassMissingCount: 0, radioGroupLossCandidateCount: 0, radioGroupRescueCount: 0, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, staticChoiceSelectionCandidateCount: 0, staticChoiceSelectionRescueCount: 0, structuredStaticDisclosureCandidateCount: 0, structuredStaticDisclosureRescueCount: 0, fillInChoiceCandidateCount: 0, fillInChoiceRescueCount: 0, focusWithinPersistentCandidateCount: 0, focusWithinPersistentRescueCount: 0, focusWithinPersistentMissingCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, detachedCheckedHasRuleCandidateCount: 0, detachedCheckedHasRuleRescueCount: 0, detachedCheckedHasRuleMissingCount: 0, pairedCheckedStateCandidateCount: 0, pairedCheckedStateRescueCount: 0, pairedCheckedStateMissingCount: 0, exclusiveStackedStateCandidateCount: 0, exclusiveStackedStateRescueCount: 0, exclusiveStackedStateMissingCount: 0, channelDialCycleCandidateCount: 0, channelDialCycleRescueCount: 0, channelDialCycleMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
+        interaction = { checkedControlsLost: false, stateControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, missingCheckedSubjectClassCandidateCount: 0, missingCheckedSubjectClassRescueCount: 0, missingCheckedSubjectClassMissingCount: 0, radioGroupLossCandidateCount: 0, radioGroupRescueCount: 0, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, staticChoiceSelectionCandidateCount: 0, staticChoiceSelectionRescueCount: 0, structuredStaticDisclosureCandidateCount: 0, structuredStaticDisclosureRescueCount: 0, fillInChoiceCandidateCount: 0, fillInChoiceRescueCount: 0, focusWithinPersistentCandidateCount: 0, focusWithinPersistentRescueCount: 0, focusWithinPersistentMissingCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, detachedCheckedHasRuleCandidateCount: 0, detachedCheckedHasRuleRescueCount: 0, detachedCheckedHasRuleMissingCount: 0, pairedCheckedStateCandidateCount: 0, pairedCheckedStateRescueCount: 0, pairedCheckedStateMissingCount: 0, exclusiveStackedStateCandidateCount: 0, exclusiveStackedStateRescueCount: 0, exclusiveStackedStateMissingCount: 0, channelDialCycleCandidateCount: 0, channelDialCycleRescueCount: 0, channelDialCycleMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
     }
     let textClippingCandidateCount = 0;
     try {
@@ -13449,6 +13577,13 @@ function inspectMaintenanceRabbit(root) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance mobile layout inspection skipped:', error);
     }
+    let languageBalance = auditVisibleLanguageBalanceText('');
+    try {
+        languageBalance = rabbitMirrorLanguageBalance(root);
+    } catch (error) {
+        partialInspection = true;
+        console.debug('[RabbitMirror] maintenance language balance inspection skipped:', error);
+    }
 
     const findings = buildMaintenanceFindings(root, {
         full,
@@ -13473,6 +13608,24 @@ function inspectMaintenanceRabbit(root) {
             nestedDetailsPopupCandidateCount,
             mobileInlineAnnotationCandidateCount,
             mobileLayout,
+            languageBalance,
+        };
+    }
+
+    if (languageBalance.foreignDominant) {
+        return {
+            state: MAINTENANCE_STATES.notice,
+            reason: `${languageBalance.reason}；允许少量英文术语和缩写，但主界面不建议由英文接管。可用挨打猫“🌐 一直说外语”后重说`,
+            findings: [],
+            repairPlan: [],
+            code,
+            full,
+            interaction,
+            textClippingCandidateCount,
+            nestedDetailsPopupCandidateCount,
+            mobileInlineAnnotationCandidateCount,
+            mobileLayout,
+            languageBalance,
         };
     }
 
@@ -13497,6 +13650,7 @@ function inspectMaintenanceRabbit(root) {
             nestedDetailsPopupCandidateCount,
             mobileInlineAnnotationCandidateCount,
             mobileLayout,
+            languageBalance,
         };
     }
     const healthyReason = partialInspection
@@ -13514,6 +13668,7 @@ function inspectMaintenanceRabbit(root) {
         nestedDetailsPopupCandidateCount,
         mobileInlineAnnotationCandidateCount,
         mobileLayout,
+        languageBalance,
     };
 }
 
@@ -15723,7 +15878,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.12';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.14';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -15761,6 +15916,11 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         const rawHoverRepairCount = Math.max(0, rawHoverCountAfter - rawHoverCountBefore);
         const recoveredProgramRepairCount = Math.max(0, recoveredProgramCountAfter - recoveredProgramCountBefore);
         const crossParentCheckedCount = Number.parseInt(target.getAttribute?.(CROSS_PARENT_CHECKED_ROOT_ATTR) || '0', 10) || 0;
+        if (crossParentCheckedCount > 0) {
+            // 自动维修也必须做一次隐藏隔离副本验证。它不点击、不派发事件、不修改真实控件；
+            // 约 150ms 后把通过结果写回对应 live control，供 180ms 的维修后复核读取。
+            scheduleMaintenanceLabeledCheckedProbe(target, null);
+        }
         const labeledCheckedVerifyCount = Number.parseInt(target.getAttribute?.(LABELED_CHECKED_VERIFY_ROOT_ATTR) || '0', 10) || 0;
         const checkedHasStateCount = Number.parseInt(target.getAttribute?.(CHECKED_HAS_STATE_RULE_COUNT_ATTR) || '0', 10) || 0;
         const detachedCheckedHasCount = Number.parseInt(target.getAttribute?.(DETACHED_CHECKED_HAS_RULE_COUNT_ATTR) || '0', 10) || 0;
@@ -15893,6 +16053,7 @@ function runMaintenanceSourceInteractionFollowup(root) {
     const inspection = inspectMaintenanceRabbit(root);
     const interaction = inspection?.interaction || {};
     const shouldRepair = interaction.strippedStateProgram
+        || interaction.stateControlsLost
         || interaction.checkedControlsLost
         || interaction.decorativeOverlayCandidateCount > 0
         || interaction.touchHoverMissing
@@ -16340,6 +16501,9 @@ function maintenanceRecommendationForInspection(inspection) {
             reason: `检测结果：${maintenanceFindingReason(findings)}。维修顺序：${maintenanceRepairPlanLabel(plan)}`,
         };
     }
+    if (inspection?.state === MAINTENANCE_STATES.notice) {
+        return { mode: 'patrol', label: '🌐 文案英文占比偏高', reason: inspection.reason || '语言平衡提示；不自动改写正文' };
+    }
     if (inspection?.state === MAINTENANCE_STATES.unknown) {
         return { mode: 'diagnostic', label: '📋 生成全链路诊断', reason: '没有足够证据自动选择安全修复路线' };
     }
@@ -16358,6 +16522,7 @@ function maintenanceRecommendationText(inspection) {
         }
         return `检测到 ${findings.length} 项：${labels.join('、')}`;
     }
+    if (inspection?.state === MAINTENANCE_STATES.notice) return '检测到：可见文案英文占比偏高（允许少量英文）';
     if (inspection?.state === MAINTENANCE_STATES.unknown) return '暂无法安全判断，可生成全链路诊断';
     return '未发现高置信异常';
 }
@@ -16545,11 +16710,19 @@ function ensureMaintenanceRabbitButton(root, summary, host) {
     } else {
         const wasWaiting = current.hasAttribute('data-rabbit-mirror-external-waiting');
         current.removeAttribute('data-rabbit-mirror-external-waiting');
-        if (wasWaiting) {
+        const languageBalance = rabbitMirrorLanguageBalance(root);
+        const state = current.getAttribute(MAINTENANCE_STATE_ATTR) || MAINTENANCE_STATES.idle;
+        const reason = current.getAttribute(MAINTENANCE_REASON_ATTR) || '';
+        const preserveTechnicalState = state === MAINTENANCE_STATES.repairable
+            || state === MAINTENANCE_STATES.unknown
+            || state === MAINTENANCE_STATES.checking;
+        if (languageBalance.foreignDominant && !preserveTechnicalState) {
+            setMaintenanceRabbitState(current, MAINTENANCE_STATES.notice, `${languageBalance.reason}；少量英文术语仍允许`);
+        } else if (wasWaiting) {
             setMaintenanceRabbitState(current, MAINTENANCE_STATES.idle, '兔子镜生成完成，可点击巡逻');
+        } else if (state === MAINTENANCE_STATES.notice && !languageBalance.foreignDominant) {
+            setMaintenanceRabbitState(current, MAINTENANCE_STATES.idle, '语言比例已恢复为混合或中文主导，可点击巡逻');
         } else {
-            const state = current.getAttribute(MAINTENANCE_STATE_ATTR) || MAINTENANCE_STATES.idle;
-            const reason = current.getAttribute(MAINTENANCE_REASON_ATTR) || '';
             setMaintenanceRabbitState(current, state, reason);
         }
     }
