@@ -1,11 +1,11 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=1.2.62';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.62';
-import { getSettings } from './settings.js?rmv=1.2.62';
+import { getCurrentChatKey, recordPaletteObservation, updateLatestVisualSignature } from './storage.js?rmv=1.2.64';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.64';
+import { getSettings } from './settings.js?rmv=1.2.64';
 import {
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.2.62';
+} from './generationGuard.js?rmv=1.2.64';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -829,8 +829,72 @@ function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = f
         darkAreaRatio: Number(darkAreaRatio.toFixed(2)),
         lightAreaRatio: Number(lightAreaRatio.toFixed(2)),
         averageLuminance: Math.round(averageLuminance),
+        averageSaturation: Number(averageSaturation.toFixed(2)),
         confidence: Number(confidence.toFixed(2)),
         source,
+    };
+}
+
+
+export function paletteFamilyOfFingerprint(fingerprint) {
+    if (!fingerprint || typeof fingerprint !== 'object') return 'unknown';
+    const brightness = ['dark', 'mid', 'light'].includes(fingerprint.brightness) ? fingerprint.brightness : 'mid';
+    const saturation = ['low', 'medium', 'high'].includes(fingerprint.saturation) ? fingerprint.saturation : 'medium';
+    const temperature = ['warm', 'cool', 'neutral'].includes(fingerprint.temperature) ? fingerprint.temperature : 'neutral';
+    let temperatureGroup = temperature;
+    if (saturation === 'low') temperatureGroup = temperature === 'cool' ? 'cool-neutral' : 'warm-neutral';
+    const hue = saturation === 'low' ? 'muted' : String(fingerprint.hueFamily || 'neutral');
+    return `${brightness}:${temperatureGroup}:${saturation}:${hue}`;
+}
+
+function paletteTemperatureGroup(fingerprint) {
+    const saturation = String(fingerprint?.saturation || 'medium');
+    const temperature = String(fingerprint?.temperature || 'neutral');
+    if (saturation === 'low') return temperature === 'cool' ? 'cool-neutral' : 'warm-neutral';
+    return temperature;
+}
+
+export function paletteSimilarityScore(left, right) {
+    if (!left || !right || typeof left !== 'object' || typeof right !== 'object') return 0;
+    let score = 0;
+    if (left.brightness === right.brightness) score += 0.26;
+    else if (new Set([left.brightness, right.brightness]).has('mid')) score += 0.08;
+    if (left.saturation === right.saturation) score += 0.22;
+    else if ([left.saturation, right.saturation].includes('medium')) score += 0.08;
+    const leftTemp = paletteTemperatureGroup(left);
+    const rightTemp = paletteTemperatureGroup(right);
+    if (leftTemp === rightTemp) score += 0.22;
+    const lumDiff = Math.abs(Number(left.averageLuminance ?? 128) - Number(right.averageLuminance ?? 128));
+    score += lumDiff <= 18 ? 0.14 : (lumDiff <= 34 ? 0.08 : (lumDiff <= 52 ? 0.03 : 0));
+    const satDiff = Math.abs(Number(left.averageSaturation ?? 0.3) - Number(right.averageSaturation ?? 0.3));
+    score += satDiff <= 0.07 ? 0.08 : (satDiff <= 0.15 ? 0.04 : 0);
+    if (left.saturation !== 'low' || right.saturation !== 'low') {
+        if (left.hueFamily === right.hueFamily) score += 0.08;
+    } else if (leftTemp === rightTemp) {
+        score += 0.08;
+    }
+    return Number(Math.min(1, score).toFixed(2));
+}
+
+export function paletteRepeatStatus(current, observations = [], { minPreviousMatches = 2, threshold = 0.76 } = {}) {
+    if (!current || typeof current !== 'object' || Number(current.confidence || 0) < 0.55) {
+        return { repeated: false, family: paletteFamilyOfFingerprint(current), matches: 0, scores: [] };
+    }
+    const previous = (Array.isArray(observations) ? observations : [])
+        .map(item => item?.fingerprint || item)
+        .filter(item => item && typeof item === 'object' && Number(item.confidence || 0) >= 0.5)
+        .slice(-Math.max(2, Number(minPreviousMatches) || 2));
+    const scores = previous.map(item => paletteSimilarityScore(current, item));
+    let matches = 0;
+    for (let index = scores.length - 1; index >= 0; index -= 1) {
+        if (scores[index] < threshold) break;
+        matches += 1;
+    }
+    return {
+        repeated: matches >= Math.max(1, Number(minPreviousMatches) || 2),
+        family: paletteFamilyOfFingerprint(current),
+        matches,
+        scores,
     };
 }
 
@@ -1221,6 +1285,15 @@ async function scanLatestAssistantMessage(mod) {
         : null;
     if (signature || skeleton || riskFlags.length || paletteFingerprint || interactionFamily) {
         updateLatestVisualSignature(signature, skeleton, riskFlags, paletteFingerprint, interactionFamily);
+        if (paletteFingerprint) {
+            const messageIndex = chat.lastIndexOf(message);
+            const swipeIndex = Number.isInteger(message?.swipe_id) ? message.swipe_id : 0;
+            recordPaletteObservation(paletteFingerprint, {
+                chatKey: getCurrentChatKey(chat),
+                source: 'follow',
+                messageKey: `${messageIndex}:${swipeIndex}:${sigHash}`,
+            });
+        }
         const feedbackResult = consumeInjectedFeedbackForSuccessfulRabbitMirror(message);
         if (feedbackResult?.consumed) {
             console.debug('[RabbitMirror] feedback cat consumed:', feedbackResult.remainingRounds);

@@ -3,6 +3,9 @@ const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
 const MAX_STORED = 20;
 const ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:generation_attempts:v1';
 const DIRECTIVE_PICK_STORAGE_KEY = 'rabbit_mirror_theater:directive_pick_cache:v1';
+const PALETTE_OBSERVATION_STORAGE_KEY = 'rabbit_mirror_theater:palette_observations:v1';
+const MAX_PALETTE_OBSERVATIONS_PER_SCOPE = 12;
+const PALETTE_OBSERVATION_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const MAX_ATTEMPTS_PER_CHAT = 20;
 const MAX_DIRECTIVE_PICKS_PER_CHAT = 24;
 const ATTEMPT_TTL_MS = 12 * 60 * 60 * 1000;
@@ -278,6 +281,61 @@ export function getRecentPaletteFingerprints(limit = 3) {
         .slice(-Math.max(0, Number(limit) || 3));
 }
 
+
+function paletteObservationScopeKey(chatKey, source = 'follow') {
+    const chat = String(chatKey || '').trim();
+    const normalizedSource = String(source || 'follow').trim() || 'follow';
+    return chat ? `${chat}|${normalizedSource}` : '';
+}
+
+function readPaletteObservationStore() {
+    return readScopedStore(PALETTE_OBSERVATION_STORAGE_KEY);
+}
+
+function prunePaletteObservationItems(items, now = Date.now()) {
+    return (Array.isArray(items) ? items : [])
+        .filter(item => item && now - Number(item.ts || 0) <= PALETTE_OBSERVATION_TTL_MS)
+        .slice(-MAX_PALETTE_OBSERVATIONS_PER_SCOPE);
+}
+
+export function getRecentPaletteObservations({ chatKey = '', source = 'follow', limit = 4 } = {}) {
+    const scope = paletteObservationScopeKey(chatKey || getCurrentChatKey(), source);
+    if (!scope) return [];
+    const store = readPaletteObservationStore();
+    const now = Date.now();
+    const original = Array.isArray(store[scope]) ? store[scope] : [];
+    const items = prunePaletteObservationItems(original, now);
+    if (items.length !== original.length) {
+        if (items.length) store[scope] = items;
+        else delete store[scope];
+        writeScopedStore(PALETTE_OBSERVATION_STORAGE_KEY, store);
+    }
+    return items.slice(-Math.max(1, Number(limit) || 4)).map(item => ({ ...item }));
+}
+
+export function recordPaletteObservation(fingerprint, { chatKey = '', source = 'follow', messageKey = '' } = {}) {
+    if (!fingerprint || typeof fingerprint !== 'object' || Number(fingerprint.confidence || 0) < 0.35) return false;
+    const scope = paletteObservationScopeKey(chatKey || getCurrentChatKey(), source);
+    if (!scope) return false;
+    const store = readPaletteObservationStore();
+    const now = Date.now();
+    const items = prunePaletteObservationItems(store[scope], now);
+    const normalizedMessageKey = String(messageKey || '').trim();
+    const record = {
+        messageKey: normalizedMessageKey.slice(0, 180),
+        fingerprint: { ...fingerprint },
+        ts: now,
+    };
+    const last = items[items.length - 1];
+    if (normalizedMessageKey && last?.messageKey === normalizedMessageKey) {
+        items[items.length - 1] = record;
+    } else {
+        items.push(record);
+    }
+    store[scope] = items.slice(-MAX_PALETTE_OBSERVATIONS_PER_SCOPE);
+    return writeScopedStore(PALETTE_OBSERVATION_STORAGE_KEY, store);
+}
+
 function isDarkPaletteTrigger(fingerprint) {
     if (!fingerprint || typeof fingerprint !== 'object') return false;
     const confidence = Number(fingerprint.confidence || 0);
@@ -398,6 +456,7 @@ export function clearLastCombo() {
         localStorage.removeItem(PENDING_KEY);
         localStorage.removeItem(ATTEMPT_STORAGE_KEY);
         localStorage.removeItem(DIRECTIVE_PICK_STORAGE_KEY);
+        localStorage.removeItem(PALETTE_OBSERVATION_STORAGE_KEY);
         try {
             sessionStorage.removeItem('rabbit_mirror_theater:generation_snapshots:v1');
             sessionStorage.removeItem('rabbit_mirror_theater:active_generation_attempt:v1');

@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.2.62';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.2.62';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.2.64';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.2.64';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -9,7 +9,7 @@ import {
     recordGenerationAttempt,
     setDirectiveScopedPick,
     setLastCombo,
-} from './storage.js?rmv=1.2.62';
+} from './storage.js?rmv=1.2.64';
 
 function randomUnit() {
     try {

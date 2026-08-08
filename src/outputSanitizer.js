@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.62';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.62';
+import { getSettings } from './settings.js?rmv=1.2.64';
+import { getCurrentChatKey, getRecentPaletteObservations } from './storage.js?rmv=1.2.64';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.2.62';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.62';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.62';
+} from './feedbackCat.js?rmv=1.2.64';
+import { paletteFamilyOfFingerprint, paletteRepeatStatus, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.64';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.64';
 
 
-const RUNTIME_VERSION = '1.2.62';
+const RUNTIME_VERSION = '1.2.64';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -2200,6 +2200,9 @@ const CHANGE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-change-pseudo-rescue';
 const DIRECT_ID_CLICK_RESCUE_ATTR = 'data-rabbit-mirror-direct-id-click-rescue';
 const DIRECT_ID_CLASS_STATE_RESCUE_ATTR = 'data-rabbit-mirror-direct-id-class-state-rescue';
 const RAW_NAMED_FUNCTION_RESCUE_ATTR = 'data-rabbit-mirror-raw-named-function-rescue';
+const RAW_SCRIPT_TIMELINE_RESCUE_ATTR = 'data-rabbit-mirror-raw-script-timeline-rescue';
+const RAW_SCRIPT_TIMELINE_ROOT_ATTR = 'data-rabbit-mirror-raw-script-timeline-count';
+const RAW_SCRIPT_TIMELINE_STATE_ATTR = 'data-rm-script-timeline-state';
 const PASSPORT_DOCUMENT_RESCUE_ATTR = 'data-rabbit-mirror-passport-document-rescue';
 const PASSPORT_DOCUMENT_TRIGGER_RESCUE_ATTR = 'data-rabbit-mirror-passport-document-trigger-rescue';
 const PASSPORT_DOCUMENT_HOST_ATTR = 'data-rm-passport-document-host';
@@ -6636,6 +6639,407 @@ function installRawMessageDirectIdClickProgramRescue(root) {
 
 
 
+const RAW_SCRIPT_TIMELINE_ALLOWED_STYLE_PROPERTIES = new Set([
+    'animation', 'background', 'background-color', 'border', 'border-left', 'border-right', 'border-top', 'border-bottom',
+    'box-shadow', 'color', 'display', 'filter', 'height', 'left', 'opacity', 'pointer-events', 'right', 'top',
+    'transform', 'visibility', 'width', 'z-index',
+]);
+const rawScriptTimelineRescueStates = new WeakMap();
+
+function maskJavascriptCommentsPreservingStrings(source) {
+    const text = String(source || '');
+    const out = [...text];
+    let quote = '';
+    let escaped = false;
+    for (let index = 0; index < text.length; index += 1) {
+        const char = text[index];
+        const next = text[index + 1] || '';
+        if (quote) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            quote = char;
+            continue;
+        }
+        if (char === '/' && next === '/') {
+            let cursor = index;
+            while (cursor < text.length && text[cursor] !== '\n' && text[cursor] !== '\r') {
+                out[cursor] = ' ';
+                cursor += 1;
+            }
+            index = cursor - 1;
+            continue;
+        }
+        if (char === '/' && next === '*') {
+            out[index] = ' ';
+            out[index + 1] = ' ';
+            let cursor = index + 2;
+            while (cursor < text.length) {
+                if (text[cursor] === '*' && text[cursor + 1] === '/') {
+                    out[cursor] = ' ';
+                    out[cursor + 1] = ' ';
+                    cursor += 2;
+                    break;
+                }
+                if (text[cursor] !== '\n' && text[cursor] !== '\r') out[cursor] = ' ';
+                cursor += 1;
+            }
+            index = cursor - 1;
+        }
+    }
+    return out.join('');
+}
+
+function findJavascriptBlockEnd(source, openIndex) {
+    const text = String(source || '');
+    if (text[openIndex] !== '{') return -1;
+    let depth = 0;
+    let quote = '';
+    let escaped = false;
+    let lineComment = false;
+    let blockComment = false;
+    for (let index = openIndex; index < text.length; index += 1) {
+        const char = text[index];
+        const next = text[index + 1] || '';
+        if (lineComment) {
+            if (char === '\n' || char === '\r') lineComment = false;
+            continue;
+        }
+        if (blockComment) {
+            if (char === '*' && next === '/') {
+                blockComment = false;
+                index += 1;
+            }
+            continue;
+        }
+        if (quote) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            quote = char;
+            continue;
+        }
+        if (char === '/' && next === '/') {
+            lineComment = true;
+            index += 1;
+            continue;
+        }
+        if (char === '/' && next === '*') {
+            blockComment = true;
+            index += 1;
+            continue;
+        }
+        if (char === '{') depth += 1;
+        else if (char === '}') {
+            depth -= 1;
+            if (depth === 0) return index;
+            if (depth < 0) return -1;
+        }
+    }
+    return -1;
+}
+
+function blankJavascriptRanges(source, ranges) {
+    const chars = [...String(source || '')];
+    for (const range of ranges || []) {
+        const start = Math.max(0, Number(range?.start) || 0);
+        const end = Math.min(chars.length, Number(range?.end) || 0);
+        for (let index = start; index < end; index += 1) {
+            if (chars[index] !== '\n' && chars[index] !== '\r') chars[index] = ' ';
+        }
+    }
+    return chars.join('');
+}
+
+function parseSafeClickListenerBlock(source, fromIndex = 0) {
+    const text = String(source || '');
+    const listenerRe = /\b([a-zA-Z_$][\w$]*)\s*\.\s*addEventListener\s*\(\s*(['"])click\2\s*,\s*(?:(\(\s*\)\s*=>)|(?:function\s*([a-zA-Z_$][\w$]*)?\s*\(\s*\)))\s*\{/g;
+    listenerRe.lastIndex = Math.max(0, Number(fromIndex) || 0);
+    const match = listenerRe.exec(text);
+    if (!match) return null;
+    const openIndex = listenerRe.lastIndex - 1;
+    const closeIndex = findJavascriptBlockEnd(text, openIndex);
+    if (closeIndex < 0) return null;
+    const tail = text.slice(closeIndex + 1, closeIndex + 180);
+    const tailMatch = /^\s*(,\s*\{\s*once\s*:\s*true\s*\})?\s*\)\s*;?/.exec(tail);
+    if (!tailMatch) return null;
+    return {
+        alias: match[1],
+        functionName: match[4] || '',
+        once: !!tailMatch[1],
+        start: match.index,
+        end: closeIndex + 1 + tailMatch[0].length,
+        body: text.slice(openIndex + 1, closeIndex),
+    };
+}
+
+function extractSafeSetTimeoutBlocks(source) {
+    const text = String(source || '');
+    const blocks = [];
+    const timeoutRe = /\bsetTimeout\s*\(\s*(?:\(\s*\)\s*=>|function\s*\(\s*\))\s*\{/g;
+    let match;
+    while ((match = timeoutRe.exec(text))) {
+        const openIndex = timeoutRe.lastIndex - 1;
+        const closeIndex = findJavascriptBlockEnd(text, openIndex);
+        if (closeIndex < 0) return null;
+        const tail = text.slice(closeIndex + 1, closeIndex + 100);
+        const tailMatch = /^\s*,\s*(\d{1,5})\s*\)\s*;?/.exec(tail);
+        if (!tailMatch) return null;
+        const delay = Number(tailMatch[1]);
+        if (!Number.isFinite(delay) || delay < 0 || delay > 15000) return null;
+        const end = closeIndex + 1 + tailMatch[0].length;
+        blocks.push({
+            start: match.index,
+            end,
+            delay,
+            body: text.slice(openIndex + 1, closeIndex),
+        });
+        timeoutRe.lastIndex = end;
+    }
+    return blocks;
+}
+
+function parseSafeAliasTimelineActions(source, aliases, stateVariables, { resetFunctionName = '', resetTriggerAlias = '' } = {}) {
+    const masked = maskJavascriptCommentsPreservingStrings(source);
+    const ranges = [];
+    const actions = [];
+    const addRange = (match, action = null) => {
+        ranges.push({ start: match.index, end: match.index + match[0].length });
+        if (action) actions.push(action);
+    };
+    const resolveAlias = alias => aliases.get(String(alias || '')) || null;
+    const addStyle = (match, alias, rawProperty, rawValue) => {
+        const target = resolveAlias(alias);
+        const property = normalizeStylePropertyName(rawProperty);
+        const value = decodeSafeInlineString(rawValue).trim();
+        if (!target?.style || !RAW_SCRIPT_TIMELINE_ALLOWED_STYLE_PROPERTIES.has(property)) return false;
+        if (!value || value.length > 1400 || /(?:expression\s*\(|javascript\s*:|url\s*\()/i.test(value)) return false;
+        addRange(match, { type: 'style', target, property, value });
+        return true;
+    };
+
+    let match;
+    const styleDotRe = /\b([a-zA-Z_$][\w$]*)\s*\.\s*style\s*\.\s*([a-zA-Z][\w]*)\s*=\s*(['"])((?:\\.|(?!\3)[\s\S])*)\3\s*;?/g;
+    while ((match = styleDotRe.exec(masked))) {
+        if (!addStyle(match, match[1], match[2], match[4])) return null;
+    }
+    const styleBracketRe = /\b([a-zA-Z_$][\w$]*)\s*\.\s*style\s*\[\s*(['"])([a-zA-Z-]+)\2\s*\]\s*=\s*(['"])((?:\\.|(?!\4)[\s\S])*)\4\s*;?/g;
+    while ((match = styleBracketRe.exec(masked))) {
+        if (!addStyle(match, match[1], match[3], match[5])) return null;
+    }
+    const textRe = /\b([a-zA-Z_$][\w$]*)\s*\.\s*(innerText|textContent)\s*=\s*(['"])((?:\\.|(?!\3)[\s\S])*)\3\s*;?/g;
+    while ((match = textRe.exec(masked))) {
+        const target = resolveAlias(match[1]);
+        const value = decodeSafeInlineString(match[4]);
+        if (!target || value.length > 800) return null;
+        addRange(match, { type: 'text', target, value });
+    }
+
+    const guardRe = /\bif\s*\(\s*([a-zA-Z_$][\w$]*)\s*\)\s*return\s*;?/g;
+    while ((match = guardRe.exec(masked))) {
+        if (!stateVariables.has(match[1])) return null;
+        addRange(match);
+    }
+    const stateAssignRe = /\b([a-zA-Z_$][\w$]*)\s*=\s*(true|false)\s*;?/g;
+    while ((match = stateAssignRe.exec(masked))) {
+        if (!stateVariables.has(match[1])) continue;
+        addRange(match);
+    }
+    if (resetFunctionName && resetTriggerAlias) {
+        const removeRe = new RegExp(`\\b${escapeRegExp(resetTriggerAlias)}\\s*\\.\\s*removeEventListener\\s*\\(\\s*(['\"])click\\1\\s*,\\s*${escapeRegExp(resetFunctionName)}\\s*\\)\\s*;?`, 'g');
+        while ((match = removeRe.exec(masked))) addRange(match);
+    }
+
+    const remainder = blankJavascriptRanges(masked, ranges);
+    if (remainder.replace(/[\s;]+/g, '') !== '') return null;
+    return actions;
+}
+
+function parseSafeRawScriptTimelineProgram(scriptText, rawRoot, root) {
+    const source = String(scriptText || '');
+    if (!source || source.length > 24000 || /[`]/.test(source)) return null;
+    const masked = maskJavascriptCommentsPreservingStrings(source);
+    const aliases = new Map();
+    const aliasRanges = [];
+    const rawAliasIds = new Map();
+    const aliasRe = /\b(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*document\s*\.\s*getElementById\s*\(\s*(['"])([a-zA-Z_][\w:.-]*)\2\s*\)\s*;?/g;
+    let match;
+    while ((match = aliasRe.exec(masked))) {
+        const rawId = match[3];
+        const rawTarget = [...(rawRoot?.querySelectorAll?.('[id]') || [])].find(element => element.id === rawId) || null;
+        const target = resolveScopedPseudoId(root, rawId) || (rawTarget ? resolveRenderedCounterpart(rawRoot, root, rawTarget, '*') : null);
+        if (!rawTarget || !target || !root.contains?.(target)) return null;
+        aliases.set(match[1], target);
+        rawAliasIds.set(match[1], rawId);
+        aliasRanges.push({ start: match.index, end: match.index + match[0].length });
+    }
+    if (!aliases.size || aliases.size > 24) return null;
+
+    const stateVariables = new Set();
+    const stateRanges = [];
+    const stateDeclRe = /\b(?:let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*(true|false)\s*;?/g;
+    while ((match = stateDeclRe.exec(masked))) {
+        if (aliases.has(match[1])) return null;
+        stateVariables.add(match[1]);
+        stateRanges.push({ start: match.index, end: match.index + match[0].length });
+    }
+    if (stateVariables.size > 4) return null;
+
+    const outer = parseSafeClickListenerBlock(masked, 0);
+    if (!outer || !aliases.has(outer.alias) || outer.once) return null;
+    const trigger = aliases.get(outer.alias);
+    const timeouts = extractSafeSetTimeoutBlocks(outer.body);
+    if (!timeouts || !timeouts.length || timeouts.length > 8) return null;
+
+    let resetActions = null;
+    let resetDelay = -1;
+    const stages = [];
+    for (const timeout of timeouts) {
+        let stageBody = timeout.body;
+        let enablesReset = false;
+        const nested = parseSafeClickListenerBlock(stageBody, 0);
+        if (nested) {
+            if (resetActions || nested.alias !== outer.alias || !nested.functionName || !nested.once) return null;
+            const parsedReset = parseSafeAliasTimelineActions(nested.body, aliases, stateVariables, {
+                resetFunctionName: nested.functionName,
+                resetTriggerAlias: nested.alias,
+            });
+            if (!parsedReset?.length) return null;
+            resetActions = parsedReset;
+            resetDelay = timeout.delay;
+            enablesReset = true;
+            stageBody = blankJavascriptRanges(stageBody, [{ start: nested.start, end: nested.end }]);
+        }
+        const actions = parseSafeAliasTimelineActions(stageBody, aliases, stateVariables);
+        if (actions === null) return null;
+        if (actions.length || enablesReset) stages.push({ delay: timeout.delay, actions, enablesReset });
+    }
+    if (!resetActions?.length || resetDelay < 0) return null;
+
+    const outerWithoutTimeouts = blankJavascriptRanges(outer.body, timeouts.map(item => ({ start: item.start, end: item.end })));
+    const immediateActions = parseSafeAliasTimelineActions(outerWithoutTimeouts, aliases, stateVariables);
+    if (immediateActions === null) return null;
+
+    const topLevelRemainder = blankJavascriptRanges(masked, [
+        ...aliasRanges,
+        ...stateRanges,
+        { start: outer.start, end: outer.end },
+    ]);
+    if (topLevelRemainder.replace(/[\s;]+/g, '') !== '') return null;
+
+    const meaningfulActionCount = immediateActions.length + stages.reduce((sum, stage) => sum + stage.actions.length, 0) + resetActions.length;
+    if (meaningfulActionCount < 4) return null;
+    return { trigger, triggerAlias: outer.alias, rawTriggerId: rawAliasIds.get(outer.alias) || '', immediateActions, stages, resetActions, resetDelay };
+}
+
+function collectSafeRawScriptTimelinePrograms(root) {
+    if (!root?.querySelectorAll) return [];
+    const rawMessage = getRawAssistantMessageForRenderedRoot(root);
+    const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root);
+    if (!rawRoot?.querySelectorAll) return [];
+    const programs = [];
+    const seenTriggers = new Set();
+    for (const script of rawRoot.querySelectorAll('script')) {
+        const program = parseSafeRawScriptTimelineProgram(script.textContent || '', rawRoot, root);
+        if (!program?.trigger || seenTriggers.has(program.trigger)) continue;
+        seenTriggers.add(program.trigger);
+        programs.push(program);
+    }
+    return programs;
+}
+
+function applyRawScriptTimelineActions(actions) {
+    for (const action of actions || []) {
+        if (!action?.target?.isConnected) continue;
+        if (action.type === 'style') action.target.style?.setProperty?.(action.property, action.value, 'important');
+        else if (action.type === 'text') action.target.textContent = action.value;
+    }
+}
+
+function clearRawScriptTimelineTimers(entry) {
+    for (const timer of entry?.timers || []) clearTimeout(timer);
+    if (entry) entry.timers = [];
+}
+
+function syncRawScriptTimelineEntry(entry) {
+    const trigger = entry?.trigger;
+    if (!trigger?.isConnected) return;
+    trigger.setAttribute('aria-pressed', entry.active ? 'true' : 'false');
+    trigger.setAttribute(RAW_SCRIPT_TIMELINE_STATE_ATTR, entry.resetReady ? 'reset-ready' : (entry.active ? 'active' : 'idle'));
+}
+
+function installRawMessageScriptTimelineRescue(root) {
+    if (!root?.querySelectorAll) return 0;
+    const programs = collectSafeRawScriptTimelinePrograms(root);
+    let state = rawScriptTimelineRescueStates.get(root);
+    if (!state) {
+        state = { entries: new Map() };
+        rawScriptTimelineRescueStates.set(root, state);
+    }
+    for (const [trigger, entry] of [...state.entries]) {
+        if (!trigger?.isConnected || !root.contains?.(trigger)) {
+            clearRawScriptTimelineTimers(entry);
+            trigger?.removeEventListener?.('click', entry.onActivate, false);
+            trigger?.removeEventListener?.('keydown', entry.onActivate, false);
+            state.entries.delete(trigger);
+        }
+    }
+
+    let installed = 0;
+    for (const program of programs) {
+        const trigger = program.trigger;
+        if (!trigger || state.entries.has(trigger)) continue;
+        preparePseudoTrigger(trigger);
+        const entry = { ...program, trigger, active: false, resetReady: false, timers: [], onActivate: null };
+        const onActivate = event => {
+            if (event?.type === 'click' && shouldIgnorePseudoToggleEvent(event, trigger)) return;
+            if (event?.type === 'keydown') {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+            }
+            if (entry.active) {
+                if (!entry.resetReady) return;
+                clearRawScriptTimelineTimers(entry);
+                applyRawScriptTimelineActions(entry.resetActions);
+                entry.active = false;
+                entry.resetReady = false;
+                syncRawScriptTimelineEntry(entry);
+                return;
+            }
+            entry.active = true;
+            entry.resetReady = false;
+            clearRawScriptTimelineTimers(entry);
+            applyRawScriptTimelineActions(entry.immediateActions);
+            for (const stage of entry.stages) {
+                const timer = setTimeout(() => {
+                    if (!entry.active || !trigger.isConnected) return;
+                    applyRawScriptTimelineActions(stage.actions);
+                    if (stage.enablesReset) entry.resetReady = true;
+                    syncRawScriptTimelineEntry(entry);
+                }, stage.delay);
+                entry.timers.push(timer);
+            }
+            syncRawScriptTimelineEntry(entry);
+        };
+        entry.onActivate = onActivate;
+        trigger.addEventListener('click', onActivate, false);
+        trigger.addEventListener('keydown', onActivate, false);
+        trigger.setAttribute(RAW_SCRIPT_TIMELINE_RESCUE_ATTR, 'true');
+        syncRawScriptTimelineEntry(entry);
+        state.entries.set(trigger, entry);
+        installed += 1;
+    }
+    if (state.entries.size) root.setAttribute(RAW_SCRIPT_TIMELINE_ROOT_ATTR, String(state.entries.size));
+    else root.removeAttribute(RAW_SCRIPT_TIMELINE_ROOT_ATTR);
+    return installed;
+}
+
 function passportDocumentSemanticText(element) {
     return `${element?.id || ''} ${element?.className || ''} ${element?.getAttribute?.('aria-label') || ''}`;
 }
@@ -7301,7 +7705,7 @@ function installPseudoInteractionRescue(root) {
 }
 
 function detectInteractionCapabilities(root) {
-    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false, maskReveal: false, stateSibling: false, buttonAdjacent: false, clickableAdjacent: false, clickablePopup: false, containerReveal: false, selfMutation: false, detachedCheckedHas: false, selectionFallback: false, disabledChoiceFallback: false, actionFallback: false, staticChoiceSelection: false, structuredStaticDisclosure: false, fillInChoice: false, reversibleChecked: false };
+    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false, maskReveal: false, stateSibling: false, buttonAdjacent: false, clickableAdjacent: false, clickablePopup: false, containerReveal: false, selfMutation: false, detachedCheckedHas: false, selectionFallback: false, disabledChoiceFallback: false, actionFallback: false, staticChoiceSelection: false, structuredStaticDisclosure: false, fillInChoice: false, scriptTimeline: false, reversibleChecked: false };
     const cssText = getRabbitMirrorLocalStyleElements(root).map(style => style.textContent || '').join('\n');
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
     const nestedDetails = [...root.querySelectorAll('details')].filter(item => item !== outerDetails);
@@ -7327,6 +7731,7 @@ function detectInteractionCapabilities(root) {
         structuredStaticDisclosure: Number.parseInt(root.getAttribute?.(STRUCTURED_STATIC_DISCLOSURE_COUNT_ATTR) || '0', 10) > 0,
         fillInChoice: Number.parseInt(root.getAttribute?.(FILL_IN_CHOICE_COUNT_ATTR) || '0', 10) > 0,
         passportDocument: (passportDocumentRescueStates.get(root)?.entries?.length || 0) > 0,
+        scriptTimeline: Number.parseInt(root.getAttribute?.(RAW_SCRIPT_TIMELINE_ROOT_ATTR) || '0', 10) > 0,
         reversibleChecked: Number.parseInt(root.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) > 0,
     };
     interactionCapabilityStates.set(root, capabilities);
@@ -8826,6 +9231,9 @@ function installIntelligentInteractionRescue(root) {
     installRawMessageRadioResetProgramRescue(root);
     // 回读安全可解析的 getElementById 样式/文字赋值，并按同一 DOM 路径绑定到渲染节点。
     installRawMessageDirectIdClickProgramRescue(root);
+    // 宿主也会整段移除 <script>。只回读“固定 ID + click + 固定样式/文字 + 固定 setTimeout + 明确二次点击恢复”的有限时间线，
+    // 不执行模型脚本本身；任何未知语句、动态选择器或任意调用都会整段放弃。
+    installRawMessageScriptTimelineRescue(root);
     // 护照／证件类翻页采用“一次打开 + 独立关闭 + 印章长按详情”的复合结构；
     // 不执行原始 JavaScript，只回读固定 class add/remove 意图并恢复可逆开合和点按详情。
     installPassportDocumentRescue(root);
@@ -10235,7 +10643,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.62-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.64-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -10375,6 +10783,7 @@ function diagnosticRouteSummary(root) {
         containerReveal: renderedContainerInternalRevealStates.get(root)?.entries?.size || 0,
         selfMutation: rawSelfMutationRescueStates.get(root)?.entries?.size || 0,
         classStateProgram: root?.querySelectorAll?.(`[${DIRECT_ID_CLASS_STATE_RESCUE_ATTR}]`)?.length || 0,
+        scriptTimeline: Number.parseInt(root?.getAttribute?.(RAW_SCRIPT_TIMELINE_ROOT_ATTR) || '0', 10) || 0,
         cssCommentRepair: root?.querySelectorAll?.(`[${MARKDOWN_CSS_COMMENT_RESCUE_ATTR}]`)?.length || 0,
         changeProgram: root?.querySelectorAll?.(`[${CHANGE_PSEUDO_RESCUE_ATTR}]`)?.length || 0,
         focusWithinPersistent: Number.parseInt(root?.getAttribute?.(FOCUS_WITHIN_PERSISTENT_ROOT_ATTR) || '0', 10) || 0,
@@ -10397,7 +10806,7 @@ function diagnosticRouteSummary(root) {
 function diagnosticInferReason(root, inputs, targets, state = null) {
     const routes = diagnosticRouteSummary(root);
     const depth = maintenanceCheckedInteractionDepth(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.missingCheckedClass + routes.crossParentChecked + routes.checkedHasState + routes.detachedCheckedHas + routes.pairedCheckedState + routes.exclusiveStackedState + routes.channelDialCycle + routes.reversibleRadio + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.focusWithinPersistent + routes.unlabeledChecked + routes.labeledCheckedVerify + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.staticChoiceSelection + routes.structuredStaticDisclosure + routes.fillInChoice + routes.passportDocument + routes.decorativeOverlayPassThrough;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.missingCheckedClass + routes.crossParentChecked + routes.checkedHasState + routes.detachedCheckedHas + routes.pairedCheckedState + routes.exclusiveStackedState + routes.channelDialCycle + routes.reversibleRadio + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.scriptTimeline + routes.cssCommentRepair + routes.changeProgram + routes.focusWithinPersistent + routes.unlabeledChecked + routes.labeledCheckedVerify + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.staticChoiceSelection + routes.structuredStaticDisclosure + routes.fillInChoice + routes.passportDocument + routes.decorativeOverlayPassThrough;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -11244,6 +11653,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `原始主体 文本=${full.rawBodyTextLength ?? 0} 元素=${full.rawBodyElementCount ?? 0} 语义/媒体=${full.rawBodySemanticElementCount ?? 0} 视觉程序=${full.rawBodyVisualProgramCount ?? 0}`,
         `展开后主体缺失=${full.visibleBodyMissing} 空结构壳=${!!full.renderedBodyEmptyShell} 主体子节点=${full.renderedBodyElementCount ?? 0} 文本=${full.renderedBodyTextLength ?? 0}`,
         `可见语言 英文主导=${!!full.languageForeignDominant} 中文字符=${full.languageHanChars ?? 0} 英文字母=${full.languageLatinLetters ?? 0} 英文词≈${full.languageForeignWordCount ?? 0} 示例=${Array.isArray(full.languageForeignWords) && full.languageForeignWords.length ? full.languageForeignWords.slice(0, 8).join('/') : '(无)'}`,
+        `本地配色 家族=${root.getAttribute?.(PALETTE_FAMILY_ATTR) || '(无)'} 重复=${root.getAttribute?.(PALETTE_REPEAT_ATTR) || 'false'} 重映射=${root.getAttribute?.(PALETTE_REMAP_ATTR) || '(未检查)'} 原因=${root.getAttribute?.(PALETTE_REMAP_REASON_ATTR) || '(无)'}`,
         '',
         '[3. CSS 能力层]',
         `rules≈${full.cssRuleCount} keyframes=${full.animationCount}`,
@@ -11319,6 +11729,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `容器内揭示 entries=${routes.containerReveal} listener=${root.dataset.rabbitMirrorContainerInternalRevealFallback || 'false'}`,
         `元素自变化 entries=${routes.selfMutation} listener=${root.dataset.rabbitMirrorSelfMutationFallback || 'false'}`,
         `类名状态程序 entries=${routes.classStateProgram} listener=${routes.classStateProgram ? 'true' : 'false'}`,
+        `脚本时间线恢复 entries=${routes.scriptTimeline} listener=${routes.scriptTimeline ? 'true' : 'false'}`,
         `CSS注释保全 entries=${routes.cssCommentRepair} listener=${routes.cssCommentRepair ? 'true' : 'false'}`,
         `安全状态程序 entries=${routes.changeProgram} listener=${routes.changeProgram ? 'true' : 'false'}`,
         `护照／证件翻页 entries=${routes.passportDocument} listener=${routes.passportDocument ? 'true' : 'false'}`,
@@ -12988,6 +13399,7 @@ function recoveredInlineStateProgramCount(root) {
         `[${DIRECT_ID_CLASS_STATE_RESCUE_ATTR}]`,
         `[${RAW_SELF_MUTATION_RESCUE_ATTR}]`,
         `[${RAW_NAMED_FUNCTION_RESCUE_ATTR}]`,
+        `[${RAW_SCRIPT_TIMELINE_RESCUE_ATTR}]`,
         `[${RAW_RADIO_RESET_RESCUE_ATTR}]`,
         `[${PASSPORT_DOCUMENT_TRIGGER_RESCUE_ATTR}]`,
     ].join(',');
@@ -13036,6 +13448,7 @@ function maintenanceReachableInteractionEvidence(root, routeSummary, checkedDept
         + Number(routeSummary.containerReveal || 0)
         + Number(routeSummary.selfMutation || 0)
         + Number(routeSummary.classStateProgram || 0)
+        + Number(routeSummary.scriptTimeline || 0)
         + Number(routeSummary.changeProgram || 0)
         + Number(routeSummary.focusWithinPersistent || 0)
         + Number(routeSummary.unlabeledChecked || 0)
@@ -13047,7 +13460,7 @@ function maintenanceReachableInteractionEvidence(root, routeSummary, checkedDept
         + Number(routeSummary.fillInChoice || 0)
         + Number(routeSummary.passportDocument || 0);
 
-    const rawStateProgram = /\bon(?:click|change|input)\s*=|setAttribute\s*\(\s*['"]data-|classList\.(?:add|remove|toggle)|\.checked\s*=|:checked\b|:target\b/i.test(String(raw || ''));
+    const rawStateProgram = /\bon(?:click|change|input)\s*=|addEventListener\s*\(\s*['"](?:click|change|input)['"]|setAttribute\s*\(\s*['"]data-|classList\.(?:add|remove|toggle)|\.checked\s*=|:checked\b|:target\b/i.test(String(raw || ''));
     const nestedDetailsCount = diagnosticQueryContentAll(root, 'details').filter(details => details !== outerDetails).length;
     const staticChoiceCandidateCount = findStaticChoiceSelectionCandidates(root).length;
     const structuredStaticDisclosureCandidateCount = findStructuredStaticDisclosureCandidates(root).length;
@@ -13084,7 +13497,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
         + routeSummary.clickableAdjacent + routeSummary.clickablePopup + routeSummary.checkedIdTarget + routeSummary.focusToChecked
         + routeSummary.checkedTextRule + routeSummary.crossParentChecked + routeSummary.checkedHasState + routeSummary.detachedCheckedHas + routeSummary.pairedCheckedState + routeSummary.expandedOpacity
         + routeSummary.reversibleChecked + routeSummary.radioReset
-        + routeSummary.containerReveal + routeSummary.selfMutation + routeSummary.classStateProgram + routeSummary.changeProgram
+        + routeSummary.containerReveal + routeSummary.selfMutation + routeSummary.classStateProgram + routeSummary.scriptTimeline + routeSummary.changeProgram
         + routeSummary.focusWithinPersistent + routeSummary.unlabeledChecked + routeSummary.selectionFallback + routeSummary.disabledChoice + routeSummary.inertAction + routeSummary.staticChoiceSelection + routeSummary.structuredStaticDisclosure + routeSummary.fillInChoice + routeSummary.passportDocument;
     const innerDetailsCount = diagnosticQueryContentAll(root, 'details').length;
     const hasTargetRoute = !!root?.querySelector?.('a[href^="#"]') && /:target\b/i.test(raw);
@@ -13152,6 +13565,9 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const focusWithinPersistentCandidateCount = findFocusWithinPersistentCandidates(root).length;
     const focusWithinPersistentRescueCount = Number(routeSummary.focusWithinPersistent || 0);
     const focusWithinPersistentMissingCount = Math.max(0, focusWithinPersistentCandidateCount - focusWithinPersistentRescueCount);
+    const rawScriptTimelineCandidateCount = collectSafeRawScriptTimelinePrograms(root).length;
+    const rawScriptTimelineRescueCount = Number(routeSummary.scriptTimeline || 0);
+    const rawScriptTimelineMissingCount = Math.max(0, rawScriptTimelineCandidateCount - rawScriptTimelineRescueCount);
     // 只有选中项外观变化时，补 Hover 也不会生成缺失的第二层内容，不能误导为可修复交互。
     const touchHoverMissing = !checkedDepth.checkedSelectionOnly
         && isLikelyTouchDevice()
@@ -13164,7 +13580,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const unscopedControls = (full.inputCount > 0 || full.buttonCount > 0)
         && root.dataset?.rabbitMirrorInteractionScoped !== 'true';
     const reachability = maintenanceReachableInteractionEvidence(root, routeSummary, checkedDepth, pseudoDepth, raw);
-    return { checkedControlsLost, stateControlsLost: !!full.stateControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, missingCheckedSubjectClassCandidateCount, missingCheckedSubjectClassRescueCount, missingCheckedSubjectClassMissingCount, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, staticChoiceSelectionCandidateCount, staticChoiceSelectionRescueCount, structuredStaticDisclosureCandidateCount, structuredStaticDisclosureRescueCount, fillInChoiceCandidateCount, fillInChoiceRescueCount, focusWithinPersistentCandidateCount, focusWithinPersistentRescueCount, focusWithinPersistentMissingCount, crossParentCheckedRuleCandidateCount, crossParentCheckedRuleVerifiedCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, detachedCheckedHasRuleCandidateCount, detachedCheckedHasRuleRescueCount, detachedCheckedHasRuleMissingCount, pairedCheckedStateCandidateCount, pairedCheckedStateRescueCount, pairedCheckedStateMissingCount, exclusiveStackedStateCandidateCount, exclusiveStackedStateRescueCount, exclusiveStackedStateMissingCount, channelDialCycleCandidateCount, channelDialCycleRescueCount, channelDialCycleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
+    return { checkedControlsLost, stateControlsLost: !!full.stateControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, missingCheckedSubjectClassCandidateCount, missingCheckedSubjectClassRescueCount, missingCheckedSubjectClassMissingCount, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, staticChoiceSelectionCandidateCount, staticChoiceSelectionRescueCount, structuredStaticDisclosureCandidateCount, structuredStaticDisclosureRescueCount, fillInChoiceCandidateCount, fillInChoiceRescueCount, focusWithinPersistentCandidateCount, focusWithinPersistentRescueCount, focusWithinPersistentMissingCount, rawScriptTimelineCandidateCount, rawScriptTimelineRescueCount, rawScriptTimelineMissingCount, crossParentCheckedRuleCandidateCount, crossParentCheckedRuleVerifiedCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, detachedCheckedHasRuleCandidateCount, detachedCheckedHasRuleRescueCount, detachedCheckedHasRuleMissingCount, pairedCheckedStateCandidateCount, pairedCheckedStateRescueCount, pairedCheckedStateMissingCount, exclusiveStackedStateCandidateCount, exclusiveStackedStateRescueCount, exclusiveStackedStateMissingCount, channelDialCycleCandidateCount, channelDialCycleRescueCount, channelDialCycleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
 }
 
 function maintenanceFallbackFullSummary(root) {
@@ -13391,6 +13807,17 @@ function buildMaintenanceFindings(root, {
             confidence: 0.92,
         });
     }
+    if (Number(interaction.rawScriptTimelineMissingCount) > 0) {
+        add({
+            id: 'script-timeline-stripped', stage: 'interaction', mode: 'interaction',
+            label: '宿主删除了可安全恢复的多阶段点击时间线',
+            evidence: [
+                `rawScriptTimelineCandidateCount=${Number(interaction.rawScriptTimelineCandidateCount) || 0}`,
+                `rawScriptTimelineRescueCount=${Number(interaction.rawScriptTimelineRescueCount) || 0}`,
+            ],
+            confidence: 0.98,
+        });
+    }
     if (Number(interaction.decorativeOverlayCandidateCount) > 0) {
         add({
             id: 'decorative-overlay-blocks-touch', stage: 'interaction', mode: 'interaction',
@@ -13597,7 +14024,7 @@ function inspectMaintenanceRabbit(root) {
     } catch (error) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
-        interaction = { checkedControlsLost: false, stateControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, missingCheckedSubjectClassCandidateCount: 0, missingCheckedSubjectClassRescueCount: 0, missingCheckedSubjectClassMissingCount: 0, radioGroupLossCandidateCount: 0, radioGroupRescueCount: 0, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, staticChoiceSelectionCandidateCount: 0, staticChoiceSelectionRescueCount: 0, structuredStaticDisclosureCandidateCount: 0, structuredStaticDisclosureRescueCount: 0, fillInChoiceCandidateCount: 0, fillInChoiceRescueCount: 0, focusWithinPersistentCandidateCount: 0, focusWithinPersistentRescueCount: 0, focusWithinPersistentMissingCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, detachedCheckedHasRuleCandidateCount: 0, detachedCheckedHasRuleRescueCount: 0, detachedCheckedHasRuleMissingCount: 0, pairedCheckedStateCandidateCount: 0, pairedCheckedStateRescueCount: 0, pairedCheckedStateMissingCount: 0, exclusiveStackedStateCandidateCount: 0, exclusiveStackedStateRescueCount: 0, exclusiveStackedStateMissingCount: 0, channelDialCycleCandidateCount: 0, channelDialCycleRescueCount: 0, channelDialCycleMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
+        interaction = { checkedControlsLost: false, stateControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, missingCheckedSubjectClassCandidateCount: 0, missingCheckedSubjectClassRescueCount: 0, missingCheckedSubjectClassMissingCount: 0, radioGroupLossCandidateCount: 0, radioGroupRescueCount: 0, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, staticChoiceSelectionCandidateCount: 0, staticChoiceSelectionRescueCount: 0, structuredStaticDisclosureCandidateCount: 0, structuredStaticDisclosureRescueCount: 0, fillInChoiceCandidateCount: 0, fillInChoiceRescueCount: 0, focusWithinPersistentCandidateCount: 0, focusWithinPersistentRescueCount: 0, focusWithinPersistentMissingCount: 0, rawScriptTimelineCandidateCount: 0, rawScriptTimelineRescueCount: 0, rawScriptTimelineMissingCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, detachedCheckedHasRuleCandidateCount: 0, detachedCheckedHasRuleRescueCount: 0, detachedCheckedHasRuleMissingCount: 0, pairedCheckedStateCandidateCount: 0, pairedCheckedStateRescueCount: 0, pairedCheckedStateMissingCount: 0, exclusiveStackedStateCandidateCount: 0, exclusiveStackedStateRescueCount: 0, exclusiveStackedStateMissingCount: 0, channelDialCycleCandidateCount: 0, channelDialCycleRescueCount: 0, channelDialCycleMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
     }
     let textClippingCandidateCount = 0;
     try {
@@ -15928,7 +16355,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.15';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.16';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -15955,11 +16382,14 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         const overlayCountBefore = target.querySelectorAll?.(`[${DECORATIVE_OVERLAY_PASS_THROUGH_ATTR}]`)?.length || 0;
         const rawHoverCountBefore = Number.parseInt(target.dataset?.rabbitMirrorRawHoverFallback || '0', 10) || 0;
         const recoveredProgramCountBefore = recoveredInlineStateProgramCount(target);
+        const rawScriptTimelineCountBefore = Number.parseInt(target.getAttribute?.(RAW_SCRIPT_TIMELINE_ROOT_ATTR) || '0', 10) || 0;
         const disabledChoiceRepairCount = installDisabledOnlyChoiceFallback(target);
         installIntelligentInteractionRescue(target);
         const overlayCountAfter = target.querySelectorAll?.(`[${DECORATIVE_OVERLAY_PASS_THROUGH_ATTR}]`)?.length || 0;
         const rawHoverCountAfter = Number.parseInt(target.dataset?.rabbitMirrorRawHoverFallback || '0', 10) || 0;
         const recoveredProgramCountAfter = recoveredInlineStateProgramCount(target);
+        const rawScriptTimelineCountAfter = Number.parseInt(target.getAttribute?.(RAW_SCRIPT_TIMELINE_ROOT_ATTR) || '0', 10) || 0;
+        const rawScriptTimelineRepairCount = Math.max(0, rawScriptTimelineCountAfter - rawScriptTimelineCountBefore);
         const radioGroupCountAfter = Number.parseInt(target.getAttribute?.(RADIO_GROUP_ROOT_ATTR) || '0', 10) || 0;
         const radioGroupRepairCount = Math.max(0, radioGroupCountAfter - radioGroupCountBefore);
         const overlayRepairCount = Math.max(0, overlayCountAfter - overlayCountBefore);
@@ -16008,6 +16438,8 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             || rawHoverRepairCount > 0
             || recoveredProgramRepairCount > 0
             || recoveredProgramCountAfter > 0
+            || rawScriptTimelineRepairCount > 0
+            || rawScriptTimelineCountAfter > 0
             || radioGroupRepairCount > 0
             || radioGroupCountAfter > 0
             || crossParentCheckedCount > 0
@@ -16028,7 +16460,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             .map(item => item.trim())
             .filter(item => item && item !== 'none');
         // 不再把“调用了总入口”冒充为“命中了一条急救路线”；选择样式专用结构只有在安全补出分支提示后才算修复。
-        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, staticChoiceRepairCount, structuredStaticDisclosureRepairCount, fillInChoiceRepairCount, disabledChoiceCount, inertActionCount, staticChoiceCount, structuredStaticDisclosureCount, fillInChoiceCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, labeledCheckedVerifyCount, checkedHasStateCount, detachedCheckedHasCount, pairedCheckedStateCount, exclusiveStackedStateCount, channelDialCycleCount, reversibleCheckedCount, focusWithinPersistentCount) : 0;
+        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, staticChoiceRepairCount, structuredStaticDisclosureRepairCount, fillInChoiceRepairCount, disabledChoiceCount, inertActionCount, staticChoiceCount, structuredStaticDisclosureCount, fillInChoiceCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, rawScriptTimelineRepairCount, rawScriptTimelineCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, labeledCheckedVerifyCount, checkedHasStateCount, detachedCheckedHasCount, pairedCheckedStateCount, exclusiveStackedStateCount, channelDialCycleCount, reversibleCheckedCount, focusWithinPersistentCount) : 0;
     } },
 ]);
 
@@ -16117,6 +16549,7 @@ function runMaintenanceSourceInteractionFollowup(root) {
         || interaction.structuredStaticDisclosureCandidateCount > 0
         || interaction.fillInChoiceCandidateCount > 0
         || interaction.focusWithinPersistentMissingCount > 0
+        || interaction.rawScriptTimelineMissingCount > 0
         || interaction.oneWayCheckedResultCandidateCount > 0;
     if (!shouldRepair) return null;
 
@@ -16864,6 +17297,306 @@ function removeFeedbackCatsInChatDom() {
     closeFeedbackCatMenu();
 }
 
+
+const PALETTE_DEDUPE_CHECKED_ATTR = 'data-rabbit-mirror-palette-dedupe-checked';
+const PALETTE_FAMILY_ATTR = 'data-rabbit-mirror-palette-family';
+const PALETTE_REPEAT_ATTR = 'data-rabbit-mirror-palette-repeat';
+const PALETTE_REMAP_ATTR = 'data-rabbit-mirror-palette-remap';
+const PALETTE_REMAP_REASON_ATTR = 'data-rabbit-mirror-palette-remap-reason';
+
+function paletteDedupeDetails(root) {
+    return root?.matches?.('details') ? root : root?.querySelector?.(':scope > details') || root?.querySelector?.('details') || root;
+}
+
+function paletteDedupeIsIndependent(root) {
+    const selector = '[data-rm-source="independent"], [data-rabbit-mirror-external-source="independent"], [data-rabbit-mirror-external-source="true"][data-rm-source="independent"]';
+    const host = root?.matches?.(selector) ? root : root?.closest?.(selector);
+    return !!host;
+}
+
+function paletteDedupeIsLatestFollowMirror(root) {
+    if (!root?.isConnected || paletteDedupeIsIndependent(root)) return false;
+    const chat = getAvailableHostChat();
+    if (!Array.isArray(chat) || !chat.length) return false;
+    const index = getMessageIndexFromMirrorNode(root);
+    if (index < 0) return false;
+    let latestAssistantIndex = -1;
+    for (let i = chat.length - 1; i >= 0; i -= 1) {
+        if (!chat[i]?.is_user) { latestAssistantIndex = i; break; }
+    }
+    return index === latestAssistantIndex;
+}
+
+function paletteDedupeRecentRenderedFollowObservations(root, limit = 2) {
+    const currentIndex = getMessageIndexFromMirrorNode(root);
+    if (currentIndex < 0) return [];
+    const chatRoot = getChatRoot();
+    if (!chatRoot) return [];
+    const byMessage = new Map();
+    for (const candidate of getRenderedRabbitMirrorInteractionRoots(chatRoot)) {
+        if (!candidate?.isConnected || candidate === root || paletteDedupeIsIndependent(candidate)) continue;
+        const index = getMessageIndexFromMirrorNode(candidate);
+        if (index < 0 || index >= currentIndex || byMessage.has(index)) continue;
+        const fingerprint = paletteDedupeFingerprint(candidate);
+        if (!fingerprint || Number(fingerprint.confidence || 0) < 0.5) continue;
+        byMessage.set(index, { messageKey: `dom:${index}`, fingerprint, ts: index });
+    }
+    return [...byMessage.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .slice(-Math.max(1, Number(limit) || 2))
+        .map(([, value]) => value);
+}
+
+function paletteDedupeCurrentMessagePrefix(root) {
+    const chat = getAvailableHostChat();
+    const index = getMessageIndexFromMirrorNode(root);
+    const message = index >= 0 ? chat[index] : null;
+    const swipe = Number.isInteger(message?.swipe_id) ? message.swipe_id : 0;
+    return `${index}:${swipe}:`;
+}
+
+function paletteDedupeFingerprint(root) {
+    const details = paletteDedupeDetails(root);
+    if (!details?.outerHTML) return null;
+    try {
+        const wrapper = `<toto data-rabbit-mirror="true">${details.outerHTML}</toto>`;
+        return scanRabbitMirrorHtml(wrapper, details)?.paletteFingerprint || null;
+    } catch (error) {
+        console.debug('[RabbitMirror] local palette fingerprint skipped:', error);
+        return null;
+    }
+}
+
+function paletteDedupeRgb(value) {
+    const match = String(value || '').trim().match(/^rgba?\(\s*([0-9.]+)\s*[, ]\s*([0-9.]+)\s*[, ]\s*([0-9.]+)(?:\s*[,/]\s*([0-9.]+))?\s*\)$/i);
+    if (!match) return null;
+    return {
+        r: Math.max(0, Math.min(255, Number(match[1]))),
+        g: Math.max(0, Math.min(255, Number(match[2]))),
+        b: Math.max(0, Math.min(255, Number(match[3]))),
+        a: match[4] === undefined ? 1 : Math.max(0, Math.min(1, Number(match[4]))),
+    };
+}
+
+function paletteDedupeRgbToHsl(r, g, b) {
+    const nr = r / 255, ng = g / 255, nb = b / 255;
+    const max = Math.max(nr, ng, nb), min = Math.min(nr, ng, nb);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+    const d = max - min;
+    if (d) {
+        s = d / (1 - Math.abs(2 * l - 1));
+        if (max === nr) h = 60 * (((ng - nb) / d) % 6);
+        else if (max === ng) h = 60 * (((nb - nr) / d) + 2);
+        else h = 60 * (((nr - ng) / d) + 4);
+    }
+    if (h < 0) h += 360;
+    return { h, s: Number.isFinite(s) ? s : 0, l };
+}
+
+function paletteDedupeHslToRgb(h, s, l) {
+    const hue = ((Number(h) % 360) + 360) % 360;
+    const sat = Math.max(0, Math.min(1, Number(s)));
+    const light = Math.max(0, Math.min(1, Number(l)));
+    const c = (1 - Math.abs(2 * light - 1)) * sat;
+    const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
+    const m = light - c / 2;
+    let rp = 0, gp = 0, bp = 0;
+    if (hue < 60) [rp, gp, bp] = [c, x, 0];
+    else if (hue < 120) [rp, gp, bp] = [x, c, 0];
+    else if (hue < 180) [rp, gp, bp] = [0, c, x];
+    else if (hue < 240) [rp, gp, bp] = [0, x, c];
+    else if (hue < 300) [rp, gp, bp] = [x, 0, c];
+    else [rp, gp, bp] = [c, 0, x];
+    return [rp, gp, bp].map(value => Math.round((value + m) * 255));
+}
+
+function paletteDedupeLuminance({ r, g, b }) {
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function paletteDedupeWarmLightMuted(color) {
+    if (!color || color.a < 0.45) return false;
+    const hsl = paletteDedupeRgbToHsl(color.r, color.g, color.b);
+    const lum = paletteDedupeLuminance(color);
+    if (lum < 178 || hsl.s > 0.30 || hsl.l < 0.68) return false;
+    // Low saturation makes hue unstable; beige, ivory, warm gray and near-white
+    // all satisfy red >= blue within a small tolerance.
+    return color.r + 6 >= color.b;
+}
+
+function paletteDedupeHash(text) {
+    let hash = 2166136261;
+    for (const char of String(text || '')) {
+        hash ^= char.charCodeAt(0);
+        hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+}
+
+function paletteDedupeTargetHue(root) {
+    const title = getRabbitMirrorSummaryText(root) || String(root?.textContent || '').slice(0, 180);
+    const hues = [205, 164, 268, 326, 112];
+    return hues[paletteDedupeHash(title) % hues.length];
+}
+
+function paletteDedupeMapColor(color, targetHue) {
+    const hsl = paletteDedupeRgbToHsl(color.r, color.g, color.b);
+    const targetSaturation = Math.max(0.13, Math.min(0.22, hsl.s + 0.08));
+    const targetLightness = Math.max(0.72, Math.min(0.91, hsl.l - 0.035));
+    const [r, g, b] = paletteDedupeHslToRgb(targetHue, targetSaturation, targetLightness);
+    return color.a < 0.999
+        ? `rgba(${r}, ${g}, ${b}, ${Number(color.a.toFixed(3))})`
+        : `rgb(${r}, ${g}, ${b})`;
+}
+
+function paletteDedupeRewriteGradient(value, targetHue) {
+    let changed = false;
+    const output = String(value || '').replace(/rgba?\(\s*[0-9.]+\s*[, ]\s*[0-9.]+\s*[, ]\s*[0-9.]+(?:\s*[,/]\s*[0-9.]+)?\s*\)/gi, token => {
+        const color = paletteDedupeRgb(token);
+        if (!paletteDedupeWarmLightMuted(color)) return token;
+        changed = true;
+        return paletteDedupeMapColor(color, targetHue);
+    });
+    return { changed, value: output };
+}
+
+function paletteDedupeElementArea(element) {
+    try {
+        const rect = element?.getBoundingClientRect?.();
+        return Math.max(0, Number(rect?.width) || 0) * Math.max(0, Number(rect?.height) || 0);
+    } catch { return 0; }
+}
+
+function paletteDedupeSurfaceCandidates(root) {
+    const details = paletteDedupeDetails(root);
+    if (!details?.querySelectorAll) return [];
+    const scene = [...(details.children || [])].find(child => !['SUMMARY', 'STYLE', 'SCRIPT'].includes(child?.tagName)) || details;
+    const view = details.ownerDocument?.defaultView || globalThis;
+    const getStyle = view?.getComputedStyle?.bind(view) || globalThis.getComputedStyle?.bind(globalThis);
+    if (typeof getStyle !== 'function') return [];
+    const rootArea = Math.max(1, paletteDedupeElementArea(scene));
+    return [scene, ...scene.querySelectorAll('div,section,article,main,aside,figure')]
+        .map((element, index) => ({ element, index, area: paletteDedupeElementArea(element) }))
+        .filter(item => item.index === 0 || item.area >= rootArea * 0.45)
+        .sort((a, b) => b.area - a.area)
+        .slice(0, 8)
+        .map(item => {
+            let style;
+            try { style = getStyle(item.element); } catch { return null; }
+            if (!style || style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) < 0.08) return null;
+            const backgroundColor = paletteDedupeRgb(style.backgroundColor);
+            const backgroundImage = String(style.backgroundImage || 'none');
+            const colorEligible = paletteDedupeWarmLightMuted(backgroundColor);
+            const gradient = backgroundImage !== 'none' ? paletteDedupeRewriteGradient(backgroundImage, 205) : { changed: false, value: backgroundImage };
+            if (!colorEligible && !gradient.changed) return null;
+            return { ...item, backgroundColor, backgroundImage, colorEligible };
+        })
+        .filter(Boolean);
+}
+
+function paletteDedupeRestore(records) {
+    for (const record of records) {
+        for (const property of ['background-color', 'background-image']) {
+            const state = record.before[property];
+            if (!state?.value) record.element.style.removeProperty(property);
+            else record.element.style.setProperty(property, state.value, state.priority || '');
+        }
+    }
+}
+
+function applyFollowPaletteDedupe(root) {
+    if (!paletteDedupeIsLatestFollowMirror(root)) return { applied: false, reason: 'not-latest-follow' };
+    const details = paletteDedupeDetails(root);
+    if (!details?.setAttribute) return { applied: false, reason: 'no-details' };
+    if (details.getAttribute(PALETTE_DEDUPE_CHECKED_ATTR) === RUNTIME_VERSION) return { applied: false, reason: 'already-checked' };
+
+    const current = paletteDedupeFingerprint(root);
+    if (!current || Number(current.confidence || 0) < 0.55) return { applied: false, reason: 'low-confidence' };
+    const family = paletteFamilyOfFingerprint(current);
+    details.setAttribute(PALETTE_FAMILY_ATTR, family);
+
+    let chatKey = '';
+    try { chatKey = getCurrentChatKey(getAvailableHostChat()); } catch {}
+    const prefix = paletteDedupeCurrentMessagePrefix(root);
+    const renderedObservations = paletteDedupeRecentRenderedFollowObservations(root, 2);
+    const renderedIndexes = new Set(renderedObservations.map(item => Number(String(item.messageKey || '').replace(/^dom:/, ''))).filter(Number.isInteger));
+    const storedObservations = getRecentPaletteObservations({ chatKey, source: 'follow', limit: 6 })
+        .filter(item => !prefix || !String(item?.messageKey || '').startsWith(prefix))
+        .filter(item => {
+            const match = String(item?.messageKey || '').match(/^(\d+):/);
+            return !match || !renderedIndexes.has(Number(match[1]));
+        });
+    const observations = [...storedObservations, ...renderedObservations].slice(-4);
+    const repeat = paletteRepeatStatus(current, observations, { minPreviousMatches: 2, threshold: 0.76 });
+    details.setAttribute(PALETTE_REPEAT_ATTR, repeat.repeated ? 'true' : 'false');
+    details.setAttribute(PALETTE_DEDUPE_CHECKED_ATTR, RUNTIME_VERSION);
+
+    // Only auto-remap the narrow, repeatedly observed failure mode that prompted this
+    // repair: light + low-saturation + warm/neutral beige/ivory surfaces. Other palette
+    // families remain detector-only so the sanitizer never becomes a global recolorer.
+    if (!repeat.repeated || !family.startsWith('light:warm-neutral:low:')) {
+        details.setAttribute(PALETTE_REMAP_ATTR, 'skipped');
+        details.setAttribute(PALETTE_REMAP_REASON_ATTR, repeat.repeated ? 'repeat-family-not-auto-remapped' : 'no-repeat');
+        return { applied: false, reason: repeat.repeated ? 'family-not-auto-remapped' : 'no-repeat', family, repeat };
+    }
+
+    const candidates = paletteDedupeSurfaceCandidates(root);
+    if (!candidates.length) {
+        details.setAttribute(PALETTE_REMAP_ATTR, 'skipped');
+        details.setAttribute(PALETTE_REMAP_REASON_ATTR, 'no-safe-large-surface');
+        return { applied: false, reason: 'no-safe-large-surface', family, repeat };
+    }
+
+    const targetHue = paletteDedupeTargetHue(root);
+    const changed = [];
+    for (const candidate of candidates) {
+        const before = {};
+        for (const property of ['background-color', 'background-image']) {
+            before[property] = {
+                value: candidate.element.style.getPropertyValue(property),
+                priority: candidate.element.style.getPropertyPriority(property),
+            };
+        }
+        let localChanged = false;
+        if (candidate.colorEligible && candidate.backgroundColor) {
+            candidate.element.style.setProperty('background-color', paletteDedupeMapColor(candidate.backgroundColor, targetHue), 'important');
+            localChanged = true;
+        }
+        if (candidate.backgroundImage && candidate.backgroundImage !== 'none') {
+            const rewritten = paletteDedupeRewriteGradient(candidate.backgroundImage, targetHue);
+            if (rewritten.changed) {
+                candidate.element.style.setProperty('background-image', rewritten.value, 'important');
+                localChanged = true;
+            }
+        }
+        if (localChanged) changed.push({ element: candidate.element, before });
+    }
+
+    if (!changed.length) {
+        details.setAttribute(PALETTE_REMAP_ATTR, 'skipped');
+        details.setAttribute(PALETTE_REMAP_REASON_ATTR, 'no-safe-color-token');
+        return { applied: false, reason: 'no-safe-color-token', family, repeat };
+    }
+
+    const after = paletteDedupeFingerprint(root);
+    const afterFamily = paletteFamilyOfFingerprint(after);
+    const escaped = after && Number(after.confidence || 0) >= 0.5
+        && !afterFamily.startsWith('light:warm-neutral:low:')
+        && after.brightness !== 'dark';
+    if (!escaped) {
+        paletteDedupeRestore(changed);
+        details.setAttribute(PALETTE_REMAP_ATTR, 'rolled-back');
+        details.setAttribute(PALETTE_REMAP_REASON_ATTR, 'verification-failed');
+        return { applied: false, reason: 'verification-failed', family, repeat };
+    }
+
+    details.setAttribute(PALETTE_REMAP_ATTR, 'applied');
+    details.setAttribute(PALETTE_REMAP_REASON_ATTR, `local-surface-remap:${family}->${afterFamily};hue=${targetHue}`);
+    details.setAttribute(PALETTE_FAMILY_ATTR, afterFamily);
+    return { applied: true, reason: 'local-surface-remap', family: afterFamily, repeat };
+}
+
 function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } = {}) {
     if (!isCurrentRuntime() || !scope?.querySelectorAll) return;
     const maintenanceEnabled = isMaintenanceRabbitEnabled();
@@ -16882,6 +17615,11 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } 
             installNestedDetailsReplacementContainment(root);
         } catch (error) {
             console.debug('[RabbitMirror] nested details containment skipped for one mirror:', error);
+        }
+        try {
+            applyFollowPaletteDedupe(root);
+        } catch (error) {
+            console.debug('[RabbitMirror] local palette dedupe skipped for one mirror:', error);
         }
         if (maintenanceEnabled) {
             try {
