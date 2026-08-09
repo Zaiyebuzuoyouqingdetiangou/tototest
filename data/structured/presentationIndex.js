@@ -217,7 +217,7 @@ export const PRESENTATION_FORMATS = [
     "raw": "* **1.2.1 在线购物接口**：购物车接口 / 快递配送 / 外带订单接口 / 亲密付或副卡记录等。"
   },
   {
-    "id": "1.3.2",
+    "id": "1.3.3",
     "group": "1",
     "title": "网站与应用平台",
     "summary": "",
@@ -225,10 +225,10 @@ export const PRESENTATION_FORMATS = [
       "independent",
       "digital"
     ],
-    "raw": "* **1.3.2 网站与应用平台**："
+    "raw": "* **1.3.3 网站与应用平台**："
   },
   {
-    "id": "1.3.2.1",
+    "id": "1.3.3.1",
     "group": "1",
     "title": "视频与直播",
     "summary": "YouTube, TikTok, Bilibili；成人视频 (Pornhub, Xvideos等)；直播平台 (Twitch, Chaturbate等)。",
@@ -236,10 +236,10 @@ export const PRESENTATION_FORMATS = [
       "independent",
       "digital"
     ],
-    "raw": "* **1.3.2.1 视频与直播**：YouTube, TikTok, Bilibili；成人视频 (Pornhub, Xvideos等)；直播平台 (Twitch, Chaturbate等)。"
+    "raw": "* **1.3.3.1 视频与直播**：YouTube, TikTok, Bilibili；成人视频 (Pornhub, Xvideos等)；直播平台 (Twitch, Chaturbate等)。"
   },
   {
-    "id": "1.3.2.2",
+    "id": "1.3.3.2",
     "group": "1",
     "title": "订阅与社交",
     "summary": "OnlyFans, Patreon, Fansly, ManyVids 等。",
@@ -247,10 +247,10 @@ export const PRESENTATION_FORMATS = [
       "independent",
       "digital"
     ],
-    "raw": "* **1.3.2.2 订阅与社交**：OnlyFans, Patreon, Fansly, ManyVids 等。"
+    "raw": "* **1.3.3.2 订阅与社交**：OnlyFans, Patreon, Fansly, ManyVids 等。"
   },
   {
-    "id": "1.3.2.3",
+    "id": "1.3.3.3",
     "group": "1",
     "title": "图像分享",
     "summary": "Pinterest, Gelbooru, Danbooru, E-Hentai 等。",
@@ -258,10 +258,10 @@ export const PRESENTATION_FORMATS = [
       "independent",
       "digital"
     ],
-    "raw": "* **1.3.2.3 图像分享**：Pinterest, Gelbooru, Danbooru, E-Hentai 等。"
+    "raw": "* **1.3.3.3 图像分享**：Pinterest, Gelbooru, Danbooru, E-Hentai 等。"
   },
   {
-    "id": "1.3.2.4",
+    "id": "1.3.3.4",
     "group": "1",
     "title": "信息与生活",
     "summary": "Wikipedia, Google 搜索结果页；生活服务 (OpenRice食评, 外卖订单记录, 网购历史) 等。",
@@ -269,10 +269,10 @@ export const PRESENTATION_FORMATS = [
       "independent",
       "digital"
     ],
-    "raw": "* **1.3.2.4 信息与生活**：Wikipedia, Google 搜索结果页；生活服务 (OpenRice食评, 外卖订单记录, 网购历史) 等。"
+    "raw": "* **1.3.3.4 信息与生活**：Wikipedia, Google 搜索结果页；生活服务 (OpenRice食评, 外卖订单记录, 网购历史) 等。"
   },
   {
-    "id": "1.3.2.4.2",
+    "id": "1.3.3.4.2",
     "group": "1",
     "title": "手机壁纸 / 相册",
     "summary": "支持左右滑动翻面，展示多张壁纸或照片。",
@@ -280,10 +280,10 @@ export const PRESENTATION_FORMATS = [
       "independent",
       "digital"
     ],
-    "raw": "* **1.3.2.4.2 手机壁纸 / 相册**：支持左右滑动翻面，展示多张壁纸或照片。"
+    "raw": "* **1.3.3.4.2 手机壁纸 / 相册**：支持左右滑动翻面，展示多张壁纸或照片。"
   },
   {
-    "id": "1.3.2.5",
+    "id": "1.3.3.5",
     "group": "1",
     "title": "网页广告",
     "summary": "垃圾网站弹跳窗广告（闪烁图片、粗糙像素字、夸张标语、诱导按钮）；色情露骨广告（仿深夜频道或成人网站，用词大胆、充满性暗示）等。",
@@ -291,10 +291,10 @@ export const PRESENTATION_FORMATS = [
       "independent",
       "digital"
     ],
-    "raw": "* **1.3.2.5 网页广告**：垃圾网站弹跳窗广告（闪烁图片、粗糙像素字、夸张标语、诱导按钮）；色情露骨广告（仿深夜频道或成人网站，用词大胆、充满性暗示）等。"
+    "raw": "* **1.3.3.5 网页广告**：垃圾网站弹跳窗广告（闪烁图片、粗糙像素字、夸张标语、诱导按钮）；色情露骨广告（仿深夜频道或成人网站，用词大胆、充满性暗示）等。"
   },
   {
-    "id": "1.3.2.6",
+    "id": "1.3.3.6",
     "group": "1",
     "title": "互动网页与虚拟对象",
     "summary": "",
@@ -302,10 +302,10 @@ export const PRESENTATION_FORMATS = [
       "independent",
       "digital"
     ],
-    "raw": "* **1.3.2.6 互动网页与虚拟对象**："
+    "raw": "* **1.3.3.6 互动网页与虚拟对象**："
   },
   {
-    "id": "1.3.2.6.secret",
+    "id": "1.3.3.6.secret",
     "group": "1",
     "title": "秘密心事网页",
     "summary": "一个专门为告白设计的、充满互动特效（烟花、爱心等）和情话的网页。",
@@ -316,7 +316,7 @@ export const PRESENTATION_FORMATS = [
     "raw": "* **秘密心事网页**：一个专门为告白设计的、充满互动特效（烟花、爱心等）和情话的网页。"
   },
   {
-    "id": "1.3.2.6.ecard",
+    "id": "1.3.3.6.ecard",
     "group": "1",
     "title": "电子贺卡",
     "summary": "制作精美的电子贺卡，包含祝福语和动画效果。",
@@ -327,7 +327,7 @@ export const PRESENTATION_FORMATS = [
     "raw": "* **电子贺卡**：制作精美的电子贺卡，包含祝福语和动画效果。"
   },
   {
-    "id": "1.3.2.6.pet",
+    "id": "1.3.3.6.pet",
     "group": "1",
     "title": "桌面宠物 / 电子宠物",
     "summary": "模仿拓麻歌子或桌面宠物的界面。展示数据面板以及不同状态下的像素风动作描述。",
@@ -338,7 +338,7 @@ export const PRESENTATION_FORMATS = [
     "raw": "* **桌面宠物 / 电子宠物**：模仿拓麻歌子或桌面宠物的界面。展示数据面板以及不同状态下的像素风动作描述。"
   },
   {
-    "id": "1.3.2.6.ai",
+    "id": "1.3.3.6.ai",
     "group": "1",
     "title": "求助AI (AI Chatbot)",
     "summary": "模仿 ChatGPT/Claude 等大模型的对话界面。用户向 AI 输入求助，而 AI 给出一本正经但荒谬绝伦的回答。",
@@ -350,7 +350,7 @@ export const PRESENTATION_FORMATS = [
     "raw": "* **求助AI (AI Chatbot)**: 模仿 ChatGPT/Claude 等大模型的对话界面。用户向 AI 输入求助，而 AI 给出一本正经但荒谬绝伦的回答。"
   },
   {
-    "id": "1.3.2.6.charai",
+    "id": "1.3.3.6.charai",
     "group": "1",
     "title": "当Char变成AI (AI Persona Parody)",
     "summary": "模仿特定 AI 助手（如豆包/ChatGPT/Siri 等）的对话界面和回答语气，但“AI 的人格内核”实际上是 {{char}}。",
@@ -359,7 +359,7 @@ export const PRESENTATION_FORMATS = [
       "digital",
       "humor"
     ],
-    "raw": "* **1.3.2.6.1 当Char变成AI (AI Persona Parody)**: 模仿特定 AI 助手（如豆包/ChatGPT/Siri 等）的对话界面和回答语气，但“AI 的人格内核”实际上是 {{char}}。"
+    "raw": "* **1.3.3.6.1 当Char变成AI (AI Persona Parody)**: 模仿特定 AI 助手（如豆包/ChatGPT/Siri 等）的对话界面和回答语气，但“AI 的人格内核”实际上是 {{char}}。"
   },
   {
     "id": "1.3.3",

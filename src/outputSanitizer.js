@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.2';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.2';
+import { getSettings } from './settings.js?rmv=1.3.3';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.3';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.2';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.2';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.2';
+} from './feedbackCat.js?rmv=1.3.3';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.3';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.3';
 
 
-const RUNTIME_VERSION = '1.3.2';
+const RUNTIME_VERSION = '1.3.3';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9576,6 +9576,12 @@ function checkedVerificationDeclarationCarriesSecondState(property, value, pseud
     if (name === 'visibility') return cleanValue !== 'hidden' && cleanValue !== 'collapse';
     if (name === 'opacity') return Number.parseFloat(cleanValue) > 0.05;
     if (['height', 'max-height', 'min-height'].includes(name)) return !isCollapsedDimensionValue(cleanValue);
+    // A large class of generated interfaces reveals the second state by sliding an
+    // overlay into place or blurring/recoloring the previous layer. Treat these as
+    // real second-state evidence so the safe sandbox can verify them instead of
+    // reporting a false failed label.
+    if (name === 'transform') return !!cleanValue && cleanValue !== 'none';
+    if (name === 'filter') return !!cleanValue && cleanValue !== 'none';
     return false;
 }
 
@@ -10647,7 +10653,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.2-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.3-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -15924,7 +15930,12 @@ function installVisualSceneryMobileNarrativeOverflowRescue(root) {
 }
 
 
-function independentMobileSpatialViewportNarrow() {
+function independentMobileSpatialViewportNarrow(root) {
+    // External RabbitMirror has its own narrow shell even on a wide desktop window.
+    // Use the real mounted mirror width first; window.innerWidth is only a fallback.
+    let rootWidth = 0;
+    try { rootWidth = Number(root?.getBoundingClientRect?.().width || root?.parentElement?.getBoundingClientRect?.().width || 0); } catch {}
+    if (rootWidth > 0) return rootWidth <= 760;
     const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
     return viewportWidth > 0 && viewportWidth <= MOBILE_LAYOUT_BREAKPOINT_PX + 40;
 }
@@ -15975,16 +15986,22 @@ function independentMobileSpatialCanvasInfo(host, root) {
 }
 
 export function activateRabbitMirrorIndependentMobileSpatialRescue(root) {
-    if (!root?.querySelectorAll || !root?.isConnected || !independentMobileSpatialViewportNarrow()) return 0;
+    if (!root?.querySelectorAll || !root?.isConnected) return 0;
     const independent = root.getAttribute?.('data-rabbit-mirror-external-source') === 'independent'
         || !!root.closest?.('[data-rabbit-mirror-external-source="independent"]');
     if (!independent) return 0;
 
+    // Always clear stale marks first. Container width can change without a full regeneration.
     root.querySelectorAll(`[${INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR}], [${INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR}]`).forEach(element => {
         element.removeAttribute(INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR);
         element.removeAttribute(INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR);
         element.style?.removeProperty?.('--rm-mobile-spatial-natural-width');
     });
+    if (!independentMobileSpatialViewportNarrow(root)) {
+        root.removeAttribute(INDEPENDENT_MOBILE_SPATIAL_COUNT_ATTR);
+        root.querySelector?.(`style[${INDEPENDENT_MOBILE_SPATIAL_STYLE_ATTR}]`)?.remove?.();
+        return 0;
+    }
 
     const infos = [...root.querySelectorAll('div,section,article,main,figure')]
         .map(host => independentMobileSpatialCanvasInfo(host, root))
@@ -16007,10 +16024,8 @@ export function activateRabbitMirrorIndependentMobileSpatialRescue(root) {
         style.setAttribute(INDEPENDENT_MOBILE_SPATIAL_STYLE_ATTR, 'true');
         root.appendChild(style);
     }
-    style.textContent = `@media (max-width: ${MOBILE_LAYOUT_BREAKPOINT_PX}px) {
-[${INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR}] { overflow-x: auto !important; overscroll-behavior-inline: contain !important; -webkit-overflow-scrolling: touch !important; touch-action: pan-x pan-y !important; }
-[${INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR}] { width: var(--rm-mobile-spatial-natural-width) !important; min-width: var(--rm-mobile-spatial-natural-width) !important; max-width: none !important; box-sizing: border-box !important; }
-}`;
+    style.textContent = `[${INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR}] { overflow-x: auto !important; overscroll-behavior-inline: contain !important; -webkit-overflow-scrolling: touch !important; touch-action: pan-x pan-y !important; }
+[${INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR}] { width: var(--rm-mobile-spatial-natural-width) !important; min-width: var(--rm-mobile-spatial-natural-width) !important; max-width: none !important; box-sizing: border-box !important; }`;
     root.setAttribute(INDEPENDENT_MOBILE_SPATIAL_COUNT_ATTR, String(infos.length));
     return infos.length;
 }

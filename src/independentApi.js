@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.2';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.2';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.2';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.2';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.2';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.2';
+import { getSettings } from './settings.js?rmv=1.3.3';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.3';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.3';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.3';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.3';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.3';
 
-const RUNTIME_VERSION = '1.3.2';
+const RUNTIME_VERSION = '1.3.3';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -1368,6 +1368,10 @@ function extractReadyDetails(html=''){
  template.innerHTML=prepareIndependentReadyHtml(html);
  const details=template.content.querySelector('details') || null;
  if(details){
+  // Layout repairs are runtime-only. 1.3.3 could persist mobile rescue marks/styles
+  // into independent cache and then replay that repaired DOM on another device.
+  // Strip only our own transient layout artifacts before rebuilding the live mirror.
+  stripIndependentTransientLayoutArtifacts(details);
   // Independent API outputs are allowed to place <style> as a sibling of <details>
   // inside <toto>. The external renderer returns only the <details> node, so those
   // sibling styles used to be discarded here. That leaves the scene with bare
@@ -1441,6 +1445,9 @@ function readyRecordFromHost(host,observed,model=''){
  if(!details || !observed) return null;
  const clone=details.cloneNode(true);
  clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
+ // Never persist device/container-specific layout rescue state. It must be recalculated
+ // from the next mounted container instead of leaking from phone -> desktop or vice versa.
+ stripIndependentTransientLayoutArtifacts(clone);
  const html=String(clone.outerHTML||'').trim();
  if(!independentStoredHtmlRestorable(html)) return null;
  return {html,sourceHash:String(host?.dataset?.rmSourceHash||observed.sourceHash||''),bodyHash:String(observed.bodyHash||''),displayHash:String(observed.displayHash||''),reasoningHash:String(observed.reasoningHash||''),ts:Date.now(),model:String(model||''),runtime:RUNTIME_VERSION,recoveredFromMountedHost:true};
@@ -2001,6 +2008,53 @@ function scheduleExternalShellTint(host,html=''){
 }
 
 
+const INDEPENDENT_CONTENT_WIDTH_RESCUE_ATTR='data-rabbit-mirror-independent-content-width-rescue';
+const INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR='data-rabbit-mirror-independent-content-width-baseline';
+
+function captureIndependentContentWidthBaseline(element){
+ if(!element?.getAttribute || element.hasAttribute(INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR)) return;
+ try{ element.setAttribute(INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR,encodeURIComponent(element.getAttribute('style')||'')); }
+ catch{ element.setAttribute(INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR,''); }
+}
+function restoreIndependentContentWidthBaseline(element){
+ if(!element?.hasAttribute?.(INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR)) return false;
+ let baseline='';
+ try{ baseline=decodeURIComponent(element.getAttribute(INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR)||''); }catch{ baseline=''; }
+ if(baseline) element.setAttribute('style',baseline);
+ else element.removeAttribute('style');
+ element.removeAttribute(INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR);
+ element.removeAttribute(INDEPENDENT_CONTENT_WIDTH_RESCUE_ATTR);
+ return true;
+}
+function stripIndependentTransientLayoutArtifacts(details){
+ if(!details?.querySelectorAll) return details;
+ // Restore exact pre-rescue inline style when 1.3.3 itself widened the inner carrier.
+ for(const element of details.querySelectorAll(`[${INDEPENDENT_CONTENT_WIDTH_RESCUE_ATTR}], [${INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR}]`)){
+  restoreIndependentContentWidthBaseline(element);
+ }
+ // Remove transient rescue nodes copied into cached HTML. They will be recomputed after mount.
+ details.querySelectorAll('style[data-rabbit-mirror-mobile-layout-rescue],style[data-rabbit-mirror-independent-mobile-spatial-style],style[data-rabbit-mirror-visual-scenery-overflow-rescue]').forEach(node=>node.remove());
+ details.querySelectorAll('[data-rm-mobile-visual-scenery-overflow-host]').forEach(node=>node.remove());
+ details.querySelectorAll('[data-rm-mobile-visual-scenery-overflow-source]').forEach(node=>node.removeAttribute('data-rm-mobile-visual-scenery-overflow-source'));
+ const attrs=[
+  'data-rabbit-mirror-mobile-layout-scope','data-rabbit-mirror-mobile-layout-count',
+  'data-rabbit-mirror-independent-mobile-spatial-count','data-rabbit-mirror-visual-scenery-overflow-count',
+  'data-rm-mobile-fit','data-rm-mobile-min','data-rm-mobile-grid-collapse','data-rm-mobile-matrix-preserve',
+  'data-rm-mobile-matrix-active','data-rm-mobile-matrix-cell','data-rm-mobile-flex-wrap','data-rm-mobile-state-row',
+  'data-rm-mobile-flex-stack','data-rm-mobile-single-column','data-rm-mobile-fluid-title','data-rm-mobile-compact-padding',
+  'data-rm-mobile-compact-gap','data-rm-mobile-media','data-rm-mobile-scroll','data-rm-mobile-break-text',
+  'data-rm-mobile-state-content','data-rm-mobile-state-active','data-rm-mobile-section-stack-preserve','data-rm-mobile-screen-shell-preserve',
+  'data-rm-mobile-relation-tree','data-rm-mobile-relation-branch','data-rm-mobile-relation-cell','data-rm-mobile-relation-detail',
+  'data-rm-mobile-relation-side','data-rm-independent-mobile-spatial-scroll','data-rm-independent-mobile-spatial-canvas'
+ ];
+ const nodes=[details,...details.querySelectorAll('*')];
+ for(const node of nodes){
+  for(const attr of attrs) node.removeAttribute?.(attr);
+  node.style?.removeProperty?.('--rm-mobile-spatial-natural-width');
+ }
+ return details;
+}
+
 function independentPrimaryContentCarrier(details){
  if(!details?.querySelectorAll || typeof getComputedStyle!=='function') return null;
  const body=[...(details.children||[])].find(node=>!['SUMMARY','STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node?.tagName));
@@ -2044,16 +2098,21 @@ function rescueIndependentExternalContentWidth(host){
  if(!details) return false;
  const carrier=independentPrimaryContentCarrier(details);
  if(!carrier?.element || carrier.widthRatio>=.84) return false;
- const viewportWidth=Number(globalThis.innerWidth||document?.documentElement?.clientWidth||0);
- if(viewportWidth>0 && viewportWidth>760) return false;
+ // The old gate used window.innerWidth. External RabbitMirror itself is capped near 560px,
+ // so a desktop browser could be 2552px wide while the actual mirror carrier is still narrow.
+ // Decide from the mounted external shell, not the browser window.
+ let hostWidth=0;
+ try{ hostWidth=Number(host.getBoundingClientRect?.().width||0); }catch{}
+ if(hostWidth>0 && hostWidth>760) return false;
  const element=carrier.element;
+ captureIndependentContentWidthBaseline(element);
  element.style.setProperty('width','calc(100% - 18px)','important');
  element.style.setProperty('max-width','none','important');
  element.style.setProperty('min-width','0','important');
  element.style.setProperty('margin-left','auto','important');
  element.style.setProperty('margin-right','auto','important');
  element.style.setProperty('box-sizing','border-box','important');
- element.setAttribute('data-rabbit-mirror-independent-content-width-rescue','true');
+ element.setAttribute(INDEPENDENT_CONTENT_WIDTH_RESCUE_ATTR,'true');
  host.dataset.rmIndependentContentWidthRescue='true';
  return true;
 }
