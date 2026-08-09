@@ -1,15 +1,15 @@
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.2.67';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.67';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.3.2';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.2';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.2.67';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.2.67';
-import { beginRabbitMirrorGenerationAttempt } from './generationGuard.js?rmv=1.2.67';
+} from './feedbackCat.js?rmv=1.3.2';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.3.2';
+import { beginRabbitMirrorGenerationAttempt } from './generationGuard.js?rmv=1.3.2';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -66,13 +66,9 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         clearRabbitMirrorPrompt(promptDetails.metadata?.disabled ? 'directive-skipped' : 'empty', type);
         return;
     }
-    const followMainFinalCheck = String(promptDetails.followMainFinalCheck || '').trim();
-    const promptParts = [basePrompt];
-    if (feedbackPrompt) promptParts.push(feedbackPrompt);
-    if (feedbackFinalCheck) promptParts.push(feedbackFinalCheck);
-    // 跟随主 API 没有独立 API 的 near-output execution lock；Visual Scenery 只在需要时补一条短最终核对，并放在整段注入最后。
-    if (followMainFinalCheck) promptParts.push(followMainFinalCheck);
-    const prompt = promptParts.filter(Boolean).join('\n\n');
+    const prompt = feedbackPrompt
+        ? `${basePrompt}\n\n${feedbackPrompt}${feedbackFinalCheck ? `\n\n${feedbackFinalCheck}` : ''}`
+        : basePrompt;
     const role = settings.role === 'user' ? extension_prompt_roles.USER : settings.role === 'assistant' ? extension_prompt_roles.ASSISTANT : extension_prompt_roles.SYSTEM;
 
     setExtensionPrompt(

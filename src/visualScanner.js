@@ -1,11 +1,11 @@
-import { getCurrentChatKey, recordPaletteObservation, updateLatestVisualSignature } from './storage.js?rmv=1.2.67';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.67';
-import { getSettings } from './settings.js?rmv=1.2.67';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.3.2';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.3.2';
+import { getSettings } from './settings.js?rmv=1.3.2';
 import {
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.2.67';
+} from './generationGuard.js?rmv=1.3.2';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -389,13 +389,11 @@ function detectInteractionFamily(root, html = '') {
 }
 
 function detectInteractionMissing(html = '') {
-    const text = String(html || '');
-    return !detectEffectiveInteraction(text);
+    return !detectEffectiveInteraction(html);
 }
 
 function detectFakeInteraction(html = '', plain = '') {
-    const text = String(html || '');
-    return !detectEffectiveInteraction(text) && detectInteractionSignals(text, plain);
+    return !detectEffectiveInteraction(html) && detectInteractionSignals(html, plain);
 }
 
 function detectWeakSpatialComplexity(html = '', plain = '') {
@@ -432,62 +430,7 @@ function visualSceneryAuditExpected(html = '') {
     try { return !!getSettings()?.forceVisualScenery; } catch { return false; }
 }
 
-
-function cssRegexEscape(value = '') {
-    return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function visualSceneryAnimationProfiles(root, html = '') {
-    const text = String(html || '');
-    const scene = root?.querySelector?.('[data-rm-visual-scenery="true"]') || null;
-    const sceneClasses = scene ? [...(scene.classList || [])].map(String).filter(Boolean) : [];
-    const profiles = [];
-    const ruleRe = /([^{}@]+)\{([^{}]*(?:-webkit-)?animation(?:-name)?\s*:[^{}]*)\}/gi;
-    for (const match of text.matchAll(ruleRe)) {
-        const selector = String(match[1] || '').trim();
-        const body = String(match[2] || '');
-        const animationValue = String(body.match(/(?:-webkit-)?animation\s*:\s*([^;}]+)/i)?.[1] || '');
-        const durationMatch = animationValue.match(/(^|\s)(\d*\.?\d+)\s*(ms|s)\b/i);
-        const durationSeconds = durationMatch
-            ? Number(durationMatch[2]) * (String(durationMatch[3]).toLowerCase() === 'ms' ? 0.001 : 1)
-            : 0;
-        const hasFullLayerGeometry = /\binset\s*:\s*0(?:\D|$)/i.test(body)
-            || (/\bwidth\s*:\s*100%/i.test(body) && /\bheight\s*:\s*100%/i.test(body));
-        const smallWidth = Number(body.match(/\bwidth\s*:\s*(\d+(?:\.\d+)?)px\b/i)?.[1] || 0);
-        const smallHeight = Number(body.match(/\bheight\s*:\s*(\d+(?:\.\d+)?)px\b/i)?.[1] || 0);
-        const smallBox = smallWidth > 0 && smallHeight > 0 && smallWidth <= 180 && smallHeight <= 220;
-        const selectorTargetsSceneRoot = /\[data-rm-visual-scenery\s*=\s*["']true["']\]/i.test(selector)
-            || sceneClasses.some(className => {
-                const escaped = cssRegexEscape(className);
-                return new RegExp(`^\\s*\\.${escaped}(?=[:\\s,{>+~.#\\[]|$)`, 'i').test(selector)
-                    && !new RegExp(`^\\s*\\.${escaped}\\s+[.#\\[]`, 'i').test(selector);
-            });
-        profiles.push({ selector, body, durationSeconds, broad: selectorTargetsSceneRoot || hasFullLayerGeometry, smallBox });
-    }
-    return profiles;
-}
-
-function hasOnlySubtleTransformKeyframes(html = '') {
-    const text = String(html || '');
-    const keyframeText = [...text.matchAll(/@(?:-webkit-)?keyframes\b[\s\S]{0,2600}?(?=@(?:-webkit-)?keyframes\b|<\/style>|$)/gi)]
-        .map(match => match[0])
-        .join('\n');
-    if (!keyframeText) return false;
-    if (/\b(?:opacity|background-position|clip-path|mask(?:-position|-size)?|stroke-dashoffset|offset-distance|filter)\s*:/i.test(keyframeText)) return false;
-    const translations = [...keyframeText.matchAll(/translate(?:3d|x|y)?\s*\(\s*(-?\d+(?:\.\d+)?)px/gi)]
-        .map(match => Math.abs(Number(match[1]) || 0));
-    const rotations = [...keyframeText.matchAll(/rotate(?:3d|x|y)?\s*\(\s*(-?\d+(?:\.\d+)?)deg/gi)]
-        .map(match => Math.abs(Number(match[1]) || 0));
-    const scales = [...keyframeText.matchAll(/scale(?:3d|x|y)?\s*\(\s*(-?\d+(?:\.\d+)?)/gi)]
-        .map(match => Math.abs((Number(match[1]) || 1) - 1));
-    if (!translations.length && !rotations.length && !scales.length) return false;
-    const maxTranslation = Math.max(0, ...translations);
-    const maxRotation = Math.max(0, ...rotations);
-    const maxScaleDelta = Math.max(0, ...scales);
-    return maxTranslation <= 14 && maxRotation <= 5 && maxScaleDelta <= 0.06;
-}
-
-function inspectVisualSceneryMotion(root, html = '', spatialSignalCount = 0) {
+function inspectVisualSceneryMotion(html = '', spatialSignalCount = 0) {
     const text = String(html || '');
     if (!visualSceneryAuditExpected(text)) return [];
     const flags = [];
@@ -495,42 +438,15 @@ function inspectVisualSceneryMotion(root, html = '', spatialSignalCount = 0) {
     const keyframeCount = count(/@(?:-webkit-)?keyframes\b/gi, text);
     const animationDeclarationCount = count(/(?:^|[;{])\s*(?:-webkit-)?animation(?:-name)?\s*:/gi, text);
     const infiniteCount = count(/\binfinite\b/gi, text);
-    const meaningfulKeyframeMotion = /@(?:-webkit-)?keyframes[\s\S]{0,2400}?(?:translate(?:3d|x|y)?\s*\(|rotate(?:3d|x|y)?\s*\(|scale(?:3d|x|y)?\s*\(|clip-path\s*:|mask(?:-position|-size)?\s*:|background-position\s*:|stroke-dashoffset\s*:|offset-distance\s*:|filter\s*:|opacity\s*:)/i.test(text);
+    const meaningfulKeyframeMotion = /@(?:-webkit-)?keyframes[\s\S]{0,2400}?(?:translate(?:3d|x|y)?\s*\(|rotate(?:3d|x|y)?\s*\(|scale(?:3d|x|y)?\s*\(|clip-path\s*:|mask(?:-position|-size)?\s*:|background-position\s*:|stroke-dashoffset\s*:|offset-distance\s*:)/i.test(text);
     const layeredSceneSignals = count(/position\s*:\s*absolute|z-index\s*:|grid-area\s*:|clip-path\s*:|mask\s*:|radial-gradient|linear-gradient|<svg\b/gi, text);
 
     if (!hasMarker) flags.push('visual_scenery_marker_missing');
-    const animationProfiles = visualSceneryAnimationProfiles(root, text);
-    const singleLocalWeakMotion = animationProfiles.length === 1
-        && !animationProfiles[0].broad
-        && (animationProfiles[0].smallBox
-            || (animationProfiles[0].durationSeconds >= 4 && hasOnlySubtleTransformKeyframes(text)));
-    if (keyframeCount < 1 || animationDeclarationCount < 1 || infiniteCount < 1 || !meaningfulKeyframeMotion || singleLocalWeakMotion) {
+    if (keyframeCount < 1 || animationDeclarationCount < 1 || infiniteCount < 1 || !meaningfulKeyframeMotion) {
         flags.push('weak_visual_scenery_motion');
     }
-    if (spatialSignalCount < 2 && layeredSceneSignals < 3) {
+    if (animationDeclarationCount < 2 || spatialSignalCount < 3 || layeredSceneSignals < 4) {
         flags.push('weak_visual_scenery_layers');
-    }
-
-    // Visual Scenery 的画面本体不能靠大段文字充当“墙、人物、风景”本身。
-    // 这里仅做只读风险记录，不改输出；后续一轮会把该风险写进最终执行锁。
-    const scene = root?.querySelector?.('[data-rm-visual-scenery="true"]') || null;
-    if (scene) {
-        const compactSceneText = String(scene.textContent || '').replace(/\s+/g, '').trim();
-        const directTextLength = element => [...(element?.childNodes || [])]
-            .filter(node => node?.nodeType === 3)
-            .map(node => String(node.nodeValue || '').replace(/\s+/g, ''))
-            .join('').length;
-        const textBlocks = [...scene.querySelectorAll('div,p,section,article,aside,blockquote,figcaption,span')]
-            .filter(element => directTextLength(element) >= 42);
-        const sceneElementCount = Math.max(1, scene.querySelectorAll('*').length);
-        if (compactSceneText.length >= 150 && (textBlocks.length >= 2 || compactSceneText.length > sceneElementCount * 16)) {
-            flags.push('visual_scenery_text_dominant');
-        }
-        if (compactSceneText.length >= 100
-            && /(?:height|max-height)\s*:\s*\d+(?:\.\d+)?(?:px|vh|svh|dvh)\b/i.test(text)
-            && /overflow(?:-y)?\s*:\s*(?:hidden|clip)\b/i.test(text)) {
-            flags.push('visual_scenery_text_clipping_risk');
-        }
     }
     return flags;
 }
@@ -558,7 +474,7 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     if (interactionMissing) flags.push('missing_interaction');
     if (fakeInteraction) flags.push('fake_interaction');
     if (detectVisualPromiseWithoutMechanism(html, plain)) flags.push('visual_promise_unfulfilled');
-    flags.push(...inspectVisualSceneryMotion(root, html, spatialSignalCount));
+    flags.push(...inspectVisualSceneryMotion(html, spatialSignalCount));
     return [...new Set(flags)];
 }
 
@@ -766,125 +682,7 @@ function hueFamilyOf(hue) {
     return 'pink';
 }
 
-function paletteBrightnessBandFromLuminance(luminance) {
-    const value = Number(luminance);
-    if (value < 105) return 'dark';
-    if (value > 185) return 'light';
-    return 'mid';
-}
-
-function paletteTemperatureForColor(color, hsl) {
-    const family = hsl.s >= 0.12 ? hueFamilyOf(hsl.h) : 'neutral';
-    if (['red', 'orange', 'yellow', 'pink'].includes(family)) return 'warm';
-    if (['green', 'cyan', 'blue', 'purple'].includes(family)) return 'cool';
-    const delta = Number(color.r || 0) - Number(color.b || 0);
-    if (delta >= 12) return 'warm';
-    if (delta <= -12) return 'cool';
-    return 'neutral';
-}
-
-function paletteSurfaceDescriptor(color) {
-    if (!color) return null;
-    const luminance = luminanceFromRgb(color.r, color.g, color.b);
-    const hsl = rgbToHsl(color.r, color.g, color.b);
-    const hueFamily = hsl.s >= 0.12 ? hueFamilyOf(hsl.h) : 'neutral';
-    const temperature = paletteTemperatureForColor(color, hsl);
-    const saturation = hsl.s < 0.26 ? 'low' : (hsl.s < 0.56 ? 'medium' : 'high');
-    return {
-        brightness: paletteBrightnessBandFromLuminance(luminance),
-        hueFamily,
-        temperature,
-        saturation,
-        dominantHue: hueFamily === 'neutral' ? null : Math.round(hsl.h),
-        luminance: Math.round(luminance),
-        saturationValue: Number(hsl.s.toFixed(2)),
-    };
-}
-
-function paletteDescriptorFamily(descriptor) {
-    if (!descriptor) return 'none';
-    const hue = descriptor.hueFamily && descriptor.hueFamily !== 'neutral'
-        ? descriptor.hueFamily
-        : `neutral-${descriptor.temperature || 'neutral'}`;
-    return `${descriptor.brightness || 'mid'}:${hue}`;
-}
-
-function summarizePaletteGroups(samples = []) {
-    const groups = new Map();
-    for (const sample of samples) {
-        const descriptor = paletteSurfaceDescriptor(sample?.color);
-        const weight = Number(sample?.weight || 0);
-        if (!descriptor || !Number.isFinite(weight) || weight <= 0) continue;
-        const key = paletteDescriptorFamily(descriptor);
-        const group = groups.get(key) || {
-            key,
-            weight: 0,
-            descriptor,
-            hueX: 0,
-            hueY: 0,
-            hueWeight: 0,
-            luminanceSum: 0,
-            saturationSum: 0,
-        };
-        group.weight += weight;
-        group.luminanceSum += descriptor.luminance * weight;
-        group.saturationSum += descriptor.saturationValue * weight;
-        if (descriptor.dominantHue !== null && descriptor.dominantHue !== undefined) {
-            const radians = descriptor.dominantHue * Math.PI / 180;
-            group.hueX += Math.cos(radians) * weight;
-            group.hueY += Math.sin(radians) * weight;
-            group.hueWeight += weight;
-        }
-        groups.set(key, group);
-    }
-    return [...groups.values()]
-        .map(group => {
-            const dominantHue = group.hueWeight > 0
-                ? (Math.atan2(group.hueY, group.hueX) * 180 / Math.PI + 360) % 360
-                : null;
-            return {
-                ...group.descriptor,
-                dominantHue: Number.isFinite(dominantHue) ? Math.round(dominantHue) : group.descriptor.dominantHue,
-                luminance: Math.round(group.luminanceSum / Math.max(group.weight, 0.0001)),
-                saturationValue: Number((group.saturationSum / Math.max(group.weight, 0.0001)).toFixed(2)),
-                family: group.key,
-                weight: Number(group.weight.toFixed(2)),
-            };
-        })
-        .sort((a, b) => b.weight - a.weight);
-}
-
-function buildPaletteSkeleton(surfaceSamples = [], accentSamples = []) {
-    if (!surfaceSamples.length) return null;
-    const rootSamples = surfaceSamples.filter(sample => sample?.isRoot);
-    const allGroups = summarizePaletteGroups(surfaceSamples);
-    const rootGroups = summarizePaletteGroups(rootSamples);
-    const base = rootGroups[0] || allGroups[0] || null;
-    if (!base) return null;
-
-    const secondary = allGroups.find(group => group.family !== base.family && group.weight >= Math.max(0.05, base.weight * 0.035)) || null;
-    const accentGroups = summarizePaletteGroups(accentSamples)
-        .filter(group => group.hueFamily !== 'neutral')
-        .filter(group => group.hueFamily !== base.hueFamily && group.hueFamily !== secondary?.hueFamily);
-    const accent = accentGroups[0] || null;
-    const contrast = secondary ? `${base.brightness}-${secondary.brightness}` : `${base.brightness}-single`;
-    const accentFamily = accent?.hueFamily || 'none';
-    const signature = `base=${base.family};secondary=${secondary?.family || 'none'};contrast=${contrast};accent=${accentFamily}`;
-    return {
-        base,
-        secondary,
-        accent: accent ? {
-            hueFamily: accent.hueFamily,
-            temperature: accent.temperature,
-            saturation: accent.saturation,
-            dominantHue: accent.dominantHue,
-        } : null,
-        contrast,
-        signature,
-    };
-}
-
-function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = false, paletteSkeleton = null) {
+function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = false) {
     const usable = (samples || []).filter(sample => sample?.color && Number(sample.weight) > 0);
     if (!usable.length) return null;
     let totalWeight = 0;
@@ -895,8 +693,6 @@ function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = f
     let chromaticWeight = 0;
     let warmWeight = 0;
     let coolWeight = 0;
-    let hueVectorX = 0;
-    let hueVectorY = 0;
     const hueWeights = new Map();
 
     for (const sample of usable) {
@@ -915,9 +711,6 @@ function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = f
             const chroma = weight * Math.max(0.25, hsl.s);
             const family = hueFamilyOf(hsl.h);
             chromaticWeight += chroma;
-            const hueRadians = hsl.h * Math.PI / 180;
-            hueVectorX += Math.cos(hueRadians) * chroma;
-            hueVectorY += Math.sin(hueRadians) * chroma;
             hueWeights.set(family, (hueWeights.get(family) || 0) + chroma);
             if (['red', 'orange', 'yellow', 'pink'].includes(family)) warmWeight += chroma;
             else if (['green', 'cyan', 'blue', 'purple'].includes(family)) coolWeight += chroma;
@@ -934,13 +727,8 @@ function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = f
         : (lightAreaRatio >= 0.55 || averageLuminance > 184 ? 'light' : 'mid');
 
     let hueFamily = 'neutral';
-    let dominantHue = null;
-    if (chromaticWeight >= totalWeight * 0.10 && hueWeights.size) {
+    if (chromaticWeight >= totalWeight * 0.12 && hueWeights.size) {
         hueFamily = [...hueWeights.entries()].sort((a, b) => b[1] - a[1])[0][0];
-        const vectorStrength = Math.hypot(hueVectorX, hueVectorY);
-        if (vectorStrength >= chromaticWeight * 0.22) {
-            dominantHue = (Math.atan2(hueVectorY, hueVectorX) * 180 / Math.PI + 360) % 360;
-        }
     }
     const saturation = averageSaturation < 0.26 ? 'low' : (averageSaturation < 0.56 ? 'medium' : 'high');
     const temperature = warmWeight > coolWeight * 1.2
@@ -957,177 +745,8 @@ function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = f
         darkAreaRatio: Number(darkAreaRatio.toFixed(2)),
         lightAreaRatio: Number(lightAreaRatio.toFixed(2)),
         averageLuminance: Math.round(averageLuminance),
-        averageSaturation: Number(averageSaturation.toFixed(2)),
-        dominantHue: Number.isFinite(dominantHue) ? Math.round(dominantHue) : null,
         confidence: Number(confidence.toFixed(2)),
         source,
-        paletteSkeleton: paletteSkeleton || null,
-    };
-}
-
-
-export function paletteFamilyOfFingerprint(fingerprint) {
-    if (!fingerprint || typeof fingerprint !== 'object') return 'unknown';
-    const brightness = ['dark', 'mid', 'light'].includes(fingerprint.brightness) ? fingerprint.brightness : 'mid';
-    const saturation = ['low', 'medium', 'high'].includes(fingerprint.saturation) ? fingerprint.saturation : 'medium';
-    const temperature = ['warm', 'cool', 'neutral'].includes(fingerprint.temperature) ? fingerprint.temperature : 'neutral';
-    const rawHue = String(fingerprint.hueFamily || 'neutral');
-    // Pastel pink/green/blue are still real color families. The previous implementation flattened every
-    // low-saturation result to “muted”, which made different pale hues look identical
-    // to the repeat detector and encouraged gray/ivory corrections. Keep a reliable
-    // chromatic family even when saturation is low; only true near-neutrals collapse.
-    const hue = rawHue !== 'neutral' && Number(fingerprint.averageSaturation || 0) >= 0.10
-        ? rawHue
-        : (temperature === 'cool' ? 'neutral-cool' : (temperature === 'warm' ? 'neutral-warm' : 'neutral'));
-    return `${brightness}:${temperature}:${saturation}:${hue}`;
-}
-
-function paletteTemperatureGroup(fingerprint) {
-    const saturation = String(fingerprint?.saturation || 'medium');
-    const temperature = String(fingerprint?.temperature || 'neutral');
-    if (saturation === 'low' && String(fingerprint?.hueFamily || 'neutral') === 'neutral') {
-        return temperature === 'cool' ? 'cool-neutral' : (temperature === 'warm' ? 'warm-neutral' : 'neutral');
-    }
-    return temperature;
-}
-
-function paletteHueDistance(left, right) {
-    const leftValue = left?.dominantHue;
-    const rightValue = right?.dominantHue;
-    if (leftValue === null || leftValue === undefined || leftValue === ''
-        || rightValue === null || rightValue === undefined || rightValue === '') return null;
-    const a = Number(leftValue);
-    const b = Number(rightValue);
-    if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
-    const diff = Math.abs((((a - b) % 360) + 540) % 360 - 180);
-    return diff;
-}
-
-function paletteDescriptorSimilarity(left, right) {
-    if (!left || !right) return 0;
-    let score = 0;
-    if (left.brightness === right.brightness) score += 0.27;
-    else if (new Set([left.brightness, right.brightness]).has('mid')) score += 0.08;
-
-    const leftFamily = String(left.hueFamily || 'neutral');
-    const rightFamily = String(right.hueFamily || 'neutral');
-    const hueDistance = paletteHueDistance(left, right);
-    if (leftFamily === rightFamily) {
-        score += leftFamily === 'neutral' ? 0.34 : 0.38;
-    } else if (hueDistance !== null) {
-        score += hueDistance <= 18 ? 0.36 : (hueDistance <= 34 ? 0.27 : (hueDistance <= 48 ? 0.14 : 0));
-    } else if (leftFamily === 'neutral' && rightFamily === 'neutral'
-        && String(left.temperature || 'neutral') === String(right.temperature || 'neutral')) {
-        score += 0.30;
-    }
-
-    if (String(left.temperature || 'neutral') === String(right.temperature || 'neutral')) score += 0.08;
-    if (String(left.saturation || 'medium') === String(right.saturation || 'medium')) score += 0.08;
-    else if ([left.saturation, right.saturation].includes('medium')) score += 0.03;
-
-    const lumDiff = Math.abs(Number(left.luminance ?? 128) - Number(right.luminance ?? 128));
-    score += lumDiff <= 20 ? 0.12 : (lumDiff <= 38 ? 0.07 : (lumDiff <= 58 ? 0.03 : 0));
-    const satDiff = Math.abs(Number(left.saturationValue ?? 0.3) - Number(right.saturationValue ?? 0.3));
-    score += satDiff <= 0.08 ? 0.07 : (satDiff <= 0.18 ? 0.03 : 0);
-    return Number(Math.min(1, score).toFixed(2));
-}
-
-function paletteSkeletonSimilarity(left, right) {
-    const a = left?.paletteSkeleton;
-    const b = right?.paletteSkeleton;
-    if (!a?.base || !b?.base) return null;
-    const baseScore = paletteDescriptorSimilarity(a.base, b.base);
-    let secondaryScore = 0;
-    let secondaryWeight = 0;
-    if (a.secondary && b.secondary) {
-        secondaryScore = paletteDescriptorSimilarity(a.secondary, b.secondary);
-        secondaryWeight = 0.28;
-    } else if (!a.secondary && !b.secondary) {
-        secondaryScore = 1;
-        secondaryWeight = 0.12;
-    }
-    const contrastScore = String(a.contrast || '') === String(b.contrast || '') ? 1 : 0;
-    const accentA = String(a.accent?.hueFamily || 'none');
-    const accentB = String(b.accent?.hueFamily || 'none');
-    let accentScore = 0;
-    if (accentA === accentB) accentScore = 1;
-    else if (accentA === 'none' || accentB === 'none') accentScore = 0.35;
-    else {
-        const accentDistance = paletteHueDistance(a.accent, b.accent);
-        accentScore = accentDistance !== null && accentDistance <= 38 ? 0.55 : 0;
-    }
-
-    const baseWeight = 0.50;
-    const contrastWeight = secondaryWeight ? 0.12 : 0.18;
-    const accentWeight = 1 - baseWeight - secondaryWeight - contrastWeight;
-    return Number(Math.min(1,
-        baseScore * baseWeight
-        + secondaryScore * secondaryWeight
-        + contrastScore * contrastWeight
-        + accentScore * accentWeight
-    ).toFixed(2));
-}
-
-export function paletteSimilarityScore(left, right) {
-    if (!left || !right || typeof left !== 'object' || typeof right !== 'object') return 0;
-    let score = 0;
-    if (left.brightness === right.brightness) score += 0.24;
-    else if (new Set([left.brightness, right.brightness]).has('mid')) score += 0.07;
-    if (left.saturation === right.saturation) score += 0.14;
-    else if ([left.saturation, right.saturation].includes('medium')) score += 0.05;
-
-    const leftTemp = paletteTemperatureGroup(left);
-    const rightTemp = paletteTemperatureGroup(right);
-    if (leftTemp === rightTemp) score += 0.08;
-
-    const lumDiff = Math.abs(Number(left.averageLuminance ?? 128) - Number(right.averageLuminance ?? 128));
-    score += lumDiff <= 18 ? 0.12 : (lumDiff <= 34 ? 0.07 : (lumDiff <= 52 ? 0.03 : 0));
-    const satDiff = Math.abs(Number(left.averageSaturation ?? 0.3) - Number(right.averageSaturation ?? 0.3));
-    score += satDiff <= 0.07 ? 0.06 : (satDiff <= 0.15 ? 0.03 : 0);
-
-    const leftHueFamily = String(left.hueFamily || 'neutral');
-    const rightHueFamily = String(right.hueFamily || 'neutral');
-    const hueDistance = paletteHueDistance(left, right);
-    if (hueDistance !== null) {
-        score += hueDistance <= 18 ? 0.30 : (hueDistance <= 30 ? 0.18 : (hueDistance <= 45 ? 0.08 : 0));
-    } else if (leftHueFamily === rightHueFamily) {
-        score += leftHueFamily === 'neutral' ? 0.28 : 0.24;
-    } else if (leftHueFamily === 'neutral' || rightHueFamily === 'neutral') {
-        // A colored large surface and a neutral large surface should not be treated as
-        // the same palette merely because both are pale or dark.
-        score += 0;
-    }
-
-    const aggregateScore = Number(Math.min(1, score).toFixed(2));
-    const skeletonScore = paletteSkeletonSimilarity(left, right);
-    // Human perception follows the whole palette scaffold (base + large structural plane
-    // + contrast + accent), not only whichever single color wins the aggregate area vote.
-    // Keep the old aggregate detector as a fallback, but let a strong scaffold match
-    // catch cases such as the same warm-paper + charcoal structure with slightly different accents.
-    return skeletonScore === null
-        ? aggregateScore
-        : Number(Math.max(aggregateScore, skeletonScore).toFixed(2));
-}
-
-export function paletteRepeatStatus(current, observations = [], { minPreviousMatches = 2, threshold = 0.76 } = {}) {
-    if (!current || typeof current !== 'object' || Number(current.confidence || 0) < 0.55) {
-        return { repeated: false, family: paletteFamilyOfFingerprint(current), matches: 0, scores: [] };
-    }
-    const previous = (Array.isArray(observations) ? observations : [])
-        .map(item => item?.fingerprint || item)
-        .filter(item => item && typeof item === 'object' && Number(item.confidence || 0) >= 0.5)
-        .slice(-Math.max(2, Number(minPreviousMatches) || 2));
-    const scores = previous.map(item => paletteSimilarityScore(current, item));
-    let matches = 0;
-    for (let index = scores.length - 1; index >= 0; index -= 1) {
-        if (scores[index] < threshold) break;
-        matches += 1;
-    }
-    return {
-        repeated: matches >= Math.max(1, Number(minPreviousMatches) || 2),
-        family: paletteFamilyOfFingerprint(current),
-        matches,
-        scores,
     };
 }
 
@@ -1164,8 +783,6 @@ function renderedPaletteFingerprint(toto) {
         .slice(0, 28);
 
     const samples = [];
-    const surfaceSamples = [];
-    const accentSamples = [];
     let mainBackgroundFound = false;
     for (const item of candidates) {
         let style;
@@ -1185,50 +802,20 @@ function renderedPaletteFingerprint(toto) {
         const area = item.area || rootArea * 0.08;
         const baseWeight = isRoot ? rootArea * 2.2 : Math.min(area, rootArea * 0.48);
         const colorWeight = baseWeight / colors.length;
-        colors.forEach(color => {
-            samples.push({ color, weight: colorWeight });
-            surfaceSamples.push({ color, weight: colorWeight, isRoot });
-        });
+        colors.forEach(color => samples.push({ color, weight: colorWeight }));
     }
-
-    // Foreground/border colors are sampled only as low-weight accent evidence. They must
-    // never outweigh large material surfaces, but they help distinguish a recurring
-    // whole-palette scaffold such as warm paper + charcoal planes + red accents.
-    const accentCandidates = [root, ...root.querySelectorAll('summary,h1,h2,h3,h4,p,span,strong,em,small,button,label,li,[class*="accent"],[class*="status"]')]
-        .slice(0, 72);
-    for (const element of accentCandidates) {
-        let style;
-        try { style = getStyle(element); } catch { continue; }
-        if (!style || style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) < 0.05) continue;
-        const area = Math.max(64, elementArea(element));
-        const weight = Math.min(rootArea * 0.035, area * 0.18);
-        const colors = [
-            ...extractCssColors(style.color),
-            ...extractCssColors(style.borderTopColor),
-            ...extractCssColors(style.outlineColor),
-        ];
-        colors.forEach(color => accentSamples.push({ color, weight }));
-    }
-
-    const paletteSkeleton = buildPaletteSkeleton(surfaceSamples, accentSamples);
-    return classifyPaletteSamples(samples, 'rendered', mainBackgroundFound, paletteSkeleton);
+    return classifyPaletteSamples(samples, 'rendered', mainBackgroundFound);
 }
 
 function rawPaletteFingerprint(html) {
     const values = extractBackgroundValues(html);
     const samples = [];
-    const surfaceSamples = [];
     values.slice(0, 24).forEach((value, index) => {
         const colors = extractCssColors(value);
         const baseWeight = index === 0 ? 5 : (index < 5 ? 1.5 : 0.7);
-        colors.forEach(color => {
-            const weight = baseWeight / Math.max(1, colors.length);
-            samples.push({ color, weight });
-            surfaceSamples.push({ color, weight, isRoot: index === 0 });
-        });
+        colors.forEach(color => samples.push({ color, weight: baseWeight / Math.max(1, colors.length) }));
     });
-    const paletteSkeleton = buildPaletteSkeleton(surfaceSamples, []);
-    return classifyPaletteSamples(samples, 'raw', values.length > 0, paletteSkeleton);
+    return classifyPaletteSamples(samples, 'raw', values.length > 0);
 }
 
 function detectPaletteFingerprint(html, renderedToto = null) {
@@ -1390,10 +977,6 @@ export function scanRabbitMirrorHtml(messageHtml, renderedToto = null) {
     if (riskFlags.includes('missing_interaction')) structural.push('缺少有效内部交互');
     if (riskFlags.includes('fake_interaction')) structural.push('伪交互/仅悬停装饰风险');
     if (riskFlags.includes('visual_promise_unfulfilled')) structural.push('视觉承诺未兑现风险');
-    if (riskFlags.includes('weak_visual_scenery_motion')) structural.push('动态视觉主体运动不足/仅局部弱动效风险');
-    if (riskFlags.includes('weak_visual_scenery_layers')) structural.push('动态视觉场景层级偏弱风险');
-    if (riskFlags.includes('visual_scenery_text_dominant')) structural.push('动态画面文字主导风险');
-    if (riskFlags.includes('visual_scenery_text_clipping_risk')) structural.push('动态画面长正文裁切风险');
     structural.push(...dom.summaryFlags);
 
     const mediaStrength = (/clip-path|mask|<svg\b|<path\b|position\s*:\s*absolute|transform\s*:|border-radius\s*:\s*50%|aspect-ratio|radial-gradient|conic-gradient/i.test(html) && tagCount >= 35)
@@ -1550,15 +1133,6 @@ async function scanLatestAssistantMessage(mod) {
         : null;
     if (signature || skeleton || riskFlags.length || paletteFingerprint || interactionFamily) {
         updateLatestVisualSignature(signature, skeleton, riskFlags, paletteFingerprint, interactionFamily);
-        if (paletteFingerprint) {
-            const messageIndex = chat.lastIndexOf(message);
-            const swipeIndex = Number.isInteger(message?.swipe_id) ? message.swipe_id : 0;
-            recordPaletteObservation(paletteFingerprint, {
-                chatKey: getCurrentChatKey(chat),
-                source: 'follow',
-                messageKey: `${messageIndex}:${swipeIndex}:${sigHash}`,
-            });
-        }
         const feedbackResult = consumeInjectedFeedbackForSuccessfulRabbitMirror(message);
         if (feedbackResult?.consumed) {
             console.debug('[RabbitMirror] feedback cat consumed:', feedbackResult.remainingRounds);

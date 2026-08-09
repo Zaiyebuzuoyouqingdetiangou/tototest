@@ -1,12 +1,9 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.67';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.67';
-import { DYNAMIC_COMMITMENT_RULES } from '../data/raw/dynamicCommitmentRules.js?rmv=1.2.67';
-import { MEDIA_NATIVE_CONTENT_RULE } from '../data/raw/mediaSelfJudgmentRules.js?rmv=1.2.67';
-import { CREATIVE_EXPANSION_RULES } from '../data/raw/creativeExpansionRules.js?rmv=1.2.67';
-import { pickCombination } from './picker.js?rmv=1.2.67';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.67';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.67';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.67';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.2';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.2';
+import { pickCombination } from './picker.js?rmv=1.3.2';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.3.2';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.2';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.2';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -84,14 +81,6 @@ function samplingModeLabel(combo, settings) {
 
 function hasVisualScenery(combo) {
     return combo?.formats?.some(item => item.id === '10.2.2' || String(item.title || '').toLowerCase().includes('visual scenery'));
-}
-
-function hasDynamicCommitment(combo) {
-    const dynamicPattern = /(持续动态|动态\s*(?:CSS|视觉|画面|场景)|动画(?:效果|结构)?|倒计时|自动(?:播放|滚动)|循环(?:播放|运动|动画)|持续(?:运动|变化|流动)|旋转动画)/iu;
-    return combo?.formats?.some(item => {
-        const text = `${item?.id || ''} ${item?.title || ''} ${item?.summary || ''} ${item?.raw || ''}`;
-        return dynamicPattern.test(text);
-    });
 }
 
 
@@ -172,12 +161,7 @@ function recentRiskCorrection() {
 
     const hasWeakVisualScenery = flags.some(flag => ['visual_scenery_marker_missing', 'weak_visual_scenery_motion', 'weak_visual_scenery_layers'].includes(flag));
     if (hasWeakVisualScenery) {
-        lines.push('近期动态视觉场景曾退化为假场景、静态页面或弱动效。本轮必须先建立可辨认的完整动态舞台，让具体场景对象承担主要视觉与持续动画，并保留一条场景内有效交互；不得用抽象色块、光斑、几何图形、微粒或外挂操作面板冒充场景。');
-    }
-
-    const hasTextHeavyVisualScenery = flags.some(flag => ['visual_scenery_text_dominant', 'visual_scenery_text_clipping_risk'].includes(flag));
-    if (hasTextHeavyVisualScenery) {
-        lines.push('近期动态视觉场景把长正文、纵排文字或说明文字当成了主要画面，甚至塞进固定高度画布造成裁切。本轮临时删掉所有可见文字后，剩余 DOM/CSS 仍必须是一幅完整、可辨认、会持续运动的画面；画布内只保留极短题签、坐标或短句，连续正文必须移到画布外的正常文档流完整撑高。');
+        lines.push('近期动态视觉场景退化为静态页面、弱动效或单层头图。本轮必须先完成有前中后景的完整舞台，让主要主体与环境层在打开后立即持续运动，再把一条可保持交互寄生于场景对象；不得用播放器外观、进度条、微粒或静态卡片冒充动态画面。');
     }
 
     if ((counts.same_block_stack || 0) >= 2 || (counts.info_page_degrade || 0) >= 2 || (counts.flat_vertical_flow || 0) >= 2) {
@@ -280,15 +264,17 @@ function coreOutputProtocol() {
 }
 
 function compactCreativeRule(enabled, formatOnly = false) {
-    if (enabled) {
-        return formatOnly
-            ? `${CREATIVE_EXPANSION_RULES}\n仅展现形式边界: 不补造独立题材分类，内容素材只取自当前对话语境。`
-            : CREATIVE_EXPANSION_RULES;
-    }
     if (formatOnly) {
-        return String.raw`
+        return enabled ? String.raw`
+仅展现形式发散:
+  本轮只把展现形式当作媒介、阅读路径和视觉结构的灵感种子；可以发散材质、空间、交互痕迹与细节，但不得额外调用或补造独立题材分类。内容素材只取自当前对话语境。` : String.raw`
 仅展现形式收敛:
   本轮只围绕展现形式生成媒介结构与视觉读法，不另起题材分类，不在标题、summary 或正文中标注额外类别；内容素材只取自当前对话语境。`;
+    }
+    if (enabled) {
+        return String.raw`
+发散孵化:
+  抽取结果是灵感种子，不是封闭模板；保留核心气味、媒介痕迹与关系逻辑，可扩展库外媒介、材质、空间、交互痕迹与兔子镜内部叙事细节；须可追溯本轮抽取，且不得反向改写主回复。`;
     }
     return String.raw`
 经典收敛:
@@ -299,7 +285,7 @@ function complexInteractiveCore() {
     return String.raw`
 复杂交互视觉核心:
   - 兔子镜必须是复杂精美的微型交互媒介作品，不能退化为普通信息页、单列内容块、简单表单或文字摘要。
-  - 除最外层折叠外，每轮必须实际存在至少一组从本轮叙事核心、媒介本体或画面内部关系自然生长的完整交互链：可操作对象→明确操作→可识别且可保持的状态变化→对应的内容、关系或结构反馈→可继续推进、分支、组合、切换或返回。除剧情本身明确属于一次性不可逆动作外，主要交互进入任何非初始状态后都必须能回到初始状态：优先再次触发同一对象恢复，或在当前状态内保留明确可触摸的返回入口；不得让唯一触发器永久消失，也不得让 radio／状态层进入后无取消路径。
+  - 除最外层折叠外，每轮必须实际存在至少一组从本轮叙事核心、媒介本体或画面内部关系自然生长的完整交互链：可操作对象→明确操作→可识别且可保持的状态变化→对应的内容、关系或结构反馈→可继续推进、分支、组合、切换或返回。
   - 交互产生、替换或推进后的主要正文与关键反馈，须由本轮展现形式自身的内容区域完整承载，并在对应状态中保持可读、可达；具体承载方式由媒介本体决定，不得因裁切、遮挡或脱离所属区域而显示不全。
   - 内容承载优先于复杂度：含主要正文、长句、段落或关键反馈的节点及其承载父级必须参与正常文档流并由内容撑高；禁止用 position:absolute/fixed、固定 px/vh 高度、height:100%、transform 位移或 overflow:hidden/clip 作为正文承载骨架，只有纯装饰、短标签与图形层可脱离文档流。
   - 需要状态叠层时，优先使用能由内容撑高的 grid 同格叠层、正常流显隐或媒介内部明确可操作的滚动／分页；禁止让两个含长正文的状态以 absolute 叠放在固定画布内。若使用内部 details/summary 表示正反面或状态替换，打开后 summary 不得继续以 height:100% 占据整块面板并把后续状态推到裁切区；正面必须收起或退出占位，暗面须在同一媒介区域内可见，并提供可触摸的返回方式。输出前按 360px 手机窄屏自检，每个状态的最后一行必须仍位于所属卡片、画框或页面边界内。
@@ -313,33 +299,16 @@ function complexInteractiveCore() {
 function visualScenerySceneFirstCore() {
     return String.raw`
 Visual Scenery 场景优先级【覆盖通用交互骨架的执行顺序】:
-  - 本轮第一优先级是先让完整动态场景本体成立，再把交互自然寄生在场景对象上；不得为了满足交互先搭建按钮组、标签页、仪表盘、信息卡、播放器或说明面板。
+  - 本轮第一优先级是先让一幅完整动态场景本体成立，再把交互自然寄生在场景对象上；不得为了满足“复杂交互”先搭建按钮组、标签页、仪表盘、信息卡、播放器或说明面板。
+  - 施工顺序必须是：①建立一个自适应手机宽度的完整舞台；②明确背景层、中景主体层、前景遮挡／叙事层；③让占据主要视觉权重的主体或环境关系持续运动；④再选择场景内真实存在的一个对象作为可触摸入口，使画面产生可保持的第二状态。
   - 首个主要场景根节点必须标记 data-rm-visual-scenery="true"，方便插件只读验收；该属性不产生可见文字，也不得被当作标题或说明。
-  - 场景未操作时就必须完整、清晰；交互用于推进、揭示、切换或改变场景，不能作为显示核心画面的前置条件。
-  - 允许画布中的纯装饰与短标签使用定位和裁切；主要正文与交互反馈若较长，须进入正常文档流并完整撑高，不能被固定高度或 overflow:hidden 截断。`;
+  - 至少一条主动画必须同时具备真实 @keyframes、可见元素上的 animation 声明、infinite 循环，并在打开后 1 秒内产生肉眼可见的位移、缩放、旋转、形变、遮罩推进、流体变化或光影扫动。只写 transform、transition、动画名、SVG、微尘闪烁或低对比呼吸不算主动画。
+  - 除主动画外，至少再有一个与场景空间有关的协同动态层，例如环境光、帘幕、影子、液面、雾、雨、丝线、纸片、轨迹或前景遮挡；两个动态层须共同服务同一构图，不能只是散落的小点。
+  - 场景未操作时就必须完整、清晰、持续活动；交互只能推进、揭示或改变场景，不能作为显示核心画面的前置条件。
+  - 允许场景画布中的纯装饰与短标签使用定位和裁切；主要正文与交互反馈仍须进入正常文档流并完整撑高，不能被固定高度或 overflow:hidden 截断。
+  - 交互要求收敛为一条与场景本体一致的完整链即可：场景对象→触摸操作→可保持的画面／关系／时间状态变化→明确反馈→可返回或继续。不得额外堆叠与场景无关的复杂控件。`;
 }
 
-function forcedVisualSceneryExclusiveLock(settings) {
-    if (!settings?.forceVisualScenery) return '';
-    return String.raw`
-10.2.2 独占展现形式锁:
-  - 动态视觉模式已开启，本轮唯一展现形式为 10.2.2 Visual Scenery；题材只能决定场景中的人物、物件、关系、情境、观察角度与叙事素材，不得改变主要视觉媒介。
-  - 整体主要视觉本体与主要阅读路径必须由 Visual Scenery 决定；不得以日志、档案、报告、聊天界面、播放器或其他展现形式作为页面主骨架，也不得先搭另一种展现形式再附加一块动态场景。`;
-}
-
-function buildFollowMainVisualSceneryFinalCheck({ settings, visualSceneryMode }) {
-    if (!visualSceneryMode) return '';
-    const exclusive = settings?.forceVisualScenery
-        ? '动态视觉模式已开启：兔子镜唯一展现形式仍须是 10.2.2 Visual Scenery，不得被题材中的日志、档案、报告、聊天、播放器等媒介词改造成其他页面骨架。'
-        : '';
-    return String.raw`<兔子镜跟随主API动态视觉最终核对>
-在完成主回复正文、准备输出最底部兔子镜之前，仅对兔子镜再检查一次：
-- Visual Scenery 的主要场景在用户未进行任何操作时，就必须持续、肉眼可见地动态变化；主要动态须发生在场景本体、环境、空间关系或具有叙事意义的对象上。
-- 只有一个很小的装饰物缓慢漂浮、微粒／弱光闪烁，或仅 hover、点击后变化、一次性 transition，均不足以单独兑现“动态视觉”；若整体第一眼仍近似静止，先重写兔子镜再输出。
-- 不规定动画技术、数量、层级、速度或固定模板，只要求主要画面确实在持续变化，并保留场景内可触摸的有效交互。
-${exclusive}
-</兔子镜跟随主API动态视觉最终核对>`;
-}
 
 function innerDetailsCooldownRule() {
     const recentFlags = getRecentRiskFlags(5);
@@ -353,18 +322,20 @@ function innerDetailsCooldownRule() {
 
 function visibleChineseHardLock() {
     return String.raw`
-可见语言主次锁:
-  - 兔子镜面向用户的主要可见信息必须以简体中文为主；允许少量必要的通用缩写、专有名词、品牌/型号、曲名或极短风格词保留外语，不要求把每一个英文词机械翻译掉。
-  - summary、主标题、主要按钮、核心状态、警告、提示与主要说明不得整体变成纯英文界面；若一屏主要可见文案明显由英文占主导，先改成中文主信息，必要英文可作为短括注或点缀保留。
-  - HTML 标签、CSS 属性、class/id/data、选择器、URL 与代码标识不属于可见语言检查范围；不得为了制造“游戏感”“系统感”“科技感”而让英文大写词接管主要界面。`;
+可见中文硬锁:
+  - 兔子镜内所有用户能看见的文字必须使用简体中文，包括 summary、标题、正文、按钮、标签、状态、警告、提示、角标、反馈文案和样式 content 生成的文字。
+  - 禁止纯英文界面、英文按钮、英文大写系统词和英文状态句；HTML 标签、CSS 属性、class/id/data、选择器和 URL 不适用。
+  - 若确实需要出现外语学习内容，必须采用「外语 [简体中文释义]」格式，且不能让外语成为按钮、标题或主界面的唯一文字。`;
 }
 
 function visualSceneryInteractionLinkRule() {
     return String.raw`
-Visual Scenery 场景交互:
-  - 本轮必须有至少一种可触摸／点击的有效交互，并实际改变、揭示、切换或推进画面内容；交互须作用于场景内部真实存在的对象或关系，不得外挂独立操作面板。
-  - 除明确的一次性叙事动作外，进入非初始状态后必须保留自然回到初始画面的路径；hover/active 只能辅助，不能单独充当本轮必需交互。`;
+Visual Scenery 动态与交互:
+  - 画面打开后必须通过完整、持续且肉眼可见的 CSS 动画成立，核心内容不得依赖用户操作才能出现。
+  - 必须同时具备上述完整交互链；第二状态须发生清晰且有意义的内容、关系、结构、空间、材质、时间进程或观察方式变化；动画与交互不能互相替代。
+  - 交互须发生在画面本体内部，不得另加脱离场景的操作面板或大段说明；用户未操作时仍须具有完整构图、清晰主体与持续生命感。`;
 }
+
 
 function htmlSafetyCore() {
     return String.raw`
@@ -470,23 +441,14 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const themes = mode === 'format_only' ? '当前聊天与刚完成的助手正文' : compactLockItems(combo?.themes, 'theme');
     const formats = compactLockItems(combo?.formats, 'presentation');
     const avoidance = settings?.avoidRepeat ? shortVisualAvoidance(combo, 3) : '未启用近期视觉避让。';
-    const forcedVisualSceneryMode = !!settings?.forceVisualScenery;
-    const visualSceneryMode = !!(forcedVisualSceneryMode || hasVisualScenery(combo));
-    const interaction = visualSceneryMode ? null : interactionFamilyCooldownSnapshot();
-    const palette = visualSceneryMode ? null : getActivePaletteCooldown(5);
+    const interaction = interactionFamilyCooldownSnapshot();
+    const palette = getActivePaletteCooldown(5);
     const recentFlags = getRecentRiskFlags(5);
     const innerDetailsBlocked = recentFlags.includes('inner_details_used');
     const riskCorrection = truncate(recentRiskCorrection().replace(/^\s*真实视觉纠偏[^:]*:\s*/u, ''), 620);
     const directiveText = settings?.userDirectivePriority && directive?.rawDirective
         ? truncateDirectiveText(directive.rawDirective, 700)
         : '';
-    const creativeExpansionMode = !!settings?.creativeExpansionMode;
-    const contentConstructionLock = creativeExpansionMode
-        ? `创意种子锁：以“${themes}”保留至少一个可辨认的情绪、关系或叙事基因；可向母本库外生长，不得只复述主题说明或拼贴关键词。`
-        : `内容构思锁：以“${themes}”作为观察角度、关系组织与细节取材；必须从当前助手正文提取具体动作、情绪、关系变化或物件痕迹，不得只把主题写进标题。`;
-    const mediaConstructionLock = creativeExpansionMode
-        ? `媒介种子锁：以“${formats}”保留可追溯的观看、使用或结构基因；最终媒介允许重组、异化或扩展成库外新结构，但不得退化为通用卡片、信息面板或母本换皮。`
-        : `UI／媒介构思锁：以“${formats}”作为首个主要视觉本体；DOM/CSS 必须真实呈现其形态、材质、空间关系、阅读路径和操作方式，不得退化为通用卡片、信息面板或只换皮的标签页。`;
 
     const avoidLines = [
         interaction ? `交互冷却：${interaction.label}（近五轮 ${interaction.count} 次）；${interaction.exactBan}` : '',
@@ -495,39 +457,28 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
         riskCorrection ? `近期真实输出纠偏：${riskCorrection}` : '',
     ].filter(Boolean);
 
-    const interactionDirective = visualSceneryMode
-        ? 'Visual Scenery 必须包含场景内有效交互：由具体场景对象触发，并实际改变、揭示、切换或推进画面内容；除明确的一次性叙事动作外，交互后必须能够恢复到初始画面；hover/active 只能辅助。'
-        : '新交互必须从本轮媒介本体自行生长；不得从固定组件清单中挑选，也不得为躲避冷却机械轮换另一种常见模板。除明确的一次性叙事动作外，任何主要交互的第二状态都必须保留回到初始状态的路径。无法被现有识别器归类的全新交互完全允许。';
-    const visualSceneryHardLock = visualSceneryMode
-        ? `- Visual Scenery 画面硬锁：首个主要内容与整体主要视觉本体必须是一幅完整、统一、持续变化的动态视觉场景；用户未操作时就必须有持续、肉眼可见的真实动态。去掉文字后仍须看得出具体场景、对象与正在发生的情境；抽象色块、渐变、光斑、线条和几何形只能辅助，不能当主体。${forcedVisualSceneryMode ? '动态视觉模式下本轮唯一展现形式锁定为 10.2.2；日志、档案、报告、聊天界面、播放器或其他展现形式只能成为场景中的内容或物件，不能成为页面主骨架，也不能先搭其他展现形式再附加一块动态场景。' : ''}画布内不得塞长正文，连续正文放到画布外正常流；关键内容不能依赖 hover，也不能被固定高度裁切。`
-        : '';
-    const check4 = visualSceneryMode
-        ? `Visual Scenery 去掉文字后是否仍能看出具体场景与事件；用户未操作时画面本体是否已有持续、肉眼可见的真实动态；${forcedVisualSceneryMode ? '整体主骨架是否仍唯一属于 10.2.2，而非日志、档案、报告、聊天界面、播放器或其他展现形式；' : ''}是否存在场景内可触摸的有效交互并产生可保持变化；非一次性交互能否从第二状态恢复初始画面；360px 手机无需 hover 是否能看到关键内容且没有正文裁切；`
-        : '交互是否作用于媒介内部真实对象，并产生可保持、可辨认的第二状态；除一次性叙事动作外，第二状态是否始终能返回初始状态；';
-
     return String.raw`<兔子镜最终执行锁 data-source="independent-api-near-output">
 【本轮必须落实】
 - 抽取模式：${samplingModeLabel(combo, settings)}。
-- ${contentConstructionLock}
-- ${mediaConstructionLock}
-${visualSceneryHardLock}
+- 内容构思锁：以“${themes}”作为观察角度、关系组织与细节取材；必须从当前助手正文提取具体动作、情绪、关系变化或物件痕迹，不得只把主题写进标题。
+- UI／媒介构思锁：以“${formats}”作为首个主要视觉本体；DOM/CSS 必须真实呈现其形态、材质、空间关系、阅读路径和操作方式，不得退化为通用卡片、信息面板或只换皮的标签页。
 ${directiveText ? `- 用户本轮点菜仍为最高优先，必须同时落实：${directiveText}` : ''}
 
 【近期必须避开】
 ${avoidance}
 ${avoidLines.length ? avoidLines.map(line => `- ${line}`).join('\n') : '- 当前没有额外冷却；仍不得复用近期相同的视觉骨架与操作路径。'}
-- ${interactionDirective}
+- 新交互必须从本轮媒介本体自行生长；不得从固定组件清单中挑选，也不得为躲避冷却机械轮换另一种常见模板。无法被现有识别器归类的全新交互完全允许。
 
 【输出前逐项自检】
-1. ${creativeExpansionMode ? '第一眼能否看出从本轮媒介种子生长出的可追溯结构，同时不是母本换皮或通用面板；' : '第一眼能否看出本轮展现形式，而不是只看到标题、按钮组或普通面板；'}
-2. ${creativeExpansionMode ? '本轮主题核心是否仍可追溯，并且是否产生了超出母本直译的新结构、关系或表达；' : '本轮主题是否真正进入内容、关系和细节，而不是只成为标签；'}
+1. 第一眼能否看出本轮展现形式，而不是只看到标题、按钮组或普通面板；
+2. 本轮主题是否真正进入内容、关系和细节，而不是只成为标签；
 3. 是否复用了近期视觉骨架、阅读路径、配色底盘或交互家族；
-4. ${check4}
+4. 交互是否作用于媒介内部真实对象，并产生可保持、可辨认的第二状态；
 5. 只输出一面完整兔子镜，直接以 <toto> 开始，以 </toto> 结束。
 </兔子镜最终执行锁>`;
 }
 
-function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, dynamicCommitmentMode, tarotRulesText, directive, memoryMaterial, activeFeedback, independentMode = false }) {
+function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback }) {
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
@@ -553,13 +504,10 @@ ${selectedFormats}`);
     chunks.push(sharedMemoryMaterialRule(memoryMaterial));
     chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
     chunks.push(presentationEmbodimentRule());
-    chunks.push(MEDIA_NATIVE_CONTENT_RULE);
     chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
-    chunks.push(forcedVisualSceneryExclusiveLock(settings));
-    if (dynamicCommitmentMode) chunks.push(DYNAMIC_COMMITMENT_RULES);
-    if (!visualSceneryMode) chunks.push(interactionFamilyCooldownRule());
+    chunks.push(interactionFamilyCooldownRule());
     chunks.push(innerDetailsCooldownRule());
-    if (!(independentMode && visualSceneryMode)) chunks.push(paletteCooldownRule());
+    chunks.push(paletteCooldownRule());
     chunks.push(visualColorTruthRule());
     chunks.push(stateBarIsolationRule());
 
@@ -585,12 +533,12 @@ ${shortVisualAvoidance(combo, 3)}`);
 
 export function buildRabbitMirrorPromptDetails(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '', generationContext = null) {
     if (!settings?.enabled || !settings?.autoRabbitMirrorInjection || settings?.mode === 'off') {
-        return { prompt: '', executionLock: '', followMainFinalCheck: '', metadata: Object.freeze({ generationType: String(generationType || 'normal') }) };
+        return { prompt: '', executionLock: '', metadata: Object.freeze({ generationType: String(generationType || 'normal') }) };
     }
     const { combo, directive, disabled } = pickCombination(settings, generationScopeKey, generationContext);
     if (disabled) {
         if (settings.debug) console.debug('[RabbitMirror] skipped by user directive');
-        return { prompt: '', executionLock: '', followMainFinalCheck: '', metadata: Object.freeze({ generationType: String(generationType || 'normal'), disabled: true }) };
+        return { prompt: '', executionLock: '', metadata: Object.freeze({ generationType: String(generationType || 'normal'), disabled: true }) };
     }
 
     const rawPolicy = normalizedRawPolicy(settings.rawPolicy);
@@ -599,13 +547,11 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
     const selectedThemes = selectedThemeResult.text;
     const selectedFormats = selectedFormatResult.text;
     const visualSceneryMode = !!(settings.forceVisualScenery || hasVisualScenery(combo));
-    const independentMode = String(generationContext?.source || '').toLowerCase() === 'independent';
-    const dynamicCommitmentMode = !!(visualSceneryMode || hasDynamicCommitment(combo));
     const tarotRulesText = isTarotRelated(combo) ? TAROT_IMAGE_RULES : '';
     const memoryMaterial = hasSharedMemoryTheme(combo)
         ? readSelectedMemoryForPrompt(settings, settings.memoryMaxChars || 2200)
         : null;
-    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, dynamicCommitmentMode, tarotRulesText, directive, memoryMaterial, activeFeedback, independentMode });
+    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback });
     const metadata = Object.freeze({
         generationType: String(generationType || 'normal'),
         rawPolicy,
@@ -621,8 +567,6 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
         memoryChars: String(memoryMaterial?.text || '').length,
         memorySources: Array.isArray(memoryMaterial?.sources) ? [...memoryMaterial.sources] : [],
         visualSceneryMode,
-        independentMode,
-        dynamicCommitmentRules: dynamicCommitmentMode,
         tarotRules: !!tarotRulesText,
         userDirectiveApplied: !!directive,
         customThemeCount: Array.isArray(directive?.customThemes) ? directive.customThemes.length : 0,
@@ -640,8 +584,7 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
         console.debug('[RabbitMirror] generationType:', generationType, 'combo:', combo, 'rawPolicy:', rawPolicy, 'rawRetrieved:', { themes: selectedThemeResult, formats: selectedFormatResult }, 'memorySources:', memoryMaterial?.sources || [], 'prompt chars:', prompt.length);
     }
     const executionLock = buildIndependentFinalExecutionLock({ combo, settings, directive });
-    const followMainFinalCheck = buildFollowMainVisualSceneryFinalCheck({ settings, visualSceneryMode });
-    return { prompt, executionLock, followMainFinalCheck, metadata };
+    return { prompt, executionLock, metadata };
 }
 
 export function buildRabbitMirrorPrompt(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '', generationContext = null) {

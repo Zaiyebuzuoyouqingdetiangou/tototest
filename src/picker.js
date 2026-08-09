@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.2.67';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.2.67';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.3.2';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.3.2';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -9,32 +9,18 @@ import {
     recordGenerationAttempt,
     setDirectiveScopedPick,
     setLastCombo,
-} from './storage.js?rmv=1.2.67';
-
-function randomUnit() {
-    try {
-        const cryptoApi = globalThis.crypto;
-        if (cryptoApi?.getRandomValues) {
-            const value = new Uint32Array(1);
-            cryptoApi.getRandomValues(value);
-            return value[0] / 0x100000000;
-        }
-    } catch {
-        // Older or restricted WebViews may not expose crypto; Math.random remains a safe compatibility fallback.
-    }
-    return Math.random();
-}
+} from './storage.js?rmv=1.3.2';
 
 function randomInt(min, max) {
     const low = Math.min(min, max);
     const high = Math.max(min, max);
-    return Math.floor(randomUnit() * (high - low + 1)) + low;
+    return Math.floor(Math.random() * (high - low + 1)) + low;
 }
 
 function shuffle(array) {
     const result = [...array];
     for (let i = result.length - 1; i > 0; i--) {
-        const j = Math.floor(randomUnit() * (i + 1));
+        const j = Math.floor(Math.random() * (i + 1));
         [result[i], result[j]] = [result[j], result[i]];
     }
     return result;
@@ -47,7 +33,7 @@ function clamp(value, min, max) {
 function weightedThemeCount(settings) {
     const min = Number(settings.themesMin) || 1;
     const max = Number(settings.themesMax) || 3;
-    const r = randomUnit();
+    const r = Math.random();
     const count = r < 0.75 ? 1 : r < 0.97 ? 2 : 3;
     return clamp(count, min, max);
 }
@@ -55,7 +41,7 @@ function weightedThemeCount(settings) {
 function weightedFormatCount(settings) {
     const min = Number(settings.formatsMin) || 1;
     const max = Number(settings.formatsMax) || 2;
-    const count = randomUnit() < 0.85 ? 1 : 2;
+    const count = Math.random() < 0.85 ? 1 : 2;
     return clamp(count, min, max);
 }
 
@@ -150,7 +136,7 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
                 return { item, weight };
             });
         const total = weighted.reduce((sum, x) => sum + x.weight, 0);
-        let roll = randomUnit() * total;
+        let roll = Math.random() * total;
         let chosen = weighted[weighted.length - 1]?.item;
         for (const entry of weighted) {
             roll -= entry.weight;
@@ -180,7 +166,7 @@ function pickWeightedEntry(entries, getWeight) {
         weight: Math.max(0.0001, Number(getWeight(entry)) || 0.0001),
     }));
     const total = weighted.reduce((sum, item) => sum + item.weight, 0);
-    let roll = randomUnit() * total;
+    let roll = Math.random() * total;
     for (const item of weighted) {
         roll -= item.weight;
         if (roll <= 0) return item.entry;
@@ -188,16 +174,10 @@ function pickWeightedEntry(entries, getWeight) {
     return weighted[weighted.length - 1]?.entry || null;
 }
 
-function themeFamilyBaseWeight(itemCount) {
-    // 旧版家族完全等权会让 E.6 这类单条家族获得远高于普通单项的命中率。
-    // 采用温和的规模校正：接近“条目等权”，但仍压低超大家族因子项数量造成的总量优势。
-    return Math.pow(Math.max(1, Number(itemCount) || 1), 0.9);
-}
-
 /**
- * 主题采用“父主题家族优先 + 温和规模校正”抽取：
- * 家族仍是去重/冷却单位，但基础权重随家族有效条目数按 0.9 次方增长。
- * 这样单条家族不会天然拿到完整家族票，同时也不会让大树家族完全按子项数量线性霸榜。
+ * 主题采用“父主题家族优先”抽取：先等权抽 A.1 / G.7 这样的家族，
+ * 再从该家族内部抽父项或子项。新增独立子主题只增加家族内部的精度，
+ * 不会因为子项数量变多而抬高整个父主题在总池中的命中率。
  */
 function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = []) {
     const recent = new Set(recentIds || []);
@@ -227,7 +207,7 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
         if (!availableFamilies.length) break;
 
         const family = pickWeightedEntry(availableFamilies, entry => {
-            let weight = themeFamilyBaseWeight(entry.items.length);
+            let weight = 1;
             if (avoidRepeat && recentGroupSet.has(entry.group)) weight *= 0.35;
             if (avoidRepeat && recentFamilySet.has(entry.key)) weight *= 0.25;
             return weight;
@@ -675,7 +655,7 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
     setLastCombo(combo);
     recordGenerationAttempt(combo, {
         chatKey,
-        attemptId: scopeKey || `fallback:${Date.now().toString(36)}:${randomUnit().toString(36).slice(2, 8)}`,
+        attemptId: scopeKey || `fallback:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`,
         directiveScoped: !!directive,
     });
 

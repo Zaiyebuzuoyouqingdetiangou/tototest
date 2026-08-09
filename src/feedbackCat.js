@@ -4,7 +4,7 @@ const FEEDBACK_STORAGE_KEY = 'rabbit_mirror_theater:feedback_cat:v1';
 const FEEDBACK_PENDING_KEY = 'rabbit_mirror_theater:feedback_cat_pending:v2';
 const FEEDBACK_METADATA_KEY = 'rabbit_mirror_theater_feedback_cat_v2';
 const FEEDBACK_PROMPT_KEY = 'rabbit_mirror_theater:feedback_cat_prompt';
-const RUNTIME_VERSION = '1.2.67';
+const RUNTIME_VERSION = '1.3.2';
 const VALID_ROUNDS = new Set([1, 3, 10]);
 const VALID_TYPES = new Set(['color', 'structure', 'overall', 'interaction', 'language', 'custom']);
 
@@ -338,7 +338,7 @@ function presetFeedbackInstruction(type) {
         return '用户不满意被反馈兔子镜的整体审美。本轮须依据自身展现形式重新推导材质、空间、光源、布局、配色、细节与视觉主次；不得沿用相近的整体视觉语法，也不得仅通过换色、换装饰或局部微调敷衍处理。';
     }
     if (type === 'interaction') {
-        return '用户认为被反馈兔子镜的交互过于简单。本轮仅在展现形式本身适合交互时增强交互：建立真实目标、明确操作、可识别且可保持的状态变化、与操作对应的反馈，以及继续推进、组合或切换；除剧情本身明确属于一次性不可逆动作外，进入第二状态后必须能再次触发原对象或使用当前状态中的返回入口恢复初始界面。不得只增加无意义按钮、装饰性点击或一次性显隐，也不得为了交互破坏展现形式本体。';
+        return '用户认为被反馈兔子镜的交互过于简单。本轮仅在展现形式本身适合交互时增强交互：建立真实目标、明确操作、可识别且可保持的状态变化、与操作对应的反馈，以及继续推进、组合、切换或返回的可能；不得只增加无意义按钮、装饰性点击或一次性显隐，也不得为了交互破坏展现形式本体。';
     }
     if (type === 'language') {
         return '用户不满意兔子镜反复出现不必要的外语。本轮所有面向用户可见的标题、按钮、标签、状态、提示、说明、角标、装饰文字、占位文本与拟态系统词均须使用当前对话的主要语言。禁止使用英文标题、英文大写标签、英文状态词、英文装饰词或用英文制造界面感；正文中原本存在且确有必要保留的外语、专有名词，以及 HTML/CSS 的标签、属性、class、id 和代码标识不受此限制。输出前必须逐项检查最终可见文字，将不必要外语替换为当前对话主要语言。';
@@ -518,10 +518,6 @@ export function auditLanguageFeedbackCompliance(source) {
     };
 }
 
-// Runtime balance audit is deliberately much softer than the explicit “一直说外语” feedback.
-// It does not require every visible token to be Chinese. It only flags outputs where English
-// clearly dominates the user-facing copy, so common abbreviations and a few stylistic words
-// remain available to the medium.
 export function auditVisibleLanguageBalanceText(text) {
     const visible = String(text || '')
         .replace(/https?:\/\/[^\s<>'"]+/gi, ' ')

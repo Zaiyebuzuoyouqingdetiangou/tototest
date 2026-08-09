@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.67';
-import { getCurrentChatKey, getRecentPaletteObservations } from './storage.js?rmv=1.2.67';
+import { getSettings } from './settings.js?rmv=1.3.2';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.2';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.2.67';
-import { paletteFamilyOfFingerprint, paletteRepeatStatus, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.67';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.67';
+} from './feedbackCat.js?rmv=1.3.2';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.2';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.2';
 
 
-const RUNTIME_VERSION = '1.2.67';
+const RUNTIME_VERSION = '1.3.2';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -10608,6 +10608,10 @@ const VISUAL_SCENERY_MOBILE_OVERFLOW_COPY_ATTR = 'data-rm-mobile-visual-scenery-
 const VISUAL_SCENERY_MOBILE_OVERFLOW_SOURCE_ATTR = 'data-rm-mobile-visual-scenery-overflow-source';
 const VISUAL_SCENERY_MOBILE_OVERFLOW_STYLE_ATTR = 'data-rabbit-mirror-visual-scenery-overflow-rescue';
 const VISUAL_SCENERY_MOBILE_OVERFLOW_COUNT_ATTR = 'data-rabbit-mirror-visual-scenery-overflow-count';
+const INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR = 'data-rm-independent-mobile-spatial-scroll';
+const INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR = 'data-rm-independent-mobile-spatial-canvas';
+const INDEPENDENT_MOBILE_SPATIAL_STYLE_ATTR = 'data-rabbit-mirror-independent-mobile-spatial-style';
+const INDEPENDENT_MOBILE_SPATIAL_COUNT_ATTR = 'data-rabbit-mirror-independent-mobile-spatial-count';
 const MOBILE_LAYOUT_BREAKPOINT_PX = 640;
 const MOBILE_LAYOUT_TARGET_ATTRS = Object.freeze([
     MOBILE_LAYOUT_FIT_ATTR,
@@ -10643,7 +10647,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.67-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.2-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -11653,7 +11657,6 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `原始主体 文本=${full.rawBodyTextLength ?? 0} 元素=${full.rawBodyElementCount ?? 0} 语义/媒体=${full.rawBodySemanticElementCount ?? 0} 视觉程序=${full.rawBodyVisualProgramCount ?? 0}`,
         `展开后主体缺失=${full.visibleBodyMissing} 空结构壳=${!!full.renderedBodyEmptyShell} 主体子节点=${full.renderedBodyElementCount ?? 0} 文本=${full.renderedBodyTextLength ?? 0}`,
         `可见语言 英文主导=${!!full.languageForeignDominant} 中文字符=${full.languageHanChars ?? 0} 英文字母=${full.languageLatinLetters ?? 0} 英文词≈${full.languageForeignWordCount ?? 0} 示例=${Array.isArray(full.languageForeignWords) && full.languageForeignWords.length ? full.languageForeignWords.slice(0, 8).join('/') : '(无)'}`,
-        `本地配色 家族=${root.getAttribute?.(PALETTE_FAMILY_ATTR) || '(无)'} 骨架=${root.getAttribute?.(PALETTE_SKELETON_ATTR) || '(无)'} 重复=${root.getAttribute?.(PALETTE_REPEAT_ATTR) || 'false'} 重映射=${root.getAttribute?.(PALETTE_REMAP_ATTR) || '(未检查)'} 原因=${root.getAttribute?.(PALETTE_REMAP_REASON_ATTR) || '(无)'}`,
         '',
         '[3. CSS 能力层]',
         `rules≈${full.cssRuleCount} keyframes=${full.animationCount}`,
@@ -15920,6 +15923,98 @@ function installVisualSceneryMobileNarrativeOverflowRescue(root) {
     return repaired;
 }
 
+
+function independentMobileSpatialViewportNarrow() {
+    const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
+    return viewportWidth > 0 && viewportWidth <= MOBILE_LAYOUT_BREAKPOINT_PX + 40;
+}
+
+function independentMobileSpatialClippingAncestor(host, root) {
+    let current = host?.parentElement || null;
+    for (let depth = 0; current && depth < 5; depth += 1, current = current.parentElement) {
+        if (current === root) break;
+        const style = maintenanceMobileLayoutComputedStyle(current);
+        const overflowX = String(style?.overflowX || style?.overflow || '').toLowerCase();
+        if (/(?:hidden|clip)/.test(overflowX)) return current;
+    }
+    return null;
+}
+
+function independentMobileSpatialCanvasInfo(host, root) {
+    if (!host?.querySelectorAll || maintenanceMobileLayoutIsInternal(host)) return null;
+    const hostStyle = maintenanceMobileLayoutComputedStyle(host);
+    const position = String(hostStyle?.position || '').toLowerCase();
+    if (!['relative', 'absolute'].includes(position)) return null;
+    const hostRect = maintenanceMobileLayoutRect(host);
+    if (!hostRect || hostRect.width < 180) return null;
+
+    const absoluteChildren = [...host.children].filter(child => {
+        if (maintenanceMobileLayoutIsInternal(child)) return false;
+        const childPosition = String(maintenanceMobileLayoutComputedStyle(child)?.position || '').toLowerCase();
+        return childPosition === 'absolute' || childPosition === 'fixed';
+    });
+    if (absoluteChildren.length < 3) return null;
+
+    let farRight = hostRect.width;
+    let farBottom = hostRect.height;
+    let meaningful = 0;
+    for (const child of absoluteChildren) {
+        const childRect = maintenanceMobileLayoutRect(child);
+        if (!childRect) continue;
+        farRight = Math.max(farRight, childRect.right - hostRect.left);
+        farBottom = Math.max(farBottom, childRect.bottom - hostRect.top);
+        if (maintenanceMobileLayoutTextLength(child) >= 8 || child.matches?.('img,svg,canvas,video,figure')) meaningful += 1;
+    }
+    const naturalWidth = Math.max(Number(host.scrollWidth || 0), farRight);
+    if (meaningful < 2 || naturalWidth <= hostRect.width + 48 || naturalWidth <= hostRect.width * 1.14) return null;
+    if (naturalWidth > 1800) return null;
+
+    const clippingAncestor = independentMobileSpatialClippingAncestor(host, root);
+    if (!clippingAncestor) return null;
+    return { host, clippingAncestor, naturalWidth: Math.ceil(naturalWidth), naturalHeight: Math.ceil(Math.max(Number(host.scrollHeight || 0), farBottom)) };
+}
+
+export function activateRabbitMirrorIndependentMobileSpatialRescue(root) {
+    if (!root?.querySelectorAll || !root?.isConnected || !independentMobileSpatialViewportNarrow()) return 0;
+    const independent = root.getAttribute?.('data-rabbit-mirror-external-source') === 'independent'
+        || !!root.closest?.('[data-rabbit-mirror-external-source="independent"]');
+    if (!independent) return 0;
+
+    root.querySelectorAll(`[${INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR}], [${INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR}]`).forEach(element => {
+        element.removeAttribute(INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR);
+        element.removeAttribute(INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR);
+        element.style?.removeProperty?.('--rm-mobile-spatial-natural-width');
+    });
+
+    const infos = [...root.querySelectorAll('div,section,article,main,figure')]
+        .map(host => independentMobileSpatialCanvasInfo(host, root))
+        .filter(Boolean)
+        .filter((info, index, all) => !all.some((other, otherIndex) => otherIndex !== index && other.host.contains?.(info.host) && other.naturalWidth >= info.naturalWidth));
+    if (!infos.length) {
+        root.removeAttribute(INDEPENDENT_MOBILE_SPATIAL_COUNT_ATTR);
+        root.querySelector?.(`style[${INDEPENDENT_MOBILE_SPATIAL_STYLE_ATTR}]`)?.remove?.();
+        return 0;
+    }
+
+    for (const info of infos) {
+        info.clippingAncestor.setAttribute(INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR, 'true');
+        info.host.setAttribute(INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR, 'true');
+        info.host.style.setProperty('--rm-mobile-spatial-natural-width', `${Math.max(320, info.naturalWidth)}px`);
+    }
+    let style = root.querySelector(`style[${INDEPENDENT_MOBILE_SPATIAL_STYLE_ATTR}]`);
+    if (!style) {
+        style = document.createElement('style');
+        style.setAttribute(INDEPENDENT_MOBILE_SPATIAL_STYLE_ATTR, 'true');
+        root.appendChild(style);
+    }
+    style.textContent = `@media (max-width: ${MOBILE_LAYOUT_BREAKPOINT_PX}px) {
+[${INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR}] { overflow-x: auto !important; overscroll-behavior-inline: contain !important; -webkit-overflow-scrolling: touch !important; touch-action: pan-x pan-y !important; }
+[${INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR}] { width: var(--rm-mobile-spatial-natural-width) !important; min-width: var(--rm-mobile-spatial-natural-width) !important; max-width: none !important; box-sizing: border-box !important; }
+}`;
+    root.setAttribute(INDEPENDENT_MOBILE_SPATIAL_COUNT_ATTR, String(infos.length));
+    return infos.length;
+}
+
 function maintenanceMobileLayoutCss(scopeToken) {
     const scope = `[${MOBILE_LAYOUT_SCOPE_ATTR}="${scopeToken}"]`;
     return `@media (max-width: ${MOBILE_LAYOUT_BREAKPOINT_PX}px) {
@@ -17299,473 +17394,6 @@ function removeFeedbackCatsInChatDom() {
 
 
 const PALETTE_DEDUPE_CHECKED_ATTR = 'data-rabbit-mirror-palette-dedupe-checked';
-const PALETTE_FAMILY_ATTR = 'data-rabbit-mirror-palette-family';
-const PALETTE_SKELETON_ATTR = 'data-rabbit-mirror-palette-skeleton';
-const PALETTE_REPEAT_ATTR = 'data-rabbit-mirror-palette-repeat';
-const PALETTE_REMAP_ATTR = 'data-rabbit-mirror-palette-remap';
-const PALETTE_REMAP_REASON_ATTR = 'data-rabbit-mirror-palette-remap-reason';
-
-function paletteDedupeDetails(root) {
-    return root?.matches?.('details') ? root : root?.querySelector?.(':scope > details') || root?.querySelector?.('details') || root;
-}
-
-function paletteDedupeIsIndependent(root) {
-    const selector = '[data-rm-source="independent"], [data-rabbit-mirror-external-source="independent"], [data-rabbit-mirror-external-source="true"][data-rm-source="independent"]';
-    const host = root?.matches?.(selector) ? root : root?.closest?.(selector);
-    return !!host;
-}
-
-function paletteDedupeIsLatestFollowMirror(root) {
-    if (!root?.isConnected || paletteDedupeIsIndependent(root)) return false;
-    const chat = getAvailableHostChat();
-    if (!Array.isArray(chat) || !chat.length) return false;
-    const index = getMessageIndexFromMirrorNode(root);
-    if (index < 0) return false;
-    let latestAssistantIndex = -1;
-    for (let i = chat.length - 1; i >= 0; i -= 1) {
-        if (!chat[i]?.is_user) { latestAssistantIndex = i; break; }
-    }
-    return index === latestAssistantIndex;
-}
-
-function paletteDedupeRecentRenderedFollowObservations(root, limit = 2) {
-    const currentIndex = getMessageIndexFromMirrorNode(root);
-    if (currentIndex < 0) return [];
-    const chatRoot = getChatRoot();
-    if (!chatRoot) return [];
-    const byMessage = new Map();
-    for (const candidate of getRenderedRabbitMirrorInteractionRoots(chatRoot)) {
-        if (!candidate?.isConnected || candidate === root || paletteDedupeIsIndependent(candidate)) continue;
-        const index = getMessageIndexFromMirrorNode(candidate);
-        if (index < 0 || index >= currentIndex || byMessage.has(index)) continue;
-        const fingerprint = paletteDedupeFingerprint(candidate);
-        if (!fingerprint || Number(fingerprint.confidence || 0) < 0.5) continue;
-        byMessage.set(index, { messageKey: `dom:${index}`, fingerprint, ts: index });
-    }
-    return [...byMessage.entries()]
-        .sort((a, b) => a[0] - b[0])
-        .slice(-Math.max(1, Number(limit) || 2))
-        .map(([, value]) => value);
-}
-
-function paletteDedupeCurrentMessagePrefix(root) {
-    const chat = getAvailableHostChat();
-    const index = getMessageIndexFromMirrorNode(root);
-    const message = index >= 0 ? chat[index] : null;
-    const swipe = Number.isInteger(message?.swipe_id) ? message.swipe_id : 0;
-    return `${index}:${swipe}:`;
-}
-
-function paletteDedupeFingerprint(root) {
-    const details = paletteDedupeDetails(root);
-    if (!details?.outerHTML) return null;
-    try {
-        const wrapper = `<toto data-rabbit-mirror="true">${details.outerHTML}</toto>`;
-        return scanRabbitMirrorHtml(wrapper, details)?.paletteFingerprint || null;
-    } catch (error) {
-        console.debug('[RabbitMirror] local palette fingerprint skipped:', error);
-        return null;
-    }
-}
-
-function paletteDedupeRgb(value) {
-    const match = String(value || '').trim().match(/^rgba?\(\s*([0-9.]+)\s*[, ]\s*([0-9.]+)\s*[, ]\s*([0-9.]+)(?:\s*[,/]\s*([0-9.]+))?\s*\)$/i);
-    if (!match) return null;
-    return {
-        r: Math.max(0, Math.min(255, Number(match[1]))),
-        g: Math.max(0, Math.min(255, Number(match[2]))),
-        b: Math.max(0, Math.min(255, Number(match[3]))),
-        a: match[4] === undefined ? 1 : Math.max(0, Math.min(1, Number(match[4]))),
-    };
-}
-
-function paletteDedupeRgbToHsl(r, g, b) {
-    const nr = r / 255, ng = g / 255, nb = b / 255;
-    const max = Math.max(nr, ng, nb), min = Math.min(nr, ng, nb);
-    let h = 0, s = 0;
-    const l = (max + min) / 2;
-    const d = max - min;
-    if (d) {
-        s = d / (1 - Math.abs(2 * l - 1));
-        if (max === nr) h = 60 * (((ng - nb) / d) % 6);
-        else if (max === ng) h = 60 * (((nb - nr) / d) + 2);
-        else h = 60 * (((nr - ng) / d) + 4);
-    }
-    if (h < 0) h += 360;
-    return { h, s: Number.isFinite(s) ? s : 0, l };
-}
-
-function paletteDedupeHslToRgb(h, s, l) {
-    const hue = ((Number(h) % 360) + 360) % 360;
-    const sat = Math.max(0, Math.min(1, Number(s)));
-    const light = Math.max(0, Math.min(1, Number(l)));
-    const c = (1 - Math.abs(2 * light - 1)) * sat;
-    const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
-    const m = light - c / 2;
-    let rp = 0, gp = 0, bp = 0;
-    if (hue < 60) [rp, gp, bp] = [c, x, 0];
-    else if (hue < 120) [rp, gp, bp] = [x, c, 0];
-    else if (hue < 180) [rp, gp, bp] = [0, c, x];
-    else if (hue < 240) [rp, gp, bp] = [0, x, c];
-    else if (hue < 300) [rp, gp, bp] = [x, 0, c];
-    else [rp, gp, bp] = [c, 0, x];
-    return [rp, gp, bp].map(value => Math.round((value + m) * 255));
-}
-
-function paletteDedupeLuminance({ r, g, b }) {
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-function paletteDedupeHueCenterForFamily(family) {
-    const centers = {
-        red: 358,
-        orange: 28,
-        yellow: 54,
-        green: 138,
-        cyan: 186,
-        blue: 218,
-        purple: 278,
-        pink: 326,
-    };
-    return Number.isFinite(centers[String(family || '')]) ? centers[String(family || '')] : null;
-}
-
-function paletteDedupeHueDistance(a, b) {
-    if (!Number.isFinite(Number(a)) || !Number.isFinite(Number(b))) return 180;
-    return Math.abs((((Number(a) - Number(b)) % 360) + 540) % 360 - 180);
-}
-
-function paletteDedupeFingerprintHue(fingerprint) {
-    const value = fingerprint?.dominantHue;
-    if (value !== null && value !== undefined && value !== '') {
-        const direct = Number(value);
-        if (Number.isFinite(direct)) return direct;
-    }
-    return paletteDedupeHueCenterForFamily(fingerprint?.hueFamily);
-}
-
-function paletteDedupeBrightnessBand(color) {
-    const lum = paletteDedupeLuminance(color);
-    if (lum < 105) return 'dark';
-    if (lum > 185) return 'light';
-    return 'mid';
-}
-
-function paletteDedupeIntrinsicMaterialLocked(element) {
-    if (!element) return false;
-    const signal = [
-        element.id,
-        element.className,
-        element.getAttribute?.('data-material'),
-        element.getAttribute?.('data-surface'),
-        element.getAttribute?.('aria-label'),
-        element.getAttribute?.('title'),
-    ].map(value => String(value || '')).join(' ');
-    // Local palette repair must not recolor an explicitly intrinsic material/object
-    // (raw wood, skin, blood, fire, foliage, stone, leather, copper/gold, etc.).
-    // Colorable media such as paper, fabric, plastic, painted panels, glass or screens
-    // are intentionally not locked here; their hue can legitimately vary.
-    return /(raw[-_ ]?wood|wooden|timber|木纹|原木|木质|skin|flesh|肤色|皮肤|blood|血液|血迹|fire|flame|火焰|foliage|leaf|leaves|树叶|草地|stone|marble|石材|大理石|leather|皮革|copper|brass|gold|铜|黄铜|金色)/i.test(signal);
-}
-
-function paletteDedupeColorMatchesFingerprint(color, fingerprint) {
-    if (!color || color.a < 0.45 || !fingerprint) return false;
-    const hsl = paletteDedupeRgbToHsl(color.r, color.g, color.b);
-    const currentBrightness = String(fingerprint.brightness || 'mid');
-    const colorBrightness = paletteDedupeBrightnessBand(color);
-    // Preserve strongly contrasted secondary planes. The remapper is for the page's
-    // dominant material/surface system, not every large semantic object.
-    if (currentBrightness !== colorBrightness && colorBrightness !== 'mid' && currentBrightness !== 'mid') return false;
-
-    const currentHue = paletteDedupeFingerprintHue(fingerprint);
-    const currentFamily = String(fingerprint.hueFamily || 'neutral');
-    if (currentFamily === 'neutral' || !Number.isFinite(currentHue)) {
-        return hsl.s <= Math.max(0.28, Number(fingerprint.averageSaturation || 0) + 0.12);
-    }
-    if (hsl.s < 0.08) return String(fingerprint.saturation || '') === 'low';
-    return paletteDedupeHueDistance(hsl.h, currentHue) <= 48;
-}
-
-function paletteDedupeTemperatureForColor(color, hsl) {
-    const family = hsl.s >= 0.12
-        ? (hsl.h < 15 || hsl.h >= 345 ? 'red'
-            : hsl.h < 45 ? 'orange'
-                : hsl.h < 70 ? 'yellow'
-                    : hsl.h < 165 ? 'green'
-                        : hsl.h < 200 ? 'cyan'
-                            : hsl.h < 250 ? 'blue'
-                                : hsl.h < 290 ? 'purple' : 'pink')
-        : 'neutral';
-    if (['red', 'orange', 'yellow', 'pink'].includes(family)) return 'warm';
-    if (['green', 'cyan', 'blue', 'purple'].includes(family)) return 'cool';
-    const delta = Number(color.r || 0) - Number(color.b || 0);
-    if (delta >= 12) return 'warm';
-    if (delta <= -12) return 'cool';
-    return 'neutral';
-}
-
-function paletteDedupeColorMatchesDescriptor(color, descriptor) {
-    if (!color || color.a < 0.45 || !descriptor) return false;
-    const hsl = paletteDedupeRgbToHsl(color.r, color.g, color.b);
-    const brightness = paletteDedupeBrightnessBand(color);
-    if (brightness !== String(descriptor.brightness || 'mid')) return false;
-
-    const descriptorFamily = String(descriptor.hueFamily || 'neutral');
-    const descriptorHue = descriptor?.dominantHue;
-    if (descriptorFamily === 'neutral' || descriptorHue === null || descriptorHue === undefined || descriptorHue === '') {
-        if (hsl.s > 0.22) return false;
-        return paletteDedupeTemperatureForColor(color, hsl) === String(descriptor.temperature || 'neutral');
-    }
-    if (hsl.s < 0.08) return false;
-    return paletteDedupeHueDistance(hsl.h, Number(descriptorHue)) <= 42;
-}
-
-function paletteDedupeSkeletonFamilies(fingerprint) {
-    const skeleton = fingerprint?.paletteSkeleton;
-    const families = new Set();
-    for (const descriptor of [skeleton?.base, skeleton?.secondary, skeleton?.accent]) {
-        const family = String(descriptor?.hueFamily || 'neutral');
-        if (family !== 'neutral' && family !== 'none') families.add(family);
-    }
-    return families;
-}
-
-function paletteDedupeHash(text) {
-    let hash = 2166136261;
-    for (const char of String(text || '')) {
-        hash ^= char.charCodeAt(0);
-        hash = Math.imul(hash, 16777619);
-    }
-    return hash >>> 0;
-}
-
-const PALETTE_DEDUPE_TARGETS = Object.freeze([
-    Object.freeze({ family: 'pink', hue: 326 }),
-    Object.freeze({ family: 'green', hue: 138 }),
-    Object.freeze({ family: 'blue', hue: 218 }),
-    Object.freeze({ family: 'purple', hue: 278 }),
-    Object.freeze({ family: 'cyan', hue: 186 }),
-    Object.freeze({ family: 'orange', hue: 28 }),
-    Object.freeze({ family: 'red', hue: 358 }),
-    Object.freeze({ family: 'yellow', hue: 54 }),
-]);
-
-function paletteDedupeTargetPalette(root, current, observations = []) {
-    const blockedFamilies = new Set();
-    const currentFamily = String(current?.hueFamily || 'neutral');
-    if (currentFamily !== 'neutral') blockedFamilies.add(currentFamily);
-    for (const family of paletteDedupeSkeletonFamilies(current)) blockedFamilies.add(family);
-    for (const item of (Array.isArray(observations) ? observations : []).slice(-3)) {
-        const fingerprint = item?.fingerprint || item;
-        const family = String(fingerprint?.hueFamily || 'neutral');
-        if (family !== 'neutral') blockedFamilies.add(family);
-        for (const skeletonFamily of paletteDedupeSkeletonFamilies(fingerprint)) blockedFamilies.add(skeletonFamily);
-    }
-
-    const currentHueValue = current?.paletteSkeleton?.base?.dominantHue ?? paletteDedupeFingerprintHue(current);
-    const currentHue = currentHueValue === null || currentHueValue === undefined || currentHueValue === '' ? null : Number(currentHueValue);
-    let candidates = PALETTE_DEDUPE_TARGETS.filter(item => !blockedFamilies.has(item.family));
-    if (Number.isFinite(currentHue)) {
-        const farther = candidates.filter(item => paletteDedupeHueDistance(item.hue, currentHue) >= 38);
-        if (farther.length) candidates = farther;
-    }
-    if (!candidates.length) candidates = PALETTE_DEDUPE_TARGETS.filter(item => item.family !== currentFamily);
-    if (!candidates.length) candidates = [...PALETTE_DEDUPE_TARGETS];
-
-    const title = getRabbitMirrorSummaryText(root) || String(root?.textContent || '').slice(0, 180);
-    const messageIndex = getMessageIndexFromMirrorNode(root);
-    return candidates[paletteDedupeHash(`${title}|${messageIndex}|${paletteFamilyOfFingerprint(current)}`) % candidates.length];
-}
-
-function paletteDedupeMapColor(color, targetHue, fingerprint) {
-    const hsl = paletteDedupeRgbToHsl(color.r, color.g, color.b);
-    const brightness = paletteDedupeBrightnessBand(color);
-    // Keep the original surface's light/dark relationship and alpha so paper still
-    // reads as paper, glass/tinted panels keep their depth, and dark screens stay dark.
-    // Only add enough chroma for a genuinely different family to remain visible.
-    let targetSaturation;
-    let targetLightness;
-    if (brightness === 'light') {
-        targetSaturation = Math.max(0.30, Math.min(0.52, hsl.s < 0.12 ? 0.34 : hsl.s + 0.12));
-        targetLightness = hsl.l > 0.92 ? 0.86 : Math.max(0.70, Math.min(0.88, hsl.l));
-    } else if (brightness === 'dark') {
-        targetSaturation = Math.max(0.34, Math.min(0.60, hsl.s < 0.14 ? 0.40 : hsl.s + 0.10));
-        targetLightness = hsl.l < 0.08 ? 0.24 : Math.max(0.16, Math.min(0.36, hsl.l));
-    } else {
-        targetSaturation = Math.max(0.32, Math.min(0.58, hsl.s < 0.14 ? 0.36 : hsl.s + 0.08));
-        targetLightness = Math.max(0.34, Math.min(0.68, hsl.l));
-    }
-    const [r, g, b] = paletteDedupeHslToRgb(targetHue, targetSaturation, targetLightness);
-    return color.a < 0.999
-        ? `rgba(${r}, ${g}, ${b}, ${Number(color.a.toFixed(3))})`
-        : `rgb(${r}, ${g}, ${b})`;
-}
-
-function paletteDedupeRewriteGradient(value, targetHue, fingerprint, descriptor = null) {
-    let changed = false;
-    const output = String(value || '').replace(/rgba?\(\s*[0-9.]+\s*[, ]\s*[0-9.]+\s*[, ]\s*[0-9.]+(?:\s*[,/]\s*[0-9.]+)?\s*\)/gi, token => {
-        const color = paletteDedupeRgb(token);
-        const eligible = descriptor
-            ? paletteDedupeColorMatchesDescriptor(color, descriptor)
-            : paletteDedupeColorMatchesFingerprint(color, fingerprint);
-        if (!eligible) return token;
-        changed = true;
-        return paletteDedupeMapColor(color, targetHue, fingerprint);
-    });
-    return { changed, value: output };
-}
-
-function paletteDedupeElementArea(element) {
-    try {
-        const rect = element?.getBoundingClientRect?.();
-        return Math.max(0, Number(rect?.width) || 0) * Math.max(0, Number(rect?.height) || 0);
-    } catch { return 0; }
-}
-
-function paletteDedupeSurfaceCandidates(root, fingerprint, targetHue, { preferSkeletonBase = true } = {}) {
-    const details = paletteDedupeDetails(root);
-    if (!details?.querySelectorAll) return [];
-    const scene = [...(details.children || [])].find(child => !['SUMMARY', 'STYLE', 'SCRIPT'].includes(child?.tagName)) || details;
-    const view = details.ownerDocument?.defaultView || globalThis;
-    const getStyle = view?.getComputedStyle?.bind(view) || globalThis.getComputedStyle?.bind(globalThis);
-    if (typeof getStyle !== 'function') return [];
-    const rootArea = Math.max(1, paletteDedupeElementArea(scene));
-    const baseDescriptor = preferSkeletonBase ? fingerprint?.paletteSkeleton?.base || null : null;
-    return [scene, ...scene.querySelectorAll('div,section,article,main,aside,figure')]
-        .map((element, index) => ({ element, index, area: paletteDedupeElementArea(element) }))
-        .filter(item => item.index === 0 || item.area >= rootArea * 0.45)
-        .sort((a, b) => b.area - a.area)
-        .slice(0, 8)
-        .map(item => {
-            if (paletteDedupeIntrinsicMaterialLocked(item.element)) return null;
-            let style;
-            try { style = getStyle(item.element); } catch { return null; }
-            if (!style || style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) < 0.08) return null;
-            const backgroundColor = paletteDedupeRgb(style.backgroundColor);
-            const backgroundImage = String(style.backgroundImage || 'none');
-            const colorEligible = baseDescriptor
-                ? paletteDedupeColorMatchesDescriptor(backgroundColor, baseDescriptor)
-                : paletteDedupeColorMatchesFingerprint(backgroundColor, fingerprint);
-            const gradient = backgroundImage !== 'none'
-                ? paletteDedupeRewriteGradient(backgroundImage, targetHue, fingerprint, baseDescriptor)
-                : { changed: false, value: backgroundImage };
-            if (!colorEligible && !gradient.changed) return null;
-            return { ...item, backgroundColor, backgroundImage, colorEligible, baseDescriptor };
-        })
-        .filter(Boolean);
-}
-
-function paletteDedupeRestore(records) {
-    for (const record of records) {
-        for (const property of ['background-color', 'background-image']) {
-            const state = record.before[property];
-            if (!state?.value) record.element.style.removeProperty(property);
-            else record.element.style.setProperty(property, state.value, state.priority || '');
-        }
-    }
-}
-
-function applyFollowPaletteDedupe(root) {
-    if (!paletteDedupeIsLatestFollowMirror(root)) return { applied: false, reason: 'not-latest-follow' };
-    const details = paletteDedupeDetails(root);
-    if (!details?.setAttribute) return { applied: false, reason: 'no-details' };
-    if (details.getAttribute(PALETTE_DEDUPE_CHECKED_ATTR) === RUNTIME_VERSION) return { applied: false, reason: 'already-checked' };
-
-    const current = paletteDedupeFingerprint(root);
-    if (!current || Number(current.confidence || 0) < 0.55) return { applied: false, reason: 'low-confidence' };
-    const family = paletteFamilyOfFingerprint(current);
-    const skeletonSignature = String(current?.paletteSkeleton?.signature || '');
-    details.setAttribute(PALETTE_FAMILY_ATTR, family);
-    details.setAttribute(PALETTE_SKELETON_ATTR, skeletonSignature || '(none)');
-
-    let chatKey = '';
-    try { chatKey = getCurrentChatKey(getAvailableHostChat()); } catch {}
-    const prefix = paletteDedupeCurrentMessagePrefix(root);
-    const renderedObservations = paletteDedupeRecentRenderedFollowObservations(root, 2);
-    const renderedIndexes = new Set(renderedObservations.map(item => Number(String(item.messageKey || '').replace(/^dom:/, ''))).filter(Number.isInteger));
-    const storedObservations = getRecentPaletteObservations({ chatKey, source: 'follow', limit: 6 })
-        .filter(item => !prefix || !String(item?.messageKey || '').startsWith(prefix))
-        .filter(item => {
-            const match = String(item?.messageKey || '').match(/^(\d+):/);
-            return !match || !renderedIndexes.has(Number(match[1]));
-        });
-    const observations = [...storedObservations, ...renderedObservations].slice(-4);
-    const repeat = paletteRepeatStatus(current, observations, { minPreviousMatches: 1, threshold: 0.76 });
-    details.setAttribute(PALETTE_REPEAT_ATTR, repeat.repeated ? 'true' : 'false');
-    details.setAttribute(PALETTE_DEDUPE_CHECKED_ATTR, RUNTIME_VERSION);
-
-    // A single immediately repeated palette is enough to intervene. Similarity now
-    // includes the whole scaffold (base surface + large structural plane + contrast +
-    // accent evidence), so two mirrors cannot evade dedupe merely because one dark
-    // panel wins the aggregate area vote and the next mirror's paper base wins it.
-    if (!repeat.repeated) {
-        details.setAttribute(PALETTE_REMAP_ATTR, 'skipped');
-        details.setAttribute(PALETTE_REMAP_REASON_ATTR, 'no-repeat');
-        return { applied: false, reason: 'no-repeat', family, repeat };
-    }
-
-    const target = paletteDedupeTargetPalette(root, current, observations);
-    const candidates = paletteDedupeSurfaceCandidates(root, current, target.hue);
-    if (!candidates.length) {
-        details.setAttribute(PALETTE_REMAP_ATTR, 'skipped');
-        details.setAttribute(PALETTE_REMAP_REASON_ATTR, 'no-safe-large-surface');
-        return { applied: false, reason: 'no-safe-large-surface', family, repeat };
-    }
-
-    const changed = [];
-    for (const candidate of candidates) {
-        const before = {};
-        for (const property of ['background-color', 'background-image']) {
-            before[property] = {
-                value: candidate.element.style.getPropertyValue(property),
-                priority: candidate.element.style.getPropertyPriority(property),
-            };
-        }
-        let localChanged = false;
-        if (candidate.colorEligible && candidate.backgroundColor) {
-            candidate.element.style.setProperty('background-color', paletteDedupeMapColor(candidate.backgroundColor, target.hue, current), 'important');
-            localChanged = true;
-        }
-        if (candidate.backgroundImage && candidate.backgroundImage !== 'none') {
-            const rewritten = paletteDedupeRewriteGradient(candidate.backgroundImage, target.hue, current, candidate.baseDescriptor || null);
-            if (rewritten.changed) {
-                candidate.element.style.setProperty('background-image', rewritten.value, 'important');
-                localChanged = true;
-            }
-        }
-        if (localChanged) changed.push({ element: candidate.element, before });
-    }
-
-    if (!changed.length) {
-        details.setAttribute(PALETTE_REMAP_ATTR, 'skipped');
-        details.setAttribute(PALETTE_REMAP_REASON_ATTR, 'no-safe-color-token');
-        return { applied: false, reason: 'no-safe-color-token', family, repeat };
-    }
-
-    const after = paletteDedupeFingerprint(root);
-    const afterFamily = paletteFamilyOfFingerprint(after);
-    const afterSkeletonSignature = String(after?.paletteSkeleton?.signature || '');
-    const afterRepeat = paletteRepeatStatus(after, observations, { minPreviousMatches: 1, threshold: 0.74 });
-    const signatureEscaped = skeletonSignature && afterSkeletonSignature
-        ? afterSkeletonSignature !== skeletonSignature
-        : afterFamily !== family;
-    const escaped = after && Number(after.confidence || 0) >= 0.5
-        && signatureEscaped
-        && !afterRepeat.repeated;
-    if (!escaped) {
-        paletteDedupeRestore(changed);
-        details.setAttribute(PALETTE_REMAP_ATTR, 'rolled-back');
-        details.setAttribute(PALETTE_REMAP_REASON_ATTR, 'verification-failed');
-        return { applied: false, reason: 'verification-failed', family, repeat };
-    }
-
-    details.setAttribute(PALETTE_REMAP_ATTR, 'applied');
-    details.setAttribute(PALETTE_REMAP_REASON_ATTR, `local-surface-remap:${family}->${afterFamily};target=${target.family};hue=${target.hue}`);
-    details.setAttribute(PALETTE_FAMILY_ATTR, afterFamily);
-    details.setAttribute(PALETTE_SKELETON_ATTR, afterSkeletonSignature || '(none)');
-    return { applied: true, reason: 'local-surface-remap', family: afterFamily, repeat };
-}
-
 function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } = {}) {
     if (!isCurrentRuntime() || !scope?.querySelectorAll) return;
     const maintenanceEnabled = isMaintenanceRabbitEnabled();
@@ -17784,11 +17412,6 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } 
             installNestedDetailsReplacementContainment(root);
         } catch (error) {
             console.debug('[RabbitMirror] nested details containment skipped for one mirror:', error);
-        }
-        try {
-            applyFollowPaletteDedupe(root);
-        } catch (error) {
-            console.debug('[RabbitMirror] local palette dedupe skipped for one mirror:', error);
         }
         if (maintenanceEnabled) {
             try {

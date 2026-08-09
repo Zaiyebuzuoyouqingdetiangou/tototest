@@ -1,5 +1,9 @@
 # 兔子镜小剧场
 
+当前对外版本标识：`TOTOv1.3`。扩展显示名称仍固定为“兔子镜小剧场”。
+
+当前构建发布通道：测试仓库 `tototest`。
+
 > 源码可见，但不是开源软件（Source Available — Not Open Source）。  
 > 仅授权个人、非商业安装和使用。禁止二改、提取代码、制作衍生版本、转载、重新打包、镜像分发、整合到其他项目或商业使用。详见 [LICENSE](./LICENSE)。
 
@@ -59,8 +63,6 @@
 
 主 API 只生成正文，不注入兔子镜 Prompt。正文与可用推理稳定后，兔子镜小剧场通过 SillyTavern 自带的 Custom Chat Completions 后端通道，请求用户配置的 OpenAI 兼容 API。
 
-当前版本直接使用 SillyTavern 自带的 `/api/backends/chat-completions/status` 与 `/api/backends/chat-completions/generate` 服务端转发，不需要额外安装 `server-plugin-rabbitmirror-independent-api`。
-
 需要填写：
 
 - API 地址；
@@ -73,8 +75,6 @@
 
 - **纯外置**：等待、生成成功与失败都保留在消息后的外置圆框；
 - **外置后内嵌**：等待与失败时显示外置圆框，成功后将同一个宿主自然移入本条回复的正文内容区域，不复制第二份兔子镜，也不写入 `message.mes`、`display_text` 或 Swipe 正文。
-
-独立 API 成功成品会额外保存到当前聊天的 `chatMetadata` 作为跨设备持久化副本；浏览器 `localStorage` 仅作为快速缓存。使用同一个 SillyTavern 服务器打开同一聊天时，另一台设备可从聊天数据恢复这些成品。升级后，在原设备打开旧聊天会把仍存在的旧本地独立兔子镜迁移到聊天级存储。该持久化字段不会加入独立 API 的 Prompt 上下文。
 
 切换生成来源只影响之后的新回复；已经生成的主 API／独立 API 兔子镜会尽量保留。
 

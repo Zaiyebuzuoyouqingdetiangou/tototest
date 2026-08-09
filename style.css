@@ -514,12 +514,12 @@ toto[data-rabbit-mirror="true"] summary {
   display:block !important;
   position:relative !important;
   isolation:isolate !important;
-  width:calc(100% - 44px) !important;
-  max-width:560px !important;
+  width:100% !important;
+  max-width:100% !important;
   min-width:0 !important;
   box-sizing:border-box !important;
   align-self:auto !important;
-  margin:10px auto 14px !important;
+  margin:8px 0 10px !important;
   padding:6px !important;
   border:1px solid var(--rm-shell-border, rgba(0,0,0,.10)) !important;
   border-radius:18px !important;
@@ -604,8 +604,8 @@ toto[data-rabbit-mirror="true"] summary {
     border-radius:16px !important;
   }
   #chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"]{
-    width:calc(100% - 32px) !important;
-    max-width:none !important;
+    width:100% !important;
+    max-width:100% !important;
     border-radius:16px !important;
   }
   #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"]{
