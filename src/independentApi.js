@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.7';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.7';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.7';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.7';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.7';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.7';
+import { getSettings } from './settings.js?rmv=1.3.9';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.9';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.9';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.9';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.9';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.9';
 
-const RUNTIME_VERSION = '1.3.7';
+const RUNTIME_VERSION = '1.3.9';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -1117,18 +1117,84 @@ function stampExternalHostOwnership(el,host,key='',source='independent'){
  host.setAttribute('aria-label',`第 ${mesid || '?'} 条回复的兔子镜`);
  stampExternalDetailsOwnership(host);
 }
-function syncExternalHostGeometry(el,host){
- if(!host?.isConnected) return;
- // beta.14.28: do not copy a transient .mes_text rectangle. During mobile
- // rendering that rectangle can be temporarily narrowed by status bars,
- // avatars or another extension, which made identical mirrors use random
- // widths. The external shell now has one stable CSS width token.
+function clearExternalHostGeometryTokens(host){
+ if(!host) return;
+ host.style.removeProperty('--rm-external-lane-width');
+ host.style.removeProperty('--rm-external-lane-left');
  host.style.removeProperty('--rm-external-inline-start');
  host.style.removeProperty('--rm-external-inline-end');
- host.dataset.rmExternalWidthMode='stable-comfort';
+}
+function stableMessageContentLane(el){
+ const body=messageBody(el);
+ if(!el||!body) return null;
+ // Use the stable正文 content lane (normally .mes_block), not the instantaneous
+ // .mes_text rectangle. The latter can be temporarily narrowed on mobile while
+ // status bars / avatars / other extensions are still laying out.
+ if(body!==el){
+  const parent=body.parentElement;
+  if(parent?.isConnected && el.contains(parent)) return parent;
+  return body;
+ }
+ return el.querySelector?.('.mes_block') || el;
+}
+function syncExternalHostGeometry(el,host){
+ if(!host?.isConnected) return;
+ const source=String(host.dataset.rmSource||'independent');
+ const placement=String(host.dataset.rmPlacement||'external');
+ if(source!=='independent' || placement!=='external' || !el?.isConnected){
+  clearExternalHostGeometryTokens(host);
+  host.dataset.rmExternalWidthMode = placement==='inline' ? 'inline-content-lane' : source==='follow' ? 'follow-content-lane' : 'stable-fallback';
+  return;
+ }
+ const lane=stableMessageContentLane(el);
+ const parent=host.parentElement;
+ if(!lane?.isConnected || !parent?.isConnected){
+  clearExternalHostGeometryTokens(host);
+  host.dataset.rmExternalWidthMode='stable-fallback';
+  return;
+ }
+ try{
+  const laneRect=lane.getBoundingClientRect();
+  const parentRect=parent.getBoundingClientRect();
+  const parentStyle=typeof getComputedStyle==='function' ? getComputedStyle(parent) : null;
+  const padLeft=Math.max(0,parseFloat(parentStyle?.paddingLeft||'0')||0);
+  const padRight=Math.max(0,parseFloat(parentStyle?.paddingRight||'0')||0);
+  const borderLeft=Math.max(0,Number(parent.clientLeft||0));
+  const borderRight=Math.max(0,Number(parentRect.width||0)-Number(parent.clientWidth||0)-borderLeft);
+  const contentLeft=Number(parentRect.left||0)+borderLeft+padLeft;
+  const contentRight=Number(parentRect.right||0)-borderRight-padRight;
+  const contentWidth=Math.max(0,contentRight-contentLeft);
+  let left=Number(laneRect.left||0)-contentLeft;
+  let width=Number(laneRect.width||0);
+  if(!Number.isFinite(left) || !Number.isFinite(width) || contentWidth<=0){
+   throw new Error('invalid content-lane geometry');
+  }
+  left=Math.max(0,Math.min(left,Math.max(0,contentWidth-1)));
+  width=Math.min(width,Math.max(0,contentWidth-left));
+  // Reject obviously transient/collapsed measurements and keep the CSS fallback
+  // for that frame; a later RAF/resize pass will retry against the stable lane.
+  if(width<220 || (contentWidth>=320 && width<contentWidth*.55)){
+   clearExternalHostGeometryTokens(host);
+   host.dataset.rmExternalWidthMode='stable-fallback';
+   return;
+  }
+  host.style.setProperty('--rm-external-lane-width',`${Math.round(width*10)/10}px`);
+  host.style.setProperty('--rm-external-lane-left',`${Math.round(left*10)/10}px`);
+  host.dataset.rmExternalWidthMode='message-content-lane';
+ }catch{
+  clearExternalHostGeometryTokens(host);
+  host.dataset.rmExternalWidthMode='stable-fallback';
+ }
 }
 function scheduleExternalHostGeometry(el,host){
  syncExternalHostGeometry(el,host);
+ const retry=()=>{
+  if(host?.isConnected) syncExternalHostGeometry(el||messageElementForExternalHost(host),host);
+ };
+ if(typeof requestAnimationFrame==='function'){
+  requestAnimationFrame(()=>requestAnimationFrame(retry));
+ }
+ setTimeout(retry,120);
 }
 function clearOrphanExternalHostTimer(mesid=''){
  const id=String(mesid||'');
@@ -1270,17 +1336,30 @@ function clearExternalHostFreshSourceState(host){
  clearIndependentResayStatus(host);
 }
 function refreshExternalHostGeometry(){
- // Stable comfort width is CSS-only; orientation changes do not sample any
- // message-specific rectangle and therefore cannot freeze a narrow width.
  for(const host of allExternalHosts().filter(node=>node.dataset.rmSource==='independent')){
    syncExternalHostGeometry(messageElementForExternalHost(host),host);
  }
 }
+function queueExternalHostGeometryRefresh(){
+ if(externalGeometryFrame) return;
+ const run=()=>{
+  externalGeometryFrame=0;
+  refreshExternalHostGeometry();
+ };
+ if(typeof requestAnimationFrame==='function') externalGeometryFrame=requestAnimationFrame(run);
+ else externalGeometryFrame=setTimeout(run,60);
+}
 function installExternalGeometryListeners(){
  if(externalGeometryListenersInstalled) return;
  externalGeometryListenersInstalled=true;
+ globalThis.addEventListener?.('resize',queueExternalHostGeometryRefresh,{passive:true});
+ globalThis.addEventListener?.('orientationchange',queueExternalHostGeometryRefresh,{passive:true});
 }
 function removeExternalGeometryListeners(){
+ if(externalGeometryListenersInstalled){
+  globalThis.removeEventListener?.('resize',queueExternalHostGeometryRefresh);
+  globalThis.removeEventListener?.('orientationchange',queueExternalHostGeometryRefresh);
+ }
  externalGeometryListenersInstalled=false;
  if(externalGeometryFrame){
    globalThis.cancelAnimationFrame?.(externalGeometryFrame);
