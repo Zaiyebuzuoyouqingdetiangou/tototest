@@ -702,3 +702,27 @@ toto[data-rabbit-mirror="true"] summary {
 .rabbit-mirror-external-error-action:active{
   transform:translateY(1px) !important;
 }
+
+/* 1.3.6 TEST: pure-external RabbitMirror is one visual body, not a neutral wrapper around another card.
+ * This is intentionally external-only. external_then_inline returns to the existing transparent inline carrier. */
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-shell-integrated="true"]{
+  border-width:var(--rm-shell-border-width, 1px) !important;
+  border-style:solid !important;
+  border-color:var(--rm-shell-border, rgba(0,0,0,.12)) !important;
+  border-radius:var(--rm-shell-radius, 18px) !important;
+  background:var(--rm-shell-surface, var(--rm-shell-bg, rgba(255,255,255,.97))) !important;
+  box-shadow:0 10px 26px var(--rm-shell-shadow, rgba(0,0,0,.10)) !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-shell-integrated="true"] > details[data-rabbit-mirror-external-details="true"] > summary{
+  background:var(--rm-shell-header-bg, var(--rm-shell-surface, transparent)) !important;
+  color:var(--rm-shell-header-text, var(--rm-shell-text, inherit)) !important;
+  border-radius:calc(var(--rm-shell-radius, 18px) - var(--rm-shell-border-width, 1px)) calc(var(--rm-shell-radius, 18px) - var(--rm-shell-border-width, 1px)) 0 0 !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-shell-integrated="true"] > details[data-rabbit-mirror-external-details="true"][open] > summary{
+  border-bottom:var(--rm-shell-border-width, 1px) solid var(--rm-shell-border, rgba(0,0,0,.10)) !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-shell-integrated="true"] > details[data-rabbit-mirror-external-details="true"] > [data-rm-shell-integrated-body="true"]{
+  margin-top:0 !important;
+  border-top-left-radius:0 !important;
+  border-top-right-radius:0 !important;
+}

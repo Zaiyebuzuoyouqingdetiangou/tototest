@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.5';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.5';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.5';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.5';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.5';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.5';
+import { getSettings } from './settings.js?rmv=1.3.6';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.6';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.6';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.6';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.6';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.6';
 
-const RUNTIME_VERSION = '1.3.5';
+const RUNTIME_VERSION = '1.3.6';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -1168,6 +1168,7 @@ function placeExternalHost(el,host,key='',source='independent'){
   if(!anchor) return false;
   if(host.parentElement!==anchor) anchor.append(host);
   host.dataset.rmPlacement='inline';
+  clearExternalShellIntegration(host);
   host.dataset.rmExternalPlacementEstablished='true';
   host.hidden=false;
   delete host.dataset.rmAwaitingOwner;
@@ -1985,11 +1986,89 @@ function applyExternalShellTintPalette(host,palette){
  host.style.setProperty('--rm-shell-text',externalShellRgba(tint.text,1));
  return true;
 }
+function externalShellContrastText(color){
+ if(!color) return {r:36,g:36,b:36,a:1};
+ const metrics=externalShellColorMetrics(color);
+ return metrics.luminance<.48 ? {r:248,g:248,b:248,a:1} : {r:42,g:42,b:42,a:1};
+}
+function externalShellWideTopBand(root){
+ if(!root?.isConnected || typeof getComputedStyle!=='function') return null;
+ let rootRect; try{ rootRect=root.getBoundingClientRect(); }catch{return null;}
+ const width=Math.max(1,Number(rootRect?.width||0));
+ const height=Math.max(1,Number(rootRect?.height||0));
+ const candidates=[];
+ for(const element of [...root.querySelectorAll?.('header,div,section,nav')||[]].slice(0,120)){
+  if(!element?.isConnected || element.closest?.('[data-rabbit-mirror-tool-entry-host]')) continue;
+  let style,rect; try{ style=getComputedStyle(element); rect=element.getBoundingClientRect(); }catch{continue;}
+  if(style.display==='none' || style.visibility==='hidden' || Number(style.opacity||1)<.08) continue;
+  const w=Math.max(0,Number(rect?.width||0)), h=Math.max(0,Number(rect?.height||0));
+  if(w<width*.58 || h<24 || h>Math.min(180,height*.34)) continue;
+  const topOffset=(Number(rect?.top||0)-Number(rootRect?.top||0))/height;
+  if(topOffset<-.03 || topOffset>.28) continue;
+  const background=parseExternalShellColor(style.backgroundColor);
+  const gradient=averageExternalShellColors(externalShellColorsFromText(style.backgroundImage));
+  const color=(background&&background.a>=.22)?background:gradient;
+  if(!color) continue;
+  const metrics=externalShellColorMetrics(color);
+  const coverage=Math.min(1.2,w/width);
+  const score=coverage*4 + Math.max(0,1-topOffset*3) + metrics.saturation*2.2 + Math.min(1,h/90);
+  candidates.push({color,score});
+ }
+ candidates.sort((a,b)=>b.score-a.score);
+ return candidates[0]?.color||null;
+}
+function clearExternalShellIntegration(host){
+ if(!host?.style) return;
+ host.removeAttribute('data-rm-shell-integrated');
+ for(const property of ['--rm-shell-surface','--rm-shell-header-bg','--rm-shell-header-text','--rm-shell-radius','--rm-shell-border-width']) host.style.removeProperty(property);
+ host.querySelectorAll?.('[data-rm-shell-integrated-body="true"]').forEach(node=>node.removeAttribute('data-rm-shell-integrated-body'));
+}
+function applyExternalShellIntegration(host,palette=null){
+ if(!host?.isConnected || host.dataset.rmSource!=='independent' || host.dataset.rmPlacement!=='external') return false;
+ const details=host.querySelector?.(':scope > details[data-rabbit-mirror-external-details="true"], :scope > details');
+ if(!details || typeof getComputedStyle!=='function') return false;
+ const body=[...(details.children||[])].find(node=>!['SUMMARY','STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node?.tagName));
+ if(!body?.isConnected) return false;
+ let bodyStyle=null; try{ bodyStyle=getComputedStyle(body); }catch{}
+ const visual=independentPrimaryVisualShell(details);
+ const visualRoot=visual?.element || body;
+ let visualStyle=null; try{ visualStyle=getComputedStyle(visualRoot); }catch{}
+ const bodyBackground=parseExternalShellColor(bodyStyle?.backgroundColor);
+ const bodyGradient=averageExternalShellColors(externalShellColorsFromText(bodyStyle?.backgroundImage));
+ const visualBackground=parseExternalShellColor(visualStyle?.backgroundColor);
+ const visualGradient=averageExternalShellColors(externalShellColorsFromText(visualStyle?.backgroundImage));
+ const surface=(bodyBackground&&bodyBackground.a>=.18?bodyBackground:null) || bodyGradient || (visualBackground&&visualBackground.a>=.18?visualBackground:null) || visualGradient || palette?.base || null;
+ if(!surface) return false;
+ const header=externalShellWideTopBand(visualRoot) || externalShellWideTopBand(body) || (palette?.colors||[]).filter(color=>externalShellColorMetrics(color).saturation>=.18).sort((a,b)=>externalShellColorMetrics(b).saturation-externalShellColorMetrics(a).saturation)[0] || surface;
+ let border=parseExternalShellColor(bodyStyle?.borderTopColor) || parseExternalShellColor(visualStyle?.borderTopColor);
+ if(!border || border.a<.12) border=mixExternalShellColors(surface,externalShellColorMetrics(surface).luminance>.55?{r:0,g:0,b:0}:{r:255,g:255,b:255},.22);
+ let radius=Math.max(...String(bodyStyle?.borderRadius||visualStyle?.borderRadius||'0').split(/[\s\/]+/).map(value=>parseFloat(value)||0),0);
+ if(radius<4) radius=Math.max(...String(visualStyle?.borderRadius||'0').split(/[\s\/]+/).map(value=>parseFloat(value)||0),0);
+ radius=Math.max(8,Math.min(28,radius||16));
+ let borderWidth=Math.max(...String(bodyStyle?.borderWidth||visualStyle?.borderWidth||'0').split(/\s+/).map(value=>parseFloat(value)||0),0);
+ borderWidth=Math.max(1,Math.min(4,borderWidth||1));
+ host.setAttribute('data-rm-shell-integrated','true');
+ host.style.setProperty('--rm-shell-surface',externalShellRgba(surface,.99));
+ host.style.setProperty('--rm-shell-header-bg',externalShellRgba(header,.99));
+ host.style.setProperty('--rm-shell-header-text',externalShellRgba(externalShellContrastText(header),1));
+ host.style.setProperty('--rm-shell-border',externalShellRgba(border,.88));
+ host.style.setProperty('--rm-shell-radius',`${radius}px`);
+ host.style.setProperty('--rm-shell-border-width',`${borderWidth}px`);
+ // Only flatten the stage carrier when it is not itself the object-like medium.
+ // Device/book/card objects keep their own top corners intact.
+ host.querySelectorAll?.('[data-rm-shell-integrated-body="true"]').forEach(node=>node.removeAttribute('data-rm-shell-integrated-body'));
+ if(!visual?.objectLike || body!==visualRoot) body.setAttribute('data-rm-shell-integrated-body','true');
+ return true;
+}
 function applyExternalShellTint(host,html=''){
  if(!host?.style) return false;
  const rendered=renderedExternalShellPalette(host);
  const source=externalShellSourcePalette(html);
- return applyExternalShellTintPalette(host,rendered||source);
+ const palette=rendered||source;
+ const tinted=applyExternalShellTintPalette(host,palette);
+ if(host.dataset.rmPlacement==='external') applyExternalShellIntegration(host,palette);
+ else clearExternalShellIntegration(host);
+ return tinted;
 }
 function scheduleExternalShellTint(host,html=''){
  if(!host) return false;
