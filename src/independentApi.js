@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.4';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.4';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.4';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.4';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.4';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.4';
+import { getSettings } from './settings.js?rmv=1.3.5';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.5';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.5';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.5';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.5';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.5';
 
-const RUNTIME_VERSION = '1.3.4';
+const RUNTIME_VERSION = '1.3.5';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -2087,6 +2087,7 @@ function independentPrimaryVisualShell(details){
   if(widthRatio<.34 || widthRatio>.96 || heightRatio<.28) continue;
   const signature=`${element.id||''} ${element.className||''} ${element.getAttribute?.('aria-label')||''} ${element.getAttribute?.('style')||''}`.toLowerCase();
   const strongHint=/(?:phone|shell|device|frame|screen|terminal|monitor|passport|card|document|paper|page|book|镜|壳|界面|手机|证件|书页|档案|屏幕|终端)/i.test(signature);
+  const objectLike=/(?:phone|device|terminal|monitor|passport|document|paper|page|book|手机|证件|书页|档案|屏幕|终端)/i.test(signature);
   const background=parseExternalShellColor(style.backgroundColor);
   const gradient=averageExternalShellColors(externalShellColorsFromText(style.backgroundImage));
   const borderRadius=Math.max(...String(style.borderRadius||'0').split(/[\s\/]+/).map(value=>parseFloat(value)||0),0);
@@ -2100,7 +2101,7 @@ function independentPrimaryVisualShell(details){
   const areaRatio=Math.min(1.6,area/Math.max(1,bodyWidth*bodyHeight));
   const portraitBonus=height>=width*1.12 ? .65 : 0;
   const score=areaRatio*6 + widthRatio*2.8 + heightRatio*1.4 + (strongHint?2.8:0) + (hasBackground?1.2:0) + (hasFrame?1.1:0) + portraitBonus - centerOffset*2 + Math.max(0,.9-depth*.08);
-  candidates.push({element,width,height,widthRatio,heightRatio,area,score,strongHint,hasFrame,hasBackground});
+  candidates.push({element,width,height,widthRatio,heightRatio,area,score,strongHint,objectLike,hasFrame,hasBackground});
  }
  candidates.sort((a,b)=>b.score-a.score);
  return candidates[0]||null;
@@ -2116,10 +2117,15 @@ function independentPrimaryContentCarrier(details){
  const bodyHeight=Math.max(1,Number(bodyRect?.height||0));
  const compact=value=>String(value||'').replace(/\s+/g,'').trim();
  const totalText=Math.max(1,compact(body.textContent).length);
+ const visualShell=independentPrimaryVisualShell(details)?.element || null;
  const candidates=[];
  const nodes=[...body.querySelectorAll('main,article,section,figure,div')].slice(0,260);
  for(const element of nodes){
   if(!element?.isConnected || element.closest?.('[data-rabbit-mirror-tool-entry-host]')) continue;
+  // 1.2.67's mobile rescue deliberately preserved screen/device shells instead of
+  // treating them as a generic narrow text carrier. Keep that separation here too:
+  // the object itself is sized by the dedicated adaptive-media path below.
+  if(visualShell && (element===visualShell || visualShell.contains?.(element))) continue;
   let style,rect; try{ style=getComputedStyle(element); rect=element.getBoundingClientRect(); }catch{continue;}
   if(!style || style.display==='none' || style.visibility==='hidden' || Number(style.opacity||1)<.08) continue;
   const width=Math.max(0,Number(rect?.width||0));
@@ -2173,34 +2179,35 @@ function rescueIndependentExternalVisualShell(host){
  const details=host.querySelector?.(':scope > details[data-rabbit-mirror-external-details="true"], :scope > details');
  if(!details) return false;
  const visual=independentPrimaryVisualShell(details);
- if(!visual?.element || visual.widthRatio>=.8) return false;
- let hostWidth=0;
- try{ hostWidth=Number(host.getBoundingClientRect?.().width||0); }catch{}
- if(hostWidth<=0) return false;
- const available=Math.max(280,hostWidth-18);
+ // Only size a clearly object-like medium (phone/device/document/book/etc.).
+ // Ordinary scene/page containers keep the model's native composition.
+ if(!visual?.element || !visual.objectLike) return false;
  const naturalWidth=Math.max(1,Number(visual.width||visual.element.getBoundingClientRect?.().width||0));
  const naturalHeight=Math.max(1,Number(visual.height||visual.element.getBoundingClientRect?.().height||0));
  if(naturalWidth<=0 || naturalHeight<=0) return false;
+
+ // 1.2.67 did not force a device to fill the mirror; the outer carrier was
+ // responsive while the object kept its own proportions. Recreate that behavior
+ // with a fluid CSS size instead of calculating one fixed pixel width at mount.
  const portrait=naturalHeight>=naturalWidth*1.08;
- const growCap=portrait ? 1.42 : 1.28;
- const targetWidth=Math.min(available,Math.max(naturalWidth*1.14,Math.min(available,naturalWidth*growCap)));
- if(targetWidth<=naturalWidth+14) return false;
- const scale=targetWidth/naturalWidth;
- const targetHeight=Math.round(naturalHeight*scale);
+ const widthRule=portrait
+  ? 'clamp(320px, 78%, 460px)'
+  : 'clamp(320px, 86%, 620px)';
  const element=visual.element;
  captureIndependentContentWidthBaseline(element);
- element.style.setProperty('width',`${Math.round(targetWidth)}px`,'important');
- element.style.setProperty('max-width','calc(100% - 6px)','important');
+ element.style.setProperty('width',widthRule,'important');
+ element.style.setProperty('max-width','calc(100% - 12px)','important');
  element.style.setProperty('min-width','0','important');
  element.style.setProperty('margin-left','auto','important');
  element.style.setProperty('margin-right','auto','important');
  element.style.setProperty('box-sizing','border-box','important');
  const inlineStyle=String(element.getAttribute?.('style')||'').toLowerCase();
- if(/(?:^|;)\s*height\s*:/.test(inlineStyle) || Number(getComputedStyle(element)?.height?.replace?.('px','')||0)>180){
-  element.style.setProperty('height',`${Math.max(180,targetHeight)}px`,'important');
+ if(/(?:^|;)\s*height\s*:/.test(inlineStyle)){
+  element.style.setProperty('height','auto','important');
+  element.style.setProperty('aspect-ratio',`${Math.round(naturalWidth)} / ${Math.round(naturalHeight)}`,'important');
  }
  element.setAttribute(INDEPENDENT_CONTENT_WIDTH_RESCUE_ATTR,'true');
- host.dataset.rmIndependentVisualShellRescue='true';
+ host.dataset.rmIndependentVisualShellRescue='adaptive-clamp';
  return true;
 }
 

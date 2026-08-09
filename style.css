@@ -486,7 +486,7 @@ toto[data-rabbit-mirror="true"] summary {
   overflow-wrap:anywhere;
   line-height:1.55;
 }
-/* v1.3.4: external RabbitMirror itself is the mirror body. Keep it wide enough, and let its own palette follow the generated content instead of a neutral detached shell. */
+/* v1.3.5: external RabbitMirror itself is the mirror body. Keep it wide enough, and let its own palette follow the generated content instead of a neutral detached shell. */
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
   display:block !important;
   position:relative !important;
