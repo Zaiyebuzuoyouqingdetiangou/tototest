@@ -486,15 +486,13 @@ toto[data-rabbit-mirror="true"] summary {
   overflow-wrap:anywhere;
   line-height:1.55;
 }
-/* beta.14.53: restore the compact centered white shell that users expect.
- * Independent external hosts should look like a cute neutral frame, not inherit
- * the page theme tint, and should keep comfortable left/right breathing room. */
+/* v1.3.4: external RabbitMirror itself is the mirror body. Keep it wide enough, and let its own palette follow the generated content instead of a neutral detached shell. */
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
   display:block !important;
   position:relative !important;
   isolation:isolate !important;
-  width:calc(100% - 44px) !important;
-  max-width:560px !important;
+  width:calc(100% - 16px) !important;
+  max-width:760px !important;
   min-width:0 !important;
   box-sizing:border-box !important;
   align-self:auto !important;
@@ -599,7 +597,7 @@ toto[data-rabbit-mirror="true"] summary {
 }
 @media (max-width:420px){
   #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
-    width:calc(100% - 32px) !important;
+    width:calc(100% - 8px) !important;
     max-width:none !important;
     border-radius:16px !important;
   }
