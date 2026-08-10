@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.17';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.17';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.17';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.17';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.17';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.17';
+import { getSettings } from './settings.js?rmv=1.3.19';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.19';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.19';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.19';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.19';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.19';
 
-const RUNTIME_VERSION = '1.3.17';
+const RUNTIME_VERSION = '1.3.19';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -48,12 +48,6 @@ let externalGeometryFrame = 0;
 let externalGeometryTimer = 0;
 let externalGeometryLastSignature = '';
 let externalGeometryListenersInstalled = false;
-let externalGeometryViewportObserver = null;
-const externalGeometryNearHosts = new Set();
-const EXTERNAL_PERF_SUSPENDED_ATTR = 'data-rm-perf-suspended';
-const EXTERNAL_PERF_STYLE_ATTR = 'data-rm-perf-suspended-style';
-const EXTERNAL_PERF_STYLE_MEDIA_ATTR = 'data-rm-perf-original-media';
-const EXTERNAL_PERF_STYLE_MEDIA_NONE = '__rm_none__';
 const pending = new Map();
 let feedbackActionListenerInstalled = false;
 let repairPersistenceListenerInstalled = false;
@@ -1124,7 +1118,6 @@ function stampExternalHostOwnership(el,host,key='',source='independent'){
  host.setAttribute('role','region');
  host.setAttribute('aria-label',`第 ${mesid || '?'} 条回复的兔子镜`);
  stampExternalDetailsOwnership(host);
- registerExternalGeometryHost(host);
 }
 function clearExternalHostGeometryTokens(host){
  if(!host) return;
@@ -1196,7 +1189,7 @@ function computeExternalHostGeometryPlan(el,host){
   if(!laneBox || contentWidth<=0) throw new Error('invalid content-lane geometry');
 
   // Pure external must match external_then_inline's actual containing block.
-  // Keep the 1.3.17 sizing formula intact; this function only separates the
+  // Keep the 1.3.19 sizing formula intact; this function only separates the
   // layout READ phase from the later WRITE phase so a global refresh cannot
   // thrash layout by alternating getBoundingClientRect() and style mutations.
   const refBox=laneBox;
@@ -1382,49 +1375,22 @@ function clearExternalHostFreshSourceState(host){
  delete host.dataset.rmFreshSourceStatus;
  clearIndependentResayStatus(host);
 }
-function canSuspendExternalHostRendering(host){
- if(!host?.isConnected) return false;
- if(host.dataset?.rmSource!=='independent') return false;
- if(String(host.dataset?.rmPlacement||'external')!=='external') return false;
- if(String(host.dataset?.rmState||'')!=='ready') return false;
- if(host.dataset?.rmPending==='true' || host.dataset?.rmAwaitingFreshSource==='true' || host.dataset?.rmAwaitingOwner==='true') return false;
- try{ if(host.contains(document.activeElement)) return false; }catch{}
- return true;
-}
-function suspendExternalHostRendering(host,rect=null){
- if(!canSuspendExternalHostRendering(host) || host.hasAttribute(EXTERNAL_PERF_SUSPENDED_ATTR)) return false;
- const measuredHeight=Math.max(0,Number(rect?.height||0));
- if(!Number.isFinite(measuredHeight) || measuredHeight<24) return false;
- // Historical external RabbitMirrors can each contribute dozens of scoped CSS
- // rules and a large DOM subtree. Keeping all of them fully rendered makes an
- // unrelated SillyTavern drawer/modal style recalculation walk the entire chat.
- // Far outside the viewport, freeze only rendering and the mirror-local style
- // sheets. The DOM nodes, checked state and event listeners stay mounted.
- for(const style of host.querySelectorAll?.('style')||[]){
-  if(style.hasAttribute(EXTERNAL_PERF_STYLE_ATTR)) continue;
-  style.setAttribute(EXTERNAL_PERF_STYLE_MEDIA_ATTR,style.hasAttribute('media')?String(style.getAttribute('media')||''):EXTERNAL_PERF_STYLE_MEDIA_NONE);
-  style.setAttribute(EXTERNAL_PERF_STYLE_ATTR,'true');
-  style.setAttribute('media','not all');
- }
- host.setAttribute(EXTERNAL_PERF_SUSPENDED_ATTR,'true');
- host.style.setProperty('content-visibility','hidden','important');
- host.style.setProperty('height',`${Math.round(measuredHeight*10)/10}px`,'important');
- host.style.setProperty('overflow','hidden','important');
- return true;
-}
 function restoreExternalHostRendering(host){
+ // 1.3.19 no longer uses the 1.3.17 off-screen suspension experiment, but a
+ // hot update can leave those temporary attributes/styles on already-mounted
+ // hosts. Clear them defensively without installing any observer.
  if(!host) return false;
  let changed=false;
- for(const style of host.querySelectorAll?.(`style[${EXTERNAL_PERF_STYLE_ATTR}]`)||[]){
-  const previous=String(style.getAttribute(EXTERNAL_PERF_STYLE_MEDIA_ATTR)||EXTERNAL_PERF_STYLE_MEDIA_NONE);
-  if(previous===EXTERNAL_PERF_STYLE_MEDIA_NONE) style.removeAttribute('media');
+ for(const style of host.querySelectorAll?.('style[data-rm-perf-suspended-style]')||[]){
+  const previous=String(style.getAttribute('data-rm-perf-original-media')||'__rm_none__');
+  if(previous==='__rm_none__') style.removeAttribute('media');
   else style.setAttribute('media',previous);
-  style.removeAttribute(EXTERNAL_PERF_STYLE_ATTR);
-  style.removeAttribute(EXTERNAL_PERF_STYLE_MEDIA_ATTR);
+  style.removeAttribute('data-rm-perf-suspended-style');
+  style.removeAttribute('data-rm-perf-original-media');
   changed=true;
  }
- if(host.hasAttribute?.(EXTERNAL_PERF_SUSPENDED_ATTR)){
-  host.removeAttribute(EXTERNAL_PERF_SUSPENDED_ATTR);
+ if(host.hasAttribute?.('data-rm-perf-suspended')){
+  host.removeAttribute('data-rm-perf-suspended');
   host.style.removeProperty('content-visibility');
   host.style.removeProperty('height');
   host.style.removeProperty('overflow');
@@ -1432,118 +1398,63 @@ function restoreExternalHostRendering(host){
  }
  return changed;
 }
-function restoreAllExternalHostRendering(){
- for(const host of allExternalHosts()) restoreExternalHostRendering(host);
-}
-function registerExternalGeometryHost(host){
- if(!host?.isConnected) return;
- if(externalGeometryViewportObserver){
-  try{ externalGeometryViewportObserver.observe(host); }catch{}
- }
-}
-function installExternalGeometryViewportObserver(){
- externalGeometryNearHosts.clear();
- try{ externalGeometryViewportObserver?.disconnect?.(); }catch{}
- externalGeometryViewportObserver=null;
- if(typeof globalThis.IntersectionObserver!=='function') return false;
- externalGeometryViewportObserver=new globalThis.IntersectionObserver(entries=>{
-  for(const entry of entries||[]){
-   const host=entry?.target;
-   if(!host?.isConnected || host.dataset?.rmSource!=='independent'){
-    externalGeometryNearHosts.delete(host);
-    try{ externalGeometryViewportObserver?.unobserve?.(host); }catch{}
-    continue;
-   }
-   if(entry.isIntersecting){
-    externalGeometryNearHosts.add(host);
-    restoreExternalHostRendering(host);
-    // A historical mirror can keep an old width while it is far off-screen.
-    // Refresh exactly this one as it approaches the viewport, before the user
-    // can see it. No global history scan is needed.
-    syncExternalHostGeometry(messageElementForExternalHost(host),host);
-   }else{
-    externalGeometryNearHosts.delete(host);
-    suspendExternalHostRendering(host,entry.boundingClientRect);
-   }
-  }
- },{root:null,rootMargin:'1000px 0px 1000px 0px',threshold:0});
- for(const host of allExternalHosts()){
-  if(host.dataset.rmSource!=='independent') continue;
-  try{ externalGeometryViewportObserver.observe(host); }catch{}
- }
- return true;
-}
-function externalGeometryHostsForGlobalRefresh(){
- if(externalGeometryViewportObserver){
-  const hosts=[];
-  for(const host of [...externalGeometryNearHosts]){
-   if(!host?.isConnected || host.dataset?.rmSource!=='independent'){
-    externalGeometryNearHosts.delete(host);
-    continue;
-   }
-   if(String(host.dataset.rmPlacement||'external')!=='external') continue;
-   hosts.push(host);
-  }
-  return hosts;
- }
- // Old-browser fallback keeps the previous behavior when IntersectionObserver
- // is unavailable. Modern iOS Safari takes the fast viewport-local path above.
- return allExternalHosts().filter(node=>node.dataset.rmSource==='independent' && String(node.dataset.rmPlacement||'external')==='external');
-}
 function refreshExternalHostGeometry(){
- const hosts=externalGeometryHostsForGlobalRefresh();
+ const hosts=allExternalHosts().filter(node=>node.dataset.rmSource==='independent' && String(node.dataset.rmPlacement||'external')==='external');
  if(!hosts.length) return;
- // Finish every geometry READ before the first style WRITE. 1.3.17 also limits
- // this global pass to mirrors near the visual viewport; off-screen history is
- // refreshed lazily by IntersectionObserver when it approaches the user.
+ // Layout reads are allowed only after a *real browser-width change*. Never call
+ // this path merely because a SillyTavern drawer/modal changed the app layout.
+ // Read all plans first, then write, avoiding read/write layout thrashing.
  const plans=hosts.map(host=>[host,computeExternalHostGeometryPlan(messageElementForExternalHost(host),host)]);
  for(const [host,plan] of plans) applyExternalHostGeometryPlan(host,plan);
 }
-function externalGeometryHorizontalSignature(){
- try{
-  const chat=document.querySelector?.('#chat');
-  const rect=chat?.getBoundingClientRect?.();
-  const viewportWidth=Math.round(Number(globalThis.visualViewport?.width || globalThis.innerWidth || document.documentElement?.clientWidth || 0)*10)/10;
-  const clientWidth=Math.round(Number(chat?.clientWidth||0)*10)/10;
-  const left=Math.round(Number(rect?.left||0)*10)/10;
-  const right=Math.round(Number(rect?.right||0)*10)/10;
-  return `${viewportWidth}|${clientWidth}|${left}|${right}`;
- }catch{ return ''; }
+function externalViewportWidthSignature(){
+ // IMPORTANT: this guard must stay DOM-read-free. Reading #chat rect/clientWidth
+ // here forces Safari to synchronously lay out the entire chat before we can
+ // even decide to skip, which is exactly what made unrelated ST drawers stutter.
+ const width=Number(globalThis.innerWidth || globalThis.screen?.width || 0);
+ return Number.isFinite(width) ? Math.round(width*10)/10 : 0;
 }
 function runQueuedExternalHostGeometryRefresh(){
  externalGeometryTimer=0;
+ const width=externalViewportWidthSignature();
+ if(width && width===externalGeometryLastSignature) return;
  const run=()=>{
   externalGeometryFrame=0;
-  const signature=externalGeometryHorizontalSignature();
-  if(signature && signature===externalGeometryLastSignature) return;
   refreshExternalHostGeometry();
-  if(signature) externalGeometryLastSignature=signature;
+  if(width) externalGeometryLastSignature=width;
  };
  if(typeof requestAnimationFrame==='function') externalGeometryFrame=requestAnimationFrame(run);
  else externalGeometryFrame=setTimeout(run,0);
 }
 function queueExternalHostGeometryRefresh(){
+ // resize is noisy on iOS. The cheap viewport-width check happens *before*
+ // scheduling anything and never reads #chat/layout. Drawer/modal opens whose
+ // layout viewport width is unchanged become a true no-op.
+ const width=externalViewportWidthSignature();
+ if(width && width===externalGeometryLastSignature) return;
  if(externalGeometryTimer) globalThis.clearTimeout?.(externalGeometryTimer);
- externalGeometryTimer=setTimeout(runQueuedExternalHostGeometryRefresh,120);
+ externalGeometryTimer=setTimeout(runQueuedExternalHostGeometryRefresh,160);
+}
+function queueExternalHostOrientationRefresh(){
+ // Orientation is a genuine containing-width change. Force one settled refresh
+ // even if Safari reports the old innerWidth during the first orientation event.
+ externalGeometryLastSignature=0;
+ if(externalGeometryTimer) globalThis.clearTimeout?.(externalGeometryTimer);
+ externalGeometryTimer=setTimeout(runQueuedExternalHostGeometryRefresh,260);
 }
 function installExternalGeometryListeners(){
  if(externalGeometryListenersInstalled) return;
  externalGeometryListenersInstalled=true;
- externalGeometryLastSignature=externalGeometryHorizontalSignature();
- installExternalGeometryViewportObserver();
+ externalGeometryLastSignature=externalViewportWidthSignature();
  globalThis.addEventListener?.('resize',queueExternalHostGeometryRefresh,{passive:true});
- globalThis.addEventListener?.('orientationchange',queueExternalHostGeometryRefresh,{passive:true});
+ globalThis.addEventListener?.('orientationchange',queueExternalHostOrientationRefresh,{passive:true});
 }
 function removeExternalGeometryListeners(){
- restoreAllExternalHostRendering();
  if(externalGeometryListenersInstalled){
   globalThis.removeEventListener?.('resize',queueExternalHostGeometryRefresh);
-  globalThis.removeEventListener?.('orientationchange',queueExternalHostGeometryRefresh);
+  globalThis.removeEventListener?.('orientationchange',queueExternalHostOrientationRefresh);
  }
  externalGeometryListenersInstalled=false;
- try{ externalGeometryViewportObserver?.disconnect?.(); }catch{}
- externalGeometryViewportObserver=null;
- externalGeometryNearHosts.clear();
  if(externalGeometryTimer){
   globalThis.clearTimeout?.(externalGeometryTimer);
   externalGeometryTimer=0;
@@ -1553,7 +1464,7 @@ function removeExternalGeometryListeners(){
   globalThis.clearTimeout?.(externalGeometryFrame);
   externalGeometryFrame=0;
  }
- externalGeometryLastSignature='';
+ externalGeometryLastSignature=0;
 }
 
 function markExternalDetails(details,key,source){
@@ -1661,7 +1572,7 @@ function extractReadyDetails(html=''){
   repairRabbitMirrorScopedClassAliasesInScope(details);
   repairLabelTargets(details);
   activateRabbitMirrorInteractionRescue(details);
-  // 1.3.17: ready HTML stays structurally faithful while detached. Mobile/layout
+  // 1.3.19: ready HTML stays structurally faithful while detached. Mobile/layout
   // rescue is allowed only after the mirror is mounted in the inline placement.
   // Pure external uses a light title shell and must not rewrite generated layout.
   details.setAttribute(INDEPENDENT_SANITIZER_ATTR,RUNTIME_VERSION);
@@ -1698,7 +1609,7 @@ function ensureExternalTools(host){
  stampExternalDetailsOwnership(host);
  const details=host.querySelector?.(':scope > details');
  try{ if(details) activateRabbitMirrorInteractionRescue(details); }catch(error){ console.debug('[RabbitMirror] external interaction activation skipped:',error); }
- // 1.3.17 light external shell: pure external owns placement/title only. It must
+ // 1.3.19 light external shell: pure external owns placement/title only. It must
  // not mutate the model's width/height/grid/absolute-position interaction stage.
  if(host.dataset.rmPlacement!=='external'){
   try{ if(details) activateRabbitMirrorIndependentMobileSpatialRescue(details); }catch(error){ console.debug('[RabbitMirror] inline mobile spatial rescue skipped:',error); }
@@ -2339,7 +2250,7 @@ function applyExternalShellTint(host,html=''){
  const source=externalShellSourcePalette(html);
  const palette=rendered||source;
  const tinted=applyExternalShellTintPalette(host,palette);
- // 1.3.17: tint variables may decorate the title shell, but the generated body
+ // 1.3.19: tint variables may decorate the title shell, but the generated body
  // is never merged into an extension-owned visual frame.
  clearExternalShellIntegration(host);
  return tinted;
@@ -3760,15 +3671,27 @@ function nodeMessageIndex(node){
 function removedMutationIndices(records){
  const found=new Set();
  for(const rec of records){
+   const target=rec.target?.nodeType===1?rec.target:rec.target?.parentElement;
+   const targetId=nodeMessageIndex(target);
    for(const node of [...(rec.removedNodes||[])]){
      const el=node?.nodeType===1?node:null;
      if(!el || el.matches?.(`[${SOURCE_ATTR}]`) || el.closest?.(`[${SOURCE_ATTR}]`)) continue;
-     const roots=[];
-     if(el.matches?.('.mes[mesid], [mesid].mes, [mesid]')) roots.push(el);
-     roots.push(...(el.querySelectorAll?.('.mes[mesid], [mesid].mes, [mesid]')||[]));
-     for(const root of roots){
-       const id=Number(root.getAttribute?.('mesid'));
+     if(targetId!==null){
+       found.add(targetId);
+       continue;
+     }
+     if(el.matches?.('.mes[mesid], [mesid].mes, [mesid]')){
+       const id=Number(el.getAttribute?.('mesid'));
        if(Number.isInteger(id)&&id>=0) found.add(id);
+       continue;
+     }
+     // Only direct #chat removals may contain removed message wrappers. Do not
+     // recursively inspect arbitrary popup/drawer subtrees on close.
+     if(target?.id==='chat'){
+       for(const root of el.querySelectorAll?.('.mes[mesid], [mesid].mes')||[]){
+         const id=Number(root.getAttribute?.('mesid'));
+         if(Number.isInteger(id)&&id>=0) found.add(id);
+       }
      }
    }
  }
@@ -3779,9 +3702,10 @@ function relevantMutationIndices(records){
  for(const rec of records){
    const target=rec.target?.nodeType===1?rec.target:rec.target?.parentElement;
    if(target?.closest?.(`[${SOURCE_ATTR}], [data-rabbit-mirror-tool-entry-host]`)) continue;
-   // Added message structures can create or replace the current owner node.
-   // Removed owners are handled separately so their shell is hidden during the
-   // short regeneration gap instead of floating above the replacement message.
+   const targetId=nodeMessageIndex(target);
+   // 1.3.19: never descend through unrelated SillyTavern drawer/popup DOM that
+   // happens to be mounted under #chat. Only message-scoped mutations are allowed
+   // to inspect descendants for RabbitMirror structures.
    for(const node of [...(rec.addedNodes||[])]){
      const el=node?.nodeType===1?node:null;
      if(!el) continue;
@@ -3790,13 +3714,28 @@ function relevantMutationIndices(records){
        if(Number.isInteger(owner)&&owner>=0) found.add(owner);
        continue;
      }
-     const nestedHosts=[...(el.querySelectorAll?.(`[${SOURCE_ATTR}]`)||[])];
-     for(const host of nestedHosts){ const owner=Number(host.dataset?.rmOwnerMesid ?? host.dataset?.rmExternalOwnerMessage); if(Number.isInteger(owner)&&owner>=0) found.add(owner); }
      if(el.matches?.('[data-rabbit-mirror-tool-entry-host]') || el.closest?.(`[${SOURCE_ATTR}], [data-rabbit-mirror-tool-entry-host]`)) continue;
-     const relevant=el.matches?.('.mes, .mes_text, toto, details') || !!el.querySelector?.('toto, details');
-     if(!relevant) continue;
-     const id=nodeMessageIndex(el) ?? nodeMessageIndex(target);
-     if(id!==null) found.add(id);
+
+     const ownId=nodeMessageIndex(el);
+     if(ownId!==null){
+       const relevant=el.matches?.('.mes, .mes_text, toto, details') || !!el.querySelector?.('toto, details');
+       if(relevant) found.add(ownId);
+       continue;
+     }
+     if(targetId!==null){
+       const relevant=el.matches?.('.mes_text, toto, details') || !!el.querySelector?.('toto, details');
+       if(relevant) found.add(targetId);
+       continue;
+     }
+
+     // Only a direct #chat insertion is allowed to contain brand-new message
+     // wrappers. Search for .mes roots, not arbitrary details/toto descendants.
+     if(target?.id==='chat'){
+       for(const nested of el.querySelectorAll?.('.mes[mesid], [mesid].mes')||[]){
+         const id=Number(nested.getAttribute?.('mesid'));
+         if(Number.isInteger(id)&&id>=0) found.add(id);
+       }
+     }
    }
  }
  return found;

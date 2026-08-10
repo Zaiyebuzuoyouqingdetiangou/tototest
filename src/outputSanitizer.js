@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.17';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.17';
+import { getSettings } from './settings.js?rmv=1.3.19';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.19';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.17';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.17';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.17';
+} from './feedbackCat.js?rmv=1.3.19';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.19';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.19';
 
 
-const RUNTIME_VERSION = '1.3.17';
+const RUNTIME_VERSION = '1.3.19';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -10824,7 +10824,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.17-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.19-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -15105,7 +15105,7 @@ function closeFeedbackCatMenu() {
 
 function positionFeedbackCatPanel(panel, button, preferredWidth = 300) {
     const rect = button.getBoundingClientRect();
-    // 1.3.17: on phones the menu is taller than the visual viewport. Use the
+    // 1.3.19: on phones the menu is taller than the visual viewport. Use the
     // visual viewport when available, cap the panel height, and let the menu
     // itself scroll so the bottom “重说 / 兔子镜历史” actions stay reachable.
     const viewport = globalThis.visualViewport || null;
@@ -19861,18 +19861,36 @@ function installChatMutationObserver() {
             // External mirrors install their tools synchronously. Never observe their internal
             // replacement, animation or tool DOM, otherwise the two observers can ping-pong.
             if (targetElement?.closest?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) continue;
+
+            const targetMessage = targetElement?.closest?.('.mes, [mesid]') || null;
             const added = [...(mutation.addedNodes || [])].filter(node => node?.nodeType === 1);
-            const relevant = added.some(node => {
-                if (node.matches?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) return false;
-                return node.matches?.('toto, details, .mes, .mes_text')
-                    || !!node.querySelector?.('toto, details');
-            });
-            if (!relevant) continue;
-            const message = targetElement?.closest?.('.mes, [mesid]');
-            if (message) messageRoots.add(message);
+
+            // 1.3.19: SillyTavern drawers/popups may be mounted under #chat on mobile.
+            // They can contain hundreds of descendants but are not chat messages. The old
+            // observer descended through every such subtree looking for <toto>/<details>,
+            // blocking the same main thread that is trying to open the drawer. Gate on a
+            // real message scope *before* any descendant scan.
+            if (targetMessage) {
+                const relevant = added.some(node => {
+                    if (node.matches?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) return false;
+                    return node.matches?.('toto, details, .mes_text') || !!node.querySelector?.('toto, details');
+                });
+                if (relevant) messageRoots.add(targetMessage);
+                continue;
+            }
+
+            // A brand-new message can be inserted directly into #chat (or inside one
+            // newly-added chat wrapper). Only search for message roots here; never scan a
+            // non-message UI subtree for arbitrary details elements.
             for (const node of added) {
-                const ownMessage = node.matches?.('.mes, [mesid]') ? node : node.closest?.('.mes, [mesid]');
-                if (ownMessage) messageRoots.add(ownMessage);
+                if (node.matches?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) continue;
+                if (node.matches?.('.mes, [mesid]')) {
+                    messageRoots.add(node);
+                    continue;
+                }
+                if (targetElement === chatRoot) {
+                    for (const nested of node.querySelectorAll?.('.mes[mesid], [mesid].mes') || []) messageRoots.add(nested);
+                }
             }
         }
         if (messageRoots.size) scheduleObservedChatInstall(messageRoots);
