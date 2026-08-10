@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.10';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.10';
+import { getSettings } from './settings.js?rmv=1.3.11';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.11';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.10';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.10';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.10';
+} from './feedbackCat.js?rmv=1.3.11';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.11';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.11';
 
 
-const RUNTIME_VERSION = '1.3.10';
+const RUNTIME_VERSION = '1.3.11';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -14933,11 +14933,22 @@ function closeFeedbackCatMenu() {
 
 function positionFeedbackCatPanel(panel, button, preferredWidth = 300) {
     const rect = button.getBoundingClientRect();
-    const width = Math.min(preferredWidth, Math.max(250, globalThis.innerWidth - 24));
+    // 1.3.11: on phones the menu is taller than the visual viewport. Use the
+    // visual viewport when available, cap the panel height, and let the menu
+    // itself scroll so the bottom “重说 / 兔子镜历史” actions stay reachable.
+    const viewport = globalThis.visualViewport || null;
+    const viewportWidth = Math.max(0, Number(viewport?.width || globalThis.innerWidth || 0));
+    const viewportHeight = Math.max(0, Number(viewport?.height || globalThis.innerHeight || 0));
+    const viewportLeft = Number(viewport?.offsetLeft || 0);
+    const viewportTop = Number(viewport?.offsetTop || 0);
+    const width = Math.min(preferredWidth, Math.max(250, viewportWidth - 24));
     panel.style.width = `${width}px`;
-    const left = Math.max(12, Math.min(rect.left, globalThis.innerWidth - width - 12));
+    panel.style.maxHeight = `${Math.max(160, viewportHeight - 24)}px`;
+    const left = Math.max(viewportLeft + 12, Math.min(rect.left, viewportLeft + viewportWidth - width - 12));
     panel.style.left = `${left}px`;
-    panel.style.top = `${Math.max(12, Math.min(rect.bottom + 6, globalThis.innerHeight - panel.offsetHeight - 12))}px`;
+    const panelHeight = Math.min(panel.offsetHeight || 0, Math.max(160, viewportHeight - 24));
+    const top = Math.max(viewportTop + 12, Math.min(rect.bottom + 6, viewportTop + viewportHeight - panelHeight - 12));
+    panel.style.top = `${top}px`;
 }
 
 function bindFeedbackCatOutsideClose(panel, button) {

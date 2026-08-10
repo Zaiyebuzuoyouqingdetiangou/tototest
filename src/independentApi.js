@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.10';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.10';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.10';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.10';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.10';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.10';
+import { getSettings } from './settings.js?rmv=1.3.11';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.11';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.11';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.11';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.11';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.11';
 
-const RUNTIME_VERSION = '1.3.10';
+const RUNTIME_VERSION = '1.3.11';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -1201,7 +1201,7 @@ function syncExternalHostGeometry(el,host){
   const bodyBox=body && body!==el ? elementContentBoxRect(body) : null;
   if(!laneBox || contentWidth<=0) throw new Error('invalid content-lane geometry');
 
-  // v1.3.10: the visual正文 lane is the .mes_text CONTENT BOX, not merely its
+  // v1.3.11: the visual正文 lane is the .mes_text CONTENT BOX, not merely its
   // outer .mes_block. This preserves the same left/right breathing room that
   // normal正文 children receive from .mes_text padding/margins. A temporarily
   // collapsed .mes_text is rejected against the stable parent lane.
@@ -1310,6 +1310,7 @@ function placeExternalHost(el,host,key='',source='independent'){
  const parent=el.parentElement;
  if(!parent) return false;
  host.dataset.rmPlacement='external';
+ if(source==='independent') clearExternalShellIntegration(host);
  const needsReanchor = host.parentElement!==parent
    || el.contains(host)
    || externalHostAppearsBeforeOwner(el,host)
@@ -1537,7 +1538,9 @@ function extractReadyDetails(html=''){
   repairRabbitMirrorScopedClassAliasesInScope(details);
   repairLabelTargets(details);
   activateRabbitMirrorInteractionRescue(details);
-  try{ activateRabbitMirrorIndependentMobileSpatialRescue(details); }catch(error){ console.debug('[RabbitMirror] independent mobile spatial rescue skipped:',error); }
+  // 1.3.11: ready HTML stays structurally faithful while detached. Mobile/layout
+  // rescue is allowed only after the mirror is mounted in the inline placement.
+  // Pure external uses a light title shell and must not rewrite generated layout.
   details.setAttribute(INDEPENDENT_SANITIZER_ATTR,RUNTIME_VERSION);
  }
  return details;
@@ -1572,7 +1575,11 @@ function ensureExternalTools(host){
  stampExternalDetailsOwnership(host);
  const details=host.querySelector?.(':scope > details');
  try{ if(details) activateRabbitMirrorInteractionRescue(details); }catch(error){ console.debug('[RabbitMirror] external interaction activation skipped:',error); }
- try{ if(details) activateRabbitMirrorIndependentMobileSpatialRescue(details); }catch(error){ console.debug('[RabbitMirror] external mobile spatial rescue skipped:',error); }
+ // 1.3.11 light external shell: pure external owns placement/title only. It must
+ // not mutate the model's width/height/grid/absolute-position interaction stage.
+ if(host.dataset.rmPlacement!=='external'){
+  try{ if(details) activateRabbitMirrorIndependentMobileSpatialRescue(details); }catch(error){ console.debug('[RabbitMirror] inline mobile spatial rescue skipped:',error); }
+ }
  try{ refreshRabbitMirrorToolsInScope(host); }catch(error){ console.debug('[RabbitMirror] external tool preparation skipped:',error); }
  removeIndependentResayButtons(host);
 }
@@ -2209,8 +2216,9 @@ function applyExternalShellTint(host,html=''){
  const source=externalShellSourcePalette(html);
  const palette=rendered||source;
  const tinted=applyExternalShellTintPalette(host,palette);
- if(host.dataset.rmPlacement==='external') applyExternalShellIntegration(host,palette);
- else clearExternalShellIntegration(host);
+ // 1.3.11: tint variables may decorate the title shell, but the generated body
+ // is never merged into an extension-owned visual frame.
+ clearExternalShellIntegration(host);
  return tinted;
 }
 function scheduleExternalShellTint(host,html=''){
@@ -2440,8 +2448,15 @@ function scheduleIndependentReadyPostprocess(host,key='',html=''){
  const run=()=>{
   host.__rabbitMirrorIndependentPostTimer=0;
   if(!host.isConnected || host.dataset.rmState!=='ready') return;
-  rescueIndependentExternalVisualShell(host);
-  rescueIndependentExternalContentWidth(host);
+  const details=host.querySelector?.(':scope > details[data-rabbit-mirror-external-details="true"], :scope > details');
+  if(host.dataset.rmPlacement==='external'){
+   // Remove only RabbitMirror-owned transient layout mutations that may have been
+   // carried over from an older 1.3.x mount. Generated inline styles are restored
+   // exactly from the captured baseline.
+   if(details) stripIndependentTransientLayoutArtifacts(details);
+   delete host.dataset.rmIndependentContentWidthRescue;
+   delete host.dataset.rmIndependentVisualShellRescue;
+  }
   scheduleExternalShellTint(host,html);
  };
  if(typeof requestAnimationFrame==='function'){

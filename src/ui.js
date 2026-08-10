@@ -1,14 +1,14 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.10';
-import { clearLastCombo } from './storage.js?rmv=1.3.10';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.10';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.10';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.3.10';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.10';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.10';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.10';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.11';
+import { clearLastCombo } from './storage.js?rmv=1.3.11';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.11';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.11';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.3.11';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.11';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.11';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.11';
 
 const SETTINGS_UI_VERSION = '1.3.3';
-const RUNTIME_VERSION = '1.3.10';
+const RUNTIME_VERSION = '1.3.11';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -234,7 +234,7 @@ export function initRabbitMirrorUI() {
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.72;font-size:12px;line-height:1.45;">当前 API 只生成正文，不注入兔子镜 Prompt。回复完成后，独立 API 读取当前聊天正文、可用推理、角色卡、Persona、世界书与作者注释，生成唯一的兔子镜。</div>
           <div id="rh_independent_api_fields" style="margin-left:26px;display:grid;gap:7px;">
             <div id="rh_independent_display_row" class="flex-container" style="gap:14px;flex-wrap:wrap;align-items:center;">
-              <label><input name="rh_independent_display" type="radio" value="external"> ① 纯外置</label>
+              <label><input name="rh_independent_display" type="radio" value="external"> ① 轻壳外置（标题有壳）</label>
               <label><input name="rh_independent_display" type="radio" value="external_then_inline"> ② 外置后内嵌</label>
             </div>
             <input id="rh_independent_base" class="text_pole" type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="API 地址，例如 https://example.com/v1 或 http://123.45.67.89:8000/v1">
