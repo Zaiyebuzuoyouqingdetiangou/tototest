@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.14';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.14';
+import { getSettings } from './settings.js?rmv=1.3.15';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.15';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.14';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.14';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.14';
+} from './feedbackCat.js?rmv=1.3.15';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.15';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.15';
 
 
-const RUNTIME_VERSION = '1.3.14';
+const RUNTIME_VERSION = '1.3.15';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -10824,7 +10824,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.14-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.15-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -15105,7 +15105,7 @@ function closeFeedbackCatMenu() {
 
 function positionFeedbackCatPanel(panel, button, preferredWidth = 300) {
     const rect = button.getBoundingClientRect();
-    // 1.3.14: on phones the menu is taller than the visual viewport. Use the
+    // 1.3.15: on phones the menu is taller than the visual viewport. Use the
     // visual viewport when available, cap the panel height, and let the menu
     // itself scroll so the bottom “重说 / 兔子镜历史” actions stay reachable.
     const viewport = globalThis.visualViewport || null;
