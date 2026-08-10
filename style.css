@@ -486,16 +486,16 @@ toto[data-rabbit-mirror="true"] summary {
   overflow-wrap:anywhere;
   line-height:1.55;
 }
-/* v1.3.13: external RabbitMirror owns a slightly roomier responsive gutter of its own.
+/* v1.3.11: external RabbitMirror owns a small responsive gutter of its own.
  * Do not infer width from .mes_text/.mes_block: themes and beautification packs can
  * replace those containers. The WHOLE external RabbitMirror (header + frame + content)
- * stays centered with ~16px side breathing room on narrow screens, while inline mode remains untouched. */
+ * stays centered with ~12px side breathing room, while inline mode remains untouched. */
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
   display:block !important;
   position:relative !important;
   isolation:isolate !important;
-  width:calc(100% - 32px) !important;
-  max-width:min(740px, calc(100vw - 32px)) !important;
+  width:calc(100% - 24px) !important;
+  max-width:min(760px, calc(100vw - 24px)) !important;
   min-width:0 !important;
   box-sizing:border-box !important;
   align-self:auto !important;
@@ -517,8 +517,8 @@ toto[data-rabbit-mirror="true"] summary {
   isolation:isolate !important;
   /* External mode uses its own gutter too. This deliberately does not depend on
    * whichever container a theme currently uses for message正文. */
-  width:calc(100% - 32px) !important;
-  max-width:min(740px, calc(100vw - 32px)) !important;
+  width:calc(100% - 24px) !important;
+  max-width:min(760px, calc(100vw - 24px)) !important;
   min-width:0 !important;
   box-sizing:border-box !important;
   align-self:auto !important;

@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.13';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.13';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.13';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.13';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.13';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.13';
+import { getSettings } from './settings.js?rmv=1.3.12';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.12';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.12';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.12';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.12';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.12';
 
-const RUNTIME_VERSION = '1.3.13';
+const RUNTIME_VERSION = '1.3.12';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -1126,7 +1126,7 @@ function clearExternalHostGeometryTokens(host){
 }
 function syncExternalHostGeometry(el,host){
  if(!host?.isConnected) return;
- // v1.3.13: external width is CSS-owned and theme-independent. Beautification
+ // v1.3.12: external width is CSS-owned and theme-independent. Beautification
  // packs freely replace .mes_text/.mes_block, so runtime geometry must not copy
  // either container. Clearing legacy tokens also prevents a hot-updated 1.3.10
  // measurement from surviving into the new self-gutter layout.
@@ -2890,7 +2890,7 @@ function showIndependentHistory(root,owner={}){
   .sort((a,b)=>Number(b.ts||0)-Number(a.ts||0));
  closeIndependentHistoryPanel();
  if(!entries.length){ globalThis.toastr?.info?.('这条回复还没有兔子镜历史。'); return true; }
- // 1.3.13: use the browser top layer when available. Several SillyTavern
+ // 1.3.12: use the browser top layer when available. Several SillyTavern
  // beautification themes transform/clip body or chat ancestors; a normal fixed div
  // can then collapse into a thin line on iOS instead of covering the viewport.
  const supportsModalDialog=typeof HTMLDialogElement!=='undefined' && typeof HTMLDialogElement.prototype?.showModal==='function';
