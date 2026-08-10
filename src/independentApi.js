@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.16';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.16';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.16';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.16';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.16';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.16';
+import { getSettings } from './settings.js?rmv=1.3.17';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.17';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.17';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.17';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.17';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.17';
 
-const RUNTIME_VERSION = '1.3.16';
+const RUNTIME_VERSION = '1.3.17';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -50,6 +50,10 @@ let externalGeometryLastSignature = '';
 let externalGeometryListenersInstalled = false;
 let externalGeometryViewportObserver = null;
 const externalGeometryNearHosts = new Set();
+const EXTERNAL_PERF_SUSPENDED_ATTR = 'data-rm-perf-suspended';
+const EXTERNAL_PERF_STYLE_ATTR = 'data-rm-perf-suspended-style';
+const EXTERNAL_PERF_STYLE_MEDIA_ATTR = 'data-rm-perf-original-media';
+const EXTERNAL_PERF_STYLE_MEDIA_NONE = '__rm_none__';
 const pending = new Map();
 let feedbackActionListenerInstalled = false;
 let repairPersistenceListenerInstalled = false;
@@ -1192,7 +1196,7 @@ function computeExternalHostGeometryPlan(el,host){
   if(!laneBox || contentWidth<=0) throw new Error('invalid content-lane geometry');
 
   // Pure external must match external_then_inline's actual containing block.
-  // Keep the 1.3.16 sizing formula intact; this function only separates the
+  // Keep the 1.3.17 sizing formula intact; this function only separates the
   // layout READ phase from the later WRITE phase so a global refresh cannot
   // thrash layout by alternating getBoundingClientRect() and style mutations.
   const refBox=laneBox;
@@ -1256,6 +1260,7 @@ function placeExternalHost(el,host,key='',source='independent'){
  stampExternalHostOwnership(el,host,key,source);
  const previousParent=host.parentElement;
  const desired=source==='independent' ? independentPlacementForState(host.dataset.rmState||'ready') : 'external';
+ if(source!=='independent' || desired!=='external') restoreExternalHostRendering(host);
  if(source==='follow'){
   const anchor=followExternalAnchorForMessage(el,true);
   if(!anchor) return false;
@@ -1377,6 +1382,59 @@ function clearExternalHostFreshSourceState(host){
  delete host.dataset.rmFreshSourceStatus;
  clearIndependentResayStatus(host);
 }
+function canSuspendExternalHostRendering(host){
+ if(!host?.isConnected) return false;
+ if(host.dataset?.rmSource!=='independent') return false;
+ if(String(host.dataset?.rmPlacement||'external')!=='external') return false;
+ if(String(host.dataset?.rmState||'')!=='ready') return false;
+ if(host.dataset?.rmPending==='true' || host.dataset?.rmAwaitingFreshSource==='true' || host.dataset?.rmAwaitingOwner==='true') return false;
+ try{ if(host.contains(document.activeElement)) return false; }catch{}
+ return true;
+}
+function suspendExternalHostRendering(host,rect=null){
+ if(!canSuspendExternalHostRendering(host) || host.hasAttribute(EXTERNAL_PERF_SUSPENDED_ATTR)) return false;
+ const measuredHeight=Math.max(0,Number(rect?.height||0));
+ if(!Number.isFinite(measuredHeight) || measuredHeight<24) return false;
+ // Historical external RabbitMirrors can each contribute dozens of scoped CSS
+ // rules and a large DOM subtree. Keeping all of them fully rendered makes an
+ // unrelated SillyTavern drawer/modal style recalculation walk the entire chat.
+ // Far outside the viewport, freeze only rendering and the mirror-local style
+ // sheets. The DOM nodes, checked state and event listeners stay mounted.
+ for(const style of host.querySelectorAll?.('style')||[]){
+  if(style.hasAttribute(EXTERNAL_PERF_STYLE_ATTR)) continue;
+  style.setAttribute(EXTERNAL_PERF_STYLE_MEDIA_ATTR,style.hasAttribute('media')?String(style.getAttribute('media')||''):EXTERNAL_PERF_STYLE_MEDIA_NONE);
+  style.setAttribute(EXTERNAL_PERF_STYLE_ATTR,'true');
+  style.setAttribute('media','not all');
+ }
+ host.setAttribute(EXTERNAL_PERF_SUSPENDED_ATTR,'true');
+ host.style.setProperty('content-visibility','hidden','important');
+ host.style.setProperty('height',`${Math.round(measuredHeight*10)/10}px`,'important');
+ host.style.setProperty('overflow','hidden','important');
+ return true;
+}
+function restoreExternalHostRendering(host){
+ if(!host) return false;
+ let changed=false;
+ for(const style of host.querySelectorAll?.(`style[${EXTERNAL_PERF_STYLE_ATTR}]`)||[]){
+  const previous=String(style.getAttribute(EXTERNAL_PERF_STYLE_MEDIA_ATTR)||EXTERNAL_PERF_STYLE_MEDIA_NONE);
+  if(previous===EXTERNAL_PERF_STYLE_MEDIA_NONE) style.removeAttribute('media');
+  else style.setAttribute('media',previous);
+  style.removeAttribute(EXTERNAL_PERF_STYLE_ATTR);
+  style.removeAttribute(EXTERNAL_PERF_STYLE_MEDIA_ATTR);
+  changed=true;
+ }
+ if(host.hasAttribute?.(EXTERNAL_PERF_SUSPENDED_ATTR)){
+  host.removeAttribute(EXTERNAL_PERF_SUSPENDED_ATTR);
+  host.style.removeProperty('content-visibility');
+  host.style.removeProperty('height');
+  host.style.removeProperty('overflow');
+  changed=true;
+ }
+ return changed;
+}
+function restoreAllExternalHostRendering(){
+ for(const host of allExternalHosts()) restoreExternalHostRendering(host);
+}
 function registerExternalGeometryHost(host){
  if(!host?.isConnected) return;
  if(externalGeometryViewportObserver){
@@ -1398,12 +1456,14 @@ function installExternalGeometryViewportObserver(){
    }
    if(entry.isIntersecting){
     externalGeometryNearHosts.add(host);
+    restoreExternalHostRendering(host);
     // A historical mirror can keep an old width while it is far off-screen.
     // Refresh exactly this one as it approaches the viewport, before the user
     // can see it. No global history scan is needed.
     syncExternalHostGeometry(messageElementForExternalHost(host),host);
    }else{
     externalGeometryNearHosts.delete(host);
+    suspendExternalHostRendering(host,entry.boundingClientRect);
    }
   }
  },{root:null,rootMargin:'1000px 0px 1000px 0px',threshold:0});
@@ -1433,7 +1493,7 @@ function externalGeometryHostsForGlobalRefresh(){
 function refreshExternalHostGeometry(){
  const hosts=externalGeometryHostsForGlobalRefresh();
  if(!hosts.length) return;
- // Finish every geometry READ before the first style WRITE. 1.3.16 also limits
+ // Finish every geometry READ before the first style WRITE. 1.3.17 also limits
  // this global pass to mirrors near the visual viewport; off-screen history is
  // refreshed lazily by IntersectionObserver when it approaches the user.
  const plans=hosts.map(host=>[host,computeExternalHostGeometryPlan(messageElementForExternalHost(host),host)]);
@@ -1475,6 +1535,7 @@ function installExternalGeometryListeners(){
  globalThis.addEventListener?.('orientationchange',queueExternalHostGeometryRefresh,{passive:true});
 }
 function removeExternalGeometryListeners(){
+ restoreAllExternalHostRendering();
  if(externalGeometryListenersInstalled){
   globalThis.removeEventListener?.('resize',queueExternalHostGeometryRefresh);
   globalThis.removeEventListener?.('orientationchange',queueExternalHostGeometryRefresh);
@@ -1600,7 +1661,7 @@ function extractReadyDetails(html=''){
   repairRabbitMirrorScopedClassAliasesInScope(details);
   repairLabelTargets(details);
   activateRabbitMirrorInteractionRescue(details);
-  // 1.3.16: ready HTML stays structurally faithful while detached. Mobile/layout
+  // 1.3.17: ready HTML stays structurally faithful while detached. Mobile/layout
   // rescue is allowed only after the mirror is mounted in the inline placement.
   // Pure external uses a light title shell and must not rewrite generated layout.
   details.setAttribute(INDEPENDENT_SANITIZER_ATTR,RUNTIME_VERSION);
@@ -1637,7 +1698,7 @@ function ensureExternalTools(host){
  stampExternalDetailsOwnership(host);
  const details=host.querySelector?.(':scope > details');
  try{ if(details) activateRabbitMirrorInteractionRescue(details); }catch(error){ console.debug('[RabbitMirror] external interaction activation skipped:',error); }
- // 1.3.16 light external shell: pure external owns placement/title only. It must
+ // 1.3.17 light external shell: pure external owns placement/title only. It must
  // not mutate the model's width/height/grid/absolute-position interaction stage.
  if(host.dataset.rmPlacement!=='external'){
   try{ if(details) activateRabbitMirrorIndependentMobileSpatialRescue(details); }catch(error){ console.debug('[RabbitMirror] inline mobile spatial rescue skipped:',error); }
@@ -2278,7 +2339,7 @@ function applyExternalShellTint(host,html=''){
  const source=externalShellSourcePalette(html);
  const palette=rendered||source;
  const tinted=applyExternalShellTintPalette(host,palette);
- // 1.3.16: tint variables may decorate the title shell, but the generated body
+ // 1.3.17: tint variables may decorate the title shell, but the generated body
  // is never merged into an extension-owned visual frame.
  clearExternalShellIntegration(host);
  return tinted;
@@ -3949,6 +4010,7 @@ function captureMountedIndependentRecords(){
  const snapshots=[];
  const ctx=getContext();
  for(const host of allExternalHosts().filter(node=>node.dataset.rmSource==='independent' && node.dataset.rmState==='ready')){
+  restoreExternalHostRendering(host);
   const index=Number(host.dataset.rmOwnerMesid ?? host.dataset.rmExternalOwnerMessage);
   const msg=Number.isInteger(index)&&index>=0 ? ctx.chat?.[index] : null;
   if(!msg || msg.is_user || typeof msg.mes!=='string') continue;
