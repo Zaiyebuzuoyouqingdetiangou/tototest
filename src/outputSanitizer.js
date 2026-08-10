@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.13';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.13';
+import { getSettings } from './settings.js?rmv=1.3.14';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.14';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.13';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.13';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.13';
+} from './feedbackCat.js?rmv=1.3.14';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.14';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.14';
 
 
-const RUNTIME_VERSION = '1.3.13';
+const RUNTIME_VERSION = '1.3.14';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -496,6 +496,154 @@ const CHANNEL_DIAL_CYCLE_LABEL_ATTR = 'data-rm-channel-dial-cycle-label';
 const channelDialCycleRescueStates = new WeakMap();
 const EXPANDED_OPACITY_RESCUE_ATTR = 'data-rabbit-mirror-expanded-opacity-rescue';
 const STALE_CHECKED_INLINE_CLEANUP_ATTR = 'data-rabbit-mirror-stale-checked-inline-cleanup';
+const NESTED_LABEL_STRUCTURE_RESCUE_ATTR = 'data-rabbit-mirror-nested-label-structure-rescue';
+const NESTED_LABEL_PROMOTED_ATTR = 'data-rm-nested-label-promoted';
+
+function rabbitMirrorElementClassTokens(element) {
+    return new Set(String(element?.className || '').split(/\s+/).filter(Boolean));
+}
+
+function rabbitMirrorLabelsExplicitInput(label, input) {
+    if (!label || !input) return false;
+    const targetId = String(label.getAttribute?.('for') || '').trim();
+    return !!targetId && !!input.id && targetId === String(input.id);
+}
+
+function rabbitMirrorNestedBranchForControl(outerLabel, input) {
+    if (!outerLabel || !input || !outerLabel.contains?.(input)) return null;
+    let current = input;
+    while (current?.parentElement && current.parentElement !== outerLabel) current = current.parentElement;
+    return current?.parentElement === outerLabel ? current : null;
+}
+
+function rabbitMirrorLooksLikeSiblingInteractionBranch(outerContainer, branch) {
+    if (!outerContainer || !branch || branch === outerContainer) return false;
+    if (String(outerContainer.tagName || '') !== String(branch.tagName || '')) return false;
+    const outerClasses = rabbitMirrorElementClassTokens(outerContainer);
+    const branchClasses = rabbitMirrorElementClassTokens(branch);
+    if (!outerClasses.size || !branchClasses.size) return false;
+    return [...outerClasses].some(token => branchClasses.has(token));
+}
+
+function clearMalformedNestedLabelCheckedOverrides(root, outerLabel, inputs) {
+    if (!root || !outerLabel || !inputs?.length) return 0;
+    let cleared = 0;
+    for (const input of inputs) restoreInteractionInlineOverrides(input);
+
+    // Older rescue builds may have persisted checked declarations directly onto several
+    // descendants of an invalid outer label. WeakMap state is lost after extension reload,
+    // so remove only !important declarations that exactly equal a checked-rule value and
+    // only inside this already-proven malformed nested-label subtree.
+    for (const input of inputs) {
+        const rescueOwned = root.hasAttribute?.('data-rabbit-mirror-interaction-rescued')
+            || input.hasAttribute?.(CHECKED_TEXT_RULE_RESCUE_ATTR)
+            || input.hasAttribute?.(LABELED_CHECKED_VERIFY_CONTROL_ATTR)
+            || input.hasAttribute?.(RADIO_GROUP_RESCUE_ATTR);
+        if (!rescueOwned) continue;
+        for (const rule of parseCheckedRulesFromText(root, input)) {
+            if (rule.pseudoElement || !rule.targetSelector) continue;
+            let targets = [];
+            try {
+                if (outerLabel.matches?.(rule.targetSelector)) targets.push(outerLabel);
+                targets.push(...outerLabel.querySelectorAll(rule.targetSelector));
+            } catch {
+                continue;
+            }
+            for (const target of new Set(targets)) {
+                if (!target?.style) continue;
+                for (const [rawProperty, rawValue] of rule.styleMap || []) {
+                    const property = String(rawProperty || '').trim().toLowerCase();
+                    if (!property) continue;
+                    const priority = String(target.style.getPropertyPriority(property) || '').toLowerCase();
+                    const current = String(target.style.getPropertyValue(property) || '').trim();
+                    if (priority !== 'important' || !current) continue;
+                    if (canonicalCheckedCssValue(property, current)
+                        !== canonicalCheckedCssValue(property, rawValue)) continue;
+                    target.style.removeProperty(property);
+                    cleared += 1;
+                }
+            }
+        }
+    }
+    return cleared;
+}
+
+function repairMalformedNestedInteractiveLabels(root) {
+    if (!root?.querySelectorAll) return 0;
+    const malformedOuterLabels = [...root.querySelectorAll('label')]
+        .filter(label => !!label.querySelector?.('label'));
+    if (!malformedOuterLabels.length) return 0;
+
+    let promoted = 0;
+    let cleaned = 0;
+    for (const outerLabel of malformedOuterLabels) {
+        if (!root.contains?.(outerLabel)) continue;
+        const outerContainer = outerLabel.parentElement;
+        const host = outerContainer?.parentElement;
+        if (!outerContainer || !host) continue;
+
+        const outerFor = String(outerLabel.getAttribute?.('for') || '').trim();
+        if (!outerFor) continue;
+        const outerInput = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')]
+            .find(input => String(input.id || '') === outerFor);
+        if (!outerInput || outerInput.parentElement !== outerContainer) continue;
+
+        const nestedInputs = [...outerLabel.querySelectorAll('input[type="checkbox"], input[type="radio"]')]
+            .filter(input => {
+                if (!input.id) return false;
+                return [...outerLabel.querySelectorAll('label[for]')]
+                    .some(label => label !== outerLabel && rabbitMirrorLabelsExplicitInput(label, input));
+            });
+        if (!nestedInputs.length) continue;
+
+        const branches = [];
+        const seen = new Set();
+        for (const input of nestedInputs) {
+            const branch = rabbitMirrorNestedBranchForControl(outerLabel, input);
+            if (!branch || seen.has(branch)) continue;
+            // High-confidence only: the malformed branch must look like another item of the
+            // same repeated interaction list/card family as the outer container.
+            if (!rabbitMirrorLooksLikeSiblingInteractionBranch(outerContainer, branch)) continue;
+            const hasExplicitInnerLabel = [...branch.querySelectorAll?.('label[for]') || []]
+                .some(label => nestedInputs.some(input => rabbitMirrorLabelsExplicitInput(label, input)));
+            if (!hasExplicitInnerLabel) continue;
+            seen.add(branch);
+            branches.push(branch);
+        }
+        if (!branches.length) continue;
+
+        const affectedInputs = [outerInput, ...nestedInputs];
+        cleaned += clearMalformedNestedLabelCheckedOverrides(root, outerLabel, affectedInputs);
+        for (const input of affectedInputs) {
+            input.removeAttribute?.(LABELED_CHECKED_VERIFY_CONTROL_ATTR);
+        }
+        root.removeAttribute?.(LABELED_CHECKED_VERIFY_LAST_ATTR);
+
+        let anchor = outerContainer;
+        for (const branch of branches) {
+            host.insertBefore(branch, anchor.nextSibling);
+            branch.setAttribute?.(NESTED_LABEL_PROMOTED_ATTR, 'true');
+            anchor = branch;
+            promoted += 1;
+        }
+        outerLabel.removeAttribute?.(LABELED_CHECKED_VERIFY_TARGET_ATTR);
+    }
+
+    if (promoted > 0) {
+        const previous = Number.parseInt(root.getAttribute?.(NESTED_LABEL_STRUCTURE_RESCUE_ATTR) || '0', 10) || 0;
+        root.setAttribute(NESTED_LABEL_STRUCTURE_RESCUE_ATTR, String(previous + promoted));
+        // Rebuild only the currently active checked branch after the DOM is valid again.
+        // Unchecked siblings must stay free of persisted inline second-state declarations.
+        const controls = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
+        for (const input of controls) restoreInteractionInlineOverrides(input);
+        for (const input of controls) {
+            if (input.checked) applyCheckedVisualFallback(root, input);
+            input.setAttribute?.('aria-pressed', input.checked ? 'true' : 'false');
+        }
+        if (cleaned > 0) root.setAttribute(STALE_CHECKED_INLINE_CLEANUP_ATTR, String(cleaned));
+    }
+    return promoted;
+}
 
 function canonicalCheckedCssValue(property, value) {
     const clean = String(value || '').trim().replace(/\s*!important\s*$/i, '');
@@ -2037,7 +2185,14 @@ function installChannelDialCycleRescue(root) {
 
 function getLocalContainerTargetsForCheckedRule(input, targetSelector) {
     if (!input || !targetSelector) return [];
-    const scope = input.closest?.('label') || input.parentElement;
+    const wrappingLabel = input.closest?.('label') || null;
+    // An invalid nested <label> can make closest('label') point at another control's
+    // outer label. Never use that foreign label as the local scope, otherwise a class-local
+    // :checked rule can be sprayed across several sibling cards and leave all panels open.
+    const wrappingFor = String(wrappingLabel?.getAttribute?.('for') || '').trim();
+    const wrappingBelongsToInput = !!wrappingLabel
+        && (!wrappingFor || (!!input.id && wrappingFor === String(input.id)));
+    const scope = wrappingBelongsToInput ? wrappingLabel : input.parentElement;
     if (!scope?.querySelectorAll) return [];
     try {
         const targets = [...scope.querySelectorAll(targetSelector)].filter(target => target !== input);
@@ -9221,6 +9376,12 @@ function installDecorativeOverlayPassThrough(root) {
 }
 
 function installIntelligentInteractionRescue(root) {
+    // Generated HTML occasionally forgets to close one repeated card label before the next
+    // card starts. Safari then treats later controls as descendants of the first label, and
+    // class-local checked fallback can expand several branches at once. Repair this invalid
+    // repeated-card structure before installing any interaction fallback.
+    repairMalformedNestedInteractiveLabels(root);
+
     // Markdown 可能把相邻的 CSS 注释边界 */ ... /* 解析成 <em>/ ... /</em>，
     // 导致两段注释之间的状态规则被整段吞入注释。只在急救开启后修复当前 DOM 的明确损坏形态。
     repairMarkdownCorruptedCssComments(root);
@@ -9881,12 +10042,17 @@ function scheduleMaintenanceLabeledCheckedProbe(root, diagnosticState) {
         stateInput.setAttribute('aria-pressed', stateInput.checked ? 'true' : 'false');
     }
 
-    const input = [...sandboxRoot.querySelectorAll('input[type="checkbox"]')].find(candidate => (
+    const safeCandidates = [...sandboxRoot.querySelectorAll('input[type="checkbox"], input[type="radio"]')].filter(candidate => (
         !candidate.disabled
         && inputHasAssociatedLabel(sandboxRoot, candidate)
         && inputHasMeaningfulCheckedSiblingRule(sandboxRoot, candidate)
         && collectLabeledCheckedVerificationTargets(sandboxRoot, candidate).some(entry => entry.secondState)
     ));
+    // Checkbox can be tested in either direction. Radio must use an unchecked member so the
+    // sandbox can enter a different branch; re-selecting the already checked radio proves nothing.
+    const input = safeCandidates.find(candidate => candidate.type === 'checkbox')
+        || safeCandidates.find(candidate => candidate.type === 'radio' && !candidate.checked)
+        || null;
     if (!input) {
         sandbox.destroy();
         diagnosticState?.events?.push?.('maintenance-sandbox-probe:no-safe-candidate;未操作真实控件');
@@ -9894,7 +10060,7 @@ function scheduleMaintenanceLabeledCheckedProbe(root, diagnosticState) {
     }
 
     const originalChecked = !!input.checked;
-    const intended = !originalChecked;
+    const intended = input.type === 'radio' ? true : !originalChecked;
     const sandboxInputIndex = sandboxStateInputs.indexOf(input);
     const liveStateInputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
     const liveInput = sandboxInputIndex >= 0 ? liveStateInputs[sandboxInputIndex] : null;
@@ -10385,6 +10551,11 @@ function restoreSanitizedRadioGroups(root, scopePrefix = '') {
 function scopeRabbitMirrorInteractionIds(toto, { installRescue = true } = {}) {
     if (!toto?.querySelector) return;
 
+    // Structural validity must be restored before radio grouping or checked fallback reads
+    // local ancestry. This is intentionally high-confidence and only promotes repeated
+    // sibling-like branches out of an illegally nested label.
+    repairMalformedNestedInteractiveLabels(toto);
+
     // WeakMap 记录同一 DOM 在流式生成期间的映射；旧版本留下的 data 标记则从已加前缀的 ID 中恢复。
     let state = interactionScopeStates.get(toto);
     if (!state && toto.dataset.rabbitMirrorInteractionScoped === 'true') {
@@ -10653,7 +10824,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.3-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.14-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -11657,6 +11828,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `buttons=${full.buttonCount} inputs=${full.inputCount} rabbitMirrors=${full.mirrorCount}`,
         `原始 inputs=${full.rawInputCount} labels=${full.rawLabelCount} UI标签≈${full.rawUiTagCount}`,
         `渲染 inputs=${full.inputCount} labels=${full.renderedLabelCount} UI标签≈${full.renderedUiTagCount}`,
+        `非法嵌套label=${diagnosticQueryContentAll(root, 'label label').length} 结构修复=${root.getAttribute?.(NESTED_LABEL_STRUCTURE_RESCUE_ATTR) || '0'}`,
         `当前镜面状态控件 原始=${full.rawMirrorStateInputCount ?? 0} 渲染=${full.renderedMirrorStateInputCount ?? 0} 丢失=${!!full.stateControlsLost}`,
         `SVG Data URI损坏候选=${full.damagedDataUriCandidate} 结构截断=${full.structureTruncated}`,
         `原始源码主体缺失=${!!full.rawSourceBodyMissing} 空结构壳=${!!full.rawBodyEmptyShell} CSS中途截断=${!!full.rawCssTruncated} 截断说明=${!!full.sourceTruncationNoticeInstalled}`,
@@ -14933,7 +15105,7 @@ function closeFeedbackCatMenu() {
 
 function positionFeedbackCatPanel(panel, button, preferredWidth = 300) {
     const rect = button.getBoundingClientRect();
-    // 1.3.13: on phones the menu is taller than the visual viewport. Use the
+    // 1.3.14: on phones the menu is taller than the visual viewport. Use the
     // visual viewport when available, cap the panel height, and let the menu
     // itself scroll so the bottom “重说 / 兔子镜历史” actions stay reachable.
     const viewport = globalThis.visualViewport || null;
@@ -16517,12 +16689,12 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         const rawHoverRepairCount = Math.max(0, rawHoverCountAfter - rawHoverCountBefore);
         const recoveredProgramRepairCount = Math.max(0, recoveredProgramCountAfter - recoveredProgramCountBefore);
         const crossParentCheckedCount = Number.parseInt(target.getAttribute?.(CROSS_PARENT_CHECKED_ROOT_ATTR) || '0', 10) || 0;
-        if (crossParentCheckedCount > 0) {
+        const labeledCheckedVerifyCount = Number.parseInt(target.getAttribute?.(LABELED_CHECKED_VERIFY_ROOT_ATTR) || '0', 10) || 0;
+        if (crossParentCheckedCount > 0 || labeledCheckedVerifyCount > 0) {
             // 自动维修也必须做一次隐藏隔离副本验证。它不点击、不派发事件、不修改真实控件；
-            // 约 150ms 后把通过结果写回对应 live control，供 180ms 的维修后复核读取。
+            // checkbox 与 radio 都在副本中切换，约 150ms 后只把验证证据写回 live root。
             scheduleMaintenanceLabeledCheckedProbe(target, null);
         }
-        const labeledCheckedVerifyCount = Number.parseInt(target.getAttribute?.(LABELED_CHECKED_VERIFY_ROOT_ATTR) || '0', 10) || 0;
         const checkedHasStateCount = Number.parseInt(target.getAttribute?.(CHECKED_HAS_STATE_RULE_COUNT_ATTR) || '0', 10) || 0;
         const detachedCheckedHasCount = Number.parseInt(target.getAttribute?.(DETACHED_CHECKED_HAS_RULE_COUNT_ATTR) || '0', 10) || 0;
         const pairedCheckedStateCount = Number.parseInt(target.getAttribute?.(PAIRED_CHECKED_STATE_COUNT_ATTR) || '0', 10) || 0;

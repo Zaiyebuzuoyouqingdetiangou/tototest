@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.13';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.13';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.13';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.13';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.13';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.13';
+import { getSettings } from './settings.js?rmv=1.3.14';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.14';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.14';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.14';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.14';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.14';
 
-const RUNTIME_VERSION = '1.3.13';
+const RUNTIME_VERSION = '1.3.14';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -1200,7 +1200,7 @@ function syncExternalHostGeometry(el,host){
   const laneBox=elementContentBoxRect(lane);
   if(!laneBox || contentWidth<=0) throw new Error('invalid content-lane geometry');
 
-  // 1.3.13: pure external must match external_then_inline's *actual containing
+  // 1.3.14: pure external must match external_then_inline's *actual containing
   // block*, not .mes_text itself. external_then_inline is inserted beside
   // .mes_text inside its parent (normally .mes_block), so width:100% resolves
   // against that parent content box. Some themes give .mes_text negative margins,
@@ -1521,7 +1521,7 @@ function extractReadyDetails(html=''){
   repairRabbitMirrorScopedClassAliasesInScope(details);
   repairLabelTargets(details);
   activateRabbitMirrorInteractionRescue(details);
-  // 1.3.13: ready HTML stays structurally faithful while detached. Mobile/layout
+  // 1.3.14: ready HTML stays structurally faithful while detached. Mobile/layout
   // rescue is allowed only after the mirror is mounted in the inline placement.
   // Pure external uses a light title shell and must not rewrite generated layout.
   details.setAttribute(INDEPENDENT_SANITIZER_ATTR,RUNTIME_VERSION);
@@ -1558,7 +1558,7 @@ function ensureExternalTools(host){
  stampExternalDetailsOwnership(host);
  const details=host.querySelector?.(':scope > details');
  try{ if(details) activateRabbitMirrorInteractionRescue(details); }catch(error){ console.debug('[RabbitMirror] external interaction activation skipped:',error); }
- // 1.3.13 light external shell: pure external owns placement/title only. It must
+ // 1.3.14 light external shell: pure external owns placement/title only. It must
  // not mutate the model's width/height/grid/absolute-position interaction stage.
  if(host.dataset.rmPlacement!=='external'){
   try{ if(details) activateRabbitMirrorIndependentMobileSpatialRescue(details); }catch(error){ console.debug('[RabbitMirror] inline mobile spatial rescue skipped:',error); }
@@ -2199,7 +2199,7 @@ function applyExternalShellTint(host,html=''){
  const source=externalShellSourcePalette(html);
  const palette=rendered||source;
  const tinted=applyExternalShellTintPalette(host,palette);
- // 1.3.13: tint variables may decorate the title shell, but the generated body
+ // 1.3.14: tint variables may decorate the title shell, but the generated body
  // is never merged into an extension-owned visual frame.
  clearExternalShellIntegration(host);
  return tinted;
