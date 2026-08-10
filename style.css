@@ -493,7 +493,7 @@ toto[data-rabbit-mirror="true"] summary {
   overflow-wrap:anywhere;
   line-height:1.55;
 }
-/* 1.3.11: light pure-external shell.
+/* 1.3.12: light pure-external shell.
  * The external host owns only placement and the title bar. Generated content is
  * intentionally unframed and receives no extension width/height/aspect-ratio rewrite. */
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
@@ -602,8 +602,12 @@ toto[data-rabbit-mirror="true"] summary {
   display:list-item !important;
   visibility:visible !important;
   opacity:1 !important;
-  width:100% !important;
-  max-width:none !important;
+  /* 1.3.12: title-only shell must not become a full-width banner.
+   * The generated RabbitMirror body keeps the exact same content-lane sizing as
+   * external_then_inline; only the title shell shrink-wraps its own label. */
+  width:fit-content !important;
+  max-width:100% !important;
+  min-width:0 !important;
   box-sizing:border-box !important;
   margin:0 !important;
   padding:10px 14px !important;
@@ -657,7 +661,7 @@ toto[data-rabbit-mirror="true"] summary {
 }
 
 
-/* 1.3.11: independent RabbitMirror history viewer opened from the feedback cat.
+/* 1.3.12: independent RabbitMirror history viewer opened from the feedback cat.
  * Mobile uses a real remaining-height flex body so the preview cannot collapse
  * below the horizontal version strip. */
 .rabbit-mirror-history-overlay{
