@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场",
   "loading_order": 100,
-  "js": "index.js?rmv=1.3.19",
-  "css": "style.css?rmv=1.3.19",
+  "js": "index.js?rmv=1.3.20",
+  "css": "style.css?rmv=1.3.20",
   "author": "Toto",
-  "version": "1.3.19",
+  "version": "1.3.20",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",

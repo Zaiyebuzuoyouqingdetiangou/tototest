@@ -1,3 +1,11 @@
+# 1.3.20 — 普通 SillyTavern 焦点切换不再触发整段聊天对账
+
+- 1.3.19 实机确认已明显改善，但仍有轻微顿挫；继续审计两种 API 模式共用的常驻链后，定位到 `independentApi.js` 的后台恢复监听在所有模式都会安装。
+- 旧逻辑监听 `window focus`，任何 focus 都会在 80ms 后执行一次 `syncAll()`；iOS Safari / SillyTavern 打开抽屉、编辑器、角色卡或工具控件时也可能产生普通 focus 变化，因此即使页面从未进入后台，也会遍历整段聊天做兔子镜对账。
+- 现在新增“真实后台恢复门”：只有页面确实经历过 `visibilityState=hidden`，或收到 `pageshow.persisted=true` 的 BFCache 恢复，才允许后续执行一次全量 `syncAll()`。
+- 普通 `focus`、前台 `visibilitychange`、非 BFCache `pageshow` 在没有后台标记时立即返回，不读取聊天 DOM、不遍历消息。
+- 保留真正从后台/锁屏/切换 App 返回时的镜面恢复，以及独立 API 原有的后台生成续接逻辑；未修改 1.3.19 的消息作用域 MutationObserver 隔离、维修兔、挨打猫、重说/历史、尺寸、Prompt、随机/冷却或 API 请求。
+
 # 1.3.19 — 隔离 SillyTavern 面板 DOM 与兔子镜聊天观察器
 
 - 根据实机补充确认：切换为“跟随当前 API”后仍会在打开插件、角色卡、魔法棒时卡顿，因此卡顿并非独立 API 网络请求或纯外置尺寸公式专属问题。

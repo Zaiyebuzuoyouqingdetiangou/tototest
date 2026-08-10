@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.19';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.19';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.19';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.19';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.19';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.19';
+import { getSettings } from './settings.js?rmv=1.3.20';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.20';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.20';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.20';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.20';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.20';
 
-const RUNTIME_VERSION = '1.3.19';
+const RUNTIME_VERSION = '1.3.20';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -77,6 +77,7 @@ let lastAppliedRuntimeMode = null;
 const automaticGenerationCutovers = new Map();
 let backgroundLifecycleListenersInstalled = false;
 let backgroundResumeTimer = 0;
+let backgroundLifecycleNeedsRecovery = false;
 let generationPlaceholderTimer = 0;
 let generationPlaceholderStartedAt = 0;
 const passiveRecoveryTimers = new Set();
@@ -1189,7 +1190,7 @@ function computeExternalHostGeometryPlan(el,host){
   if(!laneBox || contentWidth<=0) throw new Error('invalid content-lane geometry');
 
   // Pure external must match external_then_inline's actual containing block.
-  // Keep the 1.3.19 sizing formula intact; this function only separates the
+  // Keep the 1.3.20 sizing formula intact; this function only separates the
   // layout READ phase from the later WRITE phase so a global refresh cannot
   // thrash layout by alternating getBoundingClientRect() and style mutations.
   const refBox=laneBox;
@@ -1376,7 +1377,7 @@ function clearExternalHostFreshSourceState(host){
  clearIndependentResayStatus(host);
 }
 function restoreExternalHostRendering(host){
- // 1.3.19 no longer uses the 1.3.17 off-screen suspension experiment, but a
+ // 1.3.20 no longer uses the 1.3.17 off-screen suspension experiment, but a
  // hot update can leave those temporary attributes/styles on already-mounted
  // hosts. Clear them defensively without installing any observer.
  if(!host) return false;
@@ -1572,7 +1573,7 @@ function extractReadyDetails(html=''){
   repairRabbitMirrorScopedClassAliasesInScope(details);
   repairLabelTargets(details);
   activateRabbitMirrorInteractionRescue(details);
-  // 1.3.19: ready HTML stays structurally faithful while detached. Mobile/layout
+  // 1.3.20: ready HTML stays structurally faithful while detached. Mobile/layout
   // rescue is allowed only after the mirror is mounted in the inline placement.
   // Pure external uses a light title shell and must not rewrite generated layout.
   details.setAttribute(INDEPENDENT_SANITIZER_ATTR,RUNTIME_VERSION);
@@ -1609,7 +1610,7 @@ function ensureExternalTools(host){
  stampExternalDetailsOwnership(host);
  const details=host.querySelector?.(':scope > details');
  try{ if(details) activateRabbitMirrorInteractionRescue(details); }catch(error){ console.debug('[RabbitMirror] external interaction activation skipped:',error); }
- // 1.3.19 light external shell: pure external owns placement/title only. It must
+ // 1.3.20 light external shell: pure external owns placement/title only. It must
  // not mutate the model's width/height/grid/absolute-position interaction stage.
  if(host.dataset.rmPlacement!=='external'){
   try{ if(details) activateRabbitMirrorIndependentMobileSpatialRescue(details); }catch(error){ console.debug('[RabbitMirror] inline mobile spatial rescue skipped:',error); }
@@ -2250,7 +2251,7 @@ function applyExternalShellTint(host,html=''){
  const source=externalShellSourcePalette(html);
  const palette=rendered||source;
  const tinted=applyExternalShellTintPalette(host,palette);
- // 1.3.19: tint variables may decorate the title shell, but the generated body
+ // 1.3.20: tint variables may decorate the title shell, but the generated body
  // is never merged into an extension-owned visual frame.
  clearExternalShellIntegration(host);
  return tinted;
@@ -2692,22 +2693,39 @@ function scheduleGenerationPlaceholderPoll(delay=80){
  };
  generationPlaceholderTimer=setTimeout(poll,Math.max(0,Number(delay)||0));
 }
-function resumeRabbitMirrorLifecycle(){
+function resumeRabbitMirrorLifecycle(event){
  if(!currentRuntime()) return;
+ const type=String(event?.type||'');
  const mode=runtimeMode();
  if(mode==='off') return;
- const last=assistantMessages(getContext()).at(-1);
- // Independent generation keeps its existing background behavior. Every active
- // display mode also gets one finite reconciliation pass after pageshow/focus so
- // a rebuilt inline mirror cannot remain beside an older external shell.
- if(document?.visibilityState==='hidden'){
+
+ // 1.3.20: window focus is far too broad on iOS/Safari. SillyTavern drawers,
+ // editors and toolbar controls can temporarily move focus without the page ever
+ // leaving the foreground. The old handler treated every such focus as a BFCache /
+ // background resume and ran syncAll() across the entire chat, causing the small
+ // but visible pause that remained after 1.3.20 isolated popup DOM mutations.
+ // Mark recovery only after a real hidden transition (or a persisted pageshow).
+ if(type==='visibilitychange' && document?.visibilityState==='hidden'){
+  backgroundLifecycleNeedsRecovery=true;
+  const last=assistantMessages(getContext()).at(-1);
   if(mode==='independent' && last && !hostGenerationLooksActive()) scheduleMessageGeneration(last.i,0,true);
   return;
  }
+ if(type==='pageshow' && event?.persisted===true) backgroundLifecycleNeedsRecovery=true;
+
+ // Ordinary window focus / visible visibilitychange / non-persisted pageshow must
+ // not touch chat DOM. They are common during normal SillyTavern UI interaction.
+ if(!backgroundLifecycleNeedsRecovery) return;
+ if(document?.visibilityState==='hidden') return;
+
+ backgroundLifecycleNeedsRecovery=false;
  if(backgroundResumeTimer) clearTimeout(backgroundResumeTimer);
  backgroundResumeTimer=setTimeout(()=>{
   backgroundResumeTimer=0;
+  if(!currentRuntime()) return;
   const currentMode=runtimeMode();
+  if(currentMode==='off') return;
+  const last=assistantMessages(getContext()).at(-1);
   syncAll();
   if(currentMode==='independent' && last) scheduleMessageGeneration(last.i,160,true);
  },80);
@@ -2725,6 +2743,7 @@ function removeBackgroundLifecycleListeners(){
  window.removeEventListener('pageshow',resumeRabbitMirrorLifecycle,true);
  window.removeEventListener('focus',resumeRabbitMirrorLifecycle,true);
  backgroundLifecycleListenersInstalled=false;
+ backgroundLifecycleNeedsRecovery=false;
  if(backgroundResumeTimer){ clearTimeout(backgroundResumeTimer); backgroundResumeTimer=0; }
 }
 function currentGenerationIdentity(index){
@@ -3703,7 +3722,7 @@ function relevantMutationIndices(records){
    const target=rec.target?.nodeType===1?rec.target:rec.target?.parentElement;
    if(target?.closest?.(`[${SOURCE_ATTR}], [data-rabbit-mirror-tool-entry-host]`)) continue;
    const targetId=nodeMessageIndex(target);
-   // 1.3.19: never descend through unrelated SillyTavern drawer/popup DOM that
+   // 1.3.20: never descend through unrelated SillyTavern drawer/popup DOM that
    // happens to be mounted under #chat. Only message-scoped mutations are allowed
    // to inspect descendants for RabbitMirror structures.
    for(const node of [...(rec.addedNodes||[])]){
