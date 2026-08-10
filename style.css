@@ -486,19 +486,20 @@ toto[data-rabbit-mirror="true"] summary {
   overflow-wrap:anywhere;
   line-height:1.55;
 }
-/* v1.3.9: pure-external RabbitMirror follows the owner message's stable正文 content lane.
- * The whole mirror body (header + frame + content) aligns to正文 margins; this is
- * NOT inner padding. A 96% centered fallback is used only until geometry settles. */
+/* v1.3.11: external RabbitMirror owns a small responsive gutter of its own.
+ * Do not infer width from .mes_text/.mes_block: themes and beautification packs can
+ * replace those containers. The WHOLE external RabbitMirror (header + frame + content)
+ * stays centered with ~12px side breathing room, while inline mode remains untouched. */
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
   display:block !important;
   position:relative !important;
   isolation:isolate !important;
-  width:var(--rm-external-lane-width, 96%) !important;
-  max-width:none !important;
+  width:calc(100% - 24px) !important;
+  max-width:min(760px, calc(100vw - 24px)) !important;
   min-width:0 !important;
   box-sizing:border-box !important;
   align-self:auto !important;
-  margin:10px auto 14px var(--rm-external-lane-left, auto) !important;
+  margin:10px auto 14px !important;
   padding:0 !important;
   border:1px solid var(--rm-shell-border, rgba(0,0,0,.10)) !important;
   border-radius:18px !important;
@@ -514,9 +515,10 @@ toto[data-rabbit-mirror="true"] summary {
   display:block !important;
   position:relative !important;
   isolation:isolate !important;
-  /* follow-current API already lives in the正文 content lane; do not add a second 96% inset */
-  width:100% !important;
-  max-width:100% !important;
+  /* External mode uses its own gutter too. This deliberately does not depend on
+   * whichever container a theme currently uses for message正文. */
+  width:calc(100% - 24px) !important;
+  max-width:min(760px, calc(100vw - 24px)) !important;
   min-width:0 !important;
   box-sizing:border-box !important;
   align-self:auto !important;
@@ -603,8 +605,6 @@ toto[data-rabbit-mirror="true"] summary {
     border-radius:16px !important;
   }
   #chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"]{
-    width:100% !important;
-    max-width:100% !important;
     border-radius:16px !important;
   }
   #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"]{
@@ -619,12 +619,29 @@ toto[data-rabbit-mirror="true"] summary {
 
 
 /* beta.14.39: independent RabbitMirror history viewer opened from the feedback cat. */
+/* 1.3.12: history uses the native dialog top layer where available.
+ * This prevents mobile beautification themes that transform/clip body or chat
+ * containers from collapsing the viewer into a thin strip at the top edge. */
 .rabbit-mirror-history-overlay{
-  position:fixed;inset:0;z-index:2147483600;display:flex;align-items:center;justify-content:center;
-  padding:18px;background:rgba(0,0,0,.46);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  position:fixed !important;inset:0 !important;z-index:2147483600 !important;box-sizing:border-box !important;
+  width:100vw !important;width:100dvw !important;height:100vh !important;height:100dvh !important;
+  max-width:none !important;max-height:none !important;margin:0 !important;border:0 !important;outline:0 !important;border-radius:0 !important;
+  padding:18px !important;align-items:center !important;justify-content:center !important;
+  background:transparent !important;color:inherit !important;box-shadow:none !important;overflow:hidden !important;
+  overscroll-behavior:contain !important;-webkit-tap-highlight-color:transparent;
+}
+dialog.rabbit-mirror-history-overlay:not([open]){display:none !important;}
+dialog.rabbit-mirror-history-overlay[open],
+div.rabbit-mirror-history-overlay[data-rm-history-fallback="true"]{display:flex !important;}
+dialog.rabbit-mirror-history-overlay::backdrop{
+  background:rgba(0,0,0,.46);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+}
+.rabbit-mirror-history-overlay[data-rm-history-fallback="true"]{
+  background:rgba(0,0,0,.46) !important;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
 }
 .rabbit-mirror-history-dialog{
-  width:min(920px,100%);max-height:min(86vh,900px);display:flex;flex-direction:column;overflow:hidden;
+  position:relative;isolation:isolate;box-sizing:border-box;
+  width:min(920px,100%);max-height:min(86vh,900px);max-height:min(86dvh,900px);display:flex;flex-direction:column;overflow:hidden;
   border:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.32));border-radius:14px;
   background:var(--SmartThemeBlurTintColor,rgba(245,245,245,.98));color:var(--SmartThemeBodyColor,inherit);
   box-shadow:0 18px 60px rgba(0,0,0,.28);
@@ -635,10 +652,15 @@ toto[data-rabbit-mirror="true"] summary {
 .rabbit-mirror-history-list{display:flex;flex-direction:column;gap:7px;padding:10px;overflow:auto;border-right:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.20));}
 .rabbit-mirror-history-list button{width:100%;padding:9px 10px;border:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.24));border-radius:8px;background:transparent;color:inherit;text-align:left;cursor:pointer;overflow-wrap:anywhere;}
 .rabbit-mirror-history-list button.is-active{background:color-mix(in srgb,currentColor 12%,transparent);font-weight:700;}
-.rabbit-mirror-history-preview{min-width:0;padding:12px;overflow:auto;overscroll-behavior:contain;}
-.rabbit-mirror-history-preview > details{width:100%;max-width:100%;box-sizing:border-box;margin:0 auto;}
+.rabbit-mirror-history-preview{
+  position:relative;isolation:isolate;contain:layout paint;min-width:0;padding:12px;overflow:auto;overscroll-behavior:contain;
+}
+.rabbit-mirror-history-preview > details{position:relative;width:100%;max-width:100%;box-sizing:border-box;margin:0 auto;}
 @media (max-width:640px){
- .rabbit-mirror-history-overlay{padding:8px;align-items:stretch;}
+ .rabbit-mirror-history-overlay{
+   padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left)) !important;
+   align-items:stretch !important;
+ }
  .rabbit-mirror-history-dialog{max-height:none;height:100%;border-radius:12px;}
  .rabbit-mirror-history-body{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);}
  .rabbit-mirror-history-list{flex-direction:row;border-right:0;border-bottom:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.20));overflow-x:auto;overflow-y:hidden;}

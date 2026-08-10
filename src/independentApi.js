@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.9';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.9';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.9';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.9';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.9';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.9';
+import { getSettings } from './settings.js?rmv=1.3.12';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.12';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.12';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.12';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.12';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.12';
 
-const RUNTIME_VERSION = '1.3.9';
+const RUNTIME_VERSION = '1.3.12';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -1124,67 +1124,15 @@ function clearExternalHostGeometryTokens(host){
  host.style.removeProperty('--rm-external-inline-start');
  host.style.removeProperty('--rm-external-inline-end');
 }
-function stableMessageContentLane(el){
- const body=messageBody(el);
- if(!el||!body) return null;
- // Use the stable正文 content lane (normally .mes_block), not the instantaneous
- // .mes_text rectangle. The latter can be temporarily narrowed on mobile while
- // status bars / avatars / other extensions are still laying out.
- if(body!==el){
-  const parent=body.parentElement;
-  if(parent?.isConnected && el.contains(parent)) return parent;
-  return body;
- }
- return el.querySelector?.('.mes_block') || el;
-}
 function syncExternalHostGeometry(el,host){
  if(!host?.isConnected) return;
- const source=String(host.dataset.rmSource||'independent');
+ // v1.3.12: external width is CSS-owned and theme-independent. Beautification
+ // packs freely replace .mes_text/.mes_block, so runtime geometry must not copy
+ // either container. Clearing legacy tokens also prevents a hot-updated 1.3.10
+ // measurement from surviving into the new self-gutter layout.
+ clearExternalHostGeometryTokens(host);
  const placement=String(host.dataset.rmPlacement||'external');
- if(source!=='independent' || placement!=='external' || !el?.isConnected){
-  clearExternalHostGeometryTokens(host);
-  host.dataset.rmExternalWidthMode = placement==='inline' ? 'inline-content-lane' : source==='follow' ? 'follow-content-lane' : 'stable-fallback';
-  return;
- }
- const lane=stableMessageContentLane(el);
- const parent=host.parentElement;
- if(!lane?.isConnected || !parent?.isConnected){
-  clearExternalHostGeometryTokens(host);
-  host.dataset.rmExternalWidthMode='stable-fallback';
-  return;
- }
- try{
-  const laneRect=lane.getBoundingClientRect();
-  const parentRect=parent.getBoundingClientRect();
-  const parentStyle=typeof getComputedStyle==='function' ? getComputedStyle(parent) : null;
-  const padLeft=Math.max(0,parseFloat(parentStyle?.paddingLeft||'0')||0);
-  const padRight=Math.max(0,parseFloat(parentStyle?.paddingRight||'0')||0);
-  const borderLeft=Math.max(0,Number(parent.clientLeft||0));
-  const borderRight=Math.max(0,Number(parentRect.width||0)-Number(parent.clientWidth||0)-borderLeft);
-  const contentLeft=Number(parentRect.left||0)+borderLeft+padLeft;
-  const contentRight=Number(parentRect.right||0)-borderRight-padRight;
-  const contentWidth=Math.max(0,contentRight-contentLeft);
-  let left=Number(laneRect.left||0)-contentLeft;
-  let width=Number(laneRect.width||0);
-  if(!Number.isFinite(left) || !Number.isFinite(width) || contentWidth<=0){
-   throw new Error('invalid content-lane geometry');
-  }
-  left=Math.max(0,Math.min(left,Math.max(0,contentWidth-1)));
-  width=Math.min(width,Math.max(0,contentWidth-left));
-  // Reject obviously transient/collapsed measurements and keep the CSS fallback
-  // for that frame; a later RAF/resize pass will retry against the stable lane.
-  if(width<220 || (contentWidth>=320 && width<contentWidth*.55)){
-   clearExternalHostGeometryTokens(host);
-   host.dataset.rmExternalWidthMode='stable-fallback';
-   return;
-  }
-  host.style.setProperty('--rm-external-lane-width',`${Math.round(width*10)/10}px`);
-  host.style.setProperty('--rm-external-lane-left',`${Math.round(left*10)/10}px`);
-  host.dataset.rmExternalWidthMode='message-content-lane';
- }catch{
-  clearExternalHostGeometryTokens(host);
-  host.dataset.rmExternalWidthMode='stable-fallback';
- }
+ host.dataset.rmExternalWidthMode=placement==='external' ? 'self-gutter' : 'inline-content-lane';
 }
 function scheduleExternalHostGeometry(el,host){
  syncExternalHostGeometry(el,host);
@@ -2912,7 +2860,10 @@ function resolveIndependentActionIdentity(root,owner={}){
  return {ctx,msg,index,host,slot:messageSlotKey(ctx,index,msg),legacySlots:legacyMessageSlotKeys(ctx,index,msg),key:currentKey};
 }
 function closeIndependentHistoryPanel(){
- document.querySelectorAll?.(`[${HISTORY_PANEL_ATTR}]`)?.forEach(panel=>panel.remove());
+ document.querySelectorAll?.(`[${HISTORY_PANEL_ATTR}]`)?.forEach(panel=>{
+  try{ if(panel?.tagName==='DIALOG' && panel.open && typeof panel.close==='function') panel.close(); }catch{}
+  panel.remove?.();
+ });
 }
 function historyDateLabel(value){
  const date=new Date(Number(value||0));
@@ -2939,9 +2890,15 @@ function showIndependentHistory(root,owner={}){
   .sort((a,b)=>Number(b.ts||0)-Number(a.ts||0));
  closeIndependentHistoryPanel();
  if(!entries.length){ globalThis.toastr?.info?.('这条回复还没有兔子镜历史。'); return true; }
- const overlay=document.createElement('div');
+ // 1.3.12: use the browser top layer when available. Several SillyTavern
+ // beautification themes transform/clip body or chat ancestors; a normal fixed div
+ // can then collapse into a thin line on iOS instead of covering the viewport.
+ const supportsModalDialog=typeof HTMLDialogElement!=='undefined' && typeof HTMLDialogElement.prototype?.showModal==='function';
+ const overlay=document.createElement(supportsModalDialog?'dialog':'div');
  overlay.className='rabbit-mirror-history-overlay'; overlay.setAttribute(HISTORY_PANEL_ATTR,'true');
- overlay.innerHTML=`<section class="rabbit-mirror-history-dialog" role="dialog" aria-modal="true" aria-label="兔子镜历史">
+ if(!supportsModalDialog){ overlay.setAttribute('data-rm-history-fallback','true'); overlay.setAttribute('role','dialog'); overlay.setAttribute('aria-modal','true'); }
+ overlay.setAttribute('aria-label','兔子镜历史');
+ overlay.innerHTML=`<section class="rabbit-mirror-history-dialog">
   <header class="rabbit-mirror-history-header"><strong>兔子镜历史</strong><button type="button" data-rm-history-close="true" aria-label="关闭">×</button></header>
   <div class="rabbit-mirror-history-body"><nav class="rabbit-mirror-history-list" aria-label="历史版本"></nav><div class="rabbit-mirror-history-preview"></div></div>
  </section>`;
@@ -2962,7 +2919,17 @@ function showIndependentHistory(root,owner={}){
  overlay.addEventListener('click',event=>{
   if(event.target===overlay || event.target?.closest?.('[data-rm-history-close="true"]')){ event.preventDefault(); closeIndependentHistoryPanel(); }
  },true);
- document.body.append(overlay); return true;
+ overlay.addEventListener?.('cancel',event=>{ event.preventDefault(); closeIndependentHistoryPanel(); });
+ (supportsModalDialog ? document.body : document.documentElement).append(overlay);
+ if(supportsModalDialog){
+  try{ overlay.showModal(); }
+  catch(error){
+   console.debug('[RabbitMirror] history modal top-layer fallback:',error);
+   overlay.setAttribute('open','');
+   overlay.setAttribute('data-rm-history-fallback','true');
+  }
+ }
+ return true;
 }
 function resayIndependentMirror(root,owner={}){
  const identity=resolveIndependentActionIdentity(root,owner);

@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.9';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.9';
+import { getSettings } from './settings.js?rmv=1.3.12';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.12';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.9';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.9';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.9';
+} from './feedbackCat.js?rmv=1.3.12';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.12';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.12';
 
 
-const RUNTIME_VERSION = '1.3.9';
+const RUNTIME_VERSION = '1.3.12';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
