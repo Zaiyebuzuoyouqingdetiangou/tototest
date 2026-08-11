@@ -1,4 +1,11 @@
-# 1.3.42 TEST — 恢复旧版外置 checked 维修 / 点击减负
+# 1.3.44 TEST — 诊断面板禁止持久化 / 死按钮清理
+
+- 修复独立 API 外置镜在维修保存／重挂载时，把一次性全链路诊断面板连同兔子镜正文一起序列化的问题。DOM 可以被保存，但 `addEventListener()` 不能，因此旧报告会变成“看得到按钮、点了完全没反应”的静态死面板。
+- 独立 API 保存前与缓存恢复前都会剔除 `[data-rabbit-mirror-interaction-diagnostic]`；诊断报告不再进入兔子镜缓存、历史快照或维修后的 source。
+- 输出净化器初始化与销毁时会清理页面中上一运行时遗留的旧诊断面板，避免旧版报告跨版本残留。
+- 不修改 1.3.43 的 checked/radio 维修算法、副 API 请求链、外置布局、focus/Observer 性能冻结链；不新增监听、轮询或全聊天扫描。
+
+# 1.3.43 TEST — 恢复旧版外置 checked 维修 / 点击减负
 
 - 根因确认：1.3.39 起的 `independent-native-checked-restore` 只凭静态 `:checked` 规则存在就认为原生交互可用，导致完整 checked/label/radio 兜底被跳过；诊断却能出现 `matched=false`，说明该假设不成立。
 - 恢复 1.2.19 满意版行为：清理旧急救内联状态后仍继续安装 `applyCheckedVisualFallback`、label fallback、radio fallback 等已验证交互路线，不再因“规则看起来完整”而绕开维修。
@@ -6,7 +13,7 @@
 - 独立 API 的“点了没有反应”只执行一次完整当前镜面维修，后续仅做一次轻量工具/持久化刷新；不恢复四轮重复扫描。
 - 不新增 MutationObserver、focus/resize/scroll 监听、轮询或全聊天扫描；独立 API 请求/重试/外置同步链保持 1.3.41。
 
-# 1.3.42 TEST — 恢复旧版独立 API 交互状态净化基线
+# 1.3.43 TEST — 恢复旧版独立 API 交互状态净化基线
 
 - 对比用户提供的 `副api满意版(2).zip`（内部 1.2.19）后确认：旧版 1.2.12 起存在完整的独立 API 交互状态净化层，当前 1.3.x 已将其移除。
 - 恢复 `initialHtml` 干净基线、`scrubIndependentInteractionState()`、运行时状态属性／临时救援 style 清理，以及旧缓存污染迁移。
@@ -14,7 +21,7 @@
 - 已有 1.3.x 污染缓存会在启动／恢复时优先从兼容历史中寻找更干净的初始基线并做一次性净化；不会重新请求副 API。
 - 不回退现有外置几何、跨设备元数据、维修兔 v2.18、视觉提示词编辑或 1.3.20 性能冻结链；不新增 MutationObserver、focus/resize/scroll 监听或轮询。
 
-# 1.3.42 TEST — 外置维修原生恢复 / 点击减负 / 视觉偏好收口
+# 1.3.43 TEST — 外置维修原生恢复 / 点击减负 / 视觉偏好收口
 
 - 撤回 1.3.38 的 `independent-checked-runtime-reset` 双重重建链；该链会在同一次交互维修中重复解析 checked CSS、撤样式并再次进入完整交互维修库，造成额外卡顿。
 - PC 独立 API 外置镜面若 checkbox/radio、label 与 checked 目标结构完整且无 unresolved 规则，维修兔优先只清理旧维修遗留的 `!important` checked 内联状态，恢复浏览器原生 label/input/:checked CSS；不再把正常结构强行接管成第二套手动状态机。

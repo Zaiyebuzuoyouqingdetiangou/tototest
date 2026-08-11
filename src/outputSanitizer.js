@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.42';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.42';
+import { getSettings } from './settings.js?rmv=1.3.44';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.44';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.42';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.42';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.42';
+} from './feedbackCat.js?rmv=1.3.44';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.44';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.44';
 
 
-const RUNTIME_VERSION = '1.3.42';
+const RUNTIME_VERSION = '1.3.44';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -10994,7 +10994,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.42-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.44-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -20158,6 +20158,9 @@ export async function initOutputSanitizer() {
     try { globalThis.__rabbitMirrorOutputSanitizerCleanup?.(); } catch {}
     globalThis.__rabbitMirrorOutputSanitizerCleanup = destroyOutputSanitizer;
     unsubscribeOutputHostEvents();
+    // A previous runtime may have remounted a serialized diagnostic panel whose
+    // buttons no longer own listeners. Clear those stale one-shot reports on init.
+    removeAllInteractionDiagnosticPanels();
     ensureFeedbackCatRuntimeStyle();
     initializeMaintenanceAutoSafeStartupGuard();
     // DOM 安装链不依赖宿主事件模块是否成功导入：即使热重载或宿主事件名变化，
@@ -20222,6 +20225,7 @@ export function destroyOutputSanitizer() {
     removeFeedbackCatsInChatDom();
     closeMaintenanceRabbitMenu();
     closeFeedbackCatMenu();
+    removeAllInteractionDiagnosticPanels();
     document?.getElementById?.(FEEDBACK_CAT_RUNTIME_STYLE_ID)?.remove?.();
     if (globalThis.__rabbitMirrorOutputSanitizerCleanup === destroyOutputSanitizer) delete globalThis.__rabbitMirrorOutputSanitizerCleanup;
 }

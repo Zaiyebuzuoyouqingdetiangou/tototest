@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.42';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.42';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.42';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.42';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.42';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.42';
+import { getSettings } from './settings.js?rmv=1.3.44';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.44';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.44';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.44';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.44';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.44';
 
-const RUNTIME_VERSION = '1.3.42';
+const RUNTIME_VERSION = '1.3.44';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -1343,6 +1343,11 @@ function markExternalHostsAwaitingFreshSource(index,status='waiting'){
  let changed=false;
  for(const host of externalHostsOwnedByMesid(String(id)).filter(node=>node.dataset.rmSource==='independent')){
    if(!readyDetailsFromHost(host)) continue;
+   // A manual Maintenance Rabbit repair can trigger SillyTavern metadata/message
+   // lifecycle events while the repaired mirror is being persisted. Those events
+   // are not a new正文 generation and must never hide the live repaired mirror behind
+   // the "正文正在更新" stale-source placeholder.
+   if(independentMaintenanceLiveRepairLocked(host)) continue;
    host.hidden=false;
    host.dataset.rmAwaitingFreshSource='true';
    host.dataset.rmFreshSourceStatus=status==='error'?'error':'waiting';
@@ -1608,6 +1613,11 @@ function scrubIndependentInteractionState(html='',baselineHtml=''){
  const details=parseIndependentDetailsRaw(html);
  if(!details) return String(html||'').trim();
  const baseline=parseIndependentDetailsRaw(baselineHtml)||parseIndependentDetailsRaw(html);
+ // Diagnostic panels are runtime-only UI. Persisting them serializes their DOM but
+ // not their addEventListener handlers, producing visible but dead buttons after a
+ // maintenance save/remount. Never allow them into an independent mirror record.
+ details.querySelectorAll('[data-rabbit-mirror-interaction-diagnostic]').forEach(node=>node.remove());
+ baseline?.querySelectorAll?.('[data-rabbit-mirror-interaction-diagnostic]')?.forEach?.(node=>node.remove());
  restoreEncodedInteractionBaselines(details);
  details.querySelectorAll(PERSISTED_STATE_STYLE_ATTRS.map(name=>`style[${name}]`).join(',')).forEach(node=>node.remove());
  const currentElements=persistedStateElements(details);
@@ -2493,6 +2503,9 @@ function restoreIndependentContentWidthBaseline(element){
 }
 function stripIndependentTransientLayoutArtifacts(details){
  if(!details?.querySelectorAll) return details;
+ // One-shot diagnostics belong to the current live DOM only. A cached/remounted
+ // diagnostic panel has no JS listeners and becomes an uncloseable dead UI shell.
+ details.querySelectorAll('[data-rabbit-mirror-interaction-diagnostic]').forEach(node=>node.remove());
  // A user-triggered Maintenance Rabbit repair is not a disposable runtime rescue.
  // Keep its media-scoped mobile/layout repair CSS across independent external remounts.
  // Runtime-only spatial fitting remains disposable and is always recalculated.
@@ -3523,6 +3536,11 @@ function persistIndependentRepairFromEvent(event) {
  host.__rabbitMirrorIndependentSource=html;
  host.__rabbitMirrorIndependentInitialSource=initialHtml||html;
  host.dataset.rmSourceHash=identity.sourceHash;
+ // Maintenance persistence is not a正文 regeneration. If a host lifecycle event
+ // raced this save and set a stale-source placeholder, restore the repaired live
+ // mirror immediately instead of leaving only the "正文正在更新" notice visible.
+ host.hidden=false;
+ clearExternalHostFreshSourceState(host);
  scheduleExternalShellTint(host,html);
  return true;
 }
