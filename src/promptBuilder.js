@@ -1,10 +1,10 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.27';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.27';
-import { pickCombination } from './picker.js?rmv=1.3.27';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.3.27';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.27';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.27';
-import { DEFAULT_VISUAL_PROMPT } from './settings.js?rmv=1.3.27';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.28';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.28';
+import { pickCombination } from './picker.js?rmv=1.3.28';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.3.28';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.28';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.28';
+import { DEFAULT_VISUAL_PROMPT } from './settings.js?rmv=1.3.28';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -405,10 +405,12 @@ function editableVisualPromptRule(settings) {
 用户可编辑视觉层【会随本轮兔子镜 Prompt 一起发送给实际生成兔子镜的模型】:
 ${blocks.join('\n\n')}
 
-视觉自定义执行边界:
-  - 上述内容只允许调整兔子镜的视觉审美、构图、配色、材质、光影、装饰密度、媒介气质与希望／不希望出现的视觉倾向。
-  - 它不得取消或覆盖兔子镜的输出协议、HTML/CSS 安全、可见中文、结构完整性、移动端可读性、交互可触发性、近期冷却、维修兼容或其他核心工程规则。
-  - 若用户可编辑视觉层与核心工程规则冲突，以核心工程规则为准；在不冲突的部分应尽量完整落实用户编辑后的视觉要求。`;
+视觉自定义执行规则:
+  - 上述内容只允许调整兔子镜的视觉审美、构图、配色、材质、光影、装饰密度、媒介气质与希望／不希望出现的视觉要求。
+  - 用户写入的“额外视觉偏好”是本轮明确视觉指令，不是弱参考；只要不违反锁定工程规则与本轮展现形式本体，就必须在整面主要视觉中清晰、明显、成体系地落实，不得只做局部点缀、轻微借鉴或象征性回应。
+  - 用户写入的“不希望出现的视觉”是本轮明确避用项；除非与锁定工程规则或本轮展现形式本体存在不可避免的直接冲突，否则不得主动使用。
+  - 当额外视觉偏好／避用项与通用视觉审美规则发生冲突时，以用户本轮明确填写的偏好／避用项为准；用户未指定的部分再由通用视觉审美规则补足。
+  - 用户编辑内容不得取消或覆盖兔子镜的输出协议、HTML/CSS 安全、可见中文、结构完整性、移动端可读性、交互可触发性、近期冷却、维修兼容或其他核心工程规则。`;
 }
 
 

@@ -1,14 +1,14 @@
-import { DEFAULT_VISUAL_PROMPT, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.27';
-import { clearLastCombo } from './storage.js?rmv=1.3.27';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.27';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.27';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.3.27';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.27';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.27';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.27';
+import { DEFAULT_VISUAL_PROMPT, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.28';
+import { clearLastCombo } from './storage.js?rmv=1.3.28';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.28';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.28';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.3.28';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.28';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.28';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.28';
 
-const SETTINGS_UI_VERSION = '1.3.27-visual-editor';
-const RUNTIME_VERSION = '1.3.27';
+const SETTINGS_UI_VERSION = '1.3.28-visual-editor';
+const RUNTIME_VERSION = '1.3.28';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -241,7 +241,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜测试版</b><span class="rabbit-mirror-toto-watermark">TOTOv1.3 · 1.3.27</span>
+      <b>兔子镜测试版</b><span class="rabbit-mirror-toto-watermark">TOTOv1.3 · 1.3.28</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -341,11 +341,11 @@ export function initRabbitMirrorUI() {
 
           <label for="rh_visual_extra_prompt" style="display:block;font-weight:700;margin:8px 0 5px;">额外视觉偏好（可选）</label>
           <textarea id="rh_visual_extra_prompt" class="text_pole" rows="5" spellcheck="false" placeholder="例如：偏好高级毛玻璃、低饱和冷色、杂志编辑感、真实纸张、摄影拼贴……" style="width:100%;min-height:100px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
-          <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 10px;">可以直接写：喜欢画面怎么排、什么质感、什么颜色、什么光线、想要简洁还是丰富、想要平面还是有前后层次。这里只追加个人偏好，不会替换兔子镜原来的视觉规则。</div>
+          <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 10px;">可以直接写：喜欢画面怎么排、什么质感、什么颜色、什么光线、想要简洁还是丰富、想要平面还是有前后层次。开启注入后，这里填写的内容会作为本轮明确视觉要求执行，不只是弱参考；未指定的部分仍由兔子镜原有视觉规则补足。</div>
 
           <label for="rh_visual_avoid_prompt" style="display:block;font-weight:700;margin:10px 0 5px;">不希望出现的视觉（可选）</label>
           <textarea id="rh_visual_avoid_prompt" class="text_pole" rows="4" spellcheck="false" placeholder="例如：不要荧光渐变、蓝白系统 UI、统一圆角卡片、廉价塑料感……" style="width:100%;min-height:88px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
-          <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 10px;">可以直接写你不喜欢的颜色、质感、排版方式、光线感觉、UI 套路或整体风格。</div>
+          <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 10px;">可以直接写你不喜欢的颜色、质感、排版方式、光线感觉、UI 套路或整体风格。开启注入后会作为明确避用项处理。</div>
 
           <details style="margin-top:10px;">
             <summary style="cursor:pointer;font-weight:700;">高级：修改通用视觉规则 <span style="font-weight:400;opacity:.62;font-size:11px;">通常无需修改</span></summary>
