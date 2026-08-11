@@ -1,14 +1,14 @@
-import { DEFAULT_VISUAL_PROMPT, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.24';
-import { clearLastCombo } from './storage.js?rmv=1.3.24';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.24';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.24';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.3.24';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.24';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.24';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.24';
+import { DEFAULT_VISUAL_PROMPT, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.26';
+import { clearLastCombo } from './storage.js?rmv=1.3.26';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.26';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.26';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.3.26';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.26';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.26';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.26';
 
-const SETTINGS_UI_VERSION = '1.3.4';
-const RUNTIME_VERSION = '1.3.24';
+const SETTINGS_UI_VERSION = '1.3.26-visual-editor';
+const RUNTIME_VERSION = '1.3.26';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -32,14 +32,23 @@ function checked(id, value) {
 function renderVisualPromptStatus(settings = getSettings()) {
     const target = $('#rh_visual_prompt_status');
     if (!target.length) return;
+    const enabled = !!settings?.visualPromptEditingEnabled;
     const official = String(settings?.visualPrompt ?? DEFAULT_VISUAL_PROMPT).replace(/\r\n?/g, '\n');
     const extra = String(settings?.visualExtraPrompt || '').trim();
     const avoid = String(settings?.visualAvoidPrompt || '').trim();
     const parts = [];
     if (official !== DEFAULT_VISUAL_PROMPT) parts.push('官方视觉基线已修改');
-    if (extra) parts.push('额外视觉偏好已启用');
-    if (avoid) parts.push('视觉避雷已启用');
-    target.text(parts.length ? `当前：自定义已启用（${parts.join(' / ')}）` : '当前：使用官方默认视觉规则；没有追加个人视觉偏好。');
+    if (extra) parts.push('额外视觉偏好已保存');
+    if (avoid) parts.push('视觉避雷已保存');
+    if (!enabled) {
+        target.text(parts.length
+            ? `当前：编辑注入未启用，仍走 1.3.20 原版视觉流程；已保存内容不会发送（${parts.join(' / ')}）。`
+            : '当前：编辑注入未启用，下一面仍走 1.3.20 原版视觉流程。');
+        return;
+    }
+    target.text(parts.length
+        ? `当前：编辑注入已启用（${parts.join(' / ')}）`
+        : '当前：编辑注入已启用；使用可编辑的官方默认视觉规则。');
 }
 
 function escapeHtml(value) {
@@ -206,7 +215,15 @@ export function initRabbitMirrorUI() {
     const existing = $('#rabbit_mirror_theater_settings');
     if (existing.length) {
         const currentPanels = existing.filter(`[data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}"][data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}"]`)
-            .filter((_, panel) => $(panel).find('#rh_feedback_cat').length && $(panel).find('#rh_maintenance_rabbit').length);
+            .filter((_, panel) => {
+                const $panel = $(panel);
+                return $panel.find('#rh_feedback_cat').length
+                    && $panel.find('#rh_maintenance_rabbit').length
+                    && $panel.find('#rh_visual_extra_prompt').length
+                    && $panel.find('#rh_visual_avoid_prompt').length
+                    && $panel.find('#rh_visual_prompt_save').length
+                    && $panel.find('#rh_visual_prompt_enabled').length;
+            });
         if (existing.length === 1 && currentPanels.length === 1) return;
         // A hot reload may leave the old settings DOM alive even after manifest.json has updated.
         // Remove every stale/duplicate panel so the claimed runtime becomes the only UI owner.
@@ -224,7 +241,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.3</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.3 · 1.3.26</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -317,7 +334,9 @@ export function initRabbitMirrorUI() {
       <details class="rabbit-mirror-section rabbit-mirror-visual-prompt-test">
         <summary><span>🎨 个性化视觉提示词</span><span class="rabbit-mirror-section-note">TEST</span></summary>
         <div class="rabbit-mirror-section-content">
-          <div style="opacity:.82;font-size:12px;line-height:1.55;margin-bottom:9px;">这里调整的是兔子镜的<b>视觉审美层</b>。保存后从下一面兔子镜开始生效：跟随当前 API 时随主模型请求发送；独立 API 时随独立模型请求发送。HTML 安全、交互兼容、手机适配、维修兔与输出协议仍由插件锁定。</div>
+          <div style="opacity:.82;font-size:12px;line-height:1.55;margin-bottom:9px;">这里调整的是兔子镜的<b>视觉审美层</b>。只有勾选下面的“启用视觉提示词编辑注入”后，保存的编辑内容才会随实际生成兔子镜的模型请求发送；未勾选时完全沿用 1.3.20 原版视觉 Prompt 流程。HTML 安全、交互兼容、手机适配、维修兔与输出协议仍由插件锁定。</div>
+          <label class="checkbox_label" style="font-weight:700;"><input id="rh_visual_prompt_enabled" type="checkbox"> 启用视觉提示词编辑注入</label>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.5;">默认关闭。关闭时已编辑内容仍保存在本地，但不会注入模型；下一面继续使用 1.3.20 原版视觉规则。开启后才切换到可编辑视觉层。</div>
           <div id="rh_visual_prompt_status" style="padding:7px 9px;border:1px solid color-mix(in srgb, currentColor 18%, transparent);border-radius:8px;opacity:.82;font-size:11px;line-height:1.45;margin-bottom:10px;">当前：正在读取视觉提示词状态……</div>
 
           <label for="rh_visual_extra_prompt" style="display:block;font-weight:700;margin:8px 0 5px;">额外视觉偏好（可选）</label>
@@ -420,6 +439,7 @@ export function initRabbitMirrorUI() {
     checked('#rh_force_visual_scenery', settings.forceVisualScenery);
     checked('#rh_avoid_repeat', settings.avoidRepeat);
     checked('#rh_memory_scan_enabled', settings.memoryScanEnabled);
+    checked('#rh_visual_prompt_enabled', settings.visualPromptEditingEnabled);
     $('#rh_visual_prompt').val(settings.visualPrompt ?? DEFAULT_VISUAL_PROMPT);
     $('#rh_visual_extra_prompt').val(settings.visualExtraPrompt || '');
     $('#rh_visual_avoid_prompt').val(settings.visualAvoidPrompt || '');
@@ -492,14 +512,25 @@ export function initRabbitMirrorUI() {
             : '自动巡逻已关闭：维修兔恢复为纯手动模式。');
     });
 
+    $('#rh_visual_prompt_enabled').on('change', e => {
+        const enabled = !!e.target.checked;
+        updateSettings({ visualPromptEditingEnabled: enabled });
+        renderVisualPromptStatus(getSettings());
+        toastr?.[enabled ? 'info' : 'success']?.(enabled
+            ? '视觉提示词编辑注入已启用：从下一面兔子镜开始使用已保存的可编辑视觉层。'
+            : '视觉提示词编辑注入已关闭：从下一面兔子镜开始恢复 1.3.20 原版视觉 Prompt 流程；已编辑内容仍会保留。');
+    });
+
     $('#rh_visual_prompt_save').on('click', () => {
         const visualPrompt = String($('#rh_visual_prompt').val() ?? '').replace(/\r\n?/g, '\n').slice(0, 8000);
         const visualExtraPrompt = String($('#rh_visual_extra_prompt').val() ?? '').replace(/\r\n?/g, '\n').slice(0, 4000);
         const visualAvoidPrompt = String($('#rh_visual_avoid_prompt').val() ?? '').replace(/\r\n?/g, '\n').slice(0, 4000);
         updateSettings({ visualPrompt, visualExtraPrompt, visualAvoidPrompt });
-        renderVisualPromptStatus({ visualPrompt, visualExtraPrompt, visualAvoidPrompt });
+        renderVisualPromptStatus(getSettings());
         const total = visualPrompt.length + visualExtraPrompt.length + visualAvoidPrompt.length;
-        toastr?.success?.(`视觉提示词已保存（${total} 字符），从下一面兔子镜开始生效。`);
+        toastr?.success?.(getSettings().visualPromptEditingEnabled
+            ? `视觉提示词已保存（${total} 字符），编辑注入已开启，将从下一面兔子镜开始生效。`
+            : `视觉提示词已保存（${total} 字符），但编辑注入当前关闭；不会发送给模型。`);
     });
     $('#rh_visual_prompt_reset').on('click', () => {
         $('#rh_visual_prompt').val(DEFAULT_VISUAL_PROMPT);

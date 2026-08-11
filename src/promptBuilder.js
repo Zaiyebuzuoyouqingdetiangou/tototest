@@ -1,10 +1,10 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.24';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.24';
-import { pickCombination } from './picker.js?rmv=1.3.24';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.3.24';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.24';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.24';
-import { DEFAULT_VISUAL_PROMPT } from './settings.js?rmv=1.3.24';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.26';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.26';
+import { pickCombination } from './picker.js?rmv=1.3.26';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.3.26';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.26';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.26';
+import { DEFAULT_VISUAL_PROMPT } from './settings.js?rmv=1.3.26';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -356,6 +356,31 @@ function presentationEmbodimentRule() {
   - 文字的数量、密度和排版由展现形式决定；文字媒介可以以正文和版式作为主要视觉本体。`;
 }
 
+function legacyPresentationEmbodimentRule() {
+    return String.raw`
+展现形式落地:
+  - 先确定本轮采用的具体展现形式，再编写 HTML/CSS。
+  - <details> 内首个主要内容块必须直接呈现该展现形式本体；外层容器只能负责显示边界，不能成为主要视觉。
+  - DOM 中必须实际出现能够构成该形式的形态、比例、空间关系、层叠方式、材质结构或排版结构；不得只用标题、标签、图标和说明文字宣称它是什么。
+  - 可根据本轮展现形式本体的需要，使用 Flex/Grid、定位、SVG、渐变、阴影、滤镜、clip-path、mask、transform、transition 与 CSS 动画等方式，构成空间、材质与视觉质感。
+  - 不得以通用圆角面板、卡片列表、数据仪表盘或信息框作为默认主体，再向其中填入本轮内容。
+  - 当展现形式本身属于平面媒介时，其纸面、印刷面、画布、版式、纹理、边缘与承载内容可以直接构成主要视觉本体，不视为通用面板。
+  - 主背景、主要承载面、文字、边界、阴影、发光和强调色，必须配合该形式实际采用的材质、环境和光线；不得预设固定的界面配色组合。
+  - 标题和情绪词只能影响已经成立的画面本体，不能单独触发预设的界面底盘、警报结构或科技仪表盘。
+  - 动画必须让该展现形式中的主体、空间、材质或关系发生变化；交互必须作用于该形式内部真实存在的对象或结构。
+  - 文字的数量、密度和排版由展现形式决定；文字媒介可以以正文和版式作为主要视觉本体。
+  - 仅替换标题和正文就能直接用于其他题材的通用界面，属于不合格输出。
+
+色彩组织:
+  - 配色必须形成明确的主次关系，由主要色彩关系统领画面，再用有限的辅助色与局部强调色建立层次；不得让所有颜色平均分布或同时抢眼。
+  - 不得为了避免重复或追求独特强行改变色相，也不得加入不属于媒介的霓虹、光晕或高饱和强调色。
+  - 主背景、承载面、正文、装饰与交互状态须通过明度、饱和度、冷暖、透明度和材质差异清晰分层，并保持相互呼应。
+  - 强调色只用于真正需要聚焦的主体、关系节点或状态变化，数量与面积必须克制。
+  - 材质色、环境光与阴影必须共同作用，不能只给不同区域机械填充不同色块。
+  - 视觉质感应由比例、留白、层次、材质、光影与色彩关系共同成立，不得依靠堆叠渐变、发光、阴影或高饱和色制造表面效果。
+  - 当展现形式适合单色、低彩度或有限色域时，可以保持克制，但仍须依靠明度、纹理、材质与空间层次形成完整视觉。`;
+}
+
 function cleanEditableVisualPrompt(value, maxChars = 8000) {
     const text = String(value ?? '')
         .replace(/\r\n?/g, '\n')
@@ -521,8 +546,12 @@ ${selectedFormats}`);
     chunks.push(userDirectivePriorityRule(settings.userDirectivePriority ? directive : null));
     chunks.push(sharedMemoryMaterialRule(memoryMaterial));
     chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
-    chunks.push(presentationEmbodimentRule());
-    chunks.push(editableVisualPromptRule(settings));
+    if (settings?.visualPromptEditingEnabled) {
+        chunks.push(presentationEmbodimentRule());
+        chunks.push(editableVisualPromptRule(settings));
+    } else {
+        chunks.push(legacyPresentationEmbodimentRule());
+    }
     chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
     chunks.push(interactionFamilyCooldownRule());
     chunks.push(innerDetailsCooldownRule());
@@ -581,7 +610,9 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
         formatLabels: Array.isArray(combo?.formats) ? combo.formats.map(item => `${item?.id || '?'} ${item?.title || '未命名'}`) : [],
         selectedThemeChars: selectedThemes.length,
         selectedFormatChars: selectedFormats.length,
-        editableVisualChars: [settings?.visualPrompt ?? DEFAULT_VISUAL_PROMPT, settings?.visualExtraPrompt, settings?.visualAvoidPrompt].map(value => String(value || '')).join('').length,
+        editableVisualChars: settings?.visualPromptEditingEnabled
+            ? [settings?.visualPrompt ?? DEFAULT_VISUAL_PROMPT, settings?.visualExtraPrompt, settings?.visualAvoidPrompt].map(value => String(value || '')).join('').length
+            : 0,
         motherLibraryChars: selectedThemeResult.retrievedChars + selectedFormatResult.retrievedChars,
         motherLibraryItems: selectedThemeResult.retrievedItems + selectedFormatResult.retrievedItems,
         memoryChars: String(memoryMaterial?.text || '').length,

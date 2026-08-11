@@ -47,6 +47,7 @@ export const defaultSettings = Object.freeze({
     maintenanceRabbitEnabled: true,
     maintenanceRabbitAutoSafeEnabled: false,
     feedbackCatEnabled: true,
+    visualPromptEditingEnabled: false,
     visualPrompt: DEFAULT_VISUAL_PROMPT,
     visualExtraPrompt: '',
     visualAvoidPrompt: '',
@@ -120,6 +121,7 @@ export function getSettings() {
     settings.maintenanceRabbitAutoSafeEnabled = !!settings.maintenanceRabbitAutoSafeEnabled;
     if (!settings.maintenanceRabbitEnabled) settings.maintenanceRabbitAutoSafeEnabled = false;
     settings.feedbackCatEnabled = settings.feedbackCatEnabled !== false;
+    settings.visualPromptEditingEnabled = !!settings.visualPromptEditingEnabled;
     const normalizeVisualSetting = (value, fallback, maxChars) => {
         const raw = typeof value === 'string' ? value : String(value ?? fallback);
         if (raw.length <= maxChars && raw.indexOf('\r') < 0) return raw;
