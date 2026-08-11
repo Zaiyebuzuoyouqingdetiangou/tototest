@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.34';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.34';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.34';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.34';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.34';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.34';
+import { getSettings } from './settings.js?rmv=1.3.35';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.35';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.35';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.35';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.35';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.35';
 
-const RUNTIME_VERSION = '1.3.33';
+const RUNTIME_VERSION = '1.3.35';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -2433,21 +2433,19 @@ function independentPrimaryContentCarrier(details){
 
 
 
-
 function independentExternalCompactTarget(details){
  if(!details?.querySelectorAll || typeof getComputedStyle!=='function') return null;
  const body=[...(details.children||[])].find(node=>!['SUMMARY','STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node?.tagName));
  if(!body?.isConnected) return null;
  let bodyRect;
- try{ bodyRect=body.getBoundingClientRect(); }catch{return null; }
+ try{ bodyRect=body.getBoundingClientRect(); }catch{return null;}
  const bodyWidth=Math.max(1,Number(bodyRect?.width||0));
- const bodyHeight=Math.max(1,Number(bodyRect?.height||0));
  const bodyCenter=Number(bodyRect.left||0)+bodyWidth/2;
  const compact=value=>String(value||'').replace(/\s+/g,'').trim();
  const totalText=Math.max(1,compact(body.textContent).length);
  const candidates=[];
  const seen=new Set();
- const scoreCandidate=(element,baseScore=0,reason='')=>{
+ const scoreCandidate=(element,baseScore=0)=>{
   if(!element?.isConnected || element===body || seen.has(element) || element.closest?.('[data-rabbit-mirror-tool-entry-host]')) return;
   let style,rect;
   try{ style=getComputedStyle(element); rect=element.getBoundingClientRect(); }catch{return;}
@@ -2479,16 +2477,14 @@ function independentExternalCompactTarget(details){
   const textBonus=Math.min(2.2,textShare*2.6);
   const score=baseScore + narrowBonus + textBonus + (semantic?1.8:0) + (hasBackground?1.0:0) + (hasFrame?1.0:0) + (explicitWidth?1.4:0) + portraitBonus - centerOffset*4;
   seen.add(element);
-  candidates.push({element,width,height,widthRatio,textShare,score,reason});
+  candidates.push({element,width,height,widthRatio,textShare,score});
  };
  const visual=independentPrimaryVisualShell(details);
- if(visual?.element) scoreCandidate(visual.element,6.2,'visual');
+ if(visual?.element) scoreCandidate(visual.element,6.2);
  const carrier=independentPrimaryContentCarrier(details);
- if(carrier?.element) scoreCandidate(carrier.element,4.8,'carrier');
- const directChildren=[...(body.children||[])].filter(node=>!['STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node?.tagName));
- for(const element of directChildren) scoreCandidate(element,3.6,'direct-child');
- const descendants=[...body.querySelectorAll('main,article,section,figure,div')].slice(0,240);
- for(const element of descendants) scoreCandidate(element,0,'descendant');
+ if(carrier?.element) scoreCandidate(carrier.element,4.8);
+ for(const element of [...(body.children||[])]) scoreCandidate(element,3.6);
+ for(const element of [...body.querySelectorAll('main,article,section,figure,div')].slice(0,240)) scoreCandidate(element,0);
  candidates.sort((a,b)=>b.score-a.score);
  return candidates[0]||null;
 }
