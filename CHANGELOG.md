@@ -1,4 +1,11 @@
-# 1.3.32 TEST — 外置维修兔持久化修复 / 性能冻结
+# 1.3.33 TEST — 外置维修兔真实执行 / checked 后代误写恢复
+
+- 修复独立 API 纯外置维修前为了回滚而 clone+replace 整个 `<details>` 的问题：外置镜现在只保存克隆快照，维修直接作用于当前 connected live DOM，不再先把真实维修目标换掉。
+- 修复 `:checked ~ .paper.manuscript` 这类常见模型误写：当同节点复合 class 完全匹配不到，但后续唯一 `.paper` 内存在唯一 `.manuscript`，且该后代确实是默认隐藏、checked 后应显现的正文时，交互急救会高置信恢复为实际后代目标。
+- 维修诊断不再把“checked 规则存在但目标元素为 0”算成有效第二层；新增 unresolved 计数，避免只看到提示卡变色/缩放就误报维修成功。
+- 不新增 MutationObserver、focus/resize/scroll 监听、轮询或全聊天扫描；外置宽度、视觉 Prompt、独立 API 请求链保持不变。
+
+# 1.3.33 TEST — 外置维修兔持久化修复 / 性能冻结
 
 - 对比 1.2.69 后确认：维修兔核心检测、菜单、点击、维修库本身未回归；问题位于后来新增的独立 API 外置布局清理链。
 - 1.3.31 的 `stripIndependentTransientLayoutArtifacts()` 会把维修兔写入的 mobile-layout 标记与救援 CSS 当成运行时临时布局，在外置 ready 后处理／重挂载时清除；1.2.69 不存在该清理链。
@@ -6,7 +13,7 @@
 - 外置 ready 后处理不再对已经挂载的 live DOM 做无条件 transient-layout strip，避免“刚修好又被擦掉”。
 - 不新增 MutationObserver、focus/resize/scroll 监听、轮询或全聊天扫描；1.3.20 性能修复、1.3.29/1.3.30 外置显示修复、1.3.31 Prompt 修复均保留。
 
-# 1.3.32 TEST — 视觉偏好只改成品视觉 / 老流程冻结
+# 1.3.33 TEST — 视觉偏好只改成品视觉 / 老流程冻结
 
 - 仅在“启用视觉提示词编辑注入”开启时增加防跑偏约束；关闭开关时不增加本修复文案，继续保持原老流程。
 - 用户视觉偏好只能改变最终兔子镜成品如何呈现，不能把任务改写成“解释 / 分析 / 策划 / 描述兔子镜”。
@@ -14,7 +21,7 @@
 - 规则位于主 API 与独立 API 共用的视觉编辑注入分支，不新增第二套 Prompt，不增加像素风等具体风格教程。
 - 未修改 independentApi / outputSanitizer / settings / ui / style 的运行逻辑，不新增 MutationObserver、focus/resize/scroll 监听、轮询或输入框实时监听。
 
-# 1.3.32 TEST — PC 纯外置窄本体贴合标题壳 / 性能冻结
+# 1.3.33 TEST — PC 纯外置窄本体贴合标题壳 / 性能冻结
 
 - 修复独立 API「轻壳外置」在 PC 端出现“标题壳在上方一条，真正的窄本体却悬在整行正文容器中央”的问题。
 - 当结果属于明显更窄、居中、以单个主要视觉本体承载内容的外置结果时，外置宿主会在 ready 后一次性收缩到“标题壳与主本体的较大宽度”，让本体直接挂在标题条下方。

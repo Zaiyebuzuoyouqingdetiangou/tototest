@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.32';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.32';
+import { getSettings } from './settings.js?rmv=1.3.33';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.33';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.32';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.32';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.32';
+} from './feedbackCat.js?rmv=1.3.33';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.33';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.33';
 
 
-const RUNTIME_VERSION = '1.3.32';
+const RUNTIME_VERSION = '1.3.33';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -1150,6 +1150,55 @@ function getCrossContainerTargetsForCheckedRule(root, targetSelector) {
     }
 }
 
+function getCollapsedCompoundDescendantTargetsForCheckedRule(root, input, rule) {
+    if (!root?.querySelectorAll || !input || !rule?.targetSelector) return [];
+    const selector = String(rule.targetSelector || '').trim();
+    // High-confidence malformed-selector rescue only: `.paper.manuscript` where no
+    // single node has both classes, but the checked control is followed by exactly
+    // one `.paper` containing exactly one `.manuscript` that is hidden by default
+    // and the checked declarations explicitly reveal it. Do not generalize this to
+    // arbitrary selectors/combinators.
+    if (!/^(?:\.[_a-zA-Z][\w-]*){2}$/.test(selector)) return [];
+    let directMatches = [];
+    try { directMatches = [...root.querySelectorAll(selector)]; } catch { return []; }
+    if (directMatches.length) return [];
+    const classNames = [...selector.matchAll(/\.([_a-zA-Z][\w-]*)/g)].map(match => match[1]);
+    if (classNames.length !== 2) return [];
+    const [outerClass, innerClass] = classNames;
+    const following = [];
+    let sibling = input.nextElementSibling;
+    if (rule.relation === '+') {
+        if (sibling) following.push(sibling);
+    } else if (rule.relation === '~') {
+        while (sibling && following.length < 10) {
+            following.push(sibling);
+            sibling = sibling.nextElementSibling;
+        }
+    } else return [];
+    if (!following.length) return [];
+
+    const candidates = [];
+    for (const container of following) {
+        const outers = [];
+        if (container.classList?.contains(outerClass)) outers.push(container);
+        try { outers.push(...container.querySelectorAll(`.${outerClass}`)); } catch {}
+        for (const outer of outers) {
+            let descendants = [];
+            try { descendants = [...outer.querySelectorAll(`.${innerClass}`)]; } catch { descendants = []; }
+            for (const target of descendants) {
+                if (!target?.isConnected || !root.contains?.(target) || target === input) continue;
+                if (!checkedTargetCarriesResultContent(target)) continue;
+                const reveals = (rule.styleMap || []).some(([property, value]) => (
+                    checkedDeclarationCreatesContentReveal(root, target, property, value)
+                ));
+                if (!reveals) continue;
+                if (!candidates.includes(target)) candidates.push(target);
+            }
+        }
+    }
+    return candidates.length === 1 ? candidates : [];
+}
+
 function resolveTargetsForCheckedRule(root, input, rule) {
     if (!root || !input || !rule) return [];
     let targets = getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
@@ -1159,9 +1208,17 @@ function resolveTargetsForCheckedRule(root, input, rule) {
         if (targets.length) return targets;
         // 常见误写：input 被包在 label 内，但 :checked 规则把 label 后方内容当作 input 的兄弟。
         // 以 label 作为结构代理，仅在其同一局部父容器的后续兄弟区域内恢复目标。
-        return getLabelProxyTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
+        targets = getLabelProxyTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
+        if (targets.length) return targets;
+    } else {
+        targets = getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
+        if (targets.length) return targets;
     }
-    return getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
+    // Another common model typo collapses an intended descendant selector into a
+    // same-element class conjunction (`.paper.manuscript` instead of `.paper .manuscript`).
+    // Only recover the unique, content-bearing hidden descendant when the checked
+    // declarations themselves prove that it is the reveal target.
+    return getCollapsedCompoundDescendantTargetsForCheckedRule(root, input, rule);
 }
 
 function findCrossParentCheckedRuleFallbackCandidates(root) {
@@ -10859,7 +10916,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.32-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.33-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -11935,7 +11992,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `radio同组恢复 groups=${routes.radioGroups} listener=${routes.radioGroups ? 'true' : 'false'}`,
         `radio可逆返回 groups=${routes.reversibleRadio} listener=${routes.reversibleRadio ? 'true' : 'false'} last=${root.getAttribute?.(REVERSIBLE_RADIO_LAST_ATTR) || '(尚未再次点按已选项)'}`,
         `radio取消程序恢复 entries=${routes.radioReset} listener=${routes.radioReset ? 'true' : 'false'} last=${root.getAttribute?.(RAW_RADIO_RESET_LAST_ATTR) || '(尚未点击验证)'}`,
-        `checked交互深度 rules=${checkedDepth.checkedRuleCount} selectionOnly=${checkedDepth.selectionStyleRuleCount} secondLayer=${checkedDepth.meaningfulCheckedRuleCount} fallback=${checkedDepth.selectionOnlyFallbackCount}`,
+        `checked交互深度 rules=${checkedDepth.checkedRuleCount} selectionOnly=${checkedDepth.selectionStyleRuleCount} secondLayer=${checkedDepth.meaningfulCheckedRuleCount} unresolved=${checkedDepth.unresolvedCheckedRuleCount || 0} fallback=${checkedDepth.selectionOnlyFallbackCount}`,
         `伪类交互深度 rules=${pseudoDepth.pseudoRuleCount} visualOnly=${pseudoDepth.visualOnlyPseudoRuleCount} secondLayer=${pseudoDepth.meaningfulPseudoRuleCount}`,
         `可达内容交互 elements=${reachability.contentInteractiveElementCount} routes=${reachability.installedInteractionRouteCount} missing=${reachability.noInteractionStructure}`,
         `内部details替换承载 patches=${root.dataset.rabbitMirrorNestedDetailsReplacement || '0'}`,
@@ -13463,27 +13520,30 @@ function isCheckedRuleVisualOnlyForTarget(root, target, styleMap) {
 function maintenanceCheckedInteractionDepth(root) {
     const controls = diagnosticQueryContentAll(root, 'input[type="checkbox"], input[type="radio"]');
     const selectionOnlyFallbackCount = diagnosticQueryContentAll(root, `[${SELECTION_ONLY_FALLBACK_ATTR}]`).length;
-    if (!controls.length) return { checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount };
+    if (!controls.length) return { checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, unresolvedCheckedRuleCount: 0, selectionOnlyFallbackCount };
 
     let checkedRuleCount = 0;
     let meaningfulCheckedRuleCount = 0;
     let selectionStyleRuleCount = 0;
+    let unresolvedCheckedRuleCount = 0;
     for (const input of controls) {
         const wrappingLabel = input.closest?.('label');
         for (const rule of parseCheckedRulesFromText(root, input)) {
             checkedRuleCount += 1;
-            let targets = getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
+            const targets = resolveTargetsForCheckedRule(root, input, rule);
+            // A syntactically present :checked rule that points at no real element
+            // is not a meaningful second layer. Older diagnostics counted it as one,
+            // which let the maintenance rabbit report success while the intended
+            // content stayed permanently hidden.
             if (!targets.length) {
-                targets = rule.source === 'class-local' || rule.source === 'generic-local'
-                    ? getLocalContainerTargetsForCheckedRule(input, rule.targetSelector)
-                    : getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
+                unresolvedCheckedRuleCount += 1;
+                continue;
             }
-            const onlySelectionSurface = targets.length > 0 && targets.every(target => (
+            const onlySelectionSurface = targets.every(target => (
                 (wrappingLabel && (target === wrappingLabel || wrappingLabel.contains?.(target)))
                 || String(target.tagName || '').toLowerCase() === 'label'
             ));
-            const visualOnly = targets.length > 0
-                && targets.every(target => isCheckedRuleVisualOnlyForTarget(root, target, rule.styleMap));
+            const visualOnly = targets.every(target => isCheckedRuleVisualOnlyForTarget(root, target, rule.styleMap));
             if (onlySelectionSurface && visualOnly) selectionStyleRuleCount += 1;
             else meaningfulCheckedRuleCount += 1;
         }
@@ -13496,11 +13556,12 @@ function maintenanceCheckedInteractionDepth(root) {
     }
 
     const checkedSelectionOnlyRaw = checkedRuleCount > 0
+        && unresolvedCheckedRuleCount === 0
         && meaningfulCheckedRuleCount === 0
         && selectionStyleRuleCount === checkedRuleCount
         && controls.length > 1;
     const checkedSelectionOnly = checkedSelectionOnlyRaw && selectionOnlyFallbackCount === 0;
-    return { checkedSelectionOnly, checkedSelectionOnlyRaw, checkedRuleCount, meaningfulCheckedRuleCount, selectionStyleRuleCount, selectionOnlyFallbackCount };
+    return { checkedSelectionOnly, checkedSelectionOnlyRaw, checkedRuleCount, meaningfulCheckedRuleCount, selectionStyleRuleCount, unresolvedCheckedRuleCount, selectionOnlyFallbackCount };
 }
 
 
@@ -15073,6 +15134,24 @@ function captureMaintenancePreRepairSnapshot(root) {
     if (!details?.parentNode) return null;
     const key = maintenanceSnapshotKey(root);
     const originalNode = details;
+
+    // Independent pure-external mirrors are already owned by a separate live host.
+    // Replacing the entire <details> merely to take a rollback snapshot severs all
+    // listeners/WeakMap state and can make the external reconciler treat the repair
+    // target as stale before a repair module touches it. Snapshot a clone, but repair
+    // the connected live node in place. Rollback can still replace it with the clone.
+    if (isIndependentMaintenanceRoot(root)) {
+        const snapshotNode = originalNode.cloneNode(true);
+        maintenancePreRepairSnapshots.set(key, {
+            node: snapshotNode,
+            open: originalNode.hasAttribute('open'),
+            ts: Date.now(),
+        });
+        trimMaintenanceSnapshots();
+        const liveButton = root.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || originalNode.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || null;
+        return { key, root, button: liveButton };
+    }
+
     const workingNode = details.cloneNode(true);
     originalNode.replaceWith(workingNode);
     const workingRoot = root === originalNode ? workingNode : root;

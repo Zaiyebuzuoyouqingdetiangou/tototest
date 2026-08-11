@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.32';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.32';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.32';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.32';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.32';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.32';
+import { getSettings } from './settings.js?rmv=1.3.33';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.33';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.33';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.33';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.33';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.33';
 
-const RUNTIME_VERSION = '1.3.32';
+const RUNTIME_VERSION = '1.3.33';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
