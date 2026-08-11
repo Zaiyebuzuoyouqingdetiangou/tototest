@@ -1,4 +1,12 @@
-# 1.3.39 TEST — 外置维修原生恢复 / 点击减负 / 视觉偏好收口
+# 1.3.41 TEST — 恢复旧版独立 API 交互状态净化基线
+
+- 对比用户提供的 `副api满意版(2).zip`（内部 1.2.19）后确认：旧版 1.2.12 起存在完整的独立 API 交互状态净化层，当前 1.3.x 已将其移除。
+- 恢复 `initialHtml` 干净基线、`scrubIndependentInteractionState()`、运行时状态属性／临时救援 style 清理，以及旧缓存污染迁移。
+- 维修结果仍可保存结构修复，但 checkbox/radio 当前选中状态、`aria-pressed`、临时 active/selected/open 标记、checked 伪元素补丁与可逆内联样式不再被写死进永久外置缓存。
+- 已有 1.3.x 污染缓存会在启动／恢复时优先从兼容历史中寻找更干净的初始基线并做一次性净化；不会重新请求副 API。
+- 不回退现有外置几何、跨设备元数据、维修兔 v2.18、视觉提示词编辑或 1.3.20 性能冻结链；不新增 MutationObserver、focus/resize/scroll 监听或轮询。
+
+# 1.3.41 TEST — 外置维修原生恢复 / 点击减负 / 视觉偏好收口
 
 - 撤回 1.3.38 的 `independent-checked-runtime-reset` 双重重建链；该链会在同一次交互维修中重复解析 checked CSS、撤样式并再次进入完整交互维修库，造成额外卡顿。
 - PC 独立 API 外置镜面若 checkbox/radio、label 与 checked 目标结构完整且无 unresolved 规则，维修兔优先只清理旧维修遗留的 `!important` checked 内联状态，恢复浏览器原生 label/input/:checked CSS；不再把正常结构强行接管成第二套手动状态机。

@@ -1,12 +1,13 @@
-import { getSettings } from './settings.js?rmv=1.3.39';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.39';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.39';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.39';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.39';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.39';
+import { getSettings } from './settings.js?rmv=1.3.41';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.41';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.41';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.41';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.41';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.41';
 
-const RUNTIME_VERSION = '1.3.39';
+const RUNTIME_VERSION = '1.3.41';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
+const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
 const OWNER_LOCK_STORE_KEY = 'rabbit_mirror_independent_owner_locks_v1';
@@ -158,7 +159,7 @@ function normalizeHistoryEntry(value){
  if(!value?.html) return null;
  const html=String(value.html||'');
  return {
-  id:String(value.id||hashText(html)), html, sourceHash:String(value.sourceHash||''),
+  id:String(value.id||hashText(html)), html, initialHtml:String(value.initialHtml||''), sourceHash:String(value.sourceHash||''),
   bodyHash:String(value.bodyHash||''), displayHash:String(value.displayHash||''), reasoningHash:String(value.reasoningHash||''),
   ts:Number(value.ts||Date.now()), model:String(value.model||''), runtime:String(value.runtime||RUNTIME_VERSION),
   apiRequest:value.apiRequest&&typeof value.apiRequest==='object'?{...value.apiRequest}:null,
@@ -193,8 +194,9 @@ function chatMetadataObject(ctx=getContext()){
 function compactChatPersistedRecord(value){
  if(!value?.html) return null;
  const record=normalizeHistoryEntry(value); if(!record?.html) return null;
+ const initialHtml=String(value.initialHtml||record.initialHtml||'');
  return {
-  html:String(record.html||''), sourceHash:String(record.sourceHash||''), bodyHash:String(record.bodyHash||''),
+  html:String(record.html||''), initialHtml:initialHtml && initialHtml!==String(record.html||'') ? initialHtml : '', sourceHash:String(record.sourceHash||''), bodyHash:String(record.bodyHash||''),
   displayHash:String(record.displayHash||''), reasoningHash:String(record.reasoningHash||''), ts:Number(record.ts||Date.now()),
   model:String(record.model||''), runtime:String(record.runtime||RUNTIME_VERSION), executionLockChars:Number(record.executionLockChars||0),
   paletteFingerprint:record.paletteFingerprint&&typeof record.paletteFingerprint==='object'?{...record.paletteFingerprint}:null,
@@ -276,8 +278,9 @@ function mergeChatOutputsIntoLocalStore(ctx,store){
   const owner=parseChatOwnerKey(ownerKey); if(!owner) continue;
   const base=`${chatKey(ctx)}:${owner.index}:${owner.swipe}`;
   if(raw?.deleted===true){ clearOwnerLockForBase(base); continue; }
-  const record=compactChatPersistedRecord(raw); if(!record?.html || !independentStoredHtmlRestorable(record.html)) continue;
+  let record=compactChatPersistedRecord(raw); if(!record?.html || !independentStoredHtmlRestorable(record.html)) continue;
   const slot=chatPersistenceSlot(ctx,owner.index,owner.swipe,record); if(!slot) continue;
+  if(!record.initialHtml && interactionStatePollutionScore(record.html)>0) record=normalizeSavedInteractionRecord(record,slot);
   const existing=store?.[slot];
   const existingReady=existing?.html && independentStoredHtmlRestorable(existing.html) ? compactChatPersistedRecord(existing) : null;
   const localIsNewer=!!existingReady && Number(existingReady.ts||0)>Number(record.ts||0);
@@ -1514,6 +1517,189 @@ function cachePreparedReadyHtml(key,value){
  }
  return value;
 }
+
+const PERSISTED_STATE_STYLE_ATTRS = [
+ 'data-rabbit-mirror-checked-pseudo-rule-rescue',
+ 'data-rabbit-mirror-focus-within-persistent-style',
+ 'data-rabbit-mirror-static-choice-selection-style',
+ 'data-rabbit-mirror-structured-static-disclosure-style',
+ 'data-rabbit-mirror-fill-in-choice-style',
+];
+const PERSISTED_STATE_ARIA_ATTRS = ['aria-pressed','aria-selected','aria-expanded','aria-current'];
+const PERSISTED_STATE_ATTR_RE = /^(?:data-rm-(?:.*(?:active|selected|open|used|filled|touch-hover|pseudo-active|target-active)|checked-pseudo-rule-target|labeled-checked-verify-target|reversible-style-baseline|reversible-text-baseline|click-to-restore)|data-rabbit-mirror-(?:labeled-checked(?:-last|-verify|-verify-count)?|checked-text-rule-rescue|expanded-opacity-rescue|inert-action-active|radio-reset-last|stale-checked-inline-cleanup))$/i;
+function parseIndependentDetailsRaw(html=''){
+ try{
+  const template=document.createElement('template');
+  template.innerHTML=String(html||'');
+  return template.content.querySelector('details');
+ }catch{return null;}
+}
+function restoreEncodedInteractionBaselines(root){
+ if(!root?.querySelectorAll) return;
+ for(const element of [root,...root.querySelectorAll('[data-rm-reversible-style-baseline]')]){
+  const encoded=String(element.getAttribute?.('data-rm-reversible-style-baseline')||'');
+  if(!encoded || !element.style) continue;
+  try{
+   const parsed=JSON.parse(decodeURIComponent(encoded));
+   for(const [property,state] of Object.entries(parsed||{})){
+    const value=String(state?.value||'');
+    const priority=String(state?.priority||'');
+    if(value) element.style.setProperty(property,value,priority);
+    else element.style.removeProperty(property);
+   }
+  }catch{}
+ }
+ for(const element of root.querySelectorAll('[data-rm-reversible-text-baseline]')){
+  const encoded=String(element.getAttribute('data-rm-reversible-text-baseline')||'');
+  if(!encoded || element.children?.length) continue;
+  try{ element.textContent=decodeURIComponent(encoded); }catch{}
+ }
+}
+function persistedStateElements(root){
+ if(!root?.querySelectorAll) return [];
+ return [root,...root.querySelectorAll('*')].filter(element=>{
+  if(element.matches?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')) return false;
+  if(element.tagName==='STYLE' && PERSISTED_STATE_STYLE_ATTRS.some(name=>element.hasAttribute(name))) return false;
+  return true;
+ });
+}
+function elementHasPersistedRuntimeState(element){
+ if(!element?.attributes) return false;
+ if(PERSISTED_STATE_ARIA_ATTRS.some(name=>element.hasAttribute(name))) return true;
+ return [...element.attributes].some(attribute=>PERSISTED_STATE_ATTR_RE.test(attribute.name));
+}
+function baselineElementForCurrent(current,baselines,used,cursorRef){
+ const tag=String(current?.tagName||'');
+ const id=String(current?.id||'');
+ if(id){
+  const exact=baselines.find((item,index)=>!used.has(index) && item.tagName===tag && (item.id===id || (item.id && id.endsWith(`-${item.id}`))));
+  if(exact){ const index=baselines.indexOf(exact); used.add(index); cursorRef.value=Math.max(cursorRef.value,index+1); return exact; }
+ }
+ for(let i=cursorRef.value;i<Math.min(baselines.length,cursorRef.value+12);i++){
+  if(used.has(i) || baselines[i].tagName!==tag) continue;
+  used.add(i); cursorRef.value=i+1; return baselines[i];
+ }
+ for(let i=0;i<baselines.length;i++){
+  if(used.has(i) || baselines[i].tagName!==tag) continue;
+  used.add(i); return baselines[i];
+ }
+ return null;
+}
+function restoreStateAttributesFromBaseline(current,baseline){
+ if(!current || !baseline) return;
+ const stateful=elementHasPersistedRuntimeState(current);
+ if(stateful){
+  for(const name of ['class','style','hidden']){
+   if(baseline.hasAttribute(name)) current.setAttribute(name,baseline.getAttribute(name));
+   else current.removeAttribute(name);
+  }
+ }
+ for(const name of PERSISTED_STATE_ARIA_ATTRS){
+  if(baseline.hasAttribute(name)) current.setAttribute(name,baseline.getAttribute(name));
+  else current.removeAttribute(name);
+ }
+ for(const attribute of [...current.attributes]){
+  if(!PERSISTED_STATE_ATTR_RE.test(attribute.name)) continue;
+  if(baseline.hasAttribute(attribute.name)) current.setAttribute(attribute.name,baseline.getAttribute(attribute.name));
+  else current.removeAttribute(attribute.name);
+ }
+}
+function scrubIndependentInteractionState(html='',baselineHtml=''){
+ const details=parseIndependentDetailsRaw(html);
+ if(!details) return String(html||'').trim();
+ const baseline=parseIndependentDetailsRaw(baselineHtml)||parseIndependentDetailsRaw(html);
+ restoreEncodedInteractionBaselines(details);
+ details.querySelectorAll(PERSISTED_STATE_STYLE_ATTRS.map(name=>`style[${name}]`).join(',')).forEach(node=>node.remove());
+ const currentElements=persistedStateElements(details);
+ const baselineElements=persistedStateElements(baseline);
+ const used=new Set(); const cursorRef={value:0};
+ for(const current of currentElements){
+  const original=baselineElementForCurrent(current,baselineElements,used,cursorRef);
+  if(original) restoreStateAttributesFromBaseline(current,original);
+ }
+ const currentInputs=[...details.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
+ const baselineInputs=[...baseline.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
+ currentInputs.forEach((input,index)=>{
+  const original=baselineInputs[index];
+  const checked=!!original?.hasAttribute?.('checked');
+  input.checked=checked;
+  input.defaultChecked=checked;
+  if(checked) input.setAttribute('checked',''); else input.removeAttribute('checked');
+  if(original?.hasAttribute?.('aria-pressed')) input.setAttribute('aria-pressed',original.getAttribute('aria-pressed'));
+  else input.removeAttribute('aria-pressed');
+ });
+ const currentOptions=[...details.querySelectorAll('option')];
+ const baselineOptions=[...baseline.querySelectorAll('option')];
+ currentOptions.forEach((option,index)=>{
+  const selected=!!baselineOptions[index]?.hasAttribute?.('selected');
+  option.selected=selected;
+  option.defaultSelected=selected;
+  if(selected) option.setAttribute('selected',''); else option.removeAttribute('selected');
+ });
+ const currentDetails=[details,...details.querySelectorAll('details')];
+ const baselineDetails=[baseline,...baseline.querySelectorAll('details')];
+ currentDetails.forEach((item,index)=>{
+  const open=!!baselineDetails[index]?.hasAttribute?.('open');
+  if(open) item.setAttribute('open',''); else item.removeAttribute('open');
+ });
+ for(const element of [details,...details.querySelectorAll('*')]){
+  for(const attribute of [...element.attributes]){
+   if(PERSISTED_STATE_ATTR_RE.test(attribute.name)) element.removeAttribute(attribute.name);
+  }
+ }
+ return String(details.outerHTML||'').trim();
+}
+function interactionStatePollutionScore(html=''){
+ const source=String(html||'');
+ const markers=source.match(/(?:aria-(?:pressed|selected|expanded)="true"|data-rm-[^=\s>]*(?:active|selected|open|used|filled)|data-rabbit-mirror-(?:checked-pseudo-rule-rescue|checked-text-rule-rescue|labeled-checked))/gi);
+ return markers?.length||0;
+}
+function interactionBaselineProfile(html=''){
+ const details=parseIndependentDetailsRaw(html);
+ if(!details) return null;
+ restoreEncodedInteractionBaselines(details);
+ details.querySelectorAll('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]').forEach(node=>node.remove());
+ details.querySelectorAll(PERSISTED_STATE_STYLE_ATTRS.map(name=>`style[${name}]`).join(',')).forEach(node=>node.remove());
+ const summary=String(details.querySelector(':scope > summary')?.textContent||'').replace(/\s+/g,' ').trim();
+ const text=String(details.textContent||'').replace(/\s+/g,' ').trim();
+ const controls=[...details.querySelectorAll('input[type="checkbox"], input[type="radio"]')].map(input=>String(input.type||'')).join(',');
+ return {summary,text,controls};
+}
+function interactionBaselinesCompatible(currentHtml,candidateHtml){
+ const current=interactionBaselineProfile(currentHtml); const candidate=interactionBaselineProfile(candidateHtml);
+ if(!current||!candidate) return false;
+ return current.summary===candidate.summary && current.text===candidate.text && current.controls===candidate.controls;
+}
+function initialHtmlForRecord(slot,record){
+ if(record?.initialHtml && independentStoredHtmlRestorable(record.initialHtml)) return String(record.initialHtml);
+ const currentHtml=String(record?.html||'');
+ const candidates=historyEntriesForSlot(slot).filter(entry=>entry?.html&&independentStoredHtmlRestorable(entry.html)&&interactionBaselinesCompatible(currentHtml,entry.initialHtml||entry.html));
+ if(candidates.length){
+  candidates.sort((a,b)=>interactionStatePollutionScore(a.html)-interactionStatePollutionScore(b.html) || Number(a.ts||0)-Number(b.ts||0));
+  return String(candidates[0].initialHtml||candidates[0].html||'');
+ }
+ return currentHtml;
+}
+function normalizeSavedInteractionRecord(record,slot=''){
+ if(!record?.html) return record;
+ const initial=scrubIndependentInteractionState(initialHtmlForRecord(slot,record),initialHtmlForRecord(slot,record));
+ const html=scrubIndependentInteractionState(record.html,initial||record.html);
+ return {...record,html,initialHtml:initial||html};
+}
+function migratePersistedInteractionStateRecords(){
+ try{ if(localStorage.getItem(INTERACTION_STATE_MIGRATION_KEY)==='done') return false; }catch{}
+ const store=readStore(); let changed=false;
+ for(const [slot,record] of Object.entries(store)){
+  if(!record?.html) continue;
+  const normalized=normalizeSavedInteractionRecord(record,slot);
+  if(String(normalized.html||'')!==String(record.html||'') || String(normalized.initialHtml||'')!==String(record.initialHtml||'')){
+   store[slot]=normalized; changed=true;
+  }
+ }
+ if(changed) writeStore(store);
+ try{ localStorage.setItem(INTERACTION_STATE_MIGRATION_KEY,'done'); }catch{}
+ return changed;
+}
 function prepareIndependentReadyHtml(html=''){
  const source=String(html||'').trim();
  const cacheKey=`${RUNTIME_VERSION}:${source.length}:${hashText(source)}`;
@@ -1882,7 +2068,7 @@ function historyRecoveryForObserved(slot,observed){
   const entries=historyEntriesForSlot(candidate);
   const matched=entries.find(entry=>savedRecordMatchesObserved(entry,observed) && independentStoredHtmlRestorable(entry.html))
    || entries.find(entry=>String(entry?.bodyHash||'') && String(entry.bodyHash)===String(observed?.bodyHash||'') && (!observed?.displayHash || String(entry?.displayHash||'')===String(observed.displayHash)) && independentStoredHtmlRestorable(entry.html));
-  if(matched) return matched;
+  if(matched) return interactionStatePollutionScore(matched.html)>0 ? normalizeSavedInteractionRecord(matched,candidate) : matched;
  }
  return null;
 }
@@ -3099,7 +3285,8 @@ async function generateFor(index,msg,force=false,sourceAware=true){
     consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror(wrappedIndependentMirrorHtml(html),result.feedbackId);
    }
   }
-  const completed={html,sourceHash,bodyHash,displayHash,reasoningHash,paletteFingerprint,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION,apiRequest:result?.requestDiagnostic||null,executionLockChars:Number(result?.executionLockChars||0)};
+  const initialHtml=scrubIndependentInteractionState(html,html);
+  const completed={html:initialHtml||html,initialHtml:'',sourceHash,bodyHash,displayHash,reasoningHash,paletteFingerprint,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION,apiRequest:result?.requestDiagnostic||null,executionLockChars:Number(result?.executionLockChars||0)};
   appendHistoryEntry(slot,completed);
   const next=readStore(); saveRecordForSlot(next,slot,completed); writeStore(next);
   setOwnerLockForBase(baseSlot,slot,sourceHash);
@@ -3306,14 +3493,19 @@ function persistIndependentRepairFromEvent(event) {
  const clone=details.cloneNode(true);
  clone.setAttribute(MAINTENANCE_PERSISTED_LAYOUT_ATTR,'true');
  clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
- const html=String(clone.outerHTML||'').trim();
- if(!independentStoredHtmlRestorable(html)) return false;
+ const rawHtml=String(clone.outerHTML||'').trim();
  const store=readStore();
  const existing=store?.[identity.slot] || findSavedRecord(store,identity.slot,identity.legacySlots||[]);
- if(existing?.html && String(existing.html)!==html) appendHistoryEntry(identity.slot,existing);
+ const baseline=String(existing?.initialHtml||host.__rabbitMirrorIndependentInitialSource||initialHtmlForRecord(identity.slot,existing)||existing?.html||rawHtml);
+ const initialHtml=scrubIndependentInteractionState(baseline,baseline);
+ const html=scrubIndependentInteractionState(rawHtml,initialHtml||baseline);
+ if(!independentStoredHtmlRestorable(html)) return false;
+ const previousClean=existing?.html?scrubIndependentInteractionState(existing.html,initialHtml||baseline):'';
+ if(previousClean && previousClean!==html) appendHistoryEntry(identity.slot,{...existing,html:previousClean,initialHtml:initialHtml||previousClean});
  const repaired={
   ...(existing||{}),
   html,
+  initialHtml:initialHtml||html,
   sourceHash:identity.sourceHash,
   bodyHash:identity.bodyHash,
   displayHash:identity.displayHash,
@@ -3329,6 +3521,7 @@ function persistIndependentRepairFromEvent(event) {
  setOwnerLockForBase(identity.baseSlot,identity.slot,identity.sourceHash);
  writePersistedOwner(identity.ctx,identity.index,identity.msg,repaired,{overwrite:true});
  host.__rabbitMirrorIndependentSource=html;
+ host.__rabbitMirrorIndependentInitialSource=initialHtml||html;
  host.dataset.rmSourceHash=identity.sourceHash;
  scheduleExternalShellTint(host,html);
  return true;
@@ -4242,6 +4435,7 @@ async function reconfigureRuntime(){
 export function refreshRabbitMirrorGenerationMode(){ void reconfigureRuntime(); }
 export async function initIndependentRabbitMirror(){
  if(!currentRuntime()) return;
+ migratePersistedInteractionStateRecords();
  // Preserve already-mounted ready mirrors before a hot-update cleanup removes
  // the old runtime DOM. This is a last-resort migration path when a previous
  // build already pruned its current-output cache.
