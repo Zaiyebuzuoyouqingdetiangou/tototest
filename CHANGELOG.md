@@ -1,3 +1,10 @@
+# 1.3.45 TEST — 外置维修工作副本 / 正文更新误判修复
+
+- 恢复旧满意版 1.2.19 的关键维修行为：手动维修独立 API 外置镜时，只替换当前 `<details>` 为干净工作副本，外置 host、owner/sourceHash 与位置不动；旧 listener / WeakMap 交互状态随旧节点一起丢弃，再在新节点上重新绑定工具与维修。
+- 工作副本与“返回修复前”快照都不克隆运行时工具栏、诊断面板或菜单，避免保存出“长得像按钮但没有 listener”的死 UI。
+- `GENERATION_STARTED` 不再单凭宿主事件就把已完成镜面隐藏成“正文正在更新”；真正正文/Swipe 的 sourceHash 变化仍由既有 syncMessages 精确检测并进入 awaiting-fresh-source。
+- 不新增 MutationObserver、focus/resize/scroll 监听、轮询或全聊天扫描；副 API 请求、stream、重试、外置几何和视觉 Prompt 不变。
+
 # 1.3.44 TEST — 诊断面板禁止持久化 / 死按钮清理
 
 - 修复独立 API 外置镜在维修保存／重挂载时，把一次性全链路诊断面板连同兔子镜正文一起序列化的问题。DOM 可以被保存，但 `addEventListener()` 不能，因此旧报告会变成“看得到按钮、点了完全没反应”的静态死面板。

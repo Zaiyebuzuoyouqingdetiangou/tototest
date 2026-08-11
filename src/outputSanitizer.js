@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.44';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.44';
+import { getSettings } from './settings.js?rmv=1.3.45';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.45';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.44';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.44';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.44';
+} from './feedbackCat.js?rmv=1.3.45';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.45';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.45';
 
 
-const RUNTIME_VERSION = '1.3.44';
+const RUNTIME_VERSION = '1.3.45';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -10994,7 +10994,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.44-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.45-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -15213,21 +15213,32 @@ function captureMaintenancePreRepairSnapshot(root) {
     const key = maintenanceSnapshotKey(root);
     const originalNode = details;
 
-    // Independent pure-external mirrors are already owned by a separate live host.
-    // Replacing the entire <details> merely to take a rollback snapshot severs all
-    // listeners/WeakMap state and can make the external reconciler treat the repair
-    // target as stale before a repair module touches it. Snapshot a clone, but repair
-    // the connected live node in place. Rollback can still replace it with the clone.
+    // Independent external mirrors keep their outer host, but the maintenance working
+    // <details> itself must start from a fresh DOM node. The older 1.2.19 maintenance
+    // path did this naturally; repairing the same live node in-place lets old listeners
+    // and WeakMap-backed checked/radio state survive across repeated repairs and fight
+    // the newly installed fallback. Clone+replace only the details body, never the host.
+    // Runtime-only tool buttons are rebuilt instead of cloned so their listeners cannot
+    // turn into static/dead controls after the replacement.
     if (isIndependentMaintenanceRoot(root)) {
         const snapshotNode = originalNode.cloneNode(true);
+        const workingNode = originalNode.cloneNode(true);
+        snapshotNode.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)?.forEach(node => node.remove());
+        snapshotNode.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
+        workingNode.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)?.forEach(node => node.remove());
+        workingNode.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
+        const wasOpen = originalNode.hasAttribute('open');
+        originalNode.replaceWith(workingNode);
+        if (wasOpen) workingNode.setAttribute('open', ''); else workingNode.removeAttribute('open');
+        try { refreshRabbitMirrorToolsInScope?.(workingNode); } catch {}
         maintenancePreRepairSnapshots.set(key, {
             node: snapshotNode,
-            open: originalNode.hasAttribute('open'),
+            open: wasOpen,
             ts: Date.now(),
         });
         trimMaintenanceSnapshots();
-        const liveButton = root.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || originalNode.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || null;
-        return { key, root, button: liveButton };
+        const workingButton = workingNode.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || null;
+        return { key, root: workingNode, button: workingButton };
     }
 
     const workingNode = details.cloneNode(true);

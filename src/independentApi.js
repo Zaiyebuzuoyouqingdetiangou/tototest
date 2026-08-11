@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.44';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.44';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.44';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.44';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.44';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.44';
+import { getSettings } from './settings.js?rmv=1.3.45';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.45';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.45';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.45';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.45';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.45';
 
-const RUNTIME_VERSION = '1.3.44';
+const RUNTIME_VERSION = '1.3.45';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -4283,7 +4283,12 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
        // alone: the exact Swipe/正文主文本 fingerprint must actually change first.
        if(lastMessage && !lastMessage.is_user && typeof lastMessage.mes==='string'){
          cancelFlightsForMessage(lastIndex,'host-regeneration-started');
-         markExternalHostsAwaitingFreshSource(lastIndex,'waiting');
+         // Do not hide a completed mirror from GENERATION_STARTED alone. SillyTavern can
+         // emit this lifecycle event while metadata/tools are being saved during a manual
+         // Maintenance Rabbit repair. A real regeneration is already detected below by
+         // the exact正文 sourceHash mismatch in syncMessages(), which then marks the host
+         // awaiting-fresh-source. This keeps genuine regeneration behavior without letting
+         // a maintenance save turn the current mirror into a stale-source placeholder.
        }
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
