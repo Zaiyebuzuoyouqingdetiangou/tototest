@@ -1,14 +1,14 @@
-import { DEFAULT_VISUAL_PROMPT, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.26';
-import { clearLastCombo } from './storage.js?rmv=1.3.26';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.26';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.26';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.3.26';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.26';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.26';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.26';
+import { DEFAULT_VISUAL_PROMPT, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.27';
+import { clearLastCombo } from './storage.js?rmv=1.3.27';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.27';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.27';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.3.27';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.27';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.27';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.27';
 
-const SETTINGS_UI_VERSION = '1.3.26-visual-editor';
-const RUNTIME_VERSION = '1.3.26';
+const SETTINGS_UI_VERSION = '1.3.27-visual-editor';
+const RUNTIME_VERSION = '1.3.27';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -37,7 +37,7 @@ function renderVisualPromptStatus(settings = getSettings()) {
     const extra = String(settings?.visualExtraPrompt || '').trim();
     const avoid = String(settings?.visualAvoidPrompt || '').trim();
     const parts = [];
-    if (official !== DEFAULT_VISUAL_PROMPT) parts.push('官方视觉基线已修改');
+    if (official !== DEFAULT_VISUAL_PROMPT) parts.push('通用视觉规则已修改');
     if (extra) parts.push('额外视觉偏好已保存');
     if (avoid) parts.push('视觉避雷已保存');
     if (!enabled) {
@@ -48,7 +48,7 @@ function renderVisualPromptStatus(settings = getSettings()) {
     }
     target.text(parts.length
         ? `当前：编辑注入已启用（${parts.join(' / ')}）`
-        : '当前：编辑注入已启用；使用可编辑的官方默认视觉规则。');
+        : '当前：编辑注入已启用；使用可编辑的通用视觉规则。');
 }
 
 function escapeHtml(value) {
@@ -113,13 +113,13 @@ function renderTokenMeter(record = getLastRabbitMirrorTokenRecord()) {
     if (!record) {
         main.text('尚无生成记录');
         exact.text('发送下一轮消息后自动更新。');
-        detail.text('只统计兔子镜小剧场自己写入的 Prompt。');
+        detail.text('只统计兔子镜测试版自己写入的 Prompt。');
         return;
     }
     if (record.status !== 'injected') {
         main.text('0 Token');
         exact.text(tokenMeterNoInjectionLabel(record.reason));
-        detail.text('未向模型追加兔子镜小剧场 Prompt。');
+        detail.text('未向模型追加兔子镜测试版 Prompt。');
         return;
     }
 
@@ -241,7 +241,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.3 · 1.3.26</span>
+      <b>兔子镜测试版</b><span class="rabbit-mirror-toto-watermark">TOTOv1.3 · 1.3.27</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -288,11 +288,11 @@ export function initRabbitMirrorUI() {
 
       <div id="rh_token_meter" class="rabbit-mirror-token-meter" aria-live="polite">
         <div class="rabbit-mirror-token-meter-head">
-          <b>本轮兔子镜小剧场注入</b>
+          <b>本轮兔子镜测试版注入</b>
           <span data-rh-token-meter-main>尚无生成记录</span>
         </div>
         <div data-rh-token-meter-exact class="rabbit-mirror-token-meter-exact">发送下一轮消息后自动更新。</div>
-        <div data-rh-token-meter-detail class="rabbit-mirror-token-meter-detail">只统计兔子镜小剧场自己写入的 Prompt。</div>
+        <div data-rh-token-meter-detail class="rabbit-mirror-token-meter-detail">只统计兔子镜测试版自己写入的 Prompt。</div>
         <div class="rabbit-mirror-token-meter-note">字符数为精确值；Token 因模型分词器不同只能估算，因此同时给出保守范围。统计面板本身不会注入模型。</div>
       </div>
 
@@ -332,29 +332,29 @@ export function initRabbitMirrorUI() {
       </details>
 
       <details class="rabbit-mirror-section rabbit-mirror-visual-prompt-test">
-        <summary><span>🎨 个性化视觉提示词</span><span class="rabbit-mirror-section-note">TEST</span></summary>
+        <summary><span>个性化视觉提示词</span><span class="rabbit-mirror-section-note">TEST</span></summary>
         <div class="rabbit-mirror-section-content">
-          <div style="opacity:.82;font-size:12px;line-height:1.55;margin-bottom:9px;">这里调整的是兔子镜的<b>视觉审美层</b>。只有勾选下面的“启用视觉提示词编辑注入”后，保存的编辑内容才会随实际生成兔子镜的模型请求发送；未勾选时完全沿用 1.3.20 原版视觉 Prompt 流程。HTML 安全、交互兼容、手机适配、维修兔与输出协议仍由插件锁定。</div>
+          <div style="opacity:.82;font-size:12px;line-height:1.55;margin-bottom:9px;">这里可以直接写你喜欢或不喜欢的画面感觉。只有勾选下面的“启用视觉提示词编辑注入”后，保存的内容才会随生成兔子镜的请求发送；未勾选时完全沿用 1.3.20 原版视觉 Prompt 流程。HTML 安全、交互兼容、手机适配、维修兔与输出协议仍由插件锁定。</div>
           <label class="checkbox_label" style="font-weight:700;"><input id="rh_visual_prompt_enabled" type="checkbox"> 启用视觉提示词编辑注入</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.5;">默认关闭。关闭时已编辑内容仍保存在本地，但不会注入模型；下一面继续使用 1.3.20 原版视觉规则。开启后才切换到可编辑视觉层。</div>
           <div id="rh_visual_prompt_status" style="padding:7px 9px;border:1px solid color-mix(in srgb, currentColor 18%, transparent);border-radius:8px;opacity:.82;font-size:11px;line-height:1.45;margin-bottom:10px;">当前：正在读取视觉提示词状态……</div>
 
           <label for="rh_visual_extra_prompt" style="display:block;font-weight:700;margin:8px 0 5px;">额外视觉偏好（可选）</label>
           <textarea id="rh_visual_extra_prompt" class="text_pole" rows="5" spellcheck="false" placeholder="例如：偏好高级毛玻璃、低饱和冷色、杂志编辑感、真实纸张、摄影拼贴……" style="width:100%;min-height:100px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
-          <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 10px;">可填写喜欢的配色、材质、构图、氛围、视觉风格与媒介质感。这里只追加个人偏好，不会替换官方视觉基线。</div>
+          <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 10px;">可以直接写：喜欢画面怎么排、什么质感、什么颜色、什么光线、想要简洁还是丰富、想要平面还是有前后层次。这里只追加个人偏好，不会替换兔子镜原来的视觉规则。</div>
 
           <label for="rh_visual_avoid_prompt" style="display:block;font-weight:700;margin:10px 0 5px;">不希望出现的视觉（可选）</label>
           <textarea id="rh_visual_avoid_prompt" class="text_pole" rows="4" spellcheck="false" placeholder="例如：不要荧光渐变、蓝白系统 UI、统一圆角卡片、廉价塑料感……" style="width:100%;min-height:88px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
-          <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 10px;">可填写不喜欢的配色、材质、UI 套路或视觉风格。</div>
+          <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 10px;">可以直接写你不喜欢的颜色、质感、排版方式、光线感觉、UI 套路或整体风格。</div>
 
           <details style="margin-top:10px;">
-            <summary style="cursor:pointer;font-weight:700;">高级：修改官方视觉基线 <span style="font-weight:400;opacity:.62;font-size:11px;">通常无需修改</span></summary>
+            <summary style="cursor:pointer;font-weight:700;">高级：修改通用视觉规则 <span style="font-weight:400;opacity:.62;font-size:11px;">通常无需修改</span></summary>
             <div style="padding-top:9px;">
-              <div style="opacity:.72;font-size:11px;line-height:1.5;margin-bottom:7px;">只有想直接重写兔子镜原本公共审美规则时才需要修改这里。普通用户只填写上面的“额外视觉偏好 / 不希望出现”即可。</div>
-              <label for="rh_visual_prompt" style="display:block;font-weight:700;margin:8px 0 5px;">官方默认视觉规则（高级，可编辑）</label>
+              <div style="opacity:.72;font-size:11px;line-height:1.5;margin-bottom:7px;">只有想直接改兔子镜原本的通用画面规则时才需要这里。普通用户只填写上面的“额外视觉偏好 / 不希望出现”即可，不需要懂设计术语。</div>
+              <label for="rh_visual_prompt" style="display:block;font-weight:700;margin:8px 0 5px;">通用视觉审美规则（高级，可编辑）</label>
               <textarea id="rh_visual_prompt" class="text_pole" rows="14" spellcheck="false" style="width:100%;min-height:230px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
-              <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 8px;">修改后会替换兔子镜的官方视觉审美基线；上限 8000 字符。核心结构与兼容规则仍不可覆盖。</div>
-              <button id="rh_visual_prompt_reset" class="menu_button" type="button">恢复官方默认视觉规则</button>
+              <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 8px;">修改后会替换兔子镜原本的通用画面规则；上限 8000 字符。核心结构与兼容规则仍不可覆盖。</div>
+              <button id="rh_visual_prompt_reset" class="menu_button" type="button">恢复默认通用视觉规则</button>
             </div>
           </details>
 
@@ -536,7 +536,7 @@ export function initRabbitMirrorUI() {
         $('#rh_visual_prompt').val(DEFAULT_VISUAL_PROMPT);
         updateSettings({ visualPrompt: DEFAULT_VISUAL_PROMPT });
         renderVisualPromptStatus(getSettings());
-        toastr?.success?.('已恢复官方默认视觉规则；额外视觉偏好与避雷内容保持不变。');
+        toastr?.success?.('已恢复默认通用视觉规则；额外视觉偏好与避雷内容保持不变。');
     });
 
     $('#rh_memory_scan_enabled').on('change', e => {
