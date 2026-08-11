@@ -1,3 +1,10 @@
+# 1.3.46 TEST — 手机纯外置正文宽度恢复 / PC 贴合保留
+
+- 修复独立 API「轻壳外置」在 iPhone / 窄屏下，标题壳接近正常宽度但生成正文主体被 `details { width:auto }` 收缩成窄列的问题。
+- 在 `<900px` 窄屏中，纯外置 `details` 强制恢复为 `width:100%`，正文重新填满外置内容通道；「外置后内嵌」逻辑不变。
+- PC 仍保留原来的 `width:auto` 与外层 `data-rm-independent-external-compact-shell` / `--rm-external-compact-width` 贴合逻辑，桌面端行为不改。
+- 除版本号外不修改 `src/independentApi.js`、`src/outputSanitizer.js` 等运行逻辑；保留 1.3.20 性能冻结链、视觉提示词编辑、1.3.45 外置维修工作副本与正文更新误判修复。
+
 # 1.3.45 TEST — 外置维修工作副本 / 正文更新误判修复
 
 - 恢复旧满意版 1.2.19 的关键维修行为：手动维修独立 API 外置镜时，只替换当前 `<details>` 为干净工作副本，外置 host、owner/sourceHash 与位置不动；旧 listener / WeakMap 交互状态随旧节点一起丢弃，再在新节点上重新绑定工具与维修。

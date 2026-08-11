@@ -648,6 +648,15 @@ toto[data-rabbit-mirror="true"] summary {
 #chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"][open] > summary{
   border-bottom:1px solid var(--rm-shell-border, rgba(0,0,0,.08)) !important;
 }
+/* 1.3.46: desktop compact-shell is PC-only (<900px is already excluded in JS).
+ * On iPhone / narrow screens, never let the pure-external <details> shrink-to-fit
+ * generated contents: make it occupy the same external content lane as inline mode. */
+@media (max-width:899px){
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
+    width:100% !important;
+    max-width:none !important;
+  }
+}
 @media (max-width:420px){
   #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary{
     border-radius:13px !important;
