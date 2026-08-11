@@ -1,14 +1,14 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.20';
-import { clearLastCombo } from './storage.js?rmv=1.3.20';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.20';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.20';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.3.20';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.20';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.20';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.20';
+import { DEFAULT_VISUAL_PROMPT, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.24';
+import { clearLastCombo } from './storage.js?rmv=1.3.24';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.24';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.24';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.3.24';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.24';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.24';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.24';
 
-const SETTINGS_UI_VERSION = '1.3.3';
-const RUNTIME_VERSION = '1.3.20';
+const SETTINGS_UI_VERSION = '1.3.4';
+const RUNTIME_VERSION = '1.3.24';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -27,6 +27,19 @@ function scheduleUiMountRetry() {
 
 function checked(id, value) {
     $(id).prop('checked', !!value);
+}
+
+function renderVisualPromptStatus(settings = getSettings()) {
+    const target = $('#rh_visual_prompt_status');
+    if (!target.length) return;
+    const official = String(settings?.visualPrompt ?? DEFAULT_VISUAL_PROMPT).replace(/\r\n?/g, '\n');
+    const extra = String(settings?.visualExtraPrompt || '').trim();
+    const avoid = String(settings?.visualAvoidPrompt || '').trim();
+    const parts = [];
+    if (official !== DEFAULT_VISUAL_PROMPT) parts.push('官方视觉基线已修改');
+    if (extra) parts.push('额外视觉偏好已启用');
+    if (avoid) parts.push('视觉避雷已启用');
+    target.text(parts.length ? `当前：自定义已启用（${parts.join(' / ')}）` : '当前：使用官方默认视觉规则；没有追加个人视觉偏好。');
 }
 
 function escapeHtml(value) {
@@ -301,6 +314,38 @@ export function initRabbitMirrorUI() {
         </div>
       </details>
 
+      <details class="rabbit-mirror-section rabbit-mirror-visual-prompt-test">
+        <summary><span>🎨 个性化视觉提示词</span><span class="rabbit-mirror-section-note">TEST</span></summary>
+        <div class="rabbit-mirror-section-content">
+          <div style="opacity:.82;font-size:12px;line-height:1.55;margin-bottom:9px;">这里调整的是兔子镜的<b>视觉审美层</b>。保存后从下一面兔子镜开始生效：跟随当前 API 时随主模型请求发送；独立 API 时随独立模型请求发送。HTML 安全、交互兼容、手机适配、维修兔与输出协议仍由插件锁定。</div>
+          <div id="rh_visual_prompt_status" style="padding:7px 9px;border:1px solid color-mix(in srgb, currentColor 18%, transparent);border-radius:8px;opacity:.82;font-size:11px;line-height:1.45;margin-bottom:10px;">当前：正在读取视觉提示词状态……</div>
+
+          <label for="rh_visual_extra_prompt" style="display:block;font-weight:700;margin:8px 0 5px;">额外视觉偏好（可选）</label>
+          <textarea id="rh_visual_extra_prompt" class="text_pole" rows="5" spellcheck="false" placeholder="例如：偏好高级毛玻璃、低饱和冷色、杂志编辑感、真实纸张、摄影拼贴……" style="width:100%;min-height:100px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
+          <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 10px;">可填写喜欢的配色、材质、构图、氛围、视觉风格与媒介质感。这里只追加个人偏好，不会替换官方视觉基线。</div>
+
+          <label for="rh_visual_avoid_prompt" style="display:block;font-weight:700;margin:10px 0 5px;">不希望出现的视觉（可选）</label>
+          <textarea id="rh_visual_avoid_prompt" class="text_pole" rows="4" spellcheck="false" placeholder="例如：不要荧光渐变、蓝白系统 UI、统一圆角卡片、廉价塑料感……" style="width:100%;min-height:88px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
+          <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 10px;">可填写不喜欢的配色、材质、UI 套路或视觉风格。</div>
+
+          <details style="margin-top:10px;">
+            <summary style="cursor:pointer;font-weight:700;">高级：修改官方视觉基线 <span style="font-weight:400;opacity:.62;font-size:11px;">通常无需修改</span></summary>
+            <div style="padding-top:9px;">
+              <div style="opacity:.72;font-size:11px;line-height:1.5;margin-bottom:7px;">只有想直接重写兔子镜原本公共审美规则时才需要修改这里。普通用户只填写上面的“额外视觉偏好 / 不希望出现”即可。</div>
+              <label for="rh_visual_prompt" style="display:block;font-weight:700;margin:8px 0 5px;">官方默认视觉规则（高级，可编辑）</label>
+              <textarea id="rh_visual_prompt" class="text_pole" rows="14" spellcheck="false" style="width:100%;min-height:230px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
+              <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 8px;">修改后会替换兔子镜的官方视觉审美基线；上限 8000 字符。核心结构与兼容规则仍不可覆盖。</div>
+              <button id="rh_visual_prompt_reset" class="menu_button" type="button">恢复官方默认视觉规则</button>
+            </div>
+          </details>
+
+          <div class="flex-container" style="gap:8px;flex-wrap:wrap;margin-top:12px;">
+            <button id="rh_visual_prompt_save" class="menu_button" type="button">保存并从下一面生效</button>
+          </div>
+          <div style="opacity:.66;font-size:11px;line-height:1.45;margin-top:7px;">为避免重新引入移动端设置页卡顿，三个输入框都不会在键入时写设置；只有点击上面的保存按钮才会持久化。</div>
+        </div>
+      </details>
+
       <details class="rabbit-mirror-section rabbit-mirror-memory-test">
         <summary><span>共同回忆资料来源</span><span class="rabbit-mirror-section-note">TEST</span></summary>
         <div class="rabbit-mirror-section-content">
@@ -375,6 +420,10 @@ export function initRabbitMirrorUI() {
     checked('#rh_force_visual_scenery', settings.forceVisualScenery);
     checked('#rh_avoid_repeat', settings.avoidRepeat);
     checked('#rh_memory_scan_enabled', settings.memoryScanEnabled);
+    $('#rh_visual_prompt').val(settings.visualPrompt ?? DEFAULT_VISUAL_PROMPT);
+    $('#rh_visual_extra_prompt').val(settings.visualExtraPrompt || '');
+    $('#rh_visual_avoid_prompt').val(settings.visualAvoidPrompt || '');
+    renderVisualPromptStatus(settings);
 
     $('input[name="rh_generation_source"]').on('change', e => {
         const generationSource = e.target.value === 'independent' ? 'independent' : 'follow';
@@ -441,6 +490,22 @@ export function initRabbitMirrorUI() {
         toastr?.[enabled ? 'info' : 'success']?.(enabled
             ? '实验性自动巡逻已开启：只处理之后新生成／重新生成兔子镜中的高置信安全问题；布局与结构问题仍需手动确认。'
             : '自动巡逻已关闭：维修兔恢复为纯手动模式。');
+    });
+
+    $('#rh_visual_prompt_save').on('click', () => {
+        const visualPrompt = String($('#rh_visual_prompt').val() ?? '').replace(/\r\n?/g, '\n').slice(0, 8000);
+        const visualExtraPrompt = String($('#rh_visual_extra_prompt').val() ?? '').replace(/\r\n?/g, '\n').slice(0, 4000);
+        const visualAvoidPrompt = String($('#rh_visual_avoid_prompt').val() ?? '').replace(/\r\n?/g, '\n').slice(0, 4000);
+        updateSettings({ visualPrompt, visualExtraPrompt, visualAvoidPrompt });
+        renderVisualPromptStatus({ visualPrompt, visualExtraPrompt, visualAvoidPrompt });
+        const total = visualPrompt.length + visualExtraPrompt.length + visualAvoidPrompt.length;
+        toastr?.success?.(`视觉提示词已保存（${total} 字符），从下一面兔子镜开始生效。`);
+    });
+    $('#rh_visual_prompt_reset').on('click', () => {
+        $('#rh_visual_prompt').val(DEFAULT_VISUAL_PROMPT);
+        updateSettings({ visualPrompt: DEFAULT_VISUAL_PROMPT });
+        renderVisualPromptStatus(getSettings());
+        toastr?.success?.('已恢复官方默认视觉规则；额外视觉偏好与避雷内容保持不变。');
     });
 
     $('#rh_memory_scan_enabled').on('change', e => {

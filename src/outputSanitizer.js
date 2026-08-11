@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.20';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.20';
+import { getSettings } from './settings.js?rmv=1.3.24';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.24';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.20';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.20';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.20';
+} from './feedbackCat.js?rmv=1.3.24';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.24';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.24';
 
 
-const RUNTIME_VERSION = '1.3.20';
+const RUNTIME_VERSION = '1.3.24';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -1831,8 +1831,23 @@ function commonStackedPanelClassToken(targets) {
     if (!lists.length) return '';
     const candidates = [...lists[0]].filter(token => lists.every(set => set.has(token)));
     return candidates
-        .filter(token => /(?:info|content|state|panel|result|feedback|detail|text|screen|view|draft|manuscript|essay)/i.test(token))
+        .filter(token => /(?:info|content|state|panel|result|feedback|detail|text|screen|view|draft|manuscript|essay|danmaku|marquee|ticker)/i.test(token))
         .sort((a, b) => b.length - a.length)[0] || '';
+}
+
+function maintenancePassiveAnimatedStatePanel(element, style = null) {
+    if (!element) return false;
+    const computed = style || maintenanceSafeComputedStyle(element);
+    const position = String(computed?.position || '').toLowerCase();
+    const animationName = String(computed?.animationName || '').trim().toLowerCase();
+    const whiteSpace = String(computed?.whiteSpace || '').trim().toLowerCase();
+    const pointerEvents = String(computed?.pointerEvents || '').trim().toLowerCase();
+    const opacity = Number.parseFloat(computed?.opacity || '1');
+    return (position === 'absolute' || position === 'fixed')
+        && animationName && animationName !== 'none'
+        && whiteSpace === 'nowrap'
+        && pointerEvents === 'none'
+        && (!Number.isFinite(opacity) || opacity > 0.05);
 }
 
 function stackedPanelsShareLayer(parent, panels) {
@@ -1886,7 +1901,9 @@ function findExclusiveStackedStateCandidates(root) {
         const commonClass = commonStackedPanelClassToken(mappedTargets);
         if (!commonClass) continue;
         const panels = [...parent.children].filter(child => child.classList?.contains(commonClass));
-        if (panels.length < mappedTargets.length || panels.length > 10) continue;
+        const passiveAnimatedCollection = panels.length > 0 && panels.every(panel => maintenancePassiveAnimatedStatePanel(panel));
+        const panelLimit = passiveAnimatedCollection ? 30 : 10;
+        if (panels.length < mappedTargets.length || panels.length > panelLimit) continue;
         if (!mappedTargets.every(target => panels.includes(target))) continue;
         if (!stackedPanelsShareLayer(parent, panels)) continue;
         const defaultPanels = panels.filter(panel => !mappedTargets.includes(panel));
@@ -1895,7 +1912,7 @@ function findExclusiveStackedStateCandidates(root) {
             const controls = [...inputMap.keys()];
             if (!controls.every(input => input.type === 'radio')) continue;
         }
-        candidates.push({ parent, inputMap, panels, defaultPanels, commonClass });
+        candidates.push({ parent, inputMap, panels, defaultPanels, commonClass, passiveAnimatedCollection });
     }
     return candidates;
 }
@@ -1936,10 +1953,27 @@ function refreshExclusiveStackedStateRescue(root) {
             const { panel } = panelState;
             if (!panel?.isConnected) continue;
             const active = activePanels.has(panel);
-            panel.style.setProperty('opacity', active ? '1' : '0', 'important');
-            panel.style.setProperty('visibility', active ? 'visible' : 'hidden', 'important');
-            panel.style.setProperty('pointer-events', active ? 'auto' : 'none', 'important');
-            panel.style.setProperty('z-index', active ? '2' : '0', 'important');
+            if (panelState.passiveAnimated) {
+                // 弹幕/跑马灯属于“被选中的一组多个动画条目”，不是整页正文 panel。
+                // 激活组恢复模型原本的透明度/z-index，只维持可见与动画；未激活组才强制隐藏并暂停。
+                if (active) {
+                    restorePseudoStyleState(panel, panelState.originalStyles);
+                    panel.style.setProperty('visibility', 'visible', 'important');
+                    panel.style.setProperty('pointer-events', 'none', 'important');
+                    panel.style.setProperty('animation-play-state', 'running', 'important');
+                } else {
+                    panel.style.setProperty('opacity', '0', 'important');
+                    panel.style.setProperty('visibility', 'hidden', 'important');
+                    panel.style.setProperty('pointer-events', 'none', 'important');
+                    panel.style.setProperty('z-index', '0', 'important');
+                    panel.style.setProperty('animation-play-state', 'paused', 'important');
+                }
+            } else {
+                panel.style.setProperty('opacity', active ? '1' : '0', 'important');
+                panel.style.setProperty('visibility', active ? 'visible' : 'hidden', 'important');
+                panel.style.setProperty('pointer-events', active ? 'auto' : 'none', 'important');
+                panel.style.setProperty('z-index', active ? '2' : '0', 'important');
+            }
             panel.setAttribute(EXCLUSIVE_STACKED_STATE_PANEL_ATTR, active ? 'active' : 'inactive');
             panel.setAttribute('aria-hidden', active ? 'false' : 'true');
         }
@@ -1968,7 +2002,8 @@ function installExclusiveStackedStateRescue(root) {
             ...candidate,
             panelStates: candidate.panels.map(panel => ({
                 panel,
-                originalStyles: capturePseudoStyleState(panel, ['opacity', 'visibility', 'pointer-events', 'z-index']),
+                passiveAnimated: !!candidate.passiveAnimatedCollection && maintenancePassiveAnimatedStatePanel(panel),
+                originalStyles: capturePseudoStyleState(panel, ['opacity', 'visibility', 'pointer-events', 'z-index', 'animation-play-state']),
             })),
         })),
         onStateChange: () => {
@@ -10824,7 +10859,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.20-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.24-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -15742,6 +15777,9 @@ function maintenanceMobileLayoutIsDecorativeOverflow(element, style = null) {
     const computed = style || maintenanceMobileLayoutComputedStyle(element);
     const position = String(computed?.position || '').toLowerCase();
     if (position !== 'absolute' && position !== 'fixed') return false;
+    // 绝对定位 + nowrap + 动画 + pointer-events:none 的文字通常就是弹幕/跑马灯。
+    // 它横穿画布是设计本身，不应被手机正文适配当成 overflow 再压宽/换行。
+    if (maintenancePassiveAnimatedStatePanel(element, computed)) return true;
     if (maintenanceMobileLayoutTextLength(element) > 0 || Number(element.childElementCount || 0) > 0) return false;
     if (element.matches?.('img,video,iframe,canvas,svg,button,input,label,a,summary,[role="button"],[tabindex]')) return false;
     const opacity = Number.parseFloat(computed?.opacity || '1');
@@ -16289,7 +16327,12 @@ function inspectMaintenanceMobileLayout(root) {
     };
     const alreadyRepaired = root.hasAttribute(MOBILE_LAYOUT_SCOPE_ATTR)
         && !!root.querySelector(`style[${MOBILE_LAYOUT_RESCUE_STYLE_ATTR}]`);
-    const elements = [root, ...root.querySelectorAll('*')].filter(element => !maintenanceMobileLayoutIsInternal(element));
+    // Keep diagnostics aligned with what the mobile rescue can actually patch.
+    // The outer RabbitMirror root (often <details>) also contains the summary/tool row;
+    // its scrollWidth can therefore grow because of a long title + 🐇/🐈 tools even when
+    // the generated body itself fits perfectly. The rescue intentionally patches only
+    // descendants, so counting the root here creates a permanent false-positive finding.
+    const elements = [...root.querySelectorAll('*')].filter(element => !maintenanceMobileLayoutIsInternal(element));
     const sectionStackHosts = elements.filter(element => maintenanceMobileLayoutSectionStackInfo(element));
     const screenShellHosts = elements.filter(element => maintenanceMobileLayoutScreenShellInfo(element))
         .filter(host => !elements.some(other => other !== host && maintenanceMobileLayoutScreenShellInfo(other) && other.contains?.(host)));
@@ -19038,10 +19081,13 @@ function rewriteRabbitMirrorInlineAnimationStyles(htmlText, keyframeMap) {
 
 function scopeRabbitMirrorSelectorList(selectorText, scopeSelector, classMap, checkedStateIds) {
     return splitCssSelectorList(selectorText).map((rawSelector) => {
+        // 高置信修复模型偶发的 `. className` 选择器笔误。点号后出现空白在 CSS 类选择器中本来就是无效语法，
+        // 因此这里只把它恢复成 `.className`，不会改动正常后代选择器。
+        const selectorWithClassSpacingFixed = rawSelector.trim().replace(/\.\s+([_a-zA-Z][\w-]*)/g, '.$1');
         // 部分宿主 CSS 作用域解析链会在原始资源解析受扰后，于 checkbox/radio 的 #id
         // 状态规则附近中断。只改写明确参与 :checked 的状态 ID，避免扩大影响范围；
         // label/控件语义不变，后续 ID 隔离也会继续同步 [id="..."] 引用。
-        const idSafeSelector = rewriteSimpleCssIdSelectorsAsAttributes(rawSelector.trim(), checkedStateIds);
+        const idSafeSelector = rewriteSimpleCssIdSelectorsAsAttributes(selectorWithClassSpacingFixed, checkedStateIds);
         let selector = visitSimpleCssClassTokens(idSafeSelector, className => classMap.get(className) || className);
         selector = selector
             .replace(/:root\b/gi, scopeSelector)
