@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.49';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.49';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.49';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.49';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.49';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.49';
+import { getSettings } from './settings.js?rmv=1.3.51';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.51';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.51';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.51';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.51';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.51';
 
-const RUNTIME_VERSION = '1.3.49';
+const RUNTIME_VERSION = '1.3.51';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -1192,12 +1192,23 @@ function computeExternalHostGeometryPlan(el,host){
   const laneBox=elementContentBoxRect(lane);
   if(!laneBox || contentWidth<=0) throw new Error('invalid content-lane geometry');
 
-  // Pure external must match external_then_inline's actual containing block.
-  // Keep the 1.3.20 sizing formula intact; this function only separates the
-  // layout READ phase from the later WRITE phase so a global refresh cannot
-  // thrash layout by alternating getBoundingClientRect() and style mutations.
-  const refBox=laneBox;
-  const mode='inline-parent-content-box';
+  // Desktop keeps the established parent content-lane geometry so the PC-only
+  // compact-shell stage can cap genuinely narrow visual objects. On narrow
+  // screens, use the *actual rendered message text lane* as the reference when
+  // it is stable. This makes pure external follow the same visual正文 width the
+  // user sees in SillyTavern instead of inheriting a stale/shrunken outer lane.
+  // No new observer/listener is installed: this only changes the reference box
+  // used by the existing geometry sync/retry/resize path.
+  const viewportWidth=Number(globalThis.innerWidth || globalThis.screen?.width || 0);
+  const bodyBox=body && body!==el ? elementContentBoxRect(body) : null;
+  const mobileBodyLooksStable=!!(viewportWidth>0 && viewportWidth<900 && bodyBox
+    && bodyBox.width>=220
+    && bodyBox.width>=laneBox.width*.75
+    && bodyBox.left>=contentLeft-8
+    && bodyBox.right<=contentRight+8
+    && bodyBox.width<=contentWidth+16);
+  const refBox=mobileBodyLooksStable ? bodyBox : laneBox;
+  const mode=mobileBodyLooksStable ? 'mobile-message-text-lane' : 'inline-parent-content-box';
   let left=Number(refBox.left||0)-contentLeft;
   let width=Number(refBox.width||0);
   if(!Number.isFinite(left) || !Number.isFinite(width)) throw new Error('invalid content-lane geometry');
