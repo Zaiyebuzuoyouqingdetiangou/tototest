@@ -1,10 +1,10 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.28';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.28';
-import { pickCombination } from './picker.js?rmv=1.3.28';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.3.28';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.28';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.28';
-import { DEFAULT_VISUAL_PROMPT } from './settings.js?rmv=1.3.28';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.32';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.32';
+import { pickCombination } from './picker.js?rmv=1.3.32';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.3.32';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.32';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.32';
+import { DEFAULT_VISUAL_PROMPT } from './settings.js?rmv=1.3.32';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -406,7 +406,8 @@ function editableVisualPromptRule(settings) {
 ${blocks.join('\n\n')}
 
 视觉自定义执行规则:
-  - 上述内容只允许调整兔子镜的视觉审美、构图、配色、材质、光影、装饰密度、媒介气质与希望／不希望出现的视觉要求。
+  - 上述内容只允许改变最终兔子镜成品如何呈现：视觉审美、构图、配色、材质、光影、装饰密度、媒介气质与希望／不希望出现的视觉要求；不得把“生成兔子镜成品”改成解释、分析、策划或描述兔子镜。
+  - 视觉要求必须直接落实为最终 HTML/CSS 画面本体；不得用“观察视角、视觉转译、交互反馈、设计说明”等解释文字代替实际成品。若 CSS 声明了按钮、状态选择器、内容面板或交互反馈，HTML 中必须实际存在对应结构。
   - 用户写入的“额外视觉偏好”是本轮明确视觉指令，不是弱参考；只要不违反锁定工程规则与本轮展现形式本体，就必须在整面主要视觉中清晰、明显、成体系地落实，不得只做局部点缀、轻微借鉴或象征性回应。
   - 用户写入的“不希望出现的视觉”是本轮明确避用项；除非与锁定工程规则或本轮展现形式本体存在不可避免的直接冲突，否则不得主动使用。
   - 当额外视觉偏好／避用项与通用视觉审美规则发生冲突时，以用户本轮明确填写的偏好／避用项为准；用户未指定的部分再由通用视觉审美规则补足。

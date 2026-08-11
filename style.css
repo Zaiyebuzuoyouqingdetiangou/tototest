@@ -544,6 +544,12 @@ toto[data-rabbit-mirror="true"] summary {
   margin-left:auto !important;
   margin-right:auto !important;
 }
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-independent-external-compact-shell="true"]{
+  width:var(--rm-external-compact-width, var(--rm-external-lane-width, 96%)) !important;
+  max-width:var(--rm-external-lane-width, 96%) !important;
+  margin-left:var(--rm-external-lane-left, 0px) !important;
+  margin-right:auto !important;
+}
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"] > .rabbit-mirror-resay-status{
   position:absolute !important;
   top:10px !important;

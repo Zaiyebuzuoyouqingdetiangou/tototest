@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.3.28",
-  "css": "style.css?rmv=1.3.28",
+  "js": "index.js?rmv=1.3.32",
+  "css": "style.css?rmv=1.3.32",
   "author": "Toto",
-  "version": "1.3.28",
+  "version": "1.3.32",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版：视觉提示词编辑为可选强注入；关闭时保持 1.3.20 原版视觉流程。"
+  "description": "兔子镜测试版：修复独立 API 外置模式下维修兔布局修复被 ready 后处理清掉的问题；保留提示词编辑与性能冻结链。"
 }

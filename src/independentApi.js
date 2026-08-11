@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.28';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.28';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.28';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.28';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.28';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.28';
+import { getSettings } from './settings.js?rmv=1.3.32';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.32';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.32';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.32';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.32';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.32';
 
-const RUNTIME_VERSION = '1.3.28';
+const RUNTIME_VERSION = '1.3.32';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -1122,7 +1122,7 @@ function stampExternalHostOwnership(el,host,key='',source='independent'){
 }
 function clearExternalHostGeometryTokens(host){
  if(!host) return;
- for(const name of ['--rm-external-lane-width','--rm-external-lane-left','--rm-external-inline-start','--rm-external-inline-end']){
+ for(const name of ['--rm-external-lane-width','--rm-external-lane-left','--rm-external-inline-start','--rm-external-inline-end','--rm-external-compact-width']){
   if(host.style.getPropertyValue(name)) host.style.removeProperty(name);
  }
 }
@@ -2286,6 +2286,8 @@ function scheduleExternalShellTint(host,html=''){
 
 const INDEPENDENT_CONTENT_WIDTH_RESCUE_ATTR='data-rabbit-mirror-independent-content-width-rescue';
 const INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR='data-rabbit-mirror-independent-content-width-baseline';
+const INDEPENDENT_EXTERNAL_STAGE_NEUTRALIZED_ATTR='data-rabbit-mirror-independent-external-stage-neutralized';
+const MAINTENANCE_PERSISTED_LAYOUT_ATTR='data-rabbit-mirror-maintenance-persisted-layout';
 
 function captureIndependentContentWidthBaseline(element){
  if(!element?.getAttribute || element.hasAttribute(INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR)) return;
@@ -2300,29 +2302,44 @@ function restoreIndependentContentWidthBaseline(element){
  else element.removeAttribute('style');
  element.removeAttribute(INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR);
  element.removeAttribute(INDEPENDENT_CONTENT_WIDTH_RESCUE_ATTR);
+ element.removeAttribute(INDEPENDENT_EXTERNAL_STAGE_NEUTRALIZED_ATTR);
  return true;
 }
 function stripIndependentTransientLayoutArtifacts(details){
  if(!details?.querySelectorAll) return details;
+ // A user-triggered Maintenance Rabbit repair is not a disposable runtime rescue.
+ // Keep its media-scoped mobile/layout repair CSS across independent external remounts.
+ // Runtime-only spatial fitting remains disposable and is always recalculated.
+ const preserveMaintenance=details.getAttribute?.(MAINTENANCE_PERSISTED_LAYOUT_ATTR)==='true';
  // Restore exact pre-rescue inline style when 1.3.3 itself widened the inner carrier.
  for(const element of details.querySelectorAll(`[${INDEPENDENT_CONTENT_WIDTH_RESCUE_ATTR}], [${INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR}]`)){
   restoreIndependentContentWidthBaseline(element);
  }
- // Remove transient rescue nodes copied into cached HTML. They will be recomputed after mount.
- details.querySelectorAll('style[data-rabbit-mirror-mobile-layout-rescue],style[data-rabbit-mirror-independent-mobile-spatial-style],style[data-rabbit-mirror-visual-scenery-overflow-rescue]').forEach(node=>node.remove());
- details.querySelectorAll('[data-rm-mobile-visual-scenery-overflow-host]').forEach(node=>node.remove());
- details.querySelectorAll('[data-rm-mobile-visual-scenery-overflow-source]').forEach(node=>node.removeAttribute('data-rm-mobile-visual-scenery-overflow-source'));
- const attrs=[
+ const transientStyles=['style[data-rabbit-mirror-independent-mobile-spatial-style]'];
+ if(!preserveMaintenance){
+  transientStyles.push('style[data-rabbit-mirror-mobile-layout-rescue]','style[data-rabbit-mirror-visual-scenery-overflow-rescue]');
+ }
+ details.querySelectorAll(transientStyles.join(',')).forEach(node=>node.remove());
+ if(!preserveMaintenance){
+  details.querySelectorAll('[data-rm-mobile-visual-scenery-overflow-host]').forEach(node=>node.remove());
+  details.querySelectorAll('[data-rm-mobile-visual-scenery-overflow-source]').forEach(node=>node.removeAttribute('data-rm-mobile-visual-scenery-overflow-source'));
+ }
+ const runtimeAttrs=[
+  'data-rabbit-mirror-independent-mobile-spatial-count',
+  'data-rm-independent-mobile-spatial-scroll','data-rm-independent-mobile-spatial-canvas'
+ ];
+ const maintenanceAttrs=[
   'data-rabbit-mirror-mobile-layout-scope','data-rabbit-mirror-mobile-layout-count',
-  'data-rabbit-mirror-independent-mobile-spatial-count','data-rabbit-mirror-visual-scenery-overflow-count',
+  'data-rabbit-mirror-visual-scenery-overflow-count',
   'data-rm-mobile-fit','data-rm-mobile-min','data-rm-mobile-grid-collapse','data-rm-mobile-matrix-preserve',
   'data-rm-mobile-matrix-active','data-rm-mobile-matrix-cell','data-rm-mobile-flex-wrap','data-rm-mobile-state-row',
   'data-rm-mobile-flex-stack','data-rm-mobile-single-column','data-rm-mobile-fluid-title','data-rm-mobile-compact-padding',
   'data-rm-mobile-compact-gap','data-rm-mobile-media','data-rm-mobile-scroll','data-rm-mobile-break-text',
   'data-rm-mobile-state-content','data-rm-mobile-state-active','data-rm-mobile-section-stack-preserve','data-rm-mobile-screen-shell-preserve',
   'data-rm-mobile-relation-tree','data-rm-mobile-relation-branch','data-rm-mobile-relation-cell','data-rm-mobile-relation-detail',
-  'data-rm-mobile-relation-side','data-rm-independent-mobile-spatial-scroll','data-rm-independent-mobile-spatial-canvas'
+  'data-rm-mobile-relation-side'
  ];
+ const attrs=preserveMaintenance ? runtimeAttrs : [...runtimeAttrs,...maintenanceAttrs];
  const nodes=[details,...details.querySelectorAll('*')];
  for(const node of nodes){
   for(const attr of attrs) node.removeAttribute?.(attr);
@@ -2415,6 +2432,120 @@ function independentPrimaryContentCarrier(details){
 }
 
 
+
+function clearIndependentExternalCompactShellWidth(host){
+ if(!host?.style) return;
+ host.removeAttribute('data-rm-independent-external-compact-shell');
+ host.style.removeProperty('--rm-external-compact-width');
+}
+
+function compactIndependentExternalShellToPrimaryVisual(host){
+ if(!host?.isConnected || host.dataset.rmSource!=='independent' || host.dataset.rmState!=='ready' || host.dataset.rmPlacement!=='external') return false;
+ const viewportWidth=Number(globalThis.innerWidth || globalThis.screen?.width || 0);
+ if(viewportWidth>0 && viewportWidth<900) return false;
+ const details=host.querySelector?.(':scope > details[data-rabbit-mirror-external-details="true"], :scope > details');
+ const summary=details?.querySelector?.(':scope > summary');
+ if(!details || !summary || typeof getComputedStyle!=='function') return false;
+ const body=[...(details.children||[])].find(node=>!['SUMMARY','STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node?.tagName));
+ if(!body?.isConnected) return false;
+ let bodyRect,hostRect,summaryRect;
+ try{ bodyRect=body.getBoundingClientRect(); hostRect=host.getBoundingClientRect(); summaryRect=summary.getBoundingClientRect(); }catch{return false;}
+ const bodyWidth=Math.max(0,Number(bodyRect?.width||0));
+ const hostWidth=Math.max(0,Number(hostRect?.width||0));
+ if(bodyWidth<260 || hostWidth<320 || bodyWidth>hostWidth+2) return false;
+ const visual=independentPrimaryVisualShell(details);
+ if(!visual?.element) return false;
+ let rect; try{ rect=visual.element.getBoundingClientRect(); }catch{return false;}
+ const visualWidth=Math.max(0,Number(rect?.width||0));
+ const visualHeight=Math.max(0,Number(rect?.height||0));
+ if(visualWidth<180 || visualHeight<220) return false;
+ const widthRatio=visualWidth/bodyWidth;
+ if(widthRatio<.18 || widthRatio>.82) return false;
+ const bodyCenter=Number(bodyRect.left||0)+bodyWidth/2;
+ const visualCenter=Number(rect.left||0)+visualWidth/2;
+ const centerOffset=Math.abs(visualCenter-bodyCenter)/Math.max(1,bodyWidth);
+ if(centerOffset>.14) return false;
+ const summaryWidth=Math.max(0,Number(summaryRect?.width||0));
+ const laneWidth=Math.max(0,Number(hostWidth||0));
+ let targetWidth=Math.max(visualWidth, summaryWidth);
+ targetWidth=Math.min(targetWidth, laneWidth);
+ if(!Number.isFinite(targetWidth) || targetWidth<220) return false;
+ if(targetWidth>=laneWidth-8) return false;
+ host.style.setProperty('--rm-external-compact-width',`${Math.round(targetWidth*10)/10}px`);
+ host.setAttribute('data-rm-independent-external-compact-shell','true');
+ host.dataset.rmIndependentExternalCompactShell='primary-visual';
+ return true;
+}
+
+function neutralizeIndependentExternalWideStage(host){
+ if(!host?.isConnected || host.dataset.rmSource!=='independent' || host.dataset.rmState!=='ready' || host.dataset.rmPlacement!=='external') return false;
+ // PC-only, one-shot ready postprocess. This does not install any observer/listener.
+ // It fixes the specific pure-external composition where a full-width solid stage
+ // paints the whole content lane while the actual document/object is a much narrower
+ // centered child. The object keeps its native size/background; only the redundant
+ // solid stage color is neutralized.
+ const viewportWidth=Number(globalThis.innerWidth || globalThis.screen?.width || 0);
+ if(viewportWidth>0 && viewportWidth<900) return false;
+ const details=host.querySelector?.(':scope > details[data-rabbit-mirror-external-details="true"], :scope > details');
+ if(!details || typeof getComputedStyle!=='function') return false;
+ const body=[...(details.children||[])].find(node=>!['SUMMARY','STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node?.tagName));
+ if(!body?.isConnected) return false;
+ let bodyStyle,bodyRect;
+ try{ bodyStyle=getComputedStyle(body); bodyRect=body.getBoundingClientRect(); }catch{return false;}
+ const bodyWidth=Math.max(0,Number(bodyRect?.width||0));
+ const bodyHeight=Math.max(0,Number(bodyRect?.height||0));
+ if(bodyWidth<760 || bodyHeight<260) return false;
+ const stageColor=parseExternalShellColor(bodyStyle?.backgroundColor);
+ if(!stageColor || stageColor.a<.16) return false;
+ // Keep actual scenery/illustration backgrounds. This rescue is only for a solid
+ // color lane like the pale-yellow field in the reported PC pure-external case.
+ if(bodyStyle?.backgroundImage && bodyStyle.backgroundImage!=='none') return false;
+
+ const compact=value=>String(value||'').replace(/\s+/g,'').trim();
+ const totalText=Math.max(1,compact(body.textContent).length);
+ const bodyCenter=Number(bodyRect.left||0)+bodyWidth/2;
+ const candidates=[];
+ const nodes=[...body.querySelectorAll('main,article,section,figure,div')].slice(0,320);
+ for(const element of nodes){
+  if(!element?.isConnected || element.closest?.('[data-rabbit-mirror-tool-entry-host]')) continue;
+  let style,rect; try{ style=getComputedStyle(element); rect=element.getBoundingClientRect(); }catch{continue;}
+  if(!style || style.display==='none' || style.visibility==='hidden' || Number(style.opacity||1)<.08) continue;
+  const width=Math.max(0,Number(rect?.width||0));
+  const height=Math.max(0,Number(rect?.height||0));
+  if(width<220 || height<240) continue;
+  const widthRatio=width/bodyWidth;
+  if(widthRatio<.12 || widthRatio>.72) continue;
+  const centerOffset=Math.abs((Number(rect.left||0)+width/2)-bodyCenter)/Math.max(1,bodyWidth);
+  if(centerOffset>.13) continue;
+  const textLength=compact(element.textContent).length;
+  const textShare=Math.min(1,textLength/totalText);
+  if(textLength<120 || textShare<.68) continue;
+  const background=parseExternalShellColor(style.backgroundColor);
+  const hasBackground=!!(background && background.a>=.16) || (style.backgroundImage && style.backgroundImage!=='none');
+  const borderWidth=Math.max(...String(style.borderWidth||'0').split(/\s+/).map(value=>parseFloat(value)||0),0);
+  const shadow=String(style.boxShadow||'none');
+  const signature=`${element.id||''} ${element.className||''} ${element.getAttribute?.('aria-label')||''}`.toLowerCase();
+  const semantic=/(?:document|paper|page|book|brochure|report|sheet|form|poster|certificate|flyer|catalog|manual|letter|newspaper|magazine|ticket|receipt|档案|报告|楼书|手册|纸|书页|票据|证书|刊物|报纸|杂志)/i.test(signature);
+  const framed=hasBackground && (borderWidth>=1 || (shadow && shadow!=='none'));
+  if(!semantic && !framed) continue;
+  const portraitBonus=height>=width*1.08 ? 1.2 : 0;
+  const score=textShare*6 + (1-widthRatio)*2.2 + portraitBonus + (semantic?1.8:0) + (framed?1.1:0) - centerOffset*4;
+  candidates.push({element,score,widthRatio,textShare});
+ }
+ candidates.sort((a,b)=>b.score-a.score);
+ const object=candidates[0];
+ if(!object?.element) return false;
+
+ captureIndependentContentWidthBaseline(body);
+ body.style.setProperty('background','transparent','important');
+ body.style.setProperty('background-color','transparent','important');
+ body.style.setProperty('background-image','none','important');
+ body.setAttribute(INDEPENDENT_EXTERNAL_STAGE_NEUTRALIZED_ATTR,'true');
+ host.dataset.rmIndependentExternalStageNeutralized='solid-wide-stage';
+ return true;
+}
+
+
 function rescueIndependentExternalContentWidth(host){
  if(!host?.isConnected || host.dataset.rmSource!=='independent' || host.dataset.rmState!=='ready' || host.dataset.rmPlacement!=='external') return false;
  const details=host.querySelector?.(':scope > details[data-rabbit-mirror-external-details="true"], :scope > details');
@@ -2485,12 +2616,16 @@ function scheduleIndependentReadyPostprocess(host,key='',html=''){
   if(!host.isConnected || host.dataset.rmState!=='ready') return;
   const details=host.querySelector?.(':scope > details[data-rabbit-mirror-external-details="true"], :scope > details');
   if(host.dataset.rmPlacement==='external'){
-   // Remove only RabbitMirror-owned transient layout mutations that may have been
-   // carried over from an older 1.3.x mount. Generated inline styles are restored
-   // exactly from the captured baseline.
-   if(details) stripIndependentTransientLayoutArtifacts(details);
+   // Cached/runtime-only layout artifacts are cleaned before mount. Do not clean the
+   // already-mounted ready DOM here: Maintenance Rabbit may have intentionally written
+   // a persistent repair into this exact external mirror.
    delete host.dataset.rmIndependentContentWidthRescue;
    delete host.dataset.rmIndependentVisualShellRescue;
+   delete host.dataset.rmIndependentExternalStageNeutralized;
+   delete host.dataset.rmIndependentExternalCompactShell;
+   clearIndependentExternalCompactShellWidth(host);
+   neutralizeIndependentExternalWideStage(host);
+   compactIndependentExternalShellToPrimaryVisual(host);
   }
   scheduleExternalShellTint(host,html);
  };
@@ -3118,7 +3253,9 @@ function persistIndependentRepairFromEvent(event) {
  if(mountedSource && mountedSource!==identity.sourceHash) return false;
  const details=readyDetailsFromHost(host);
  if(!details) return false;
+ details.setAttribute(MAINTENANCE_PERSISTED_LAYOUT_ATTR,'true');
  const clone=details.cloneNode(true);
+ clone.setAttribute(MAINTENANCE_PERSISTED_LAYOUT_ATTR,'true');
  clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  const html=String(clone.outerHTML||'').trim();
  if(!independentStoredHtmlRestorable(html)) return false;
