@@ -648,17 +648,15 @@ toto[data-rabbit-mirror="true"] summary {
 #chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"][open] > summary{
   border-bottom:1px solid var(--rm-shell-border, rgba(0,0,0,.08)) !important;
 }
-/* 1.3.47: mobile pure-external width must not depend on the one-shot pixel
- * geometry snapshot. On iPhone that snapshot can be taken while .mes_block is
- * temporarily narrowed by message/status layout, leaving the external host
- * permanently skinny even after the message finishes expanding.
- *
- * Keep desktop geometry/compact-shell untouched. Narrow screens use the old
- * stable comfortable lane instead, while <details> fills that lane. */
+/* 1.3.49: narrow-screen pure-external uses a fluid content lane.
+ * The total horizontal inset scales with the viewport (16vw), capped between
+ * 36px and 72px. This keeps ~36px/side on a ~440px iPhone, while smaller
+ * phones automatically receive smaller side margins instead of a fixed 36px.
+ * Desktop geometry/compact-shell remains untouched. */
 @media (max-width:899px){
   #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"],
   #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-independent-external-compact-shell="true"]{
-    width:calc(100% - 32px) !important;
+    width:calc(100% - clamp(36px, 16vw, 72px)) !important;
     max-width:none !important;
     margin-left:auto !important;
     margin-right:auto !important;

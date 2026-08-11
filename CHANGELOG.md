@@ -1,4 +1,18 @@
-# 1.3.47 TEST — 手机纯外置宿主宽度稳定化 / PC 几何冻结
+# 1.3.49 TEST — 手机纯外置宽度自适应
+
+- 窄屏（<900px）独立 API 纯外置不再固定减去 72px，而改为 `calc(100% - clamp(36px, 16vw, 72px))` 并居中。
+- 约 440px 宽手机时仍接近左右各 35～36px；390px 时约 31px/侧；375px 时约 30px/侧；屏幕越小，边距会继续自动缩小，避免固定 36px 把正文挤窄。
+- 最大总留白仍限制为 72px，最小总留白为 36px，因此不会重新贴边铺满；内部 `<details>` 继续 100% 填满宿主。
+- PC 几何、compact-shell、外置后内嵌、维修兔、视觉提示词以及 1.3.20 性能冻结链均不改；不新增 observer、focus/resize/scroll 监听或轮询。
+
+# 1.3.48 TEST — 手机纯外置宽度对齐外置后内嵌
+
+- 根据同一台 iPhone、同一面兔子镜的并排截图校准：1.3.47 纯外置约只有 16px/侧边距，而外置后内嵌约为 36px/侧。
+- 窄屏（<900px）独立 API 纯外置从 `calc(100% - 32px)` 调整为 `calc(100% - 72px)` 并居中，使正文视觉宽度与外置后内嵌一致。
+- 内部 `<details>` 继续 100% 填满宿主；标题仍为轻壳。PC 的正文几何、compact-shell、外置维修、视觉提示词和 1.3.20 性能冻结链均不改。
+- 本版不修改 `src/independentApi.js` / `src/outputSanitizer.js` 的运行逻辑，不新增 observer、focus/resize/scroll 监听或轮询。
+
+# 1.3.48 TEST — 手机纯外置宿主宽度稳定化 / PC 几何冻结
 
 - 1.3.46 只把纯外置内部 `<details>` 改为 100%，但父级 external host 仍由一次性 `--rm-external-lane-width` 像素快照决定宽度；如果 iPhone 首帧测量时 `.mes_block` 尚未稳定，父级会永久锁在偏窄宽度，因此 1.3.46 对该现象无效。
 - 窄屏（<900px）独立 API 纯外置现在直接使用稳定 CSS 内容通道 `calc(100% - 32px)` 并居中，显式覆盖 stale lane-width / compact-width；内部 `<details>` 继续 100% 填满。
