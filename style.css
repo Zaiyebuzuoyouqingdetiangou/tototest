@@ -648,10 +648,21 @@ toto[data-rabbit-mirror="true"] summary {
 #chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"][open] > summary{
   border-bottom:1px solid var(--rm-shell-border, rgba(0,0,0,.08)) !important;
 }
-/* 1.3.46: desktop compact-shell is PC-only (<900px is already excluded in JS).
- * On iPhone / narrow screens, never let the pure-external <details> shrink-to-fit
- * generated contents: make it occupy the same external content lane as inline mode. */
+/* 1.3.47: mobile pure-external width must not depend on the one-shot pixel
+ * geometry snapshot. On iPhone that snapshot can be taken while .mes_block is
+ * temporarily narrowed by message/status layout, leaving the external host
+ * permanently skinny even after the message finishes expanding.
+ *
+ * Keep desktop geometry/compact-shell untouched. Narrow screens use the old
+ * stable comfortable lane instead, while <details> fills that lane. */
 @media (max-width:899px){
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"],
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-independent-external-compact-shell="true"]{
+    width:calc(100% - 32px) !important;
+    max-width:none !important;
+    margin-left:auto !important;
+    margin-right:auto !important;
+  }
   #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
     width:100% !important;
     max-width:none !important;
