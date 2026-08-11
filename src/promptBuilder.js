@@ -1,10 +1,10 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.38';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.38';
-import { pickCombination } from './picker.js?rmv=1.3.38';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.3.38';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.38';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.38';
-import { DEFAULT_VISUAL_PROMPT } from './settings.js?rmv=1.3.38';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.39';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.39';
+import { pickCombination } from './picker.js?rmv=1.3.39';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.3.39';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.39';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.39';
+import { DEFAULT_VISUAL_PROMPT } from './settings.js?rmv=1.3.39';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -398,7 +398,7 @@ function compactVisualPreferenceExecutionLock(settings) {
         extra ? `偏好：${truncate(extra, 180)}` : '',
         avoid ? `避用：${truncate(avoid, 120)}` : '',
     ].filter(Boolean).join('；') || '以上用户可编辑视觉层';
-    return `最终视觉优先：${focus}。必须改变整面作品的绘制语言，不得只改标题、配色或图标；展现形式本体保持不变。`;
+    return `最终视觉优先：${focus}。必须主导整面作品的绘制、材质、轮廓与界面／装饰语言；第一眼无法辨认该偏好即视为未完成。展现形式本体保持不变。`;
 }
 
 function editableVisualPromptRule(settings) {

@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.38';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.38';
+import { getSettings } from './settings.js?rmv=1.3.39';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.39';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.38';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.38';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.38';
+} from './feedbackCat.js?rmv=1.3.39';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.39';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.39';
 
 
-const RUNTIME_VERSION = '1.3.38';
+const RUNTIME_VERSION = '1.3.39';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -496,6 +496,7 @@ const CHANNEL_DIAL_CYCLE_LABEL_ATTR = 'data-rm-channel-dial-cycle-label';
 const channelDialCycleRescueStates = new WeakMap();
 const EXPANDED_OPACITY_RESCUE_ATTR = 'data-rabbit-mirror-expanded-opacity-rescue';
 const STALE_CHECKED_INLINE_CLEANUP_ATTR = 'data-rabbit-mirror-stale-checked-inline-cleanup';
+const INDEPENDENT_NATIVE_CHECKED_RESTORE_ATTR = 'data-rabbit-mirror-independent-native-checked-restored';
 const NESTED_LABEL_STRUCTURE_RESCUE_ATTR = 'data-rabbit-mirror-nested-label-structure-rescue';
 const NESTED_LABEL_PROMOTED_ATTR = 'data-rm-nested-label-promoted';
 
@@ -715,33 +716,31 @@ function clearPersistedCheckedInlineArtifacts(root, inputs) {
     return cleared;
 }
 
-
-// Manual Maintenance Rabbit repair for independent external mirrors: persisted HTML can keep
-// checked-state !important declarations while the WeakMap rollback records are lost during
-// cache/remount. Reset only rescue-owned checked declarations, then rebuild the currently
-// selected branch so later label clicks regain a reversible live state.
-function resetIndependentMaintenanceCheckedRuntime(root) {
-    if (!isIndependentMaintenanceRoot(root) || !root?.querySelectorAll) return 0;
-    const inputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
-    if (!inputs.length) return 0;
-
+function clearIndependentRescueOwnedCheckedInlineArtifacts(root, inputs) {
+    if (!isIndependentMaintenanceRoot(root) || !root?.querySelectorAll || !inputs?.length) return 0;
     let cleared = 0;
-    for (const input of inputs) restoreInteractionInlineOverrides(input);
+    const seen = new WeakMap();
 
     for (const input of inputs) {
         const rescueOwned = input.hasAttribute?.(CHECKED_TEXT_RULE_RESCUE_ATTR)
             || input.hasAttribute?.(CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR)
             || input.hasAttribute?.(LABELED_CHECKED_VERIFY_CONTROL_ATTR);
-        if (!rescueOwned || !inputHasMeaningfulCheckedSiblingRule(root, input)) continue;
+        restoreInteractionInlineOverrides(input);
+        if (!rescueOwned) continue;
 
         for (const rule of parseCheckedRulesFromText(root, input)) {
             if (rule.pseudoElement) continue;
-            const targets = resolveTargetsForCheckedRule(root, input, rule);
-            for (const target of targets) {
+            for (const target of resolveTargetsForCheckedRule(root, input, rule)) {
                 if (!target?.style) continue;
+                let properties = seen.get(target);
+                if (!properties) {
+                    properties = new Set();
+                    seen.set(target, properties);
+                }
                 for (const [rawProperty, rawValue] of rule.styleMap || []) {
                     const property = String(rawProperty || '').trim().toLowerCase();
-                    if (!property) continue;
+                    if (!property || properties.has(property)) continue;
+                    properties.add(property);
                     const priority = String(target.style.getPropertyPriority(property) || '').toLowerCase();
                     const current = String(target.style.getPropertyValue(property) || '').trim();
                     if (priority !== 'important' || !current) continue;
@@ -749,22 +748,38 @@ function resetIndependentMaintenanceCheckedRuntime(root) {
                     target.style.removeProperty(property);
                     cleared += 1;
                 }
+                target.removeAttribute?.(LABELED_CHECKED_VERIFY_TARGET_ATTR);
             }
         }
+        input.removeAttribute?.(CHECKED_TEXT_RULE_RESCUE_ATTR);
+        input.removeAttribute?.(CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR);
+        input.removeAttribute?.(CROSS_PARENT_CHECKED_VERIFIED_ATTR);
+        input.removeAttribute?.(LABELED_CHECKED_VERIFY_CONTROL_ATTR);
+        input.removeAttribute?.(EXPANDED_OPACITY_RESCUE_ATTR);
+        input.setAttribute?.('aria-pressed', input.checked ? 'true' : 'false');
     }
 
-    // Rebuild only the live selected state. From this point the existing label fallback owns
-    // future switches and has fresh WeakMap rollback records for the active branch.
-    let rebuilt = 0;
-    for (const input of inputs) {
-        input.setAttribute?.('aria-pressed', input.checked ? 'true' : 'false');
-        if (!input.checked) continue;
-        rebuilt += Number(applyCheckedVisualFallback(root, input) || 0);
-    }
-    installInteractionLabelFallback(root);
-    installLabeledCheckedVerificationFallback(root);
+    root.removeAttribute?.(CROSS_PARENT_CHECKED_ROOT_ATTR);
+    root.removeAttribute?.(LABELED_CHECKED_VERIFY_ROOT_ATTR);
+    root.removeAttribute?.(LABELED_CHECKED_VERIFY_LAST_ATTR);
     if (cleared > 0) root.setAttribute(STALE_CHECKED_INLINE_CLEANUP_ATTR, String(cleared));
-    return cleared + rebuilt;
+    return cleared;
+}
+
+function restoreIndependentNativeCheckedInteraction(root) {
+    if (!isIndependentMaintenanceRoot(root) || !root?.querySelectorAll) return 0;
+    const viewportWidth = Number(globalThis.innerWidth || globalThis.screen?.width || 0);
+    if (viewportWidth > 0 && viewportWidth < 900) return 0;
+    const inputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')]
+        .filter(input => !input.disabled && inputHasAssociatedLabel(root, input));
+    if (!inputs.length) return 0;
+
+    const depth = maintenanceCheckedInteractionDepth(root);
+    if ((depth.checkedRuleCount || 0) <= 0 || (depth.meaningfulCheckedRuleCount || 0) <= 0 || (depth.unresolvedCheckedRuleCount || 0) > 0) return 0;
+
+    const cleared = clearIndependentRescueOwnedCheckedInlineArtifacts(root, inputs);
+    root.setAttribute(INDEPENDENT_NATIVE_CHECKED_RESTORE_ATTR, 'true');
+    return Math.max(1, cleared);
 }
 
 function collectCheckedRevealSignal(candidate, property, value) {
@@ -8730,6 +8745,7 @@ function installReversibleRadioGroupFallback(root) {
 
     if (!state.onClick) {
         state.onClick = event => {
+            if (root.getAttribute?.(INDEPENDENT_NATIVE_CHECKED_RESTORE_ATTR) === 'true') return;
             const label = event.target?.closest?.('label');
             if (!label || !root.contains?.(label)) return;
             const nestedInteractive = event.target?.closest?.('button,a[href],input,select,textarea,[role="button"]');
@@ -9561,7 +9577,8 @@ function installIntelligentInteractionRescue(root) {
     installMissingCheckedSubjectClassRescue(root);
 
     const capabilities = detectInteractionCapabilities(root);
-    if (capabilities.checked) {
+    const preferNativeChecked = root.getAttribute?.(INDEPENDENT_NATIVE_CHECKED_RESTORE_ATTR) === 'true';
+    if (capabilities.checked && !preferNativeChecked) {
         // radio 原生再次点击已选项不会取消，导致大量单选式场景进入第二状态后无法返回。
         // 记录首次安装时的组内初始 checked 基线；再次点按当前已选 label 时恢复该基线，不编造新内容。
         installReversibleRadioGroupFallback(root);
@@ -10260,6 +10277,10 @@ function installInteractionLabelFallback(toto) {
             ? [...toto.querySelectorAll('input[id]')].find(el => el.id === targetId)
             : label.querySelector('input[type="checkbox"], input[type="radio"]');
         if (!input || !/^(?:checkbox|radio)$/i.test(input.type || '') || input.disabled) return;
+        // PC independent external mirrors with complete native :checked rules do not need
+        // the heavy manual checked fallback. Let the browser's label/input/CSS path run.
+        if (toto.getAttribute?.(INDEPENDENT_NATIVE_CHECKED_RESTORE_ATTR) === 'true'
+            && inputHasMeaningfulCheckedSiblingRule(toto, input)) return;
         const labeledVerification = input.hasAttribute?.(DETACHED_CHECKED_HAS_CONTROL_ATTR)
             ? null
             : prepareLabeledCheckedVerification(toto, input);
@@ -10968,7 +10989,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.38-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.39-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -16822,7 +16843,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.17';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.18';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -16838,7 +16859,6 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
     { id: 'text-clipping-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMaintenanceTextClipping(target) },
     { id: 'webkit-3d-flip-compat', modes: ['interaction', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => installWebKit3DFlipRescue(target) },
     { id: 'interaction-id-scope', modes: ['source', 'interaction', 'style', 'all'], bucket: 'scope', perTarget: true, run: ({ target }) => { scopeRabbitMirrorInteractionIds(target); return 1; } },
-    { id: 'independent-checked-runtime-reset', modes: ['interaction', 'all'], bucket: 'interaction', perTarget: true, run: ({ target }) => resetIndependentMaintenanceCheckedRuntime(target) },
     { id: 'complete-interaction-library', modes: ['interaction', 'all'], bucket: 'interaction', perTarget: true, run: ({ target }) => {
         // installIntelligentInteractionRescue 内部包含旧库全部已验证路线：
         // 原始安全状态程序、自变化、checked/change、focus→checked、状态层、相邻隐藏组、
@@ -17029,6 +17049,20 @@ function runMaintenanceSourceInteractionFollowup(root) {
 }
 
 function scheduleMaintenanceScopedFollowups(root, summaryText, messageIndex, mode) {
+    // Native checked restore already returned the external mirror to browser-owned state.
+    // Do not run four more full inspections/repair-library passes; one lightweight
+    // persistence/tool refresh is enough and avoids the post-click hitch.
+    if (mode === 'interaction'
+        && isIndependentMaintenanceRoot(root)
+        && root.getAttribute?.(INDEPENDENT_NATIVE_CHECKED_RESTORE_ATTR) === 'true') {
+        setTimeout(() => {
+            const liveRoot = findLiveMaintenanceRoot(root, summaryText, messageIndex) || root;
+            if (!liveRoot?.isConnected) return;
+            installMaintenanceRabbitForRoot(liveRoot);
+            notifyIndependentRepairPersistence(liveRoot);
+        }, 120);
+        return;
+    }
     const sourceModes = new Set(['source', 'code', 'plainText', 'style', 'all']);
     for (const delay of [80, 350, 900, 1800]) {
         setTimeout(() => {
@@ -17215,7 +17249,14 @@ function runMaintenanceAutomaticRepairPlan(root, button) {
                 return;
             }
             currentRoot = latestRoot;
+            const nativeCheckedRestoreCount = nextMode === 'interaction'
+                ? restoreIndependentNativeCheckedInteraction(latestRoot)
+                : 0;
             const libraryResult = runMaintenanceLegacyRescueLibrary(latestRoot, nextMode);
+            if (nativeCheckedRestoreCount > 0) {
+                libraryResult.interaction = (Number(libraryResult.interaction) || 0) + nativeCheckedRestoreCount;
+                libraryResult.executed.unshift({ id: 'independent-native-checked-restore', count: nativeCheckedRestoreCount });
+            }
             mergeMaintenanceLibraryResult(aggregate, libraryResult, nextMode);
             step.modules = {
                 executed: [...(libraryResult.executed || [])],
@@ -17389,7 +17430,17 @@ function runMaintenanceUserRepair(root, button, mode) {
                 return;
             }
             const liveButton = liveRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
+            // Fast path for PC independent external mirrors whose native :checked structure is
+            // already complete. Clear only stale rescue-owned inline state, then let native CSS
+            // handle subsequent radio/checkbox switches instead of stacking another heavy repair.
+            const nativeCheckedRestoreCount = (effectiveMode === 'interaction' || effectiveMode === 'all')
+                ? restoreIndependentNativeCheckedInteraction(liveRoot)
+                : 0;
             const libraryResult = runMaintenanceLegacyRescueLibrary(liveRoot, effectiveMode);
+            if (nativeCheckedRestoreCount > 0) {
+                libraryResult.interaction = (Number(libraryResult.interaction) || 0) + nativeCheckedRestoreCount;
+                libraryResult.executed.unshift({ id: 'independent-native-checked-restore', count: nativeCheckedRestoreCount });
+            }
             if (sourceResult.changed && effectiveMode === 'source') {
                 const followupResult = runMaintenanceSourceInteractionFollowup(liveRoot);
                 if (followupResult) mergeMaintenanceLibraryResult(libraryResult, followupResult, 'interaction');
@@ -17487,11 +17538,11 @@ function showMaintenanceRabbitMenu(root, button) {
     panel.setAttribute(MAINTENANCE_MENU_ATTR, 'true');
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-label', '维修兔');
-    const patrolInspection = inspectMaintenanceRabbit(root);
-    const recommendation = maintenanceRecommendationForInspection(patrolInspection);
+    // Keep menu opening instant. Full inspection can be expensive on large generated DOM,
+    // so only run it after the user explicitly chooses auto/patrol/diagnostic.
     panel.innerHTML = `
       <div class="rabbit-mirror-maintenance-menu-title">🐇 这面兔子镜哪里不对？</div>
-      <div class="rabbit-mirror-maintenance-recommendation" data-rm-recommended-action="${recommendation.mode}">${maintenanceRecommendationText(patrolInspection)}</div>
+      <div class="rabbit-mirror-maintenance-recommendation" data-rm-recommended-action="manual">请选择问题类型；“自动判断”会在执行时检测当前镜面。</div>
       <button type="button" data-rm-maintenance-action="auto">✨ 自动判断并维修（推荐）</button>
       <button type="button" data-rm-maintenance-action="patrol">🔍 只巡逻，不修改</button>
       <button type="button" data-rm-maintenance-action="interaction">🖱️ 点了没有反应</button>

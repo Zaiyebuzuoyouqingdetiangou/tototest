@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.3.38",
-  "css": "style.css?rmv=1.3.38",
+  "js": "index.js?rmv=1.3.39",
+  "css": "style.css?rmv=1.3.39",
   "author": "Toto",
-  "version": "1.3.38",
+  "version": "1.3.39",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版：修复独立 API 外置维修兔的残留 checked 状态重建，并提高用户视觉编辑层的最终输出优先级。"
+  "description": "兔子镜测试版：外置维修优先恢复原生 checked/radio 交互，移除重复重维修造成的卡顿，并加强视觉偏好最终可辨认约束。"
 }
