@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.33';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.33';
+import { getSettings } from './settings.js?rmv=1.3.34';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.34';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,9 +9,9 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.33';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.33';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.33';
+} from './feedbackCat.js?rmv=1.3.34';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.34';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.34';
 
 
 const RUNTIME_VERSION = '1.3.33';

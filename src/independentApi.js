@@ -1,9 +1,9 @@
-import { getSettings } from './settings.js?rmv=1.3.33';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.33';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.33';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.33';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.33';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.33';
+import { getSettings } from './settings.js?rmv=1.3.34';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.34';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.34';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.34';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.34';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.34';
 
 const RUNTIME_VERSION = '1.3.33';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
@@ -2433,6 +2433,66 @@ function independentPrimaryContentCarrier(details){
 
 
 
+
+function independentExternalCompactTarget(details){
+ if(!details?.querySelectorAll || typeof getComputedStyle!=='function') return null;
+ const body=[...(details.children||[])].find(node=>!['SUMMARY','STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node?.tagName));
+ if(!body?.isConnected) return null;
+ let bodyRect;
+ try{ bodyRect=body.getBoundingClientRect(); }catch{return null; }
+ const bodyWidth=Math.max(1,Number(bodyRect?.width||0));
+ const bodyHeight=Math.max(1,Number(bodyRect?.height||0));
+ const bodyCenter=Number(bodyRect.left||0)+bodyWidth/2;
+ const compact=value=>String(value||'').replace(/\s+/g,'').trim();
+ const totalText=Math.max(1,compact(body.textContent).length);
+ const candidates=[];
+ const seen=new Set();
+ const scoreCandidate=(element,baseScore=0,reason='')=>{
+  if(!element?.isConnected || element===body || seen.has(element) || element.closest?.('[data-rabbit-mirror-tool-entry-host]')) return;
+  let style,rect;
+  try{ style=getComputedStyle(element); rect=element.getBoundingClientRect(); }catch{return;}
+  if(!style || style.display==='none' || style.visibility==='hidden' || Number(style.opacity||1)<.08) return;
+  const width=Math.max(0,Number(rect?.width||0));
+  const height=Math.max(0,Number(rect?.height||0));
+  if(width<180 || height<140) return;
+  const widthRatio=width/bodyWidth;
+  if(widthRatio<.18 || widthRatio>.90) return;
+  const centerOffset=Math.abs((Number(rect.left||0)+width/2)-bodyCenter)/Math.max(1,bodyWidth);
+  if(centerOffset>.14) return;
+  const textLength=compact(element.textContent).length;
+  const textShare=Math.min(1,textLength/totalText);
+  const signature=`${element.id||''} ${element.className||''} ${element.getAttribute?.('aria-label')||''} ${element.getAttribute?.('style')||''}`.toLowerCase();
+  const semantic=/(?:document|paper|page|book|brochure|report|sheet|form|poster|certificate|flyer|catalog|manual|letter|newspaper|magazine|ticket|receipt|phone|shell|device|frame|screen|terminal|monitor|passport|card|档案|报告|楼书|手册|纸|书页|票据|证书|刊物|报纸|杂志|手机|证件|屏幕|终端|壳|镜)/i.test(signature);
+  const background=parseExternalShellColor(style.backgroundColor);
+  const hasBackground=!!(background && background.a>=.16) || (style.backgroundImage && style.backgroundImage!=='none');
+  const borderWidth=Math.max(...String(style.borderWidth||'0').split(/\s+/).map(value=>parseFloat(value)||0),0);
+  const borderRadius=Math.max(...String(style.borderRadius||'0').split(/[\s\/]+/).map(value=>parseFloat(value)||0),0);
+  const hasFrame=borderWidth>=1 || borderRadius>=12 || (style.boxShadow && style.boxShadow!=='none');
+  const inlineStyle=String(element.getAttribute?.('style')||'').toLowerCase();
+  const explicitWidth=/(?:^|;)\s*(?:width|max-width|min-width)\s*:/.test(inlineStyle)
+   || (String(style.width||'').trim() && String(style.width||'').trim()!=='auto' && Math.abs(width-bodyWidth)>24)
+   || (String(style.maxWidth||'').trim() && String(style.maxWidth||'').trim()!=='none');
+  if(!semantic && !hasBackground && !hasFrame && !explicitWidth) return;
+  if(textLength<60 && !semantic && !hasFrame) return;
+  const portraitBonus=height>=width*1.04 ? .6 : 0;
+  const narrowBonus=Math.max(0,(.92-widthRatio)*3.6);
+  const textBonus=Math.min(2.2,textShare*2.6);
+  const score=baseScore + narrowBonus + textBonus + (semantic?1.8:0) + (hasBackground?1.0:0) + (hasFrame?1.0:0) + (explicitWidth?1.4:0) + portraitBonus - centerOffset*4;
+  seen.add(element);
+  candidates.push({element,width,height,widthRatio,textShare,score,reason});
+ };
+ const visual=independentPrimaryVisualShell(details);
+ if(visual?.element) scoreCandidate(visual.element,6.2,'visual');
+ const carrier=independentPrimaryContentCarrier(details);
+ if(carrier?.element) scoreCandidate(carrier.element,4.8,'carrier');
+ const directChildren=[...(body.children||[])].filter(node=>!['STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node?.tagName));
+ for(const element of directChildren) scoreCandidate(element,3.6,'direct-child');
+ const descendants=[...body.querySelectorAll('main,article,section,figure,div')].slice(0,240);
+ for(const element of descendants) scoreCandidate(element,0,'descendant');
+ candidates.sort((a,b)=>b.score-a.score);
+ return candidates[0]||null;
+}
+
 function clearIndependentExternalCompactShellWidth(host){
  if(!host?.style) return;
  host.removeAttribute('data-rm-independent-external-compact-shell');
@@ -2453,25 +2513,18 @@ function compactIndependentExternalShellToPrimaryVisual(host){
  const bodyWidth=Math.max(0,Number(bodyRect?.width||0));
  const hostWidth=Math.max(0,Number(hostRect?.width||0));
  if(bodyWidth<260 || hostWidth<320 || bodyWidth>hostWidth+2) return false;
- const visual=independentPrimaryVisualShell(details);
- if(!visual?.element) return false;
- let rect; try{ rect=visual.element.getBoundingClientRect(); }catch{return false;}
- const visualWidth=Math.max(0,Number(rect?.width||0));
- const visualHeight=Math.max(0,Number(rect?.height||0));
- if(visualWidth<180 || visualHeight<220) return false;
- const widthRatio=visualWidth/bodyWidth;
- if(widthRatio<.18 || widthRatio>.82) return false;
- const bodyCenter=Number(bodyRect.left||0)+bodyWidth/2;
- const visualCenter=Number(rect.left||0)+visualWidth/2;
- const centerOffset=Math.abs(visualCenter-bodyCenter)/Math.max(1,bodyWidth);
- if(centerOffset>.14) return false;
+ const target=independentExternalCompactTarget(details);
+ if(!target?.element) return false;
+ const targetWidth=Math.max(0,Number(target.width||0));
+ const targetHeight=Math.max(0,Number(target.height||0));
+ if(targetWidth<180 || targetHeight<140) return false;
  const summaryWidth=Math.max(0,Number(summaryRect?.width||0));
  const laneWidth=Math.max(0,Number(hostWidth||0));
- let targetWidth=Math.max(visualWidth, summaryWidth);
- targetWidth=Math.min(targetWidth, laneWidth);
- if(!Number.isFinite(targetWidth) || targetWidth<220) return false;
- if(targetWidth>=laneWidth-8) return false;
- host.style.setProperty('--rm-external-compact-width',`${Math.round(targetWidth*10)/10}px`);
+ let compactWidth=Math.max(targetWidth,summaryWidth);
+ compactWidth=Math.min(compactWidth,laneWidth);
+ if(!Number.isFinite(compactWidth) || compactWidth<220) return false;
+ if(compactWidth>=laneWidth-8) return false;
+ host.style.setProperty('--rm-external-compact-width',`${Math.round(compactWidth*10)/10}px`);
  host.setAttribute('data-rm-independent-external-compact-shell','true');
  host.dataset.rmIndependentExternalCompactShell='primary-visual';
  return true;

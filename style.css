@@ -576,11 +576,10 @@ toto[data-rabbit-mirror="true"] summary {
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-pending="true"] > details[data-rabbit-mirror-external-details="true"]{
   opacity:.76 !important;
 }
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"],
-#chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
   display:block !important;
-  width:100% !important;
-  max-width:none !important;
+  width:auto !important;
+  max-width:100% !important;
   min-width:0 !important;
   box-sizing:border-box !important;
   margin:0 !important;
@@ -590,7 +589,16 @@ toto[data-rabbit-mirror="true"] summary {
   overflow:visible !important;
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
+  display:block !important;
+  width:100% !important;
+  max-width:none !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+  margin:0 !important;
+  border:0 !important;
   border-radius:13px !important;
+  background:transparent !important;
+  overflow:visible !important;
 }
 /* Follow-current external keeps its legacy inner safety constraint. Pure independent
  * external deliberately does not touch generated children. */

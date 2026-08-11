@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.3.33",
-  "css": "style.css?rmv=1.3.33",
+  "js": "index.js?rmv=1.3.34",
+  "css": "style.css?rmv=1.3.34",
   "author": "Toto",
-  "version": "1.3.33",
+  "version": "1.3.34",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版：修复独立 API 外置维修兔在隐藏副本误判成功、真实镜面未维修的问题，并恢复常见 checked 后代选择器误写。"
+  "description": "兔子镜测试版：收紧视觉偏好主导规则，并修复独立 API 纯外置模式标题壳与窄本体脱节的问题。"
 }
