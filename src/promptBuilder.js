@@ -1,10 +1,10 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.35';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.35';
-import { pickCombination } from './picker.js?rmv=1.3.35';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.3.35';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.35';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.35';
-import { DEFAULT_VISUAL_PROMPT } from './settings.js?rmv=1.3.35';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.38';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.38';
+import { pickCombination } from './picker.js?rmv=1.3.38';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.3.38';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.38';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.38';
+import { DEFAULT_VISUAL_PROMPT } from './settings.js?rmv=1.3.38';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -390,6 +390,17 @@ function cleanEditableVisualPrompt(value, maxChars = 8000) {
     return text.slice(0, Math.max(0, Number(maxChars) || 0));
 }
 
+function compactVisualPreferenceExecutionLock(settings) {
+    if (!settings?.visualPromptEditingEnabled) return '';
+    const extra = cleanEditableVisualPrompt(settings?.visualExtraPrompt, 4000);
+    const avoid = cleanEditableVisualPrompt(settings?.visualAvoidPrompt, 4000);
+    const focus = [
+        extra ? `偏好：${truncate(extra, 180)}` : '',
+        avoid ? `避用：${truncate(avoid, 120)}` : '',
+    ].filter(Boolean).join('；') || '以上用户可编辑视觉层';
+    return `最终视觉优先：${focus}。必须改变整面作品的绘制语言，不得只改标题、配色或图标；展现形式本体保持不变。`;
+}
+
 function editableVisualPromptRule(settings) {
     const official = cleanEditableVisualPrompt(settings?.visualPrompt ?? DEFAULT_VISUAL_PROMPT, 8000);
     const extra = cleanEditableVisualPrompt(settings?.visualExtraPrompt, 4000);
@@ -495,6 +506,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const directiveText = settings?.userDirectivePriority && directive?.rawDirective
         ? truncateDirectiveText(directive.rawDirective, 700)
         : '';
+    const visualPreferenceLock = compactVisualPreferenceExecutionLock(settings);
 
     const avoidLines = [
         interaction ? `交互冷却：${interaction.label}（近五轮 ${interaction.count} 次）；${interaction.exactBan}` : '',
@@ -508,6 +520,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
 - 抽取模式：${samplingModeLabel(combo, settings)}。
 - 内容构思锁：以“${themes}”作为观察角度、关系组织与细节取材；必须从当前助手正文提取具体动作、情绪、关系变化或物件痕迹，不得只把主题写进标题。
 - UI／媒介构思锁：以“${formats}”作为首个主要视觉本体；DOM/CSS 必须真实呈现其形态、材质、空间关系、阅读路径和操作方式，不得退化为通用卡片、信息面板或只换皮的标签页。
+${visualPreferenceLock ? `- ${visualPreferenceLock}` : ''}
 ${directiveText ? `- 用户本轮点菜仍为最高优先，必须同时落实：${directiveText}` : ''}
 
 【近期必须避开】
@@ -524,7 +537,7 @@ ${avoidLines.length ? avoidLines.map(line => `- ${line}`).join('\n') : '- 当前
 </兔子镜最终执行锁>`;
 }
 
-function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback }) {
+function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback, generationType = 'normal' }) {
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
@@ -551,7 +564,6 @@ ${selectedFormats}`);
     chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
     if (settings?.visualPromptEditingEnabled) {
         chunks.push(presentationEmbodimentRule());
-        chunks.push(editableVisualPromptRule(settings));
     } else {
         chunks.push(legacyPresentationEmbodimentRule());
     }
@@ -575,7 +587,18 @@ ${shortVisualAvoidance(combo, 3)}`);
     }
 
     if (tarotRulesText) chunks.push(tarotRulesText);
+    // When visual editing is enabled, keep the full user-editable layer near the final output
+    // contract so later theme/cooldown rules cannot dilute it. The OFF path remains the legacy flow.
+    if (settings?.visualPromptEditingEnabled) chunks.push(editableVisualPromptRule(settings));
     chunks.push(htmlSafetyCore());
+    const visualPreferenceLock = compactVisualPreferenceExecutionLock(settings);
+    // Main/current API receives the visual preference lock here, next to the final output protocol.
+    // Independent API receives the same lock only in its dedicated executionLock below, so it is
+    // never duplicated across system + user prompts.
+    if (visualPreferenceLock && String(generationType || 'normal') !== 'independent') {
+        chunks.push(`最终视觉偏好执行锁:
+  - ${visualPreferenceLock}`);
+    }
     // 强制输出契约放在注入末尾，利用指令近因保证每轮正文后继续生成完整兔子镜。
     chunks.push(coreOutputProtocol());
     chunks.push('</兔子镜自动注入>');
@@ -602,7 +625,7 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
     const memoryMaterial = hasSharedMemoryTheme(combo)
         ? readSelectedMemoryForPrompt(settings, settings.memoryMaxChars || 2200)
         : null;
-    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback });
+    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback, generationType });
     const metadata = Object.freeze({
         generationType: String(generationType || 'normal'),
         rawPolicy,

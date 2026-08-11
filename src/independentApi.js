@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.35';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.35';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.35';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.35';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.35';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.35';
+import { getSettings } from './settings.js?rmv=1.3.38';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.38';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.38';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.38';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.38';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.38';
 
-const RUNTIME_VERSION = '1.3.35';
+const RUNTIME_VERSION = '1.3.38';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -882,7 +882,7 @@ async function callIndependentApi(ctx,index,msg,signal=null){
  const activeFeedback=st.feedbackCatEnabled!==false ? getActiveFeedbackForCurrentChat(ctx.chat) : null;
  const feedbackPrompt=activeFeedback ? buildFeedbackCatPrompt(activeFeedback) : '';
  const feedbackFinalCheck=activeFeedback ? buildFeedbackCatFinalCheck(activeFeedback) : '';
- const details=buildRabbitMirrorPromptDetails(st,'normal',null,generationScopeKey,{chat:ctx.chat});
+ const details=buildRabbitMirrorPromptDetails(st,'independent',null,generationScopeKey,{chat:ctx.chat});
  const basePrompt=details.prompt;
  const feedbackBlock=feedbackPrompt ? `
 

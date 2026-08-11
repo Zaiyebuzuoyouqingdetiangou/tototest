@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.35';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.35';
+import { getSettings } from './settings.js?rmv=1.3.38';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.38';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.35';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.35';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.35';
+} from './feedbackCat.js?rmv=1.3.38';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.38';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.38';
 
 
-const RUNTIME_VERSION = '1.3.35';
+const RUNTIME_VERSION = '1.3.38';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -713,6 +713,58 @@ function clearPersistedCheckedInlineArtifacts(root, inputs) {
         root.setAttribute(STALE_CHECKED_INLINE_CLEANUP_ATTR, String(cleared));
     }
     return cleared;
+}
+
+
+// Manual Maintenance Rabbit repair for independent external mirrors: persisted HTML can keep
+// checked-state !important declarations while the WeakMap rollback records are lost during
+// cache/remount. Reset only rescue-owned checked declarations, then rebuild the currently
+// selected branch so later label clicks regain a reversible live state.
+function resetIndependentMaintenanceCheckedRuntime(root) {
+    if (!isIndependentMaintenanceRoot(root) || !root?.querySelectorAll) return 0;
+    const inputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
+    if (!inputs.length) return 0;
+
+    let cleared = 0;
+    for (const input of inputs) restoreInteractionInlineOverrides(input);
+
+    for (const input of inputs) {
+        const rescueOwned = input.hasAttribute?.(CHECKED_TEXT_RULE_RESCUE_ATTR)
+            || input.hasAttribute?.(CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR)
+            || input.hasAttribute?.(LABELED_CHECKED_VERIFY_CONTROL_ATTR);
+        if (!rescueOwned || !inputHasMeaningfulCheckedSiblingRule(root, input)) continue;
+
+        for (const rule of parseCheckedRulesFromText(root, input)) {
+            if (rule.pseudoElement) continue;
+            const targets = resolveTargetsForCheckedRule(root, input, rule);
+            for (const target of targets) {
+                if (!target?.style) continue;
+                for (const [rawProperty, rawValue] of rule.styleMap || []) {
+                    const property = String(rawProperty || '').trim().toLowerCase();
+                    if (!property) continue;
+                    const priority = String(target.style.getPropertyPriority(property) || '').toLowerCase();
+                    const current = String(target.style.getPropertyValue(property) || '').trim();
+                    if (priority !== 'important' || !current) continue;
+                    if (canonicalCheckedCssValue(property, current) !== canonicalCheckedCssValue(property, rawValue)) continue;
+                    target.style.removeProperty(property);
+                    cleared += 1;
+                }
+            }
+        }
+    }
+
+    // Rebuild only the live selected state. From this point the existing label fallback owns
+    // future switches and has fresh WeakMap rollback records for the active branch.
+    let rebuilt = 0;
+    for (const input of inputs) {
+        input.setAttribute?.('aria-pressed', input.checked ? 'true' : 'false');
+        if (!input.checked) continue;
+        rebuilt += Number(applyCheckedVisualFallback(root, input) || 0);
+    }
+    installInteractionLabelFallback(root);
+    installLabeledCheckedVerificationFallback(root);
+    if (cleared > 0) root.setAttribute(STALE_CHECKED_INLINE_CLEANUP_ATTR, String(cleared));
+    return cleared + rebuilt;
 }
 
 function collectCheckedRevealSignal(candidate, property, value) {
@@ -10916,7 +10968,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.35-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.38-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -16770,7 +16822,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.16';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.17';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -16786,6 +16838,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
     { id: 'text-clipping-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMaintenanceTextClipping(target) },
     { id: 'webkit-3d-flip-compat', modes: ['interaction', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => installWebKit3DFlipRescue(target) },
     { id: 'interaction-id-scope', modes: ['source', 'interaction', 'style', 'all'], bucket: 'scope', perTarget: true, run: ({ target }) => { scopeRabbitMirrorInteractionIds(target); return 1; } },
+    { id: 'independent-checked-runtime-reset', modes: ['interaction', 'all'], bucket: 'interaction', perTarget: true, run: ({ target }) => resetIndependentMaintenanceCheckedRuntime(target) },
     { id: 'complete-interaction-library', modes: ['interaction', 'all'], bucket: 'interaction', perTarget: true, run: ({ target }) => {
         // installIntelligentInteractionRescue 内部包含旧库全部已验证路线：
         // 原始安全状态程序、自变化、checked/change、focus→checked、状态层、相邻隐藏组、
