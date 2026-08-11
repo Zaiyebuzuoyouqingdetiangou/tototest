@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.3.41",
-  "css": "style.css?rmv=1.3.41",
+  "js": "index.js?rmv=1.3.42",
+  "css": "style.css?rmv=1.3.42",
   "author": "Toto",
-  "version": "1.3.41",
+  "version": "1.3.42",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版：保留旧版交互状态净化保险，并将旧缓存净化移出高频读取链，继续冻结独立 API 与不卡顿运行链。"
+  "description": "兔子镜测试版：撤销会误判外置原生 :checked 可用的快捷路径，恢复旧满意版的 checked/label/radio 维修链，同时保持单次轻量维修避免卡顿。"
 }

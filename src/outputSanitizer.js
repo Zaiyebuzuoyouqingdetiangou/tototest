@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.41';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.41';
+import { getSettings } from './settings.js?rmv=1.3.42';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.42';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.41';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.41';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.41';
+} from './feedbackCat.js?rmv=1.3.42';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.42';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.42';
 
 
-const RUNTIME_VERSION = '1.3.41';
+const RUNTIME_VERSION = '1.3.42';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -768,18 +768,23 @@ function clearIndependentRescueOwnedCheckedInlineArtifacts(root, inputs) {
 
 function restoreIndependentNativeCheckedInteraction(root) {
     if (!isIndependentMaintenanceRoot(root) || !root?.querySelectorAll) return 0;
-    const viewportWidth = Number(globalThis.innerWidth || globalThis.screen?.width || 0);
-    if (viewportWidth > 0 && viewportWidth < 900) return 0;
     const inputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')]
         .filter(input => !input.disabled && inputHasAssociatedLabel(root, input));
-    if (!inputs.length) return 0;
+    if (!inputs.length) {
+        root.removeAttribute?.(INDEPENDENT_NATIVE_CHECKED_RESTORE_ATTR);
+        return 0;
+    }
 
-    const depth = maintenanceCheckedInteractionDepth(root);
-    if ((depth.checkedRuleCount || 0) <= 0 || (depth.meaningfulCheckedRuleCount || 0) <= 0 || (depth.unresolvedCheckedRuleCount || 0) > 0) return 0;
-
+    // 1.3.39 introduced a PC external fast path that treated the mere presence of
+    // meaningful :checked CSS as proof that native label/input interaction worked.
+    // The maintenance sandbox can prove the opposite: selectors may be present while
+    // the browser/WebView still fails to expose the second state. 1.2.19 deliberately
+    // kept the manual checked fallback active in that case. Clear only stale rescue-
+    // owned inline state here, then remove the fast-path marker so the verified legacy
+    // label/checked/radio rescue chain is allowed to install again.
     const cleared = clearIndependentRescueOwnedCheckedInlineArtifacts(root, inputs);
-    root.setAttribute(INDEPENDENT_NATIVE_CHECKED_RESTORE_ATTR, 'true');
-    return Math.max(1, cleared);
+    root.removeAttribute?.(INDEPENDENT_NATIVE_CHECKED_RESTORE_ATTR);
+    return cleared;
 }
 
 function collectCheckedRevealSignal(candidate, property, value) {
@@ -10989,7 +10994,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.41-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.42-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -17049,12 +17054,11 @@ function runMaintenanceSourceInteractionFollowup(root) {
 }
 
 function scheduleMaintenanceScopedFollowups(root, summaryText, messageIndex, mode) {
-    // Native checked restore already returned the external mirror to browser-owned state.
-    // Do not run four more full inspections/repair-library passes; one lightweight
-    // persistence/tool refresh is enough and avoids the post-click hitch.
-    if (mode === 'interaction'
-        && isIndependentMaintenanceRoot(root)
-        && root.getAttribute?.(INDEPENDENT_NATIVE_CHECKED_RESTORE_ATTR) === 'true') {
+    // Independent interaction repair is fully applied to the current live mirror in the
+    // first pass. Do not repeat the complete repair library four more times: that old
+    // follow-up pattern is unnecessary here and was the source of the post-click hitch.
+    // Keep only one lightweight tool/persistence refresh; no observer/polling is added.
+    if (mode === 'interaction' && isIndependentMaintenanceRoot(root)) {
         setTimeout(() => {
             const liveRoot = findLiveMaintenanceRoot(root, summaryText, messageIndex) || root;
             if (!liveRoot?.isConnected) return;
@@ -17255,7 +17259,7 @@ function runMaintenanceAutomaticRepairPlan(root, button) {
             const libraryResult = runMaintenanceLegacyRescueLibrary(latestRoot, nextMode);
             if (nativeCheckedRestoreCount > 0) {
                 libraryResult.interaction = (Number(libraryResult.interaction) || 0) + nativeCheckedRestoreCount;
-                libraryResult.executed.unshift({ id: 'independent-native-checked-restore', count: nativeCheckedRestoreCount });
+                libraryResult.executed.unshift({ id: 'independent-checked-state-reset', count: nativeCheckedRestoreCount });
             }
             mergeMaintenanceLibraryResult(aggregate, libraryResult, nextMode);
             step.modules = {
@@ -17430,16 +17434,14 @@ function runMaintenanceUserRepair(root, button, mode) {
                 return;
             }
             const liveButton = liveRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
-            // Fast path for PC independent external mirrors whose native :checked structure is
-            // already complete. Clear only stale rescue-owned inline state, then let native CSS
-            // handle subsequent radio/checkbox switches instead of stacking another heavy repair.
+            // Clear stale rescue-owned checked state first, then run the normal verified checked fallback.
             const nativeCheckedRestoreCount = (effectiveMode === 'interaction' || effectiveMode === 'all')
                 ? restoreIndependentNativeCheckedInteraction(liveRoot)
                 : 0;
             const libraryResult = runMaintenanceLegacyRescueLibrary(liveRoot, effectiveMode);
             if (nativeCheckedRestoreCount > 0) {
                 libraryResult.interaction = (Number(libraryResult.interaction) || 0) + nativeCheckedRestoreCount;
-                libraryResult.executed.unshift({ id: 'independent-native-checked-restore', count: nativeCheckedRestoreCount });
+                libraryResult.executed.unshift({ id: 'independent-checked-state-reset', count: nativeCheckedRestoreCount });
             }
             if (sourceResult.changed && effectiveMode === 'source') {
                 const followupResult = runMaintenanceSourceInteractionFollowup(liveRoot);
