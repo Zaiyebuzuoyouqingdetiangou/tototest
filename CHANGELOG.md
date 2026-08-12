@@ -1,3 +1,26 @@
+# 1.3.53 TEST — 修正维修兔持久化重挂载 / 保留 1.3.52 双向配色冷却
+
+- 基于 1.3.51 实际源码合入 `files.zip` 的 1.3.52 修复，但不原样采用其中的重挂载实现。
+- 修正 1.3.52 `rehydrateRabbitMirrorMaintenanceRepairs()` 的关键遗漏：普通 `installStructuredStaticDisclosureFallback()` 会被已保存的 `role=button/tabindex` 判定为“已有交互”，`installFillInChoiceFallback()` 会被已保存的 count 标记直接跳过，因此两类 listener 实际没有重绑。
+- 改为只针对带 `data-rabbit-mirror-maintenance-persisted-layout=true` 的镜面，直接根据已保存的维修标记重建静态选项、静态分段折叠、填空选择的 WeakMap 状态与 click/keydown listener；同一 live root 已重建后不重复绑定。
+- 保存独立 API 维修结果时新增 `aria-checked` 净化，并把填空选择的本次已填文字、运行时 aria-label 与 blank code 恢复到生成时基线，避免“修交互”把用户当次选择写死进永久缓存。
+- 保留 1.3.52 的四张结构性急救样式持久化、孤儿清理保护、保存失败 debug，以及 hueFamily/temperature/saturation 双向配色重复冷却与 `cream-attractor` 米黄归并。
+- 不改独立 API 请求发送、重试、超时、外置几何、compact-shell、MutationObserver、resize/scroll/focus 监听与轮询链。
+
+# 1.3.52 TEST — 维修兔结构性修复可持久化 / 配色冷却改为双向
+
+- 修复独立 API 兔子镜「维修兔修好后刷新又坏、永远修不了」的根因。1.3.43 的 `scrubIndependentInteractionState()` 把维修兔自己注入的四张结构性急救样式表（静态选项、静态分段折叠、填空选择、focus-within 持久桥接）当成运行时污染一并删除，因此每次保存都会把修复结果一起抹掉。
+- `PERSISTED_STATE_STYLE_ATTRS` 拆分为 `RUNTIME_STATE_STYLE_ATTRS`（checked 伪元素补丁，仍然永远净化）与 `MAINTENANCE_STRUCTURAL_STYLE_ATTRS`（受 `data-rabbit-mirror-maintenance-persisted-layout` 保护），与 1.3.45 的排版维修保持同一套判定。
+- checkbox/radio 当前选中状态、`aria-pressed`、临时 active/selected/open 标记仍然照旧净化，不会被写死进永久缓存。
+- 修复第二条链路：`clearOrphanedStructuredStaticDisclosureArtifacts()` 会在 `installMaintenanceRabbitForRoot()` 装按钮的同一步里，把重新挂载后 WeakMap 为空的镜面判成「旧版孤儿标记」而清空。带维修持久化标记的镜面现在跳过该清理。
+- 修复第三条链路：静态选项／静态分段折叠／填空选择这三条只登记在维修兔急救库里，挂载链不会调用，而 `addEventListener` 无法随 HTML 保存。新增 `rehydrateRabbitMirrorMaintenanceRepairs()`，在 `ensureExternalTools()` 挂载时按已有维修标记重新绑定，消除「样式还在、点了没反应」的死 UI。该函数只对已带维修标记的镜面生效，不会给没修过的镜面凭空加交互。
+- `persistIndependentRepairFromEvent()` 原本有 7 处静默 `return false`，维修保存失败时界面上没有任何痕迹。改为统一 `console.debug` 记录放弃原因。
+- 修复「一直出米黄色」。整条配色反馈链原本是单向的：`isDarkPaletteTrigger()` 与 `recentIndependentPaletteGuard()` 都只识别暗色，冷却提示词又持续要求「中／高明度」「非黑主背景」，而米黄是 `brightness:light` + `temperature:warm` + `saturation:low`，永远不触发任何冷却——反黑规则本身把模型推向了唯一的收敛点。
+- `classifyPaletteSamples()` 早已计算出的 `hueFamily` / `temperature` / `saturation` 此前完全未被使用（`getRecentPaletteFingerprints()` 是零调用死代码）。新增 `paletteFamilyKey()` / `describePaletteFamily()` / `getRepeatedPaletteFamily()`，配色冷却改为对任何家族一视同仁的双向判定。
+- 米黄／奶油／米色／羊皮纸／做旧纸张归为同一个 `cream-attractor` 家族键，避免它们在 orange/yellow/neutral 之间漂移而各自算作不同家族、恰好绕开重复检测。
+- 近期视觉避让文本现在会列出每轮实际使用的配色家族；此前模型完全看不到自己上几轮用过什么颜色。
+- 不改动外置几何、compact-shell、外置后内嵌、视觉提示词编辑与 1.3.20 性能冻结链；不新增 MutationObserver、focus/resize/scroll 监听或轮询。
+
 # 1.3.51 TEST — 手机纯外置跟随正文 / PC compact 保留
 
 - 手机／窄屏纯外置不再使用固定 `vw` 或固定边距猜宽度。

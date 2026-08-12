@@ -1,10 +1,10 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.51';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.51';
-import { pickCombination } from './picker.js?rmv=1.3.51';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.3.51';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.51';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.51';
-import { DEFAULT_VISUAL_PROMPT } from './settings.js?rmv=1.3.51';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.53';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.53';
+import { pickCombination } from './picker.js?rmv=1.3.53';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRepeatedPaletteFamily, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.3.53';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.53';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.53';
+import { DEFAULT_VISUAL_PROMPT } from './settings.js?rmv=1.3.53';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -128,7 +128,10 @@ function shortVisualAvoidance(combo, limit = 3) {
         const riskCount = Array.isArray(item.riskFlags) ? item.riskFlags.length : 0;
         const signature = item.visualSignature ? truncate(item.visualSignature, 110) : '已记录视觉骨架';
         const interaction = item?.interactionFamily?.label ? `；交互骨架：${truncate(item.interactionFamily.label, 42)}` : '';
-        return `${index + 1}. 近期展现形式：${formats}；避让摘要：${signature}${interaction}${riskCount ? `；结构风险 ${riskCount} 项` : ''}`;
+        // 1.3.52: 配色一直没有进入避让文本，模型因此看不见自己上几轮用过什么颜色。
+        const palette = describePaletteFamily(item?.paletteFingerprint);
+        const paletteNote = palette ? `；配色家族：${palette}` : '';
+        return `${index + 1}. 近期展现形式：${formats}；避让摘要：${signature}${interaction}${paletteNote}${riskCount ? `；结构风险 ${riskCount} 项` : ''}`;
     }).join('\n');
 }
 
@@ -227,13 +230,31 @@ function interactionFamilyCooldownRule() {
 }
 
 function paletteCooldownRule() {
+    const blocks = [];
     const cooldown = getActivePaletteCooldown(5);
-    if (!cooldown?.active) return '';
-    return String.raw`
+    if (cooldown?.active) {
+        blocks.push(String.raw`
 配色冷却【由近期实际输出触发，剩余 ${cooldown.remaining} 轮】:
   - 本轮主要承载面的整体明度必须改为中明度或高明度，不得延续近期的低明度底盘。
   - 色彩仍须从本轮展现形式的材质、环境、光线与空间关系中产生，不得只把旧方案机械反相或更换强调色。
-  - 局部低明度细节可以保留，但其面积与视觉权重不得主导整体；文字、边界、阴影与强调色须随新的承载关系重新组织。`;
+  - 局部低明度细节可以保留，但其面积与视觉权重不得主导整体；文字、边界、阴影与强调色须随新的承载关系重新组织。
+  - 提高明度不等于退回米黄、奶油、米色、羊皮纸这类高明度暖中性底；避暗不是换成另一种默认色。`);
+    }
+
+    // 1.3.52: 双向冷却。任何配色家族连续重复都要换，不只是暗色。
+    const repeated = getRepeatedPaletteFamily(3, 2);
+    if (repeated) {
+        const creamLine = repeated.cream
+            ? '\n  - 尤其禁止继续使用米黄、奶油、米色、羊皮纸、做旧纸张这一类高明度暖中性底；它不是"安全的浅色"，只是上一轮的重复。'
+            : '';
+        blocks.push(String.raw`
+配色重复冷却【由近期实际输出触发，近 ${repeated.window} 轮中有 ${repeated.count} 轮落在同一配色家族】:
+  - 近期主要承载面持续落在「${repeated.label}」。本轮必须换到明显不同的色相家族与冷暖关系。
+  - 明度、冷暖、色相、饱和度四项中至少有两项必须发生可见变化；只降低饱和度或只更换强调色不算改变。${creamLine}
+  - 新配色仍须从本轮展现形式的材质、环境、光线与空间关系中生长出来，不得为了躲避冷却机械轮换到另一种固定配色。`);
+    }
+
+    return blocks.join('\n');
 }
 
 function hardStartupReserve() {
@@ -500,6 +521,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const avoidance = settings?.avoidRepeat ? shortVisualAvoidance(combo, 3) : '未启用近期视觉避让。';
     const interaction = interactionFamilyCooldownSnapshot();
     const palette = getActivePaletteCooldown(5);
+    const repeatedPalette = getRepeatedPaletteFamily(3, 2);
     const recentFlags = getRecentRiskFlags(5);
     const innerDetailsBlocked = recentFlags.includes('inner_details_used');
     const riskCorrection = truncate(recentRiskCorrection().replace(/^\s*真实视觉纠偏[^:]*:\s*/u, ''), 620);
@@ -510,7 +532,8 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
 
     const avoidLines = [
         interaction ? `交互冷却：${interaction.label}（近五轮 ${interaction.count} 次）；${interaction.exactBan}` : '',
-        palette?.active ? `配色冷却：剩余 ${palette.remaining} 轮；主要承载面改用中／高明度，不延续低明度底盘。` : '',
+        palette?.active ? `配色冷却：剩余 ${palette.remaining} 轮；主要承载面改用中／高明度，不延续低明度底盘，也不得退回米黄／奶油底。` : '',
+        repeatedPalette ? `配色重复冷却：近 ${repeatedPalette.window} 轮有 ${repeatedPalette.count} 轮落在「${repeatedPalette.label}」；本轮必须换色相家族与冷暖关系${repeatedPalette.cream ? '，禁止继续使用米黄／奶油／米色底' : ''}。` : '',
         innerDetailsBlocked ? '内部折叠冷却：本轮最外层兔子镜内部不得再使用 details/summary。' : '',
         riskCorrection ? `近期真实输出纠偏：${riskCorrection}` : '',
     ].filter(Boolean);

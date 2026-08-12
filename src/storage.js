@@ -288,6 +288,75 @@ function isDarkPaletteTrigger(fingerprint) {
         && (darkAreaRatio >= 0.55 || averageLuminance <= 105);
 }
 
+// 1.3.52: 原本整条配色反馈链只认“暗”。米黄／奶油是 brightness:'light' + temperature:'warm'
+// + saturation:'low'，永远不会触发任何冷却；同时反黑规则还在持续把模型推向“高明度暖中性色”，
+// 于是米黄成为唯一的收敛点，一旦落进去就再也出不来。
+// classifyPaletteSamples 早就算出了 hueFamily / temperature / saturation，这里开始真正使用它们。
+const PALETTE_BRIGHTNESS_LABELS = { dark: '低明度', mid: '中明度', light: '高明度' };
+const PALETTE_TEMPERATURE_LABELS = { warm: '暖', cool: '冷', neutral: '中性' };
+const PALETTE_SATURATION_LABELS = { low: '低饱和', medium: '中饱和', high: '高饱和' };
+const PALETTE_HUE_LABELS = {
+    red: '红', orange: '橙', yellow: '黄', green: '绿',
+    cyan: '青', blue: '蓝', purple: '紫', pink: '粉', neutral: '中性色',
+};
+
+// 米黄／奶油／米色／羊皮纸／做旧纸张实际上是同一个吸引子，只是 hueFamily 在
+// orange / yellow / neutral 之间漂移。若按四元组严格分家族，米黄→羊皮纸→米色
+// 会被算成三个不同家族而永远不触发重复冷却，正好放过最需要拦的那一种。
+function isCreamAttractor(fingerprint) {
+    if (!fingerprint) return false;
+    return String(fingerprint.brightness || '') === 'light'
+        && String(fingerprint.temperature || '') === 'warm'
+        && String(fingerprint.saturation || '') === 'low'
+        && ['orange', 'yellow', 'neutral', 'red'].includes(String(fingerprint.hueFamily || 'neutral'));
+}
+
+export function paletteFamilyKey(fingerprint) {
+    if (!fingerprint || typeof fingerprint !== 'object') return '';
+    if (Number(fingerprint.confidence || 0) < 0.35) return '';
+    const brightness = String(fingerprint.brightness || '').trim();
+    if (!brightness) return '';
+    if (isCreamAttractor(fingerprint)) return 'cream-attractor';
+    const hueFamily = String(fingerprint.hueFamily || 'neutral').trim() || 'neutral';
+    const temperature = String(fingerprint.temperature || 'neutral').trim() || 'neutral';
+    const saturation = String(fingerprint.saturation || 'low').trim() || 'low';
+    return `${brightness}|${hueFamily}|${temperature}|${saturation}`;
+}
+
+export function describePaletteFamily(fingerprint) {
+    if (!fingerprint || typeof fingerprint !== 'object') return '';
+    const brightness = PALETTE_BRIGHTNESS_LABELS[String(fingerprint.brightness || '')] || '';
+    const temperature = PALETTE_TEMPERATURE_LABELS[String(fingerprint.temperature || '')] || '';
+    const saturation = PALETTE_SATURATION_LABELS[String(fingerprint.saturation || '')] || '';
+    const hue = PALETTE_HUE_LABELS[String(fingerprint.hueFamily || 'neutral')] || '';
+    const base = [brightness, temperature, hue, saturation].filter(Boolean).join('');
+    if (!base) return '';
+    return isCreamAttractor(fingerprint) ? `${base}（米黄／奶油／米色底盘）` : base;
+}
+
+// 近 window 轮中，最新一轮所属的配色家族出现了 threshold 次及以上即视为重复。
+// 与 getActivePaletteCooldown 的“只防暗”互补：这条对任何家族一视同仁，包括米黄。
+export function getRepeatedPaletteFamily(window = 3, threshold = 2) {
+    const span = Math.max(2, Number(window) || 3);
+    const hits = Math.max(2, Number(threshold) || 2);
+    const recent = getComboHistory(span)
+        .map(item => item?.paletteFingerprint)
+        .filter(item => item && typeof item === 'object');
+    const keyed = recent.map(item => ({ item, key: paletteFamilyKey(item) })).filter(entry => entry.key);
+    if (keyed.length < hits) return null;
+    const latest = keyed[keyed.length - 1];
+    const count = keyed.filter(entry => entry.key === latest.key).length;
+    if (count < hits) return null;
+    return {
+        key: latest.key,
+        count,
+        window: keyed.length,
+        label: describePaletteFamily(latest.item) || latest.key,
+        cream: isCreamAttractor(latest.item),
+        fingerprint: latest.item,
+    };
+}
+
 // 一次低明度主承载输出触发后续五轮冷却；冷却期内若再次命中则重新从五轮开始。
 export function getActivePaletteCooldown(rounds = 5) {
     const cooldownRounds = Math.max(1, Number(rounds) || 5);

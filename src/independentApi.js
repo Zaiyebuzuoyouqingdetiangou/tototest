@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.51';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.51';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue } from './outputSanitizer.js?rmv=1.3.51';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.51';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.51';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.51';
+import { getSettings } from './settings.js?rmv=1.3.53';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.53';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs } from './outputSanitizer.js?rmv=1.3.53';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.53';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.53';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.53';
 
-const RUNTIME_VERSION = '1.3.51';
+const RUNTIME_VERSION = '1.3.53';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -868,9 +868,24 @@ function independentPaletteIsDark(palette){
 }
 function recentIndependentPaletteGuard(){
  const records=Object.values(readStore()).filter(item=>item?.html).sort((a,b)=>Number(b?.ts||0)-Number(a?.ts||0)).slice(0,3);
- const darkCount=records.reduce((sum,item)=>sum+(independentPaletteIsDark(item.paletteFingerprint||independentPaletteFingerprintFromHtml(item.html))?1:0),0);
- if(darkCount<2) return '';
- return `\n- 最近的副 API 兔子镜已经连续偏黑／近黑。本轮必须主动换成明显不同的非黑主背景与材质；除非剧情明确要求黑暗界面，否则禁止黑色、近黑色、透明主承载面和整面暗灰。`;
+ const fingerprints=records.map(item=>item.paletteFingerprint||independentPaletteFingerprintFromHtml(item.html)).filter(Boolean);
+ const darkCount=fingerprints.reduce((sum,item)=>sum+(independentPaletteIsDark(item)?1:0),0);
+ if(darkCount>=2){
+  return `\n- 最近的副 API 兔子镜已经连续偏黑／近黑。本轮必须主动换成明显不同的非黑主背景与材质；除非剧情明确要求黑暗界面，否则禁止黑色、近黑色、透明主承载面和整面暗灰。\n- 但“不要黑”不等于“改用米黄”：不得退回米黄、奶油、米色、羊皮纸这类高明度暖中性底充当安全答案。`;
+ }
+ // 1.3.52: 这条守卫原本只数暗色，于是米黄／奶油永远不会被拦下，
+ // 反黑规则又持续把模型推向高明度暖中性色，形成单向收敛。改为对任何重复家族一视同仁。
+ const keys=fingerprints.map(paletteFamilyKey).filter(Boolean);
+ if(keys.length>=2){
+  const latestKey=keys[0];
+  const repeat=keys.filter(key=>key===latestKey).length;
+  if(repeat>=2){
+   const latest=fingerprints.find(item=>paletteFamilyKey(item)===latestKey)||null;
+   const label=describePaletteFamily(latest)||latestKey;
+   return `\n- 最近 ${keys.length} 面副 API 兔子镜里有 ${repeat} 面落在同一配色家族「${label}」。本轮必须换到明显不同的色相家族与冷暖关系；明度、冷暖、色相、饱和度中至少两项要有可见变化，只降饱和或只换强调色不算。`;
+  }
+ }
+ return '';
 }
 function commitIndependentVisualResult(inner=''){
  try{
@@ -1534,14 +1549,21 @@ function cachePreparedReadyHtml(key,value){
  return value;
 }
 
-const PERSISTED_STATE_STYLE_ATTRS = [
+// 1.3.52: 运行时状态样式与“维修兔结构性急救样式”必须分开处理。
+// 前者（checked 伪元素补丁）只在某个控件当前被勾选时生成，绝不能写进永久缓存。
+// 后者（静态选项、静态分段折叠、填空选择、focus-within 持久桥接）是维修兔真正的修复产物；
+// 1.3.43 把它们一起净化掉，导致用户点一次修好一次、刷新后又坏一次，永远收敛不了。
+const RUNTIME_STATE_STYLE_ATTRS = [
  'data-rabbit-mirror-checked-pseudo-rule-rescue',
+];
+const MAINTENANCE_STRUCTURAL_STYLE_ATTRS = [
  'data-rabbit-mirror-focus-within-persistent-style',
  'data-rabbit-mirror-static-choice-selection-style',
  'data-rabbit-mirror-structured-static-disclosure-style',
  'data-rabbit-mirror-fill-in-choice-style',
 ];
-const PERSISTED_STATE_ARIA_ATTRS = ['aria-pressed','aria-selected','aria-expanded','aria-current'];
+const PERSISTED_STATE_STYLE_ATTRS = [...RUNTIME_STATE_STYLE_ATTRS, ...MAINTENANCE_STRUCTURAL_STYLE_ATTRS];
+const PERSISTED_STATE_ARIA_ATTRS = ['aria-pressed','aria-selected','aria-expanded','aria-current','aria-checked'];
 const PERSISTED_STATE_ATTR_RE = /^(?:data-rm-(?:.*(?:active|selected|open|used|filled|touch-hover|pseudo-active|target-active)|checked-pseudo-rule-target|labeled-checked-verify-target|reversible-style-baseline|reversible-text-baseline|click-to-restore)|data-rabbit-mirror-(?:labeled-checked(?:-last|-verify|-verify-count)?|checked-text-rule-rescue|expanded-opacity-rescue|inert-action-active|radio-reset-last|stale-checked-inline-cleanup))$/i;
 function parseIndependentDetailsRaw(html=''){
  try{
@@ -1610,6 +1632,19 @@ function restoreStateAttributesFromBaseline(current,baseline){
    else current.removeAttribute(name);
   }
  }
+ // 1.3.53: fill-in 维修会把占位文字改成当前选择，并把 aria-label 改成“已填…”。
+ // 这两项不是普通 attribute-state 正则能还原的；保存维修结果时必须恢复到生成时占位内容，
+ // 否则“修交互”会顺手把用户当次选择写死进永久缓存。
+ if(current.hasAttribute?.('data-rm-fill-in-choice-blank')){
+  const currentText=[...(current.childNodes||[])].filter(node=>node?.nodeType===3);
+  const baselineText=[...(baseline.childNodes||[])].filter(node=>node?.nodeType===3);
+  currentText.forEach((node,index)=>{
+   if(baselineText[index]) node.nodeValue=String(baselineText[index].nodeValue||'');
+  });
+  if(baseline.hasAttribute('aria-label')) current.setAttribute('aria-label',baseline.getAttribute('aria-label'));
+  else current.removeAttribute('aria-label');
+  current.removeAttribute('data-rm-fill-in-choice-code');
+ }
  for(const name of PERSISTED_STATE_ARIA_ATTRS){
   if(baseline.hasAttribute(name)) current.setAttribute(name,baseline.getAttribute(name));
   else current.removeAttribute(name);
@@ -1630,7 +1665,12 @@ function scrubIndependentInteractionState(html='',baselineHtml=''){
  details.querySelectorAll('[data-rabbit-mirror-interaction-diagnostic]').forEach(node=>node.remove());
  baseline?.querySelectorAll?.('[data-rabbit-mirror-interaction-diagnostic]')?.forEach?.(node=>node.remove());
  restoreEncodedInteractionBaselines(details);
- details.querySelectorAll(PERSISTED_STATE_STYLE_ATTRS.map(name=>`style[${name}]`).join(',')).forEach(node=>node.remove());
+ // 1.3.52: 与 1.3.45 的排版维修保持一致——带维修兔持久化标记的记录，
+ // 其结构性急救样式表属于修复结果而不是运行时污染，必须保留。
+ // 运行时选中状态（input.checked / aria-pressed / data-rm-*-active）仍然照常净化。
+ const preserveMaintenance=details.getAttribute?.(MAINTENANCE_PERSISTED_LAYOUT_ATTR)==='true';
+ const removableStyleAttrs=preserveMaintenance ? RUNTIME_STATE_STYLE_ATTRS : PERSISTED_STATE_STYLE_ATTRS;
+ details.querySelectorAll(removableStyleAttrs.map(name=>`style[${name}]`).join(',')).forEach(node=>node.remove());
  const currentElements=persistedStateElements(details);
  const baselineElements=persistedStateElements(baseline);
  const used=new Set(); const cursorRef={value:0};
@@ -1667,6 +1707,11 @@ function scrubIndependentInteractionState(html='',baselineHtml=''){
   for(const attribute of [...element.attributes]){
    if(PERSISTED_STATE_ATTR_RE.test(attribute.name)) element.removeAttribute(attribute.name);
   }
+ }
+ // 结构标记可以保存，但其 value 不得携带本次交互状态。
+ details.querySelectorAll?.('[data-rabbit-mirror-static-choice-selection-rescue]')?.forEach?.(node=>node.setAttribute('data-rabbit-mirror-static-choice-selection-rescue','true'));
+ for(const node of [details,...details.querySelectorAll?.('[data-rabbit-mirror-fill-in-choice-rescue]')||[]]){
+  if(node?.hasAttribute?.('data-rabbit-mirror-fill-in-choice-rescue')) node.setAttribute('data-rabbit-mirror-fill-in-choice-rescue','true');
  }
  return String(details.outerHTML||'').trim();
 }
@@ -1817,6 +1862,9 @@ function ensureExternalTools(host){
  stampExternalDetailsOwnership(host);
  const details=host.querySelector?.(':scope > details');
  try{ if(details) activateRabbitMirrorInteractionRescue(details); }catch(error){ console.debug('[RabbitMirror] external interaction activation skipped:',error); }
+ // 1.3.52: 维修兔独有的结构性急救（静态选项／静态分段折叠／填空选择）不在挂载链里，
+ // 缓存恢复出来的只有 DOM 与样式，listener 必须在这里按维修标记重新绑定。
+ try{ if(details) rehydrateRabbitMirrorMaintenanceRepairs(details); }catch(error){ console.debug('[RabbitMirror] maintenance repair rehydrate skipped:',error); }
  // 1.3.20 light external shell: pure external owns placement/title only. It must
  // not mutate the model's width/height/grid/absolute-position interaction stage.
  if(host.dataset.rmPlacement!=='external'){
@@ -3504,15 +3552,19 @@ function persistIndependentRepairFromEvent(event) {
  const host=detail.host?.matches?.(`[${SOURCE_ATTR}][data-rm-source="independent"]`)
   ? detail.host
   : detail.root?.closest?.(`[${SOURCE_ATTR}][data-rm-source="independent"]`);
- if(!host?.isConnected || host.dataset.rmState!=='ready') return false;
+ // 1.3.52: 这里原本全是静默 return false。维修保存失败时界面上没有任何痕迹，
+ // “修好了但刷新又坏”与“压根没保存过”无法区分。改为统一记录放弃原因。
+ const abort=reason=>{ console.debug('[RabbitMirror] independent repair not persisted:',reason); return false; };
+ if(!host?.isConnected) return abort('host missing or detached');
+ if(host.dataset.rmState!=='ready') return abort(`host state=${host.dataset.rmState||'unknown'}`);
  const index=messageIndexForExternalHost(host);
- if(!Number.isInteger(index) || index<0) return false;
+ if(!Number.isInteger(index) || index<0) return abort('owner message index unresolved');
  const identity=currentGenerationIdentity(index);
- if(!identity) return false;
+ if(!identity) return abort(`generation identity unavailable for index ${index}`);
  const mountedSource=String(host.dataset.rmSourceHash||'');
- if(mountedSource && mountedSource!==identity.sourceHash) return false;
+ if(mountedSource && mountedSource!==identity.sourceHash) return abort('mounted sourceHash no longer matches current source');
  const details=readyDetailsFromHost(host);
- if(!details) return false;
+ if(!details) return abort('no usable ready <details> in host');
  details.setAttribute(MAINTENANCE_PERSISTED_LAYOUT_ATTR,'true');
  const clone=details.cloneNode(true);
  clone.setAttribute(MAINTENANCE_PERSISTED_LAYOUT_ATTR,'true');
@@ -3523,7 +3575,7 @@ function persistIndependentRepairFromEvent(event) {
  const baseline=String(existing?.initialHtml||host.__rabbitMirrorIndependentInitialSource||initialHtmlForRecord(identity.slot,existing)||existing?.html||rawHtml);
  const initialHtml=scrubIndependentInteractionState(baseline,baseline);
  const html=scrubIndependentInteractionState(rawHtml,initialHtml||baseline);
- if(!independentStoredHtmlRestorable(html)) return false;
+ if(!independentStoredHtmlRestorable(html)) return abort('scrubbed html failed restorability check');
  const previousClean=existing?.html?scrubIndependentInteractionState(existing.html,initialHtml||baseline):'';
  if(previousClean && previousClean!==html) appendHistoryEntry(identity.slot,{...existing,html:previousClean,initialHtml:initialHtml||previousClean});
  const repaired={

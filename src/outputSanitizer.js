@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.51';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.51';
+import { getSettings } from './settings.js?rmv=1.3.53';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.53';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.51';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.51';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.51';
+} from './feedbackCat.js?rmv=1.3.53';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.53';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.53';
 
 
-const RUNTIME_VERSION = '1.3.51';
+const RUNTIME_VERSION = '1.3.53';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -10994,7 +10994,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.51-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.53-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -13084,8 +13084,25 @@ function structuredStaticDisclosureHasExplicitIntent(trigger, container, ignoreG
     return false;
 }
 
+// 1.3.52: 与 independentApi 的 MAINTENANCE_PERSISTED_LAYOUT_ATTR 同名，表示这一面镜子的
+// 当前 DOM 是用户主动维修并已保存的结果，而不是本轮生成的原始输出。
+const MAINTENANCE_PERSISTED_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-persisted-layout';
+function rabbitMirrorHasPersistedMaintenanceRepair(root) {
+    if (!root?.getAttribute) return false;
+    if (root.getAttribute(MAINTENANCE_PERSISTED_REPAIR_ATTR) === 'true') return true;
+    const details = root.matches?.('details')
+        ? root
+        : root.querySelector?.(':scope > details') || root.querySelector?.('details');
+    if (details?.getAttribute?.(MAINTENANCE_PERSISTED_REPAIR_ATTR) === 'true') return true;
+    return root.closest?.(`[${MAINTENANCE_PERSISTED_REPAIR_ATTR}="true"]`) ? true : false;
+}
+
 function clearOrphanedStructuredStaticDisclosureArtifacts(root) {
     if (!root?.querySelectorAll || structuredStaticDisclosureRescueStates.get(root)?.entries?.length) return 0;
+    // 重新挂载的独立 API 外置镜面永远是全新 DOM，WeakMap 必然为空。若该镜面带有维修兔持久化标记，
+    // 这些折叠结构是用户明确修出来的，不能当作“旧版本遗留孤儿标记”清掉，
+    // 否则 installMaintenanceRabbitForRoot 会在装按钮的同一步就把上一次的维修成果抹掉。
+    if (rabbitMirrorHasPersistedMaintenanceRepair(root)) return 0;
     let cleared = 0;
     for (const container of root.querySelectorAll(`[${STRUCTURED_STATIC_DISCLOSURE_RESCUE_ATTR}]`)) {
         const trigger = container.querySelector?.(`:scope > [${STRUCTURED_STATIC_DISCLOSURE_TRIGGER_ATTR}]`);
@@ -17943,6 +17960,254 @@ export function repairRabbitMirrorScopedClassAliasesInScope(scope) {
         }
     }
     return changed;
+}
+
+// 1.3.53: 维修兔持久化记录已经带有 rescue 标记、role/tabindex 与 count。
+// 不能再次调用普通 install*Fallback() 做“候选重识别”：structured disclosure 会因为
+// 已存在 role=button/tabindex 被判定为已有交互，fill-in choice 会因为 count>0 被直接跳过。
+// 这里改为只根据“已经保存的维修标记”重建 WeakMap 状态与 listener；没有持久化标记的镜面绝不介入。
+function rehydrateStaticChoiceSelectionRepair(root) {
+    if (!root?.querySelectorAll) return 0;
+    const existing = staticChoiceSelectionRescueStates.get(root);
+    if (existing?.entries?.length) return 0;
+    const groups = [...root.querySelectorAll(`[${STATIC_CHOICE_SELECTION_RESCUE_ATTR}]`)];
+    if (!groups.length) return 0;
+    ensureStaticChoiceSelectionStyle(root);
+    const state = { entries: [] };
+    staticChoiceSelectionRescueStates.set(root, state);
+    let rebound = 0;
+    for (const group of groups) {
+        const items = [...(group.children || [])].filter(item => item.hasAttribute?.(STATIC_CHOICE_SELECTION_ITEM_ATTR));
+        if (items.length < 2) continue;
+        const titles = items.map(staticChoiceCardTitle);
+        const entry = { group, items, titles, selectedItem: null };
+        group.setAttribute(STATIC_CHOICE_SELECTION_RESCUE_ATTR, 'true');
+        group.setAttribute('role', 'radiogroup');
+        if (!group.hasAttribute('aria-label')) group.setAttribute('aria-label', '抉择选项');
+        for (const [index, item] of items.entries()) {
+            item.setAttribute(STATIC_CHOICE_SELECTION_ITEM_ATTR, 'true');
+            item.setAttribute(STATIC_CHOICE_SELECTION_SELECTED_ATTR, 'false');
+            item.setAttribute('role', 'radio');
+            item.setAttribute('aria-checked', 'false');
+            if (!item.hasAttribute('aria-label')) item.setAttribute('aria-label', titles[index] || `选项 ${index + 1}`);
+            if (!item.hasAttribute('tabindex')) item.setAttribute('tabindex', '0');
+            const activate = event => {
+                if (event?.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+                if (event?.type === 'keydown') event.preventDefault();
+                if (event?.type === 'click' && event.target?.closest?.('a,button,input,select,textarea,label,summary')) return;
+                const next = entry.selectedItem === item ? null : item;
+                applyStaticChoiceSelectionState(entry, next);
+            };
+            item.addEventListener('click', activate, false);
+            item.addEventListener('keydown', activate, false);
+        }
+        state.entries.push(entry);
+        applyStaticChoiceSelectionState(entry, null);
+        rebound += 1;
+    }
+    if (state.entries.length) root.setAttribute(STATIC_CHOICE_SELECTION_COUNT_ATTR, String(state.entries.length));
+    else staticChoiceSelectionRescueStates.delete(root);
+    return rebound;
+}
+
+function rehydrateStructuredStaticDisclosureRepair(root) {
+    if (!root?.querySelectorAll) return 0;
+    const existing = structuredStaticDisclosureRescueStates.get(root);
+    if (existing?.entries?.length) return 0;
+    const containers = [...root.querySelectorAll(`[${STRUCTURED_STATIC_DISCLOSURE_RESCUE_ATTR}]`)];
+    if (!containers.length) return 0;
+    ensureStructuredStaticDisclosureStyle(root);
+    const state = { entries: [] };
+    structuredStaticDisclosureRescueStates.set(root, state);
+    let rebound = 0;
+    for (const container of containers) {
+        const trigger = container.querySelector?.(`:scope > [${STRUCTURED_STATIC_DISCLOSURE_TRIGGER_ATTR}]`);
+        const bodies = [...(container.querySelectorAll?.(`:scope > [${STRUCTURED_STATIC_DISCLOSURE_BODY_ATTR}]`) || [])];
+        if (!trigger || !bodies.length) continue;
+        const entry = {
+            container,
+            trigger,
+            bodies,
+            title: diagnosticCompactText(trigger.textContent || '', 80),
+            open: true,
+        };
+        container.setAttribute(STRUCTURED_STATIC_DISCLOSURE_RESCUE_ATTR, 'true');
+        trigger.setAttribute(STRUCTURED_STATIC_DISCLOSURE_TRIGGER_ATTR, 'true');
+        trigger.setAttribute('role', 'button');
+        if (!trigger.hasAttribute('tabindex')) trigger.setAttribute('tabindex', '0');
+        if (!trigger.hasAttribute('aria-label')) trigger.setAttribute('aria-label', `展开或收起：${entry.title || '当前内容'}`);
+        state.entries.push(entry);
+        applyStructuredStaticDisclosureState(entry, true);
+        const activate = event => {
+            if (event?.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+            if (event?.type === 'keydown') event.preventDefault();
+            if (event?.type === 'click' && event.target?.closest?.('a,button,input,select,textarea,label,summary')) return;
+            applyStructuredStaticDisclosureState(entry, !entry.open);
+        };
+        trigger.addEventListener('click', activate, false);
+        trigger.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                activate(event);
+                return;
+            }
+            const currentIndex = state.entries.indexOf(entry);
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                for (const item of state.entries) applyStructuredStaticDisclosureState(item, true);
+                trigger.focus?.();
+                return;
+            }
+            let nextIndex = currentIndex;
+            if (event.key === 'ArrowDown' || event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % state.entries.length;
+            else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + state.entries.length) % state.entries.length;
+            else if (event.key === 'Home') nextIndex = 0;
+            else if (event.key === 'End') nextIndex = state.entries.length - 1;
+            else return;
+            event.preventDefault();
+            state.entries[nextIndex]?.trigger?.focus?.();
+        }, false);
+        rebound += 1;
+    }
+    if (state.entries.length) root.setAttribute(STRUCTURED_STATIC_DISCLOSURE_COUNT_ATTR, String(state.entries.length));
+    else structuredStaticDisclosureRescueStates.delete(root);
+    return rebound;
+}
+
+function rehydrateFillInChoiceRepair(root) {
+    if (!root?.querySelectorAll) return 0;
+    const existing = fillInChoiceRescueStates.get(root);
+    if (existing?.entries?.length || existing?.options?.length) return 0;
+    const rawBlanks = [...root.querySelectorAll(`[${FILL_IN_CHOICE_BLANK_ATTR}]`)];
+    const rawOptions = [...root.querySelectorAll(`[${FILL_IN_CHOICE_OPTION_ATTR}]`)];
+    if (!rawBlanks.length || rawOptions.length < 2) return 0;
+
+    const optionEvidence = rawOptions.map(option => {
+        const parsed = fillInChoiceOptionEvidence(option);
+        if (parsed) return parsed;
+        const code = String(option.getAttribute?.(FILL_IN_CHOICE_CODE_ATTR) || '').trim().toUpperCase();
+        if (!code) return null;
+        const label = diagnosticCompactText(option.textContent || '', 180).replace(new RegExp(`^\\s*\\[?${code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]?\\s*`), '').trim();
+        return label ? { option, code, label } : null;
+    }).filter(Boolean);
+    const optionCodes = new Set(optionEvidence.map(item => item.code));
+    const blankEvidence = rawBlanks.map(blank => fillInChoiceBlankEvidence(blank)).filter(Boolean).map(entry => ({
+        ...entry,
+        allowedCodes: entry.allowedCodes.filter(code => optionCodes.has(code)),
+    })).filter(entry => entry.allowedCodes.length);
+    if (!blankEvidence.length || optionEvidence.length < 2) return 0;
+
+    ensureFillInChoiceStyle(root);
+    const state = { root, entries: [], options: [], activeEntry: null, outsideListenerInstalled: false };
+    fillInChoiceRescueStates.set(root, state);
+    let rebound = 0;
+
+    for (const rawEntry of blankEvidence) {
+        const entry = { ...rawEntry, selectedCode: '', selectedLabel: '' };
+        entry.blank.setAttribute(FILL_IN_CHOICE_BLANK_ATTR, 'true');
+        entry.blank.removeAttribute(FILL_IN_CHOICE_CODE_ATTR);
+        entry.blank.setAttribute('role', 'button');
+        if (!entry.blank.hasAttribute('tabindex')) entry.blank.tabIndex = 0;
+        state.entries.push(entry);
+        rebound += 1;
+        entry.blank.addEventListener('click', event => {
+            if (event.target?.closest?.(`[${FILL_IN_CHOICE_OPTION_ATTR}]`)) return;
+            state.activeEntry = state.activeEntry === entry ? null : entry;
+            applyFillInChoiceState(state);
+        }, false);
+        entry.blank.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                state.activeEntry = state.activeEntry === entry ? null : entry;
+                applyFillInChoiceState(state);
+                if (state.activeEntry === entry) fillInChoiceEligibleOptions(state)[0]?.option?.focus?.();
+                return;
+            }
+            if ((event.key === 'Delete' || event.key === 'Backspace') && entry.selectedCode) {
+                event.preventDefault();
+                fillInChoiceClearEntry(state, entry);
+                return;
+            }
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                state.activeEntry = null;
+                applyFillInChoiceState(state);
+            }
+        }, false);
+    }
+
+    for (const rawOption of optionEvidence) {
+        const item = { ...rawOption };
+        item.option.setAttribute(FILL_IN_CHOICE_OPTION_ATTR, 'true');
+        item.option.setAttribute(FILL_IN_CHOICE_CODE_ATTR, item.code);
+        item.option.setAttribute('role', 'option');
+        if (!item.option.hasAttribute('tabindex')) item.option.tabIndex = 0;
+        state.options.push(item);
+        const choose = event => {
+            if (event?.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+            if (event?.type === 'keydown') event.preventDefault();
+            let entry = state.activeEntry;
+            if (!entry || !entry.allowedCodes.includes(item.code)) {
+                const eligible = state.entries.filter(candidateEntry => candidateEntry.allowedCodes.includes(item.code));
+                entry = eligible.find(candidateEntry => !candidateEntry.selectedCode) || eligible[0] || null;
+            }
+            if (!entry) return;
+            fillInChoiceSelectOption(state, entry, item);
+        };
+        item.option.addEventListener('click', choose, false);
+        item.option.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                choose(event);
+                return;
+            }
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                const active = state.activeEntry;
+                state.activeEntry = null;
+                applyFillInChoiceState(state);
+                active?.blank?.focus?.();
+                return;
+            }
+            const eligible = fillInChoiceEligibleOptions(state);
+            const currentIndex = eligible.indexOf(item);
+            if (currentIndex < 0) return;
+            let nextIndex = currentIndex;
+            if (event.key === 'ArrowDown' || event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % eligible.length;
+            else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + eligible.length) % eligible.length;
+            else if (event.key === 'Home') nextIndex = 0;
+            else if (event.key === 'End') nextIndex = eligible.length - 1;
+            else return;
+            event.preventDefault();
+            eligible[nextIndex]?.option?.focus?.();
+        }, false);
+    }
+
+    if (state.entries.length && state.options.length) {
+        root.addEventListener('click', event => {
+            if (!state.activeEntry) return;
+            if (event.target?.closest?.(`[${FILL_IN_CHOICE_BLANK_ATTR}], [${FILL_IN_CHOICE_OPTION_ATTR}]`)) return;
+            state.activeEntry = null;
+            applyFillInChoiceState(state);
+        }, false);
+        state.outsideListenerInstalled = true;
+        root.setAttribute(FILL_IN_CHOICE_COUNT_ATTR, String(state.entries.length));
+        applyFillInChoiceState(state);
+        return rebound;
+    }
+    fillInChoiceRescueStates.delete(root);
+    return 0;
+}
+
+export function rehydrateRabbitMirrorMaintenanceRepairs(root) {
+    if (!root?.querySelectorAll || !rabbitMirrorHasPersistedMaintenanceRepair(root)) return 0;
+    let rebound = 0;
+    const run = (label, fn) => {
+        try { rebound += Number(fn(root)) || 0; }
+        catch (error) { console.debug(`[RabbitMirror] ${label} rehydrate skipped:`, error); }
+    };
+    run('static choice', rehydrateStaticChoiceSelectionRepair);
+    run('structured disclosure', rehydrateStructuredStaticDisclosureRepair);
+    run('fill-in choice', rehydrateFillInChoiceRepair);
+    return rebound;
 }
 
 export function refreshRabbitMirrorToolsInScope(scope) {
