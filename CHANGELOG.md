@@ -1,3 +1,12 @@
+# 1.3.56 TEST — radio class-local 精确目标 / 叠层正文互斥
+
+- 根据「黑石深处感官弹幕」1.3.55 全链路诊断确认：上一版 stale inline 清理已生效，但 `class-local` 的单个 `+` 规则仍会在直接兄弟不匹配时退化为父容器 class 查询。baseline/close radio 与其他分支共用 trigger class 时，会把两个 `.rm-focus-node` 同时当成目标，重新制造叠字。
+- 单个 `:checked + X` 现在与连续 `+ A + B` 一样保持位置语义：直接兄弟不匹配时仅允许 wrapping-label 代理；普通局部 class fallback 只有唯一目标时才可采用，多个同类目标时直接放弃，禁止扩散到兄弟分支。
+- 手机端状态内容解析改为复用同一安全 target resolver，避免窄屏单独走旧的宽松 class-local 路径。
+- `叠层正文互斥` 识别新增 `focus` 面板类，并识别同 radio 组中 `data-rm-reversible-radio-initial-checked=true` 的 baseline/close radio 后紧邻默认 panel；三层同一 grid-area 时由该路线独占可见状态。
+- baseline/default panel 会在返回状态下强制恢复可见 display；选中其他分支时隐藏。被叠层互斥接管的 controls 不再进入通用 checked visual fallback，避免延迟验证再次把多个 panel 打开。
+- 不修改独立 API 请求、stream、重试、超时、缓存身份、外置几何、配色冷却或维修兔持久化链；不新增 Observer、轮询或全聊天扫描。
+
 # 1.3.55 TEST
 
 - 修复同组 radio 切换/独立 API 重挂载后，已 unchecked 的旧分支仍残留 checked 急救 inline `!important`，导致多个 grid/叠层正文同时可见、文字重叠。
@@ -5,13 +14,13 @@
 - 在 radio 手动切换、延迟校验、可逆返回、程序化 checked 恢复与已挂载镜面初始化时统一清理旧分支。
 - 保留 1.3.54 连续兄弟链 `:checked + A + B` 单目标修复、1.3.53 维修持久化和配色冷却。
 
-## 1.3.54
+## 1.3.55
 
 - 修复有 label 的 checkbox 在 `:checked + A + B` 连续兄弟链中，class-local 急救退化为父容器全局查询，导致点击一个选项同时展开多个同类结果的问题。现在连续 `+` 链按当前 input 逐级匹配，只允许命中自己的分支；识别为连续兄弟链后禁止再退回整组容器搜索。
 - 兼容生成 HTML 中首个 label class 未完成作用域改写但 `for` 仍明确指向当前 input 的情况，仅允许该显式 label 作为链路第一跳，不扩散到其他分支。
 - 删除已废弃且无运行代码依赖的 `SERVER-BRIDGE-INSTALL.txt`，继续使用 SillyTavern 内置 `/api/backends/chat-completions/status` 与 `/api/backends/chat-completions/generate`。
 
-# 1.3.54 TEST — 修正维修兔持久化重挂载 / 保留 1.3.52 双向配色冷却
+# 1.3.55 TEST — 修正维修兔持久化重挂载 / 保留 1.3.52 双向配色冷却
 
 - 基于 1.3.51 实际源码合入 `files.zip` 的 1.3.52 修复，但不原样采用其中的重挂载实现。
 - 修正 1.3.52 `rehydrateRabbitMirrorMaintenanceRepairs()` 的关键遗漏：普通 `installStructuredStaticDisclosureFallback()` 会被已保存的 `role=button/tabindex` 判定为“已有交互”，`installFillInChoiceFallback()` 会被已保存的 count 标记直接跳过，因此两类 listener 实际没有重绑。

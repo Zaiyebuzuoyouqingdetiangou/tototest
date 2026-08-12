@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.55';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.55';
+import { getSettings } from './settings.js?rmv=1.3.56';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.56';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.55';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.55';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.55';
+} from './feedbackCat.js?rmv=1.3.56';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.56';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.56';
 
 
-const RUNTIME_VERSION = '1.3.55';
+const RUNTIME_VERSION = '1.3.56';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -695,7 +695,7 @@ function clearPersistedCheckedInlineArtifacts(root, inputs) {
                     // Exclusive stacked-state rescue owns these properties after it is installed.
                     // Do not confuse its live state with a persisted stale checked override.
                     if (target.hasAttribute?.(EXCLUSIVE_STACKED_STATE_PANEL_ATTR)
-                        && /^(?:opacity|visibility|pointer-events|z-index)$/.test(property)) continue;
+                        && /^(?:display|opacity|visibility|pointer-events|z-index)$/.test(property)) continue;
 
                     const priority = String(target.style.getPropertyPriority(property) || '').toLowerCase();
                     const current = String(target.style.getPropertyValue(property) || '').trim();
@@ -1354,12 +1354,25 @@ function resolveTargetsForCheckedRule(root, input, rule) {
     }
 
     if (rule.source === 'class-local' || rule.source === 'generic-local') {
-        targets = getLocalContainerTargetsForCheckedRule(input, rule.targetSelector);
-        if (targets.length) return targets;
-        // 常见误写：input 被包在 label 内，但 :checked 规则把 label 后方内容当作 input 的兄弟。
-        // 以 label 作为结构代理，仅在其同一局部父容器的后续兄弟区域内恢复目标。
-        targets = getLabelProxyTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
-        if (targets.length) return targets;
+        // A single adjacent-sibling rule is just as positional as a longer `+ A + B` chain.
+        // If the next sibling does not match, do not spray that class across the whole local
+        // container. This is especially important for radio groups where a baseline/close
+        // radio shares the trigger class but intentionally has no state panel after it.
+        // The only safe structural recovery here is a wrapping-label proxy; otherwise allow
+        // a local fallback only when it resolves to exactly one unambiguous target.
+        if (rule.relation === '+') {
+            targets = getLabelProxyTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
+            if (targets.length) return targets;
+            targets = getLocalContainerTargetsForCheckedRule(input, rule.targetSelector);
+            if (targets.length === 1) return targets;
+        } else {
+            targets = getLocalContainerTargetsForCheckedRule(input, rule.targetSelector);
+            if (targets.length) return targets;
+            // 常见误写：input 被包在 label 内，但 :checked 规则把 label 后方内容当作 input 的兄弟。
+            // 以 label 作为结构代理，仅在其同一局部父容器的后续兄弟区域内恢复目标。
+            targets = getLabelProxyTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
+            if (targets.length) return targets;
+        }
     } else {
         targets = getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
         if (targets.length) return targets;
@@ -2038,7 +2051,7 @@ function commonStackedPanelClassToken(targets) {
     if (!lists.length) return '';
     const candidates = [...lists[0]].filter(token => lists.every(set => set.has(token)));
     return candidates
-        .filter(token => /(?:info|content|state|panel|result|feedback|detail|text|screen|view|draft|manuscript|essay|danmaku|marquee|ticker)/i.test(token))
+        .filter(token => /(?:info|content|state|panel|result|feedback|detail|text|screen|view|focus|draft|manuscript|essay|danmaku|marquee|ticker)/i.test(token))
         .sort((a, b) => b.length - a.length)[0] || '';
 }
 
@@ -2107,19 +2120,51 @@ function findExclusiveStackedStateCandidates(root) {
         if (inputMap.size < 2 || mappedTargets.length < 2 || mappedTargets.some(target => target.parentElement !== parent)) continue;
         const commonClass = commonStackedPanelClassToken(mappedTargets);
         if (!commonClass) continue;
-        const panels = [...parent.children].filter(child => child.classList?.contains(commonClass));
-        const passiveAnimatedCollection = panels.length > 0 && panels.every(panel => maintenancePassiveAnimatedStatePanel(panel));
+        const classPanels = [...parent.children].filter(child => child.classList?.contains(commonClass));
+        const passiveAnimatedCollection = classPanels.length > 0 && classPanels.every(panel => maintenancePassiveAnimatedStatePanel(panel));
         const panelLimit = passiveAnimatedCollection ? 30 : 10;
-        if (panels.length < mappedTargets.length || panels.length > panelLimit) continue;
-        if (!mappedTargets.every(target => panels.includes(target))) continue;
+        if (classPanels.length < mappedTargets.length || classPanels.length > panelLimit) continue;
+        if (!mappedTargets.every(target => classPanels.includes(target))) continue;
+
+        // Radio scene-switchers often use a third, initially checked "close/default" radio
+        // followed by a differently named default panel (for example `.rm-initial-view`).
+        // It intentionally has no `+ .focus-panel` branch of its own, so it is absent from
+        // inputMap. Treat only that baseline radio's immediate content sibling as the default
+        // stacked panel when it shares the same one-cell layer as the mapped branches.
+        const controls = [...inputMap.keys()];
+        const radioNames = new Set(controls
+            .filter(input => input?.type === 'radio')
+            .map(input => String(input.name || '').trim())
+            .filter(Boolean));
+        const baselinePanels = [];
+        const baselineControls = [];
+        if (radioNames.size === 1) {
+            const [radioName] = [...radioNames];
+            for (const child of [...parent.children]) {
+                if (!child?.matches?.('input[type="radio"]') || inputMap.has(child)) continue;
+                if (String(child.name || '').trim() !== radioName) continue;
+                const baseline = child.getAttribute?.(REVERSIBLE_RADIO_BASELINE_ATTR) === 'true'
+                    || child.defaultChecked
+                    || child.hasAttribute?.('checked');
+                if (!baseline) continue;
+                const panel = child.nextElementSibling;
+                if (!panel || panel.parentElement !== parent || mappedTargets.includes(panel)) continue;
+                if (!panel.matches?.('div,section,article,main,aside,figure')) continue;
+                if (maintenanceMobileLayoutTextLength(panel) < 6) continue;
+                if (!stackedPanelsShareLayer(parent, [...mappedTargets, panel])) continue;
+                baselinePanels.push(panel);
+                baselineControls.push(child);
+            }
+        }
+
+        const panels = [...new Set([...classPanels, ...baselinePanels])];
         if (!stackedPanelsShareLayer(parent, panels)) continue;
         const defaultPanels = panels.filter(panel => !mappedTargets.includes(panel));
         if (!defaultPanels.length && panels.length === mappedTargets.length) {
             // 没有默认层也可以修复，但至少要有两个互斥 radio 分支。
-            const controls = [...inputMap.keys()];
             if (!controls.every(input => input.type === 'radio')) continue;
         }
-        candidates.push({ parent, inputMap, panels, defaultPanels, commonClass, passiveAnimatedCollection });
+        candidates.push({ parent, inputMap, panels, defaultPanels, baselineControls, commonClass, passiveAnimatedCollection });
     }
     return candidates;
 }
@@ -2136,6 +2181,9 @@ function cleanupExclusiveStackedStateRescue(root) {
                 panelState.panel?.removeAttribute?.('aria-hidden');
             }
             for (const input of entry.inputMap?.keys?.() || []) {
+                input?.removeAttribute?.(EXCLUSIVE_STACKED_STATE_CONTROL_ATTR);
+            }
+            for (const input of entry.baselineControls || []) {
                 input?.removeAttribute?.(EXCLUSIVE_STACKED_STATE_CONTROL_ATTR);
             }
         }
@@ -2176,6 +2224,13 @@ function refreshExclusiveStackedStateRescue(root) {
                     panel.style.setProperty('animation-play-state', 'paused', 'important');
                 }
             } else {
+                // Default/baseline panels are frequently hidden by an over-broad
+                // `.trigger:checked ~ .initial-view { display:none }` rule because the
+                // baseline radio shares the same trigger class. Own display only for the
+                // inferred default panel so the return radio can actually restore it.
+                if (panelState.isDefaultPanel) {
+                    panel.style.setProperty('display', active ? panelState.visibleDisplay : 'none', 'important');
+                }
                 panel.style.setProperty('opacity', active ? '1' : '0', 'important');
                 panel.style.setProperty('visibility', active ? 'visible' : 'hidden', 'important');
                 panel.style.setProperty('pointer-events', active ? 'auto' : 'none', 'important');
@@ -2185,6 +2240,9 @@ function refreshExclusiveStackedStateRescue(root) {
             panel.setAttribute('aria-hidden', active ? 'false' : 'true');
         }
         for (const input of entry.inputMap.keys()) {
+            input.setAttribute('aria-pressed', input.checked ? 'true' : 'false');
+        }
+        for (const input of entry.baselineControls || []) {
             input.setAttribute('aria-pressed', input.checked ? 'true' : 'false');
         }
     }
@@ -2207,11 +2265,17 @@ function installExclusiveStackedStateRescue(root) {
     const state = {
         entries: candidates.map(candidate => ({
             ...candidate,
-            panelStates: candidate.panels.map(panel => ({
-                panel,
-                passiveAnimated: !!candidate.passiveAnimatedCollection && maintenancePassiveAnimatedStatePanel(panel),
-                originalStyles: capturePseudoStyleState(panel, ['opacity', 'visibility', 'pointer-events', 'z-index', 'animation-play-state']),
-            })),
+            panelStates: candidate.panels.map(panel => {
+                const computed = maintenanceSafeComputedStyle(panel);
+                const computedDisplay = String(computed?.display || '').trim().toLowerCase();
+                return {
+                    panel,
+                    isDefaultPanel: candidate.defaultPanels.includes(panel),
+                    visibleDisplay: computedDisplay && computedDisplay !== 'none' ? computedDisplay : 'block',
+                    passiveAnimated: !!candidate.passiveAnimatedCollection && maintenancePassiveAnimatedStatePanel(panel),
+                    originalStyles: capturePseudoStyleState(panel, ['display', 'opacity', 'visibility', 'pointer-events', 'z-index', 'animation-play-state']),
+                };
+            }),
         })),
         onStateChange: () => {
             refreshExclusiveStackedStateRescue(root);
@@ -2225,6 +2289,9 @@ function installExclusiveStackedStateRescue(root) {
     for (const entry of state.entries) {
         for (const input of entry.inputMap.keys()) {
             input.setAttribute(EXCLUSIVE_STACKED_STATE_CONTROL_ATTR, 'true');
+        }
+        for (const input of entry.baselineControls || []) {
+            input.setAttribute(EXCLUSIVE_STACKED_STATE_CONTROL_ATTR, 'baseline');
         }
     }
     root.setAttribute(EXCLUSIVE_STACKED_STATE_RESCUE_ATTR, 'true');
@@ -8690,6 +8757,16 @@ function repairMarkdownCorruptedCssComments(root) {
 
 
 function applyCheckedVisualFallback(root, input) {
+    // Once an exclusive stacked-state route owns a radio scene, do not let the generic
+    // class-local checked fallback re-apply broad sibling styles on top of it. This also
+    // covers the inferred baseline/close radio whose raw shared-class CSS can otherwise
+    // hide the default panel or reveal multiple focus panels again during delayed verify.
+    if (input?.hasAttribute?.(EXCLUSIVE_STACKED_STATE_CONTROL_ATTR)) {
+        restoreInteractionInlineOverrides(input);
+        refreshExclusiveStackedStateRescue(root);
+        scheduleExclusiveStackedStateRefresh(root);
+        return;
+    }
     const renderedRoute = getRenderedInputRoute(input);
     if (renderedRoute) {
         restoreInteractionInlineOverrides(input);
@@ -11086,7 +11163,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.55-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.56-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -16076,15 +16153,11 @@ function maintenanceMobileLayoutCreateScopeToken() {
 }
 
 function maintenanceMobileLayoutResolveCheckedTargets(root, input, rule) {
-    let targets = getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
-    if (!targets.length) {
-        if (rule.source === 'class-local' || rule.source === 'generic-local') {
-            targets = getLocalContainerTargetsForCheckedRule(input, rule.targetSelector);
-        } else {
-            targets = getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
-        }
-    }
-    return targets.filter(target => target && target !== input);
+    // Keep mobile state-content discovery on the exact same safe target resolver as the
+    // interaction layer. A separate broader class-local fallback can otherwise reintroduce
+    // the same "one radio reveals every sibling panel" bug only on narrow screens.
+    return resolveTargetsForCheckedRule(root, input, rule)
+        .filter(target => target && target !== input);
 }
 
 function maintenanceMobileLayoutFixedRevealLimit(styleMap, referenceWidth) {
