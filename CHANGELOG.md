@@ -1,3 +1,13 @@
+# 1.3.57 TEST — 长聊天进入减负 / 历史外置交互按需激活
+
+- 定位进入长聊天时瞬时卡顿/CPU 峰值：历史独立 API 兔子镜从缓存恢复时，完整 `installIntelligentInteractionRescue()` 交互急救库会在 detached `extractReadyDetails()` 阶段执行一次，挂载后 `ensureExternalTools()` 又执行一次；聊天中历史兔子镜越多，重复 CSS/DOM 解析越集中。
+- detached 缓存解析现在只执行 ID / radio name / CSS 引用作用域隔离，不再提前安装完整交互急救 listener。
+- 历史 ready 外置镜默认折叠时只挂工具和轻量结构；完整交互急救与维修兔结构 listener 重建延迟到该面 `<details>` 第一次真正展开时执行，并用 live-DOM WeakSet 保证同一节点只执行一次。
+- 错误/生成中占位壳不运行完整交互急救；其重试/挨打猫按钮继续使用原直接 listener。
+- 输出净化器初始化时删除“立即全聊天装工具后 180ms 再重复同一遍”的冗余第二次全量工具扫描；后续 CHAT_CHANGED / MESSAGE_* 与 MutationObserver 仍保留原合并调度。
+- 延迟激活标记为运行时状态，不写入独立 API 永久缓存。
+- 保留 1.3.56 `class-local` 精确目标和叠层正文互斥；不修改副 API 请求、stream、重试、超时、缓存身份、外置几何、配色冷却。
+
 # 1.3.56 TEST — radio class-local 精确目标 / 叠层正文互斥
 
 - 根据「黑石深处感官弹幕」1.3.55 全链路诊断确认：上一版 stale inline 清理已生效，但 `class-local` 的单个 `+` 规则仍会在直接兄弟不匹配时退化为父容器 class 查询。baseline/close radio 与其他分支共用 trigger class 时，会把两个 `.rm-focus-node` 同时当成目标，重新制造叠字。

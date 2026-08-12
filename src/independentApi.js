@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.56';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.56';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs } from './outputSanitizer.js?rmv=1.3.56';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.56';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.56';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.56';
+import { getSettings } from './settings.js?rmv=1.3.57';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.57';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs } from './outputSanitizer.js?rmv=1.3.57';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.57';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.57';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.57';
 
-const RUNTIME_VERSION = '1.3.56';
+const RUNTIME_VERSION = '1.3.57';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -1564,7 +1564,7 @@ const MAINTENANCE_STRUCTURAL_STYLE_ATTRS = [
 ];
 const PERSISTED_STATE_STYLE_ATTRS = [...RUNTIME_STATE_STYLE_ATTRS, ...MAINTENANCE_STRUCTURAL_STYLE_ATTRS];
 const PERSISTED_STATE_ARIA_ATTRS = ['aria-pressed','aria-selected','aria-expanded','aria-current','aria-checked'];
-const PERSISTED_STATE_ATTR_RE = /^(?:data-rm-(?:.*(?:active|selected|open|used|filled|touch-hover|pseudo-active|target-active)|checked-pseudo-rule-target|labeled-checked-verify-target|reversible-style-baseline|reversible-text-baseline|click-to-restore)|data-rabbit-mirror-(?:labeled-checked(?:-last|-verify|-verify-count)?|checked-text-rule-rescue|expanded-opacity-rescue|inert-action-active|radio-reset-last|stale-checked-inline-cleanup))$/i;
+const PERSISTED_STATE_ATTR_RE = /^(?:data-rm-(?:.*(?:active|selected|open|used|filled|touch-hover|pseudo-active|target-active)|checked-pseudo-rule-target|labeled-checked-verify-target|reversible-style-baseline|reversible-text-baseline|click-to-restore)|data-rabbit-mirror-(?:labeled-checked(?:-last|-verify|-verify-count)?|checked-text-rule-rescue|expanded-opacity-rescue|inert-action-active|radio-reset-last|stale-checked-inline-cleanup|deferred-interaction-rescue))$/i;
 function parseIndependentDetailsRaw(html=''){
  try{
   const template=document.createElement('template');
@@ -1824,7 +1824,11 @@ function extractReadyDetails(html=''){
   }
   repairRabbitMirrorScopedClassAliasesInScope(details);
   repairLabelTargets(details);
-  activateRabbitMirrorInteractionRescue(details);
+  // 1.3.57: detached cache parsing must only isolate IDs/references. The full
+  // interaction rescue library is intentionally deferred until the mounted mirror
+  // is first opened. Running the complete rescue here and again in ensureExternalTools()
+  // doubled the heaviest per-mirror work during chat entry.
+  isolateRabbitMirrorInteractionIds(details);
   // 1.3.20: ready HTML stays structurally faithful while detached. Mobile/layout
   // rescue is allowed only after the mirror is mounted in the inline placement.
   // Pure external uses a light title shell and must not rewrite generated layout.
@@ -1857,14 +1861,54 @@ function removeIndependentResayButtons(host){
  const tools=externalToolHost(details);
  if(tools && !tools.querySelector('[data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat]')) tools.remove();
 }
+const DEFERRED_INTERACTION_RESCUE_ATTR='data-rabbit-mirror-deferred-interaction-rescue';
+const externalInteractionActivatedDetails=new WeakSet();
+const externalInteractionActivationHandlers=new WeakMap();
+function activateExternalInteractionTools(host,details){
+ if(!details || externalInteractionActivatedDetails.has(details)) return false;
+ try{
+  activateRabbitMirrorInteractionRescue(details);
+  // 1.3.52: persisted maintenance structures keep DOM/CSS but listeners cannot
+  // survive serialization. Rehydrate them in the same one-time activation pass.
+  rehydrateRabbitMirrorMaintenanceRepairs(details);
+  externalInteractionActivatedDetails.add(details);
+  details.removeAttribute?.(DEFERRED_INTERACTION_RESCUE_ATTR);
+  return true;
+ }catch(error){
+  console.debug('[RabbitMirror] external interaction activation skipped:',error);
+  return false;
+ }
+}
+function armExternalInteractionTools(host,details){
+ if(!details || externalInteractionActivatedDetails.has(details)) return;
+ const ready=host?.dataset?.rmState==='ready';
+ const placeholder=details.classList?.contains('rabbit-mirror-external-placeholder');
+ if(!ready || placeholder) return;
+ // Historical ready mirrors are mounted collapsed. Running the full rescue library
+ // for every collapsed mirror during CHAT_CHANGED is pure startup cost: no internal
+ // control can be used until the details is opened. Activate only the mirror the
+ // user actually opens, before any later click inside its body.
+ if(details.open || details.hasAttribute?.('open')){
+  activateExternalInteractionTools(host,details);
+  return;
+ }
+ details.setAttribute?.(DEFERRED_INTERACTION_RESCUE_ATTR,'true');
+ if(externalInteractionActivationHandlers.has(details)) return;
+ const onToggle=()=>{
+  if(!details?.isConnected || !details.open) return;
+  if(activateExternalInteractionTools(host,details)){
+   details.removeEventListener?.('toggle',onToggle);
+   externalInteractionActivationHandlers.delete(details);
+  }
+ };
+ details.addEventListener?.('toggle',onToggle,false);
+ externalInteractionActivationHandlers.set(details,onToggle);
+}
 function ensureExternalTools(host){
  if(!host?.isConnected) return;
  stampExternalDetailsOwnership(host);
  const details=host.querySelector?.(':scope > details');
- try{ if(details) activateRabbitMirrorInteractionRescue(details); }catch(error){ console.debug('[RabbitMirror] external interaction activation skipped:',error); }
- // 1.3.52: 维修兔独有的结构性急救（静态选项／静态分段折叠／填空选择）不在挂载链里，
- // 缓存恢复出来的只有 DOM 与样式，listener 必须在这里按维修标记重新绑定。
- try{ if(details) rehydrateRabbitMirrorMaintenanceRepairs(details); }catch(error){ console.debug('[RabbitMirror] maintenance repair rehydrate skipped:',error); }
+ armExternalInteractionTools(host,details);
  // 1.3.20 light external shell: pure external owns placement/title only. It must
  // not mutate the model's width/height/grid/absolute-position interaction stage.
  if(host.dataset.rmPlacement!=='external'){
@@ -1886,6 +1930,7 @@ function readyRecordFromHost(host,observed,model=''){
  if(!details || !observed) return null;
  const clone=details.cloneNode(true);
  clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
+ clone.removeAttribute?.(DEFERRED_INTERACTION_RESCUE_ATTR);
  // Never persist device/container-specific layout rescue state. It must be recalculated
  // from the next mounted container instead of leaking from phone -> desktop or vice versa.
  stripIndependentTransientLayoutArtifacts(clone);
