@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.53';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.53';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs } from './outputSanitizer.js?rmv=1.3.53';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.53';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.53';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.53';
+import { getSettings } from './settings.js?rmv=1.3.55';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.55';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs } from './outputSanitizer.js?rmv=1.3.55';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.55';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.55';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.55';
 
-const RUNTIME_VERSION = '1.3.53';
+const RUNTIME_VERSION = '1.3.55';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -1632,7 +1632,7 @@ function restoreStateAttributesFromBaseline(current,baseline){
    else current.removeAttribute(name);
   }
  }
- // 1.3.53: fill-in 维修会把占位文字改成当前选择，并把 aria-label 改成“已填…”。
+ // 1.3.55: fill-in 维修会把占位文字改成当前选择，并把 aria-label 改成“已填…”。
  // 这两项不是普通 attribute-state 正则能还原的；保存维修结果时必须恢复到生成时占位内容，
  // 否则“修交互”会顺手把用户当次选择写死进永久缓存。
  if(current.hasAttribute?.('data-rm-fill-in-choice-blank')){

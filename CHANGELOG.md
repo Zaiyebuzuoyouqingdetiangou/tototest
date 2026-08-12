@@ -1,4 +1,17 @@
-# 1.3.53 TEST — 修正维修兔持久化重挂载 / 保留 1.3.52 双向配色冷却
+# 1.3.55 TEST
+
+- 修复同组 radio 切换/独立 API 重挂载后，已 unchecked 的旧分支仍残留 checked 急救 inline `!important`，导致多个 grid/叠层正文同时可见、文字重叠。
+- 清理仅作用于维修兔拥有且与该控件自身 `:checked` 声明逐项一致的 stale inline 属性；不修改普通字号、行高或用户原始样式。
+- 在 radio 手动切换、延迟校验、可逆返回、程序化 checked 恢复与已挂载镜面初始化时统一清理旧分支。
+- 保留 1.3.54 连续兄弟链 `:checked + A + B` 单目标修复、1.3.53 维修持久化和配色冷却。
+
+## 1.3.54
+
+- 修复有 label 的 checkbox 在 `:checked + A + B` 连续兄弟链中，class-local 急救退化为父容器全局查询，导致点击一个选项同时展开多个同类结果的问题。现在连续 `+` 链按当前 input 逐级匹配，只允许命中自己的分支；识别为连续兄弟链后禁止再退回整组容器搜索。
+- 兼容生成 HTML 中首个 label class 未完成作用域改写但 `for` 仍明确指向当前 input 的情况，仅允许该显式 label 作为链路第一跳，不扩散到其他分支。
+- 删除已废弃且无运行代码依赖的 `SERVER-BRIDGE-INSTALL.txt`，继续使用 SillyTavern 内置 `/api/backends/chat-completions/status` 与 `/api/backends/chat-completions/generate`。
+
+# 1.3.54 TEST — 修正维修兔持久化重挂载 / 保留 1.3.52 双向配色冷却
 
 - 基于 1.3.51 实际源码合入 `files.zip` 的 1.3.52 修复，但不原样采用其中的重挂载实现。
 - 修正 1.3.52 `rehydrateRabbitMirrorMaintenanceRepairs()` 的关键遗漏：普通 `installStructuredStaticDisclosureFallback()` 会被已保存的 `role=button/tabindex` 判定为“已有交互”，`installFillInChoiceFallback()` 会被已保存的 count 标记直接跳过，因此两类 listener 实际没有重绑。

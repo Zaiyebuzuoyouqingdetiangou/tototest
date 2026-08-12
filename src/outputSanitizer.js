@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.53';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.53';
+import { getSettings } from './settings.js?rmv=1.3.55';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.55';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.53';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.53';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.53';
+} from './feedbackCat.js?rmv=1.3.55';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.55';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.55';
 
 
-const RUNTIME_VERSION = '1.3.53';
+const RUNTIME_VERSION = '1.3.55';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -716,6 +716,31 @@ function clearPersistedCheckedInlineArtifacts(root, inputs) {
     return cleared;
 }
 
+function clearUncheckedRadioCheckedInlineArtifacts(root, radios) {
+    if (!root?.querySelectorAll) return 0;
+    const candidates = Array.isArray(radios)
+        ? radios
+        : [...root.querySelectorAll('input[type="radio"]')];
+    const unchecked = candidates.filter(radio => (
+        radio?.matches?.('input[type="radio"]')
+        && !radio.checked
+        && root.contains?.(radio)
+    ));
+    if (!unchecked.length) return 0;
+
+    // Radio groups are mutually exclusive, but an old checked fallback can survive after
+    // the control has already become unchecked when the WeakMap record was lost by a DOM
+    // clone/re-mount. Remove only rescue-owned !important declarations that exactly match
+    // the control's own :checked rule; never touch unrelated inline presentation.
+    const cleared = clearPersistedCheckedInlineArtifacts(root, unchecked);
+    if (cleared > 0 && isIndependentMaintenanceRoot(root)) {
+        setTimeout(() => {
+            if (root?.isConnected) notifyIndependentRepairPersistence(root);
+        }, 0);
+    }
+    return cleared;
+}
+
 function clearIndependentRescueOwnedCheckedInlineArtifacts(root, inputs) {
     if (!isIndependentMaintenanceRoot(root) || !root?.querySelectorAll || !inputs?.length) return 0;
     let cleared = 0;
@@ -1271,10 +1296,63 @@ function getCollapsedCompoundDescendantTargetsForCheckedRule(root, input, rule) 
     return candidates.length === 1 ? candidates : [];
 }
 
+function splitSimpleAdjacentSiblingSelectorChain(targetSelector) {
+    const source = String(targetSelector || '').trim();
+    if (!source || !source.includes('+') || /[,>~]/.test(source)) return [];
+    const parts = source.split(/\s*\+\s*/).map(part => part.trim()).filter(Boolean);
+    if (parts.length < 2 || parts.length > 4) return [];
+    // Keep this rescue deliberately narrow: no nested combinators or functional selectors.
+    if (parts.some(part => /[(){}]/.test(part))) return [];
+    return parts;
+}
+
+function labelExplicitlyTargetsInput(label, input) {
+    if (!label || !input) return false;
+    const forId = String(label.getAttribute?.('for') || '').trim();
+    if (forId) return !!input.id && forId === String(input.id);
+    return !!label.contains?.(input);
+}
+
+function getAdjacentSiblingChainTargetsForCheckedRule(input, relation, targetSelector) {
+    if (!input || relation !== '+') return [];
+    const parts = splitSimpleAdjacentSiblingSelectorChain(targetSelector);
+    if (!parts.length) return [];
+
+    let node = input;
+    for (let index = 0; index < parts.length; index += 1) {
+        node = node?.nextElementSibling || null;
+        if (!node) return [];
+        let matched = false;
+        try { matched = !!node.matches?.(parts[index]); } catch { return []; }
+        if (!matched) {
+            // Generated HTML sometimes leaves the first label class unscoped while the CSS
+            // subject has already been scoped. If this is still the explicit label for the
+            // current control, allow only that one bridge; later chain members must match.
+            if (index === 0 && node.tagName?.toLowerCase?.() === 'label' && labelExplicitlyTargetsInput(node, input)) {
+                continue;
+            }
+            return [];
+        }
+    }
+    return node && node !== input ? [node] : [];
+}
+
 function resolveTargetsForCheckedRule(root, input, rule) {
     if (!root || !input || !rule) return [];
     let targets = getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
     if (targets.length) return targets;
+
+    // Preserve the full local sibling chain for rules such as
+    // `input:checked + .tab + .panel`. The old fallback queried `.tab + .panel` from the
+    // whole parent container after the first direct match failed, which could reveal every
+    // sibling panel sharing those classes when only one checkbox was clicked.
+    const adjacentChain = splitSimpleAdjacentSiblingSelectorChain(rule.targetSelector);
+    if (rule.relation === '+' && adjacentChain.length) {
+        targets = getAdjacentSiblingChainTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
+        // A recognized adjacent chain must never degrade into container-wide class lookup.
+        return targets;
+    }
+
     if (rule.source === 'class-local' || rule.source === 'generic-local') {
         targets = getLocalContainerTargetsForCheckedRule(input, rule.targetSelector);
         if (targets.length) return targets;
@@ -8683,11 +8761,12 @@ function restoreReversibleRadioBaseline(root, group) {
         const shouldCheck = group.baselineChecked.has(radio);
         if (!!radio.checked !== shouldCheck) {
             radio.checked = shouldCheck;
-            if (!shouldCheck) restoreInteractionInlineOverrides(radio);
             changedRadios.push(radio);
         }
+        if (!shouldCheck) restoreInteractionInlineOverrides(radio);
         radio.setAttribute('aria-pressed', shouldCheck ? 'true' : 'false');
     }
+    clearUncheckedRadioCheckedInlineArtifacts(root, group.radios);
     if (changedRadios.length) {
         for (const radio of changedRadios) dispatchRescuedInputState(radio);
         const preferred = group.radios.find(radio => group.baselineChecked.has(radio)) || null;
@@ -9253,12 +9332,15 @@ function setRescuedCheckedState(root, input, nextChecked) {
     const previous = !!input.checked;
     if (input.type === 'radio') {
         const radioName = String(input.name || '');
-        [...root.querySelectorAll('input[type="radio"]')]
-            .filter(item => item !== input && (!radioName || item.name === radioName))
-            .forEach(item => {
-                item.checked = false;
-                restoreInteractionInlineOverrides(item);
-            });
+        const group = [...root.querySelectorAll('input[type="radio"]')]
+            .filter(item => !radioName || item.name === radioName);
+        group.filter(item => item !== input).forEach(item => {
+            item.checked = false;
+            restoreInteractionInlineOverrides(item);
+        });
+        // WeakMap records do not survive independent-API DOM re-mounts. An unchecked radio
+        // may therefore still carry its previous checked branch as inline !important styles.
+        clearUncheckedRadioCheckedInlineArtifacts(root, group.filter(item => item !== input));
         input.checked = true;
     } else {
         input.checked = !!nextChecked;
@@ -10074,8 +10156,13 @@ function installLabeledCheckedVerificationFallback(root) {
         if (!input.hasAttribute(LABELED_CHECKED_VERIFY_CONTROL_ATTR)) input.setAttribute(LABELED_CHECKED_VERIFY_CONTROL_ATTR, 'ready');
         count += 1;
     }
-    if (count) root.setAttribute(LABELED_CHECKED_VERIFY_ROOT_ATTR, String(count));
-    else {
+    if (count) {
+        root.setAttribute(LABELED_CHECKED_VERIFY_ROOT_ATTR, String(count));
+        // A restored external mirror can arrive with checked=false controls but stale inline
+        // reveal styles saved by an older runtime. At this point verification ownership has
+        // been marked on controls/targets, so it is safe to remove those exact stale branches.
+        clearUncheckedRadioCheckedInlineArtifacts(root);
+    } else {
         root.removeAttribute(LABELED_CHECKED_VERIFY_ROOT_ATTR);
         root.removeAttribute(LABELED_CHECKED_VERIFY_LAST_ATTR);
     }
@@ -10308,6 +10395,7 @@ function installInteractionLabelFallback(toto) {
                 restoreInteractionInlineOverrides(item);
                 if (item !== input) item.setAttribute?.('aria-pressed', 'false');
             }
+            clearUncheckedRadioCheckedInlineArtifacts(toto, group.filter(item => item !== input));
             input.checked = true;
         } else {
             input.checked = !input.checked;
@@ -10341,13 +10429,17 @@ function installInteractionLabelFallback(toto) {
             if (!input.isConnected || input.checked === intendedChecked) return;
             if (input.type === 'radio') {
                 const radioName = String(input.name || '');
+                const group = [];
                 for (const item of toto.querySelectorAll('input[type="radio"]')) {
-                    if (item === input || (radioName && String(item.name || '') !== radioName)) continue;
+                    if (radioName && String(item.name || '') !== radioName) continue;
+                    group.push(item);
+                    if (item === input) continue;
                     cancelLabeledCheckedTransitionVerification(item);
                     item.checked = false;
                     restoreInteractionInlineOverrides(item);
                     item.setAttribute?.('aria-pressed', 'false');
                 }
+                clearUncheckedRadioCheckedInlineArtifacts(toto, group.filter(item => item !== input));
             }
             input.checked = intendedChecked;
             restoreInteractionInlineOverrides(input);
@@ -10994,7 +11086,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.53-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.55-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -17962,7 +18054,7 @@ export function repairRabbitMirrorScopedClassAliasesInScope(scope) {
     return changed;
 }
 
-// 1.3.53: 维修兔持久化记录已经带有 rescue 标记、role/tabindex 与 count。
+// 1.3.55: 维修兔持久化记录已经带有 rescue 标记、role/tabindex 与 count。
 // 不能再次调用普通 install*Fallback() 做“候选重识别”：structured disclosure 会因为
 // 已存在 role=button/tabindex 被判定为已有交互，fill-in choice 会因为 count>0 被直接跳过。
 // 这里改为只根据“已经保存的维修标记”重建 WeakMap 状态与 listener；没有持久化标记的镜面绝不介入。
