@@ -1,3 +1,10 @@
+## 1.3.58-test — desktop stacked-state grid span repair
+
+- Fix mutually-exclusive state/result panels that were correctly switched but auto-placed into only one column of a multi-column CSS Grid.
+- The repair is deliberately narrow: it activates only when the same grid contains 2+ mapped controls, a control/selector row that explicitly spans the full grid (or occupies essentially the full grid width), and result panels with no authored grid placement of their own.
+- Result panels receive a reversible `grid-column: 1 / -1 !important`; authored grid layouts are left untouched.
+- Keeps 1.3.57 lazy historical-mirror activation/performance changes and all 1.3.56 interaction fixes.
+
 # 1.3.57 TEST — 长聊天进入减负 / 历史外置交互按需激活
 
 - 定位进入长聊天时瞬时卡顿/CPU 峰值：历史独立 API 兔子镜从缓存恢复时，完整 `installIntelligentInteractionRescue()` 交互急救库会在 detached `extractReadyDetails()` 阶段执行一次，挂载后 `ensureExternalTools()` 又执行一次；聊天中历史兔子镜越多，重复 CSS/DOM 解析越集中。

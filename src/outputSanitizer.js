@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.57';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.57';
+import { getSettings } from './settings.js?rmv=1.3.58';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.58';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.57';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.57';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.57';
+} from './feedbackCat.js?rmv=1.3.58';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.58';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.58';
 
 
-const RUNTIME_VERSION = '1.3.57';
+const RUNTIME_VERSION = '1.3.58';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -2095,6 +2095,48 @@ function stackedPanelsShareLayer(parent, panels) {
     return positions.every(position => position === 'absolute' || position === 'fixed');
 }
 
+function exclusiveStackedPanelsNeedFullGridSpan(parent, inputMap, panels) {
+    if (!parent?.children || !inputMap?.size || !panels?.length) return false;
+    const parentStyle = maintenanceSafeComputedStyle(parent);
+    const display = String(parentStyle?.display || '').toLowerCase();
+    if (display !== 'grid' && display !== 'inline-grid') return false;
+
+    // Only repair the common "selector cards on a full-width row + state panels below"
+    // pattern. A generic stacked panel inside a deliberate multi-column composition must
+    // keep its authored grid placement.
+    const controls = [...inputMap.keys()].filter(input => input?.id && input.parentElement === parent);
+    if (controls.length < 2 || !panels.every(panel => panel?.parentElement === parent)) return false;
+
+    const parentRect = maintenanceMobileLayoutRect(parent);
+    const explicitFullSpanRow = [...parent.children].find(child => {
+        if (!child || panels.includes(child) || controls.includes(child)) return false;
+        const linkedLabels = controls.filter(input => child.querySelector?.(`label[for="${cssEscape(input.id)}"]`)).length;
+        if (linkedLabels < Math.min(2, controls.length)) return false;
+
+        const inline = String(child.getAttribute?.('style') || '').toLowerCase();
+        if (/grid-column\s*:\s*1\s*\/\s*-1/.test(inline)) return true;
+        const style = maintenanceSafeComputedStyle(child);
+        const start = String(style?.gridColumnStart || '').trim().toLowerCase();
+        const end = String(style?.gridColumnEnd || '').trim().toLowerCase();
+        if (start === '1' && end === '-1') return true;
+
+        const rowRect = maintenanceMobileLayoutRect(child);
+        return !!(parentRect && rowRect && parentRect.width > 0 && rowRect.width >= parentRect.width * 0.88);
+    });
+    if (!explicitFullSpanRow) return false;
+
+    // Do not override an authored panel placement. The bug this rescues is specifically
+    // auto-placement placing the active state panel into only the first grid track.
+    return panels.every(panel => {
+        const inline = String(panel.getAttribute?.('style') || '').toLowerCase();
+        if (/grid-(?:column|area|row)\s*:/.test(inline)) return false;
+        const style = maintenanceSafeComputedStyle(panel);
+        const start = String(style?.gridColumnStart || '').trim().toLowerCase();
+        const end = String(style?.gridColumnEnd || '').trim().toLowerCase();
+        return (!start || start === 'auto') && (!end || end === 'auto');
+    });
+}
+
 function findExclusiveStackedStateCandidates(root) {
     if (!root?.querySelectorAll) return [];
     const byParent = new Map();
@@ -2164,7 +2206,8 @@ function findExclusiveStackedStateCandidates(root) {
             // 没有默认层也可以修复，但至少要有两个互斥 radio 分支。
             if (!controls.every(input => input.type === 'radio')) continue;
         }
-        candidates.push({ parent, inputMap, panels, defaultPanels, baselineControls, commonClass, passiveAnimatedCollection });
+        const fullGridSpanPanels = exclusiveStackedPanelsNeedFullGridSpan(parent, inputMap, panels);
+        candidates.push({ parent, inputMap, panels, defaultPanels, baselineControls, commonClass, passiveAnimatedCollection, fullGridSpanPanels });
     }
     return candidates;
 }
@@ -2208,6 +2251,13 @@ function refreshExclusiveStackedStateRescue(root) {
             const { panel } = panelState;
             if (!panel?.isConnected) continue;
             const active = activePanels.has(panel);
+            if (panelState.fullGridSpan) {
+                // The selector/card row already spans the complete grid, while the mutually
+                // exclusive result panels are auto-placed as ordinary grid items. Without
+                // this, a desktop multi-column grid squeezes the active narrative into one
+                // narrow track and leaves the rest of the row blank.
+                panel.style.setProperty('grid-column', '1 / -1', 'important');
+            }
             if (panelState.passiveAnimated) {
                 // 弹幕/跑马灯属于“被选中的一组多个动画条目”，不是整页正文 panel。
                 // 激活组恢复模型原本的透明度/z-index，只维持可见与动画；未激活组才强制隐藏并暂停。
@@ -2271,9 +2321,10 @@ function installExclusiveStackedStateRescue(root) {
                 return {
                     panel,
                     isDefaultPanel: candidate.defaultPanels.includes(panel),
+                    fullGridSpan: !!candidate.fullGridSpanPanels,
                     visibleDisplay: computedDisplay && computedDisplay !== 'none' ? computedDisplay : 'block',
                     passiveAnimated: !!candidate.passiveAnimatedCollection && maintenancePassiveAnimatedStatePanel(panel),
-                    originalStyles: capturePseudoStyleState(panel, ['display', 'opacity', 'visibility', 'pointer-events', 'z-index', 'animation-play-state']),
+                    originalStyles: capturePseudoStyleState(panel, ['display', 'opacity', 'visibility', 'pointer-events', 'z-index', 'animation-play-state', 'grid-column']),
                 };
             }),
         })),
@@ -11163,7 +11214,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.57-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.58-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
