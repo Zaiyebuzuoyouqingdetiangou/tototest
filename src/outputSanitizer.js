@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.61';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.61';
+import { getSettings } from './settings.js?rmv=1.3.62';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.62';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.61';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.61';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.61';
+} from './feedbackCat.js?rmv=1.3.62';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.62';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.62';
 
 
-const RUNTIME_VERSION = '1.3.61';
+const RUNTIME_VERSION = '1.3.62';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -2214,7 +2214,7 @@ function findExclusiveStackedStateCandidates(root) {
     return candidates;
 }
 
-// 1.3.61: historical independent mirrors may already carry the persisted
+// 1.3.62: historical independent mirrors may already carry the persisted
 // exclusive-stacked-state ownership markers from an older runtime. 1.3.57 made
 // the complete interaction library lazy, so a version upgrade must not rely on
 // re-running the whole detector merely to apply a later structural layout fix.
@@ -2252,7 +2252,7 @@ export function repairRabbitMirrorPersistedExclusiveGridSpan(root) {
         if (controls.length < 2) continue;
         const inputMap = new Map(controls.map(input => [input, new Set()]));
 
-        // If a previous 1.3.61 pass already wrote the exact full-span value,
+        // If a previous 1.3.62 pass already wrote the exact full-span value,
         // keep it without making the authored-placement guard fail on itself.
         const alreadyFullSpan = panels.every(panel => {
             const inline = String(panel.getAttribute?.('style') || '').toLowerCase();
@@ -2274,6 +2274,135 @@ export function repairRabbitMirrorPersistedExclusiveGridSpan(root) {
 
     if (repaired) root.setAttribute(EXCLUSIVE_STACKED_STATE_GRID_SPAN_COUNT_ATTR, String(repaired));
     else root.removeAttribute?.(EXCLUSIVE_STACKED_STATE_GRID_SPAN_COUNT_ATTR);
+    return repaired;
+}
+
+
+// 1.3.62: deterministic full-width result-panel repair for the common pattern:
+// a multi-column Grid contains several state controls, one full-width selector-card row,
+// and multiple text result panels that are auto-placed into a single narrow track.
+// This is structural rather than geometric, so it also repairs hidden sibling panels and
+// old mirrors whose current active panel has not yet produced measurable squeeze evidence.
+const SELECTOR_PANEL_GRID_SPAN_ATTR = 'data-rm-selector-panel-full-grid-span';
+const SELECTOR_PANEL_GRID_SPAN_COUNT_ATTR = 'data-rabbit-mirror-selector-panel-grid-span-count';
+
+function selectorPanelGridDisplay(parent) {
+    const style = maintenanceSafeComputedStyle(parent);
+    const display = String(style?.display || '').trim().toLowerCase();
+    if (display === 'grid' || display === 'inline-grid') return true;
+    const inline = String(parent?.getAttribute?.('style') || '').toLowerCase();
+    return /(?:^|;)\s*display\s*:\s*(?:inline-)?grid\b/.test(inline);
+}
+
+function selectorPanelExplicitFullRow(child) {
+    if (!child) return false;
+    const inline = String(child.getAttribute?.('style') || '').toLowerCase();
+    if (/grid-column\s*:\s*1\s*\/\s*-1(?:\s*!important)?/.test(inline)) return true;
+    const style = maintenanceSafeComputedStyle(child);
+    const start = String(style?.gridColumnStart || '').trim().toLowerCase();
+    const end = String(style?.gridColumnEnd || '').trim().toLowerCase();
+    return start === '1' && end === '-1';
+}
+
+function selectorPanelCheckedCssEvidence(root, controls, semanticToken = '') {
+    const css = [...(root?.querySelectorAll?.('style') || [])]
+        .map(style => String(style.textContent || ''))
+        .join('\n');
+    if (!css || !/:checked\b/.test(css)) return false;
+    const linked = controls.filter(input => input?.id && css.includes(input.id));
+    if (linked.length < Math.min(2, controls.length)) return false;
+    return !semanticToken || css.includes(`.${semanticToken}`);
+}
+
+function selectorPanelSemanticPanels(parent, controls, selectorRow, root) {
+    const excluded = new Set([...controls, selectorRow].filter(Boolean));
+    const candidates = [...parent.children].filter(child => {
+        if (!child || excluded.has(child)) return false;
+        if (child.matches?.('style,script,template,input,select,textarea,button')) return false;
+        if (viewportLayoutHasAuthoredGridPlacement(child)) return false;
+        if (maintenanceMobileLayoutTextLength(child) < 40) return false;
+        return true;
+    });
+    if (candidates.length < 2) return [];
+
+    const tokenCounts = new Map();
+    for (const child of candidates) {
+        for (const token of getClassTokens(child)) {
+            if (!/(?:panel|content|detail|commentary|comment|result|pane|view|body|story|note)/i.test(token)) continue;
+            tokenCounts.set(token, (tokenCounts.get(token) || 0) + 1);
+        }
+    }
+    const semanticToken = [...tokenCounts.entries()]
+        .filter(([, count]) => count >= 2)
+        .sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+    if (!semanticToken || !selectorPanelCheckedCssEvidence(root, controls, semanticToken)) return [];
+    const panels = candidates.filter(child => child.classList?.contains?.(semanticToken));
+    return panels.length >= 2 && panels.length <= 12 ? panels : [];
+}
+
+function findSelectorPanelGridSpanCandidates(root) {
+    if (!root?.querySelectorAll) return [];
+    const allControls = [...root.querySelectorAll('input[type="radio"][id], input[type="checkbox"][id]')]
+        .filter(input => input?.parentElement);
+    if (allControls.length < 2) return [];
+
+    const byParent = new Map();
+    for (const input of allControls) {
+        const parent = input.parentElement;
+        if (!byParent.has(parent)) byParent.set(parent, []);
+        byParent.get(parent).push(input);
+    }
+
+    const groups = [];
+    for (const [parent, controls] of byParent) {
+        if (controls.length < 2 || controls.length > 12 || !selectorPanelGridDisplay(parent)) continue;
+        const radioControls = controls.filter(input => input.type === 'radio');
+        if (radioControls.length >= 2) {
+            const names = new Set(radioControls.map(input => String(input.name || '').trim()).filter(Boolean));
+            if (names.size > 1) continue;
+        }
+
+        const selectorRow = [...parent.children].find(child => {
+            if (!child || controls.includes(child)) return false;
+            const linked = controls.filter(input => child.querySelector?.(`label[for="${cssEscape(input.id)}"]`)).length;
+            return linked >= Math.min(2, controls.length) && selectorPanelExplicitFullRow(child);
+        });
+        if (!selectorRow) continue;
+
+        const panels = selectorPanelSemanticPanels(parent, controls, selectorRow, root);
+        if (panels.length < 2) continue;
+        const needsRepair = panels.filter(panel => {
+            const inline = String(panel.getAttribute?.('style') || '').toLowerCase();
+            const already = /grid-column\s*:\s*1\s*\/\s*-1(?:\s*!important)?/.test(inline)
+                && panel.getAttribute?.(SELECTOR_PANEL_GRID_SPAN_ATTR) === 'true';
+            return !already;
+        });
+        if (needsRepair.length) groups.push({ parent, controls, selectorRow, panels, needsRepair });
+    }
+    return groups;
+}
+
+export function repairRabbitMirrorSelectorPanelGridSpan(root) {
+    if (!root?.querySelectorAll) return 0;
+    const groups = findSelectorPanelGridSpanCandidates(root);
+    if (!groups.length) {
+        root.removeAttribute?.(SELECTOR_PANEL_GRID_SPAN_COUNT_ATTR);
+        return 0;
+    }
+
+    let repaired = 0;
+    for (const { panels } of groups) {
+        for (const panel of panels) {
+            panel.style.setProperty('grid-column', '1 / -1', 'important');
+            panel.style.setProperty('min-width', '0', 'important');
+            panel.style.setProperty('max-width', '100%', 'important');
+            panel.style.setProperty('box-sizing', 'border-box', 'important');
+            panel.setAttribute(SELECTOR_PANEL_GRID_SPAN_ATTR, 'true');
+            repaired += 1;
+        }
+    }
+
+    root.setAttribute(SELECTOR_PANEL_GRID_SPAN_COUNT_ATTR, String(repaired));
     return repaired;
 }
 
@@ -11054,7 +11183,12 @@ function scopeRabbitMirrorInteractionIds(toto, { installRescue = true } = {}) {
     // 在正式同步前建立唯一、高置信别名；只改引用，不改控件本身。
     augmentInteractionReferenceAliases(toto, state.idMap);
     synchronizeInteractionReferences(toto, state.idMap);
-    if (installRescue) installIntelligentInteractionRescue(toto);
+    if (installRescue) {
+        installIntelligentInteractionRescue(toto);
+        // Structural Grid result panels are safe to normalize once the scoped ids/labels
+        // have been synchronized. This does not depend on viewport size or panel visibility.
+        repairRabbitMirrorSelectorPanelGridSpan(toto);
+    }
     toto.dataset.rabbitMirrorInteractionScoped = 'true';
     return { scopedIdCount: state.idMap.size, radioGroupCount: restoredRadioGroupCount };
 }
@@ -11282,7 +11416,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.61-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.62-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -14440,6 +14574,7 @@ function buildMaintenanceFindings(root, {
             label: `检测到 ${Number(viewportLayout?.candidateCount) || 0} 处当前窗口正文被异常压窄或被裁切`,
             evidence: [
                 `viewportWidth=${Number(viewportLayout?.viewportWidth) || 0}`,
+                `structuralGridSpan=${Number(viewportLayout?.structuralGridSpanCount) || 0}`,
                 `squeezed=${Number(viewportLayout?.squeezedCount) || 0}`,
                 `overflow=${Number(viewportLayout?.overflowCount) || 0}`,
                 `overflowX=${Number(viewportLayout?.overflowXCount) || 0}`,
@@ -17176,7 +17311,7 @@ function installMaintenanceMobileLayoutRescue(root) {
 }
 
 // ---------------------------------------------------------------------------
-// 1.3.61: 当前视口“被压窄正文 / 长内容裁切”急救。
+// 1.3.62: 当前视口“被压窄正文 / 长内容裁切”急救。
 //
 // 1.3.60 首次补上宽屏实测，但仍有三个缺口：只修当前可见 panel、滚动属性从未真正
 // 标记、以及只看 inline grid placement 容易把作者有意的窄栏误判。本版收紧为：
@@ -17344,10 +17479,12 @@ function findViewportOverflowCandidates(root) {
 }
 
 function inspectMaintenanceViewportLayout(root) {
+    const structuralGridSpan = findSelectorPanelGridSpanCandidates(root);
     const squeezed = findViewportSqueezedCandidates(root);
     const overflow = findViewportOverflowCandidates(root);
     return {
-        candidateCount: squeezed.length + overflow.length,
+        candidateCount: structuralGridSpan.length + squeezed.length + overflow.length,
+        structuralGridSpanCount: structuralGridSpan.length,
         squeezedCount: squeezed.length,
         overflowCount: overflow.length,
         overflowXCount: overflow.filter(item => item.clippedX).length,
@@ -17369,6 +17506,7 @@ ${scope} [${VIEWPORT_LAYOUT_POINTER_ATTR}] { pointer-events: auto !important; }
 
 function installMaintenanceViewportLayoutRescue(root) {
     if (!root?.querySelectorAll || !root?.isConnected) return 0;
+    const structuralGridSpanCount = repairRabbitMirrorSelectorPanelGridSpan(root);
     let scopeToken = root.getAttribute(MOBILE_LAYOUT_SCOPE_ATTR);
     if (!scopeToken) {
         scopeToken = maintenanceMobileLayoutCreateScopeToken();
@@ -17383,8 +17521,9 @@ function installMaintenanceViewportLayoutRescue(root) {
     const overflow = findViewportOverflowCandidates(root);
     if (!squeezed.length && !overflow.length) {
         root.querySelector(`style[${VIEWPORT_LAYOUT_RESCUE_STYLE_ATTR}]`)?.remove();
-        root.removeAttribute(VIEWPORT_LAYOUT_COUNT_ATTR);
-        return 0;
+        if (structuralGridSpanCount) root.setAttribute(VIEWPORT_LAYOUT_COUNT_ATTR, String(structuralGridSpanCount));
+        else root.removeAttribute(VIEWPORT_LAYOUT_COUNT_ATTR);
+        return structuralGridSpanCount;
     }
 
     const marked = new Set();
@@ -17404,8 +17543,9 @@ function installMaintenanceViewportLayoutRescue(root) {
         root.appendChild(style);
     }
     style.textContent = maintenanceViewportLayoutCss(scopeToken);
-    root.setAttribute(VIEWPORT_LAYOUT_COUNT_ATTR, String(marked.size));
-    return marked.size;
+    const total = marked.size + structuralGridSpanCount;
+    root.setAttribute(VIEWPORT_LAYOUT_COUNT_ATTR, String(total));
+    return total;
 }
 
 // 当前视口是否会让窄屏样式表生效。
@@ -17414,7 +17554,7 @@ function maintenanceMobileRescueAppliesNow() {
     return width > 0 && width <= MOBILE_LAYOUT_BREAKPOINT_PX;
 }
 
-// 1.3.61: 窄屏预置不再在宽屏上“先写一套以后也许用得上”。只有用户此刻真的在窄屏，
+// 1.3.62: 窄屏预置不再在宽屏上“先写一套以后也许用得上”。只有用户此刻真的在窄屏，
 // 且只读巡逻确实发现 mobile layout 风险时才执行，避免好好的桌面镜面被自动维修污染。
 function shouldRunMaintenanceMobileLayoutRescue(root) {
     if (!maintenanceMobileRescueAppliesNow()) return false;
@@ -17451,7 +17591,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
     { id: 'mobile-inline-annotation-flow-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => installMobileInlineAnnotationRescue(target) },
     { id: 'nested-details-popup-flow-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairNestedDetailsPopupClipping(target) },
     { id: 'mobile-layout-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root && shouldRunMaintenanceMobileLayoutRescue(target) ? installMaintenanceMobileLayoutRescue(target) : 0 },
-    // 1.3.61: 与上一条配对——上一条只写 @media(max-width:640px)，这条按当前视口实测并写入无 media query 的样式表。
+    // 1.3.62: 与上一条配对——上一条只写 @media(max-width:640px)，这条按当前视口实测并写入无 media query 的样式表。
     { id: 'viewport-layout-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root ? installMaintenanceViewportLayoutRescue(target) : 0 },
     { id: 'text-clipping-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMaintenanceTextClipping(target) },
     { id: 'webkit-3d-flip-compat', modes: ['interaction', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => installWebKit3DFlipRescue(target) },
@@ -18075,7 +18215,7 @@ function runMaintenanceUserRepair(root, button, mode) {
                     setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.unknown, `已尝试维修；仍无法安全确认：${after.reason}`);
                 } else {
                     const autoNote = mode === 'auto' ? `（自动选择：${effectiveMode}）` : '';
-                    // 1.3.61: 排版类修复原本无论如何都报“已执行”。窄屏样式表在宽屏上不可能生效，
+                    // 1.3.62: 排版类修复原本无论如何都报“已执行”。窄屏样式表在宽屏上不可能生效，
                     // 用户因此看到“修了 30 处但画面没变”，只能得出“维修兔判断错误”。这里如实说明。
                     const executedModuleCount = id => Number((libraryResult.executed || []).find(item => item?.id === id)?.count || 0);
                     const mobileOnlyMarks = executedModuleCount('mobile-layout-rescue');

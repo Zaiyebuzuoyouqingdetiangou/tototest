@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.61';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.61';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan } from './outputSanitizer.js?rmv=1.3.61';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.61';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.61';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.61';
+import { getSettings } from './settings.js?rmv=1.3.62';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.62';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan } from './outputSanitizer.js?rmv=1.3.62';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.62';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.62';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.62';
 
-const RUNTIME_VERSION = '1.3.61';
+const RUNTIME_VERSION = '1.3.62';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -1909,7 +1909,7 @@ function ensureExternalTools(host){
  stampExternalDetailsOwnership(host);
  const details=host.querySelector?.(':scope > details');
  armExternalInteractionTools(host,details);
- // 1.3.61: old independent mirrors can already contain persisted exclusive-state
+ // 1.3.62: old independent mirrors can already contain persisted exclusive-state
  // ownership markers even when the complete interaction library is not rerun on
  // this upgrade. Apply the cheap structural grid-span migration independently.
  try{ if(details) repairRabbitMirrorPersistedExclusiveGridSpan(details); }catch(error){ console.debug('[RabbitMirror] persisted stacked-grid migration skipped:',error); }
