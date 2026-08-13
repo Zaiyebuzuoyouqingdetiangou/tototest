@@ -1,15 +1,15 @@
-import { DEFAULT_VISUAL_PROMPT, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.66';
-import { clearLastCombo } from './storage.js?rmv=1.3.66';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.66';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.66';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.3.66';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.66';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.66';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.66';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.3.66';
+import { DEFAULT_VISUAL_PROMPT, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.67';
+import { clearLastCombo } from './storage.js?rmv=1.3.67';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.67';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.67';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.3.67';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.67';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.67';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.67';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.3.67';
 
-const SETTINGS_UI_VERSION = '1.3.66-blacklist';
-const RUNTIME_VERSION = '1.3.66';
+const SETTINGS_UI_VERSION = '1.3.67-blacklist';
+const RUNTIME_VERSION = '1.3.67';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -266,7 +266,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜测试版</b><span class="rabbit-mirror-toto-watermark">TOTOv1.3 · 1.3.62</span>
+      <b>兔子镜测试版</b><span class="rabbit-mirror-toto-watermark">TOTOv1.3 · 1.3.67</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -357,7 +357,7 @@ export function initRabbitMirrorUI() {
           <div style="margin-top:12px;padding-top:10px;border-top:1px solid color-mix(in srgb,currentColor 12%,transparent);">
             <label class="checkbox_label" style="font-weight:700;"><input id="rh_blacklist_enabled" type="checkbox"> 🚫 启用抽签黑名单</label>
             <div class="rabbit-mirror-subnote" style="margin:-2px 0 7px 26px;opacity:.76;font-size:12px;line-height:1.5;">每面兔子镜标题旁的 🎲 会列出本轮真实抽中的主题 / 元素和展现形式。加入黑名单后，从下一轮随机抽取开始直接从候选池排除；不增加 Token。明确点菜和固定动态视觉场景仍可覆盖随机黑名单。</div>
-            <div id="rh_blacklist_summary" style="padding:8px 9px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:8px;font-size:11px;line-height:1.45;max-height:240px;overflow:auto;"></div>
+            <div id="rh_blacklist_summary" class="rabbit-mirror-blacklist-summary" style="padding:8px 9px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:8px;font-size:11px;line-height:1.45;"></div>
             <button id="rh_blacklist_clear" class="menu_button" type="button" style="margin-top:7px;">清空全部黑名单</button>
           </div>
         </div>

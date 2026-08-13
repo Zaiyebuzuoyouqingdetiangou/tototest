@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.3.66';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.3.66';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.3.67';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.3.67';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -9,8 +9,8 @@ import {
     recordGenerationAttempt,
     setDirectiveScopedPick,
     setLastCombo,
-} from './storage.js?rmv=1.3.66';
-import { filterRandomFormatPool, filterRandomThemePool } from './blacklist.js?rmv=1.3.66';
+} from './storage.js?rmv=1.3.67';
+import { filterRandomFormatPool, filterRandomThemePool } from './blacklist.js?rmv=1.3.67';
 
 function randomUnit() {
     try {
@@ -656,7 +656,7 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
     let themePool = filterRandomThemePool(THEMATIC_CATEGORIES.filter(item => allowByMode(item, settings.mode)), settings);
     let formatPool = filterRandomFormatPool(PRESENTATION_FORMATS.filter(item => allowByMode(item, settings.mode)), settings);
     // Blacklist filtering is a real pool exclusion, not a Prompt instruction.
-    // 1.3.66: 这两行原本写成 `!pool.length && blacklistEnabled === false` 才恢复整池。
+    // 1.3.67: 这两行原本写成 `!pool.length && blacklistEnabled === false` 才恢复整池。
     // 但 blacklistEnabled === false 时 filterRandomXxxPool 已经原样返回整池，池为空
     // 只可能是 allowByMode 自己筛空的（mode === 'off'），恢复出来还是空——两行在任何
     // 可达状态下都是 no-op。留着最大的风险是后来者以为它是安全网而把条件反过来，

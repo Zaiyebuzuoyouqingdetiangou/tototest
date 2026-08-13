@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.3.66",
-  "css": "style.css?rmv=1.3.66",
+  "js": "index.js?rmv=1.3.67",
+  "css": "style.css?rmv=1.3.67",
   "author": "Toto",
-  "version": "1.3.66",
+  "version": "1.3.67",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版：新增本轮抽签与主题/元素/展现形式随机黑名单；本地候选池过滤不增加 Token。保留当前视口排版、维修兔持久化、长聊天减卡与配色冷却。"
+  "description": "兔子镜测试版：修复设置页长内容无法滚动；保留本轮抽签黑名单、当前视口排版、维修兔持久化、长聊天减卡与配色冷却。"
 }
