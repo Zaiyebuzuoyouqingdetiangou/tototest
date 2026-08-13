@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.3.73",
-  "css": "style.css?rmv=1.3.73",
+  "js": "index.js?rmv=1.3.74",
+  "css": "style.css?rmv=1.3.74",
   "author": "Toto",
-  "version": "1.3.73",
+  "version": "1.3.74",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版：视觉编辑短偏好按种子/草图/完整规格分级补足，并加入不等于堆复杂度的完成度下限；保留黑名单、维修兔、排版修复与长聊天减卡。"
+  "description": "兔子镜测试版：修复动画移动小标签在部分 WebView 中点按丢失，以及维修 clone 替换后维修兔、挨打猫与抽签工具未立即重建；其余生成/API/Prompt/黑名单逻辑不变。"
 }

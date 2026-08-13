@@ -1,3 +1,9 @@
+## 1.3.74 TEST — 动画移动交互与维修工具重建
+
+- 修复持续旋转/移动的小型 label 在部分 Safari/WebView 中 pointerdown 与 pointerup 之间发生位移，最终 click 被浏览器丢弃、导致隐藏 radio/checkbox 无法切换的问题。仅对“小命中区 + 动画移动 + checked 已证明存在第二层内容”的高置信结构启用 pointer 补偿；正常 click 成功时不重复触发。
+- 修复维修兔对独立外置 `<details>` 执行 clone+replace 时，先移除运行时工具后调用 `refreshRabbitMirrorToolsInScope(details)`，但根节点发现器只搜索后代、不包含 scope 自身，导致维修兔、挨打猫、抽签按钮可能一起消失的问题。现在 scope 自己若就是兔子镜根节点，也会被纳入工具重建。
+- 本版不修改 Prompt、Token、独立 API 请求链、黑名单/抽签逻辑、调色盘冷却，也不新增 observer、timer 轮询或全聊天扫描。
+
 ## 1.3.73 TEST — 视觉编辑种子补全与完成度地板收紧
 
 - 个性化视觉提示词继续只开放“成品视觉层”，不开放输出协议、HTML/CSS 安全、手机适配、近期冷却、交互兼容或维修兔工程契约。

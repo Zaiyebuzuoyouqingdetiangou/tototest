@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.73';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.73';
+import { getSettings } from './settings.js?rmv=1.3.74';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.74';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.73';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.73';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.73';
-import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.73';
+} from './feedbackCat.js?rmv=1.3.74';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.74';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.74';
+import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.74';
 
 
-const RUNTIME_VERSION = '1.3.73';
+const RUNTIME_VERSION = '1.3.74';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -10730,8 +10730,121 @@ function scheduleMaintenanceLabeledCheckedProbe(root, diagnosticState) {
     return 1;
 }
 
+function movingLabeledCheckableBridgeMap(root) {
+    const entries = new Map();
+    if (!root?.querySelectorAll || typeof getComputedStyle !== 'function') return entries;
+
+    const movingSmallLabel = (label) => {
+        if (!label?.getBoundingClientRect) return false;
+        let rect = null;
+        let ownStyle = null;
+        try { rect = label.getBoundingClientRect(); } catch { rect = null; }
+        try { ownStyle = getComputedStyle(label); } catch { ownStyle = null; }
+        // details 尚未展开时 rect 可能为 0，但 CSS/inline 尺寸仍然可靠；不要因此漏装桥接。
+        const width = Number(rect?.width || 0)
+            || Number.parseFloat(ownStyle?.width || '')
+            || Number.parseFloat(label.style?.width || '')
+            || 0;
+        const height = Number(rect?.height || 0)
+            || Number.parseFloat(ownStyle?.height || '')
+            || Number.parseFloat(label.style?.height || '')
+            || 0;
+        // 只接管很小、会随动画持续移动的 label；普通静止按钮继续走原生 click。
+        if (!(width > 0 && height > 0 && width <= 52 && height <= 52)) return false;
+
+        let node = label;
+        for (let depth = 0; node && depth < 5; depth += 1, node = node.parentElement) {
+            if (node !== label && node === root) break;
+            let style = null;
+            try { style = getComputedStyle(node); } catch { style = null; }
+            const names = String(style?.animationName || '').split(',').map(value => value.trim().toLowerCase());
+            const durations = String(style?.animationDuration || '').split(',').map(value => value.trim().toLowerCase());
+            const animated = names.some(name => name && name !== 'none')
+                && durations.some(duration => duration && duration !== '0s' && duration !== '0ms');
+            if (animated) return true;
+        }
+        return false;
+    };
+
+    for (const input of root.querySelectorAll('input[type="checkbox"], input[type="radio"]')) {
+        if (input.disabled || input.hasAttribute?.(PAIRED_CHECKED_STATE_CONTROL_ATTR)) continue;
+        if (!inputHasMeaningfulCheckedSiblingRule(root, input)) continue;
+        const secondState = collectLabeledCheckedVerificationTargets(root, input).some(entry => entry.secondState);
+        if (!secondState) continue;
+        for (const label of getAssociatedCheckableLabels(root, input)) {
+            if (label.hasAttribute?.('onclick') || label.hasAttribute?.('onpointerdown') || label.hasAttribute?.('onpointerup')) continue;
+            if (!movingSmallLabel(label)) continue;
+            entries.set(label, input);
+        }
+    }
+    return entries;
+}
+
 function installInteractionLabelFallback(toto) {
     if (!toto || interactionLabelFallbackRoots.has(toto)) return;
+
+    // 旋转轨道上的小 label 在部分 Safari/WebView 中会在 pointerdown 与 pointerup 之间
+    // 离开手指位置，浏览器因此不再派发最终 click。只对“动画移动 + 小命中区 + 已证明
+    // checked 会打开第二层内容”的高置信 label 建立 pointer 级补偿：先让原生 click 有机会
+    // 完成；若 pointerup 后 checked 仍未达到本次点击意图，再补发一次 label.click()。
+    // 普通静止 label 不安装这条路线，也不会扩大任何全局点击区。
+    const movingBridgeEntries = movingLabeledCheckableBridgeMap(toto);
+    if (movingBridgeEntries.size) {
+        const pendingPointers = new Map();
+        const clearPointer = (pointerId) => {
+            const state = pendingPointers.get(pointerId);
+            pendingPointers.delete(pointerId);
+            try {
+                if (state?.label?.hasPointerCapture?.(pointerId)) state.label.releasePointerCapture(pointerId);
+            } catch {
+                // ignore unsupported/expired pointer capture
+            }
+            return state || null;
+        };
+        toto.addEventListener('pointerdown', event => {
+            if (event.isPrimary === false || (Number.isFinite(event.button) && event.button !== 0)) return;
+            const label = event.target?.closest?.('label');
+            if (!label || !toto.contains(label)) return;
+            const input = movingBridgeEntries.get(label);
+            if (!input?.isConnected || input.disabled) return;
+            // 已选 radio 的再次点击可能由“可逆 radio”专项路线解释；这里不抢它的语义。
+            if (input.type === 'radio' && input.checked) return;
+            const pointerId = Number(event.pointerId);
+            if (!Number.isFinite(pointerId)) return;
+            pendingPointers.set(pointerId, {
+                label,
+                input,
+                startX: Number(event.clientX || 0),
+                startY: Number(event.clientY || 0),
+                startedAt: Date.now(),
+                intended: input.type === 'radio' ? true : !input.checked,
+            });
+            try { label.setPointerCapture?.(pointerId); } catch { /* optional */ }
+        }, true);
+        toto.addEventListener('pointerup', event => {
+            const pointerId = Number(event.pointerId);
+            const state = Number.isFinite(pointerId) ? clearPointer(pointerId) : null;
+            if (!state) return;
+            const dx = Number(event.clientX || 0) - state.startX;
+            const dy = Number(event.clientY || 0) - state.startY;
+            if (Math.hypot(dx, dy) > 24 || Date.now() - state.startedAt > 1200) return;
+            setTimeout(() => {
+                const { label, input, intended } = state;
+                if (!toto.isConnected || !label?.isConnected || !input?.isConnected || input.disabled) return;
+                // 正常浏览器会在 pointerup 后同步派发 click，届时现有 label fallback 已经
+                // 把状态切到 intended；只有 click 真正丢失时才执行这一条补偿。
+                if (!!input.checked === !!intended) return;
+                try { label.click?.(); } catch { /* leave the original state untouched */ }
+            }, 0);
+        }, true);
+        toto.addEventListener('pointercancel', event => {
+            const pointerId = Number(event.pointerId);
+            if (Number.isFinite(pointerId)) clearPointer(pointerId);
+        }, true);
+        toto.setAttribute('data-rabbit-mirror-moving-label-pointer-bridge', String(movingBridgeEntries.size));
+    } else {
+        toto.removeAttribute?.('data-rabbit-mirror-moving-label-pointer-bridge');
+    }
 
     // 使用捕获阶段，避免主题或其他插件在内部 stopPropagation 后导致 label 完全点不开。
     toto.addEventListener('click', (event) => {
@@ -11258,7 +11371,17 @@ export function activateRabbitMirrorInteractionRescue(root) {
 
 function getRenderedRabbitMirrorInteractionRoots(root) {
     if (!root?.querySelectorAll) return [];
-    const candidates = new Set(root.querySelectorAll(MIRROR_TOTO_SELECTOR));
+    const candidates = new Set();
+
+    // scope 自己可能就是刚被维修兔 clone+replace 的兔子镜根节点。
+    // querySelectorAll() 只搜索后代、不包含 scope 本身；若这里漏掉 self，
+    // 维修前主动移除的运行时工具（维修兔 / 挨打猫 / 抽签）就无法立即重建。
+    if (root.nodeType === 1) {
+        if (root.matches?.(MIRROR_TOTO_SELECTOR)) candidates.add(root);
+        else if (root.matches?.('details') && isRabbitMirrorDetails(root)) candidates.add(root);
+    }
+
+    root.querySelectorAll(MIRROR_TOTO_SELECTOR).forEach(node => candidates.add(node));
 
     // 部分酒馆渲染/净化链会移除未知的 <toto> 外壳，但保留带“兔子镜”标题的 <details>。
     // 代码块急救原本已有该兼容路径；交互急救也必须识别同一类实际渲染结果。
@@ -11467,7 +11590,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.73-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.74-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();

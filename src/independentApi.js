@@ -1,13 +1,13 @@
-import { getSettings } from './settings.js?rmv=1.3.73';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.73';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan } from './outputSanitizer.js?rmv=1.3.73';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.73';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.73';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.73';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.73';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.73';
+import { getSettings } from './settings.js?rmv=1.3.74';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.74';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan } from './outputSanitizer.js?rmv=1.3.74';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.74';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.74';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.74';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.74';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.74';
 
-const RUNTIME_VERSION = '1.3.73';
+const RUNTIME_VERSION = '1.3.74';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
