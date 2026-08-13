@@ -1,7 +1,7 @@
-import { getSettings, updateSettings } from './settings.js?rmv=1.3.67';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.67';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.3.67';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.3.67';
+import { getSettings, updateSettings } from './settings.js?rmv=1.3.68';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.68';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.3.68';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.3.68';
 
 export const BLACKLIST_CHANGED_EVENT = 'rabbitmirror:blacklist-changed';
 export const RECIPE_RECORDED_EVENT = 'rabbitmirror:recipe-recorded';
@@ -9,7 +9,7 @@ const RECIPE_STORAGE_KEY = 'rabbit_mirror_theater:selection_recipes:v1';
 const MAX_RECIPE_RECORDS = 600;
 const MAX_BLACKLIST_IDS = 512;
 
-// 1.3.67: entering a long chat can ask for the recipe of many mirrors in one install pass.
+// 1.3.68: entering a long chat can ask for the recipe of many mirrors in one install pass.
 // Cache the raw localStorage payload so the same <=600 records are not JSON.parse'd once per mirror.
 // The raw string is compared on every read, so external/tab changes still invalidate the cache.
 let recipeRecordsCacheRaw = null;
@@ -173,7 +173,7 @@ export function removeBlacklistItem(kind, id) {
 }
 
 export function toggleBlacklistItem(kind, id) {
-    // 1.3.67: 原本无论 add/remove 是否真的成功都固定返回 true/false，调用方据此弹
+    // 1.3.68: 原本无论 add/remove 是否真的成功都固定返回 true/false，调用方据此弹
     // 「已加入黑名单」的成功提示。addBlacklistItem 在 id 不在索引里（例如索引升级后
     // 旧 id 失效、或 kind 传错）时会返回 false，于是出现「提示说加进去了，面板重绘后
     // 按钮又变回未拉黑」。这里如实返回操作后的真实状态。
@@ -309,7 +309,7 @@ export function getRabbitMirrorRecipe({ chatKey = '', messageIndex = -1, swipeId
     const records = readRecipeRecords();
     if (Number.isInteger(swipe) && swipe >= 0) {
         // Swipe 已知：只认这一条 swipe 自己的记录。
-        // 1.3.67: 原本在找不到精确记录时会回落到「同一条消息的任意 swipe」，于是新
+        // 1.3.68: 原本在找不到精确记录时会回落到「同一条消息的任意 swipe」，于是新
         // swipe（旧版本生成、或记录写入失败）会显示上一个 swipe 的抽签结果，用户据此
         // 拉黑的其实是别的兔子镜用过的项目。这与「按聊天 + 消息 + Swipe 绑定」
         // 「不会伪造本轮抽签」的设计承诺直接冲突，因此不再跨 swipe 回落。
@@ -356,7 +356,7 @@ export function blacklistPoolStats() {
         formatTotal: PRESENTATION_FORMATS.length,
         themeBlocked,
         formatBlocked,
-        // 1.3.67: 设置页的「候选已全部拉黑」警告改用实际随机池判断。当前 allowByMode
+        // 1.3.68: 设置页的「候选已全部拉黑」警告改用实际随机池判断。当前 allowByMode
         // 对非 off 模式是直通的，两者相等；但一旦模式重新参与过滤，只比较总数会在
         // 「该模式下的候选已被拉黑光」时漏报，随机主题静默变空却没有任何提示。
         // A paused blacklist keeps the saved IDs but does not filter the random pool.

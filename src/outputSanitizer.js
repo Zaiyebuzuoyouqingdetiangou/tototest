@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.67';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.67';
+import { getSettings } from './settings.js?rmv=1.3.68';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.68';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.67';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.67';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.67';
-import { RECIPE_RECORDED_EVENT, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, toggleBlacklistItem } from './blacklist.js?rmv=1.3.67';
+} from './feedbackCat.js?rmv=1.3.68';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.68';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.68';
+import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.68';
 
 
-const RUNTIME_VERSION = '1.3.67';
+const RUNTIME_VERSION = '1.3.68';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -11435,7 +11435,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.67-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.68-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -16265,6 +16265,98 @@ function recipePanelRow(item) {
     </div>`;
 }
 
+function recipeBlacklistManagerRow(item) {
+    const kindLabel = item.kind === 'format' ? '展现形式' : '主题 / 元素';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(127,127,127,.18);">
+      <div style="min-width:0;flex:1;line-height:1.35;">
+        <div style="font-size:10px;opacity:.58;margin-bottom:2px;">${kindLabel}</div>
+        <div style="font-size:12px;font-weight:700;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(item.id)} ${feedbackCatEscapeHtml(item.title)}</div>
+      </div>
+      <button type="button" data-rm-blacklist-manager-remove="true" data-rm-blacklist-manager-kind="${feedbackCatEscapeHtml(item.kind)}" data-rm-blacklist-manager-id="${feedbackCatEscapeHtml(item.id)}" style="flex:0 0 auto;border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:5px 8px;background:rgba(127,127,127,.12);color:inherit;cursor:pointer;font:inherit;font-size:11px;">✓ 解除</button>
+    </div>`;
+}
+
+function showBlacklistManagerMenu(root, button) {
+    closeRecipeMenu();
+    closeFeedbackCatMenu();
+    closeMaintenanceRabbitMenu();
+    const state = getBlacklistState();
+    const themes = blacklistEntries('theme');
+    const formats = blacklistEntries('format');
+    const panel = document.createElement('div');
+    panel.setAttribute(RECIPE_MENU_ATTR, 'true');
+    panel.style.cssText = 'position:fixed;z-index:2147483646;box-sizing:border-box;padding:12px 13px;border:1px solid rgba(127,127,127,.35);border-radius:10px;background:var(--SmartThemeBlurTintColor,rgba(28,28,32,.97));color:var(--SmartThemeBodyColor,#eee);box-shadow:0 10px 32px rgba(0,0,0,.28);overflow:auto;font-family:inherit;';
+    const themeRows = themes.map(recipeBlacklistManagerRow).join('');
+    const formatRows = formats.map(recipeBlacklistManagerRow).join('');
+    panel.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+        <button type="button" data-rm-blacklist-manager-action="back" style="border:0;background:transparent;color:inherit;cursor:pointer;font:inherit;font-size:12px;padding:2px 4px;">←</button>
+        <div style="font-weight:800;font-size:13px;">🚫 抽签黑名单</div>
+      </div>
+      <div style="font-size:10px;opacity:.62;line-height:1.45;margin-bottom:7px;">这里只显示真正会从随机候选池排除的项目，不向 Prompt 注入禁止文字。</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid rgba(127,127,127,.18);">
+        <div style="font-size:11px;font-weight:700;">当前状态：${state.enabled ? '已启用' : '已暂停'}</div>
+        <button type="button" data-rm-blacklist-manager-action="toggle-enabled" style="border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:5px 8px;background:rgba(127,127,127,.10);color:inherit;cursor:pointer;font:inherit;font-size:11px;">${state.enabled ? '暂停黑名单' : '启用黑名单'}</button>
+      </div>
+      <div style="font-size:10px;opacity:.58;margin-top:9px;">主题 / 元素（${themes.length}）</div>
+      ${themeRows || '<div style="padding:8px 0;opacity:.62;font-size:11px;">暂无。</div>'}
+      <div style="font-size:10px;opacity:.58;margin-top:9px;">展现形式（${formats.length}）</div>
+      ${formatRows || '<div style="padding:8px 0;opacity:.62;font-size:11px;">暂无。</div>'}
+      <div style="display:flex;gap:7px;margin-top:10px;">
+        <button type="button" data-rm-blacklist-manager-action="back" style="flex:1;border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:6px 8px;background:rgba(127,127,127,.08);color:inherit;cursor:pointer;font:inherit;font-size:11px;">← 返回本轮抽签</button>
+        <button type="button" data-rm-blacklist-manager-action="clear" ${themes.length || formats.length ? '' : 'disabled'} style="flex:1;border:1px solid rgba(190,70,70,.34);border-radius:7px;padding:6px 8px;background:rgba(190,70,70,.08);color:inherit;cursor:${themes.length || formats.length ? 'pointer' : 'default'};opacity:${themes.length || formats.length ? '1' : '.45'};font:inherit;font-size:11px;">清空全部</button>
+      </div>`;
+    document.body.appendChild(panel);
+    positionFeedbackCatPanel(panel, button, 380);
+    panel.addEventListener('click', event => {
+        const remove = event.target?.closest?.('[data-rm-blacklist-manager-remove="true"]');
+        if (remove && panel.contains(remove)) {
+            event.preventDefault();
+            event.stopPropagation();
+            const kind = remove.getAttribute('data-rm-blacklist-manager-kind') === 'format' ? 'format' : 'theme';
+            const id = String(remove.getAttribute('data-rm-blacklist-manager-id') || '');
+            if (removeBlacklistItem(kind, id)) globalThis.toastr?.success?.(`已解除黑名单：${id}`);
+            const freshRecipe = rabbitMirrorRecipeForRoot(root);
+            button.title = recipeButtonTitle(freshRecipe);
+            button.setAttribute('aria-label', button.title);
+            closeRecipeMenu();
+            showBlacklistManagerMenu(root, button);
+            return;
+        }
+        const action = event.target?.closest?.('[data-rm-blacklist-manager-action]');
+        if (!action || !panel.contains(action)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const value = action.getAttribute('data-rm-blacklist-manager-action');
+        if (value === 'back') {
+            closeRecipeMenu();
+            showRecipeMenu(root, button);
+            return;
+        }
+        if (value === 'toggle-enabled') {
+            setBlacklistEnabled(!getBlacklistState().enabled);
+            const freshRecipe = rabbitMirrorRecipeForRoot(root);
+            button.title = recipeButtonTitle(freshRecipe);
+            button.setAttribute('aria-label', button.title);
+            closeRecipeMenu();
+            showBlacklistManagerMenu(root, button);
+            return;
+        }
+        if (value === 'clear') {
+            if (themes.length || formats.length) {
+                clearBlacklist('all');
+                globalThis.toastr?.success?.('已清空全部抽签黑名单。');
+            }
+            const freshRecipe = rabbitMirrorRecipeForRoot(root);
+            button.title = recipeButtonTitle(freshRecipe);
+            button.setAttribute('aria-label', button.title);
+            closeRecipeMenu();
+            showBlacklistManagerMenu(root, button);
+        }
+    });
+    bindRecipeOutsideClose(panel, button);
+    return true;
+}
+
 function showRecipeMenu(root, button) {
     closeRecipeMenu();
     closeFeedbackCatMenu();
@@ -16281,13 +16373,23 @@ function showRecipeMenu(root, button) {
     panel.style.cssText = 'position:fixed;z-index:2147483646;box-sizing:border-box;padding:12px 13px;border:1px solid rgba(127,127,127,.35);border-radius:10px;background:var(--SmartThemeBlurTintColor,rgba(28,28,32,.97));color:var(--SmartThemeBodyColor,#eee);box-shadow:0 10px 32px rgba(0,0,0,.28);overflow:auto;font-family:inherit;';
     const directiveNote = recipe.userDirectiveApplied ? '本轮含用户明确点菜；黑名单只影响之后的随机抽取。' : '';
     const forcedNote = recipe.forcedVisualScenery ? '本轮含固定动态视觉场景；固定模式会优先于随机黑名单。' : '';
+    const totalBlocked = state.themeIds.length + state.formatIds.length;
     panel.innerHTML = `<div style="font-weight:800;font-size:13px;margin-bottom:3px;">🎲 本轮抽签</div>
       <div style="font-size:10px;opacity:.62;line-height:1.45;margin-bottom:7px;">显示的是这一面兔子镜当时真实抽中的内部项目，不做 AI 事后分析。</div>
       ${items.map(recipePanelRow).join('') || '<div style="padding:8px 0;opacity:.68;font-size:11px;">本轮没有记录主题或展现形式。</div>'}
+      <button type="button" data-rm-recipe-action="blacklist-manager" style="width:100%;margin-top:9px;border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:6px 8px;background:rgba(127,127,127,.08);color:inherit;cursor:pointer;font:inherit;font-size:11px;font-weight:700;">🚫 查看黑名单${totalBlocked ? `（${totalBlocked}）` : ''}</button>
       <div style="font-size:10px;opacity:.68;line-height:1.5;margin-top:9px;">${state.enabled ? '黑名单已启用：加入后从下一轮随机抽取开始排除。' : '黑名单目前暂时停用：名单会保留，但随机抽取暂不排除。'}${directiveNote ? `<br>${feedbackCatEscapeHtml(directiveNote)}` : ''}${forcedNote ? `<br>${feedbackCatEscapeHtml(forcedNote)}` : ''}</div>`;
     document.body.appendChild(panel);
     positionFeedbackCatPanel(panel, button, 360);
     panel.addEventListener('click', event => {
+        const managerAction = event.target?.closest?.('[data-rm-recipe-action="blacklist-manager"]');
+        if (managerAction && panel.contains(managerAction)) {
+            event.preventDefault();
+            event.stopPropagation();
+            closeRecipeMenu();
+            showBlacklistManagerMenu(root, button);
+            return;
+        }
         const action = event.target?.closest?.('[data-rm-recipe-blacklist-kind][data-rm-recipe-blacklist-id]');
         if (!action || !panel.contains(action)) return;
         event.preventDefault();

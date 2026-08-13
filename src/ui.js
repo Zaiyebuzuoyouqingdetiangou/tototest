@@ -1,15 +1,15 @@
-import { DEFAULT_VISUAL_PROMPT, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.67';
-import { clearLastCombo } from './storage.js?rmv=1.3.67';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.67';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.67';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.3.67';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.67';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.67';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.67';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.3.67';
+import { DEFAULT_VISUAL_PROMPT, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.68';
+import { clearLastCombo } from './storage.js?rmv=1.3.68';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.68';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.68';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.3.68';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.68';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.68';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.68';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.3.68';
 
-const SETTINGS_UI_VERSION = '1.3.67-blacklist';
-const RUNTIME_VERSION = '1.3.67';
+const SETTINGS_UI_VERSION = '1.3.68-blacklist';
+const RUNTIME_VERSION = '1.3.68';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -266,7 +266,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜测试版</b><span class="rabbit-mirror-toto-watermark">TOTOv1.3 · 1.3.67</span>
+      <b>兔子镜测试版</b><span class="rabbit-mirror-toto-watermark">TOTOv1.3 · 1.3.68</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
