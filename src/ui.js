@@ -1,14 +1,14 @@
-import { DEFAULT_VISUAL_PROMPT, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.62';
-import { clearLastCombo } from './storage.js?rmv=1.3.62';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.62';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.62';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.3.62';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.62';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.62';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.62';
+import { DEFAULT_VISUAL_PROMPT, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.63';
+import { clearLastCombo } from './storage.js?rmv=1.3.63';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.63';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.63';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.3.63';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.63';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.63';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.63';
 
 const SETTINGS_UI_VERSION = '1.3.62-visual-editor';
-const RUNTIME_VERSION = '1.3.62';
+const RUNTIME_VERSION = '1.3.63';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;

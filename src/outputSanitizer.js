@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.62';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.62';
+import { getSettings } from './settings.js?rmv=1.3.63';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.63';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.62';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.62';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.62';
+} from './feedbackCat.js?rmv=1.3.63';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.63';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.63';
 
 
-const RUNTIME_VERSION = '1.3.62';
+const RUNTIME_VERSION = '1.3.63';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -384,6 +384,17 @@ function escapeCssIdentifier(value) {
         // Fall through to a conservative identifier escape.
     }
     return text.replace(/(^-?\d)|[^a-zA-Z0-9_-]/g, match => `\\${match}`);
+}
+
+function findDescendantLabelForId(container, id) {
+    if (!container?.querySelectorAll || !id) return null;
+    const expected = String(id);
+    try {
+        return [...container.querySelectorAll('label[for]')]
+            .find(label => String(label.getAttribute('for') || '') === expected) || null;
+    } catch {
+        return null;
+    }
 }
 
 function replaceCheckableFocusSubject(selector, input) {
@@ -2112,7 +2123,7 @@ function exclusiveStackedPanelsNeedFullGridSpan(parent, inputMap, panels) {
     const parentRect = maintenanceMobileLayoutRect(parent);
     const explicitFullSpanRow = [...parent.children].find(child => {
         if (!child || panels.includes(child) || controls.includes(child)) return false;
-        const linkedLabels = controls.filter(input => child.querySelector?.(`label[for="${cssEscape(input.id)}"]`)).length;
+        const linkedLabels = controls.filter(input => findDescendantLabelForId(child, input.id)).length;
         if (linkedLabels < Math.min(2, controls.length)) return false;
 
         const inline = String(child.getAttribute?.('style') || '').toLowerCase();
@@ -2364,7 +2375,7 @@ function findSelectorPanelGridSpanCandidates(root) {
 
         const selectorRow = [...parent.children].find(child => {
             if (!child || controls.includes(child)) return false;
-            const linked = controls.filter(input => child.querySelector?.(`label[for="${cssEscape(input.id)}"]`)).length;
+            const linked = controls.filter(input => findDescendantLabelForId(child, input.id)).length;
             return linked >= Math.min(2, controls.length) && selectorPanelExplicitFullRow(child);
         });
         if (!selectorRow) continue;
@@ -11416,7 +11427,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.62-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.63-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -12699,9 +12710,18 @@ function createOneShotInteractionDiagnosticPanel(root, state) {
         event.stopPropagation();
         const original = copyButton.textContent;
         copyButton.textContent = '正在整理源码…';
-        const ok = await copyDiagnosticText(buildInteractionDiagnosticClipboardText(root, state));
-        copyButton.textContent = ok ? '已复制' : '复制失败，请截图';
-        setTimeout(() => { if (copyButton.isConnected) copyButton.textContent = original; }, 1400);
+        try {
+            const text = buildInteractionDiagnosticClipboardText(root, state);
+            const ok = await copyDiagnosticText(text);
+            copyButton.textContent = ok ? '已复制' : '复制失败，请截图';
+        } catch (error) {
+            const message = String(error?.message || error || 'unknown copy error');
+            copyButton.textContent = '整理失败，请截图';
+            if (state.pre?.isConnected && !state.report) state.pre.textContent = `诊断整理失败：${message}`;
+            console.debug('[RabbitMirror] diagnostic clipboard build failed:', error);
+        } finally {
+            setTimeout(() => { if (copyButton.isConnected) copyButton.textContent = original; }, 1400);
+        }
     });
     closeButton.addEventListener('click', event => {
         event.preventDefault();
@@ -12743,10 +12763,27 @@ function stopOneShotInteractionDiagnosticSession() {
 }
 
 function finalizeOneShotInteractionDiagnostic(root, state) {
-    captureInteractionDiagnosticSnapshot(root, state, '+650ms');
-    state.report = buildInteractionDiagnosticText(root, state, 'full check +650ms');
-    if (state.pre?.isConnected) state.pre.textContent = state.report;
-    stopOneShotInteractionDiagnosticSession();
+    try {
+        captureInteractionDiagnosticSnapshot(root, state, '+650ms');
+        state.report = buildInteractionDiagnosticText(root, state, 'full check +650ms');
+        if (state.pre?.isConnected) state.pre.textContent = state.report;
+    } catch (error) {
+        const message = String(error?.stack || error?.message || error || 'unknown diagnostic error');
+        state.report = [
+            '兔子镜测试版 全链路诊断',
+            `运行版本: ${INTERACTION_DIAGNOSTIC_VERSION}`,
+            '阶段: diagnostic-error',
+            '',
+            '[诊断内部错误]',
+            message,
+            '',
+            '诊断本身发生异常，当前页面真实控件未因此被操作。请复制本报告发送给开发者。',
+        ].join('\n');
+        if (state.pre?.isConnected) state.pre.textContent = state.report;
+        console.debug('[RabbitMirror] one-shot diagnostic finalize failed:', error);
+    } finally {
+        stopOneShotInteractionDiagnosticSession();
+    }
 }
 
 function handleOneShotInteractionDiagnosticEvent(session, event) {
@@ -16526,7 +16563,7 @@ function maintenanceMobileLayoutRelationTreeInfo(element) {
     for (const cell of cells) {
         const input = cell.querySelector?.('input[type="radio"], input[type="checkbox"]');
         if (!input?.id) return null;
-        const label = cell.querySelector?.(`label[for="${cssEscape(input.id)}"]`);
+        const label = findDescendantLabelForId(cell, input.id);
         if (!label) return null;
         let detail = null;
         for (const sibling of [...(input.parentElement?.children || [])]) {
