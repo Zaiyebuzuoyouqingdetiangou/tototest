@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.68';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.68';
+import { getSettings } from './settings.js?rmv=1.3.73';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.73';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.68';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.68';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.68';
-import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.68';
+} from './feedbackCat.js?rmv=1.3.73';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.73';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.73';
+import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.73';
 
 
-const RUNTIME_VERSION = '1.3.68';
+const RUNTIME_VERSION = '1.3.73';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -1385,7 +1385,7 @@ function resolveTargetsForCheckedRule(root, input, rule) {
             targets = getLocalContainerTargetsForCheckedRule(input, rule.targetSelector);
             if (targets.length === 1) return targets;
         } else {
-            targets = getLocalContainerTargetsForCheckedRule(input, rule.targetSelector);
+            targets = getFollowingLocalContainerTargetsForCheckedRule(input, rule.targetSelector);
             if (targets.length) return targets;
             // 常见误写：input 被包在 label 内，但 :checked 规则把 label 后方内容当作 input 的兄弟。
             // 以 label 作为结构代理，仅在其同一局部父容器的后续兄弟区域内恢复目标。
@@ -2777,6 +2777,38 @@ function getLocalContainerTargetsForCheckedRule(input, targetSelector) {
     } catch {
         return [];
     }
+
+}
+
+function getFollowingLocalContainerTargetsForCheckedRule(input, targetSelector) {
+    if (!input || !targetSelector) return [];
+    const wrappingLabel = input.closest?.('label') || null;
+    const wrappingFor = String(wrappingLabel?.getAttribute?.('for') || '').trim();
+    const wrappingBelongsToInput = !!wrappingLabel
+        && (!wrappingFor || (!!input.id && wrappingFor === String(input.id)));
+    const scope = wrappingBelongsToInput ? wrappingLabel : input.parentElement;
+    if (!scope) return [];
+
+    // `A:checked ~ B` can only ever address B after A. The old malformed-structure fallback
+    // queried the whole local container and could therefore “repair” a B placed before A,
+    // making an upper block react to a lower control. Keep the useful nested fallback, but
+    // restrict it to following sibling regions (and their descendants) only.
+    const targets = [];
+    let sibling = input.nextElementSibling;
+    while (sibling && targets.length <= 8) {
+        try {
+            if (sibling.matches?.(targetSelector)) targets.push(sibling);
+            for (const target of sibling.querySelectorAll?.(targetSelector) || []) {
+                if (!targets.includes(target)) targets.push(target);
+                if (targets.length > 8) break;
+            }
+        } catch {
+            return [];
+        }
+        sibling = sibling.nextElementSibling;
+    }
+    if (!targets.length || targets.length > 8) return [];
+    return targets;
 }
 
 function applyCheckedRuleTextFallback(toto, input) {
@@ -11435,7 +11467,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.68-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.73-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();

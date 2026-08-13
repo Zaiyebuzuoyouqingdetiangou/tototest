@@ -199,6 +199,9 @@ export function recordRabbitMirrorInjection({
             sharedMemory: safeInteger(metadata.memoryChars),
             selectedThemes: safeInteger(metadata.selectedThemeChars),
             selectedFormats: safeInteger(metadata.selectedFormatChars),
+            // 1.3.69: 可编辑视觉层是用户唯一能直接把 Prompt 撑大的部分（上限 5000+1000+1000），
+            // 此前只在 promptBuilder 的 metadata 里算了却从未进入统计口径，用户看不到自己的开销。
+            editableVisual: safeInteger(metadata.editableVisualChars),
         }),
         tokens: Object.freeze({
             estimated: totalTokens.estimatedTokens,
@@ -216,6 +219,58 @@ export function recordRabbitMirrorInjection({
     });
 }
 
+
+export function recordRabbitMirrorIndependentPrompt({
+    extensionPrompt,
+    basePrompt,
+    feedbackPrompt = '',
+    executionLock = '',
+    contextChars = 0,
+    metadata = {},
+} = {}) {
+    const finalPrompt = String(extensionPrompt || '');
+    const base = String(basePrompt || '');
+    const feedback = String(feedbackPrompt || '');
+    const lock = String(executionLock || '');
+    const totalTokens = estimatePromptTokens(finalPrompt);
+    const baseTokens = estimatePromptTokens(base);
+    const feedbackTokens = estimatePromptTokens(feedback);
+    const lockTokens = estimatePromptTokens(lock);
+
+    return publishRecord({
+        version: 2,
+        status: finalPrompt ? 'independent' : 'empty',
+        recordedAt: Date.now(),
+        generationType: 'independent',
+        chars: Object.freeze({
+            total: finalPrompt.length,
+            base: base.length,
+            feedback: feedback.length,
+            executionLock: lock.length,
+            independentContext: safeInteger(contextChars),
+            motherLibrary: safeInteger(metadata.motherLibraryChars),
+            sharedMemory: safeInteger(metadata.memoryChars),
+            selectedThemes: safeInteger(metadata.selectedThemeChars),
+            selectedFormats: safeInteger(metadata.selectedFormatChars),
+            editableVisual: safeInteger(metadata.editableVisualChars),
+        }),
+        tokens: Object.freeze({
+            estimated: totalTokens.estimatedTokens,
+            min: totalTokens.minTokens,
+            max: totalTokens.maxTokens,
+            baseEstimated: baseTokens.estimatedTokens,
+            feedbackEstimated: feedbackTokens.estimatedTokens,
+            executionLockEstimated: lockTokens.estimatedTokens,
+        }),
+        rawPolicy: String(metadata.rawPolicy || ''),
+        samplingMode: String(metadata.samplingMode || ''),
+        themeIds: Array.isArray(metadata.themeIds) ? metadata.themeIds.slice(0, 8) : [],
+        formatIds: Array.isArray(metadata.formatIds) ? metadata.formatIds.slice(0, 8) : [],
+        visualScenery: !!metadata.visualSceneryMode,
+        tarotRules: !!metadata.tarotRules,
+    });
+}
+
 export function recordRabbitMirrorNoInjection(reason = 'cleared', generationType = '') {
     return publishRecord({
         version: 1,
@@ -223,7 +278,7 @@ export function recordRabbitMirrorNoInjection(reason = 'cleared', generationType
         recordedAt: Date.now(),
         generationType: String(generationType || ''),
         reason: String(reason || 'cleared'),
-        chars: Object.freeze({ total: 0, base: 0, feedback: 0, motherLibrary: 0, sharedMemory: 0, selectedThemes: 0, selectedFormats: 0 }),
+        chars: Object.freeze({ total: 0, base: 0, feedback: 0, motherLibrary: 0, sharedMemory: 0, selectedThemes: 0, selectedFormats: 0, editableVisual: 0 }),
         tokens: Object.freeze({ estimated: 0, min: 0, max: 0, baseEstimated: 0, feedbackEstimated: 0 }),
         rawPolicy: '',
         samplingMode: '',

@@ -1,10 +1,10 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.68';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.68';
-import { pickCombination } from './picker.js?rmv=1.3.68';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRepeatedPaletteFamily, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.3.68';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.68';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.68';
-import { DEFAULT_VISUAL_PROMPT } from './settings.js?rmv=1.3.68';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.73';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.73';
+import { pickCombination } from './picker.js?rmv=1.3.73';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRepeatedPaletteFamily, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.3.73';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.73';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.73';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.3.73';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -402,7 +402,7 @@ function legacyPresentationEmbodimentRule() {
   - 当展现形式适合单色、低彩度或有限色域时，可以保持克制，但仍须依靠明度、纹理、材质与空间层次形成完整视觉。`;
 }
 
-function cleanEditableVisualPrompt(value, maxChars = 8000) {
+function cleanEditableVisualPrompt(value, maxChars = VISUAL_PROMPT_MAX_CHARS) {
     const text = String(value ?? '')
         .replace(/\r\n?/g, '\n')
         .replace(/<\/?(?:rabbit_mirror_visual_style|rabbit_mirror_visual_extra|rabbit_mirror_visual_avoid)>/gi, '')
@@ -411,21 +411,84 @@ function cleanEditableVisualPrompt(value, maxChars = 8000) {
     return text.slice(0, Math.max(0, Number(maxChars) || 0));
 }
 
+function visualCompletionFloorRule(compact = false) {
+    if (compact) {
+        return '成品完成度下限：完成度不等于堆装饰；即使走极简也要有主层／信息层／微细节层的清楚层级、可辨认的对齐与留白节奏、文字层级，以及至少一处由本轮媒介自然生长出的工艺细节；不得为凑高级感退回通用卡片、统一圆角、无意义投影或装饰堆叠。';
+    }
+    return `成品完成度下限【只在视觉编辑开启时适用；完成度不等于复杂度】:
+  - 即使用户只写一个颜色、材质或气质词，也不得因此缩减本轮展现形式本来应有的结构、阅读路径与交互完成度；用户没指定的维度由本轮展现形式与通用视觉规则主动补足。
+  - 至少形成三层可感知层级：主承载层、信息／次级结构层、近看才能发现的微细节层。三层可以由材质、光影、排版、空间或状态变化形成，不要求额外增加卡片、面板或装饰块。
+  - 边界与转折至少有一处体现本轮媒介真实的厚度、接缝、裁切、压痕、折射、印刷／像素痕迹、阴影关系或材质过渡之一；不要求每条边都加边框或投影。
+  - 存在可辨认的对齐系统（网格、基线、模数或有意的错位关系），留白有疏密节奏而不是所有区域统一 padding。
+  - 文字须有字号／字重／字距／行距／位置中的至少两种层级对比，不得全部同号同重；文字层级必须服从本轮媒介而不是套固定信息卡。
+  - 至少一处只有靠近观察才会发现、且与本轮媒介相符的工艺细节；极简形式也应通过比例、留白、微纹理或精细边界成立，而不是靠堆叠装饰制造“高级”。
+  - 若本轮存在交互第二状态，第二状态必须沿用同一材质、光线与排版体系，同时产生真实可辨认的状态变化。`;
+}
+
 function compactVisualPreferenceExecutionLock(settings) {
     if (!settings?.visualPromptEditingEnabled) return '';
-    const extra = cleanEditableVisualPrompt(settings?.visualExtraPrompt, 4000);
-    const avoid = cleanEditableVisualPrompt(settings?.visualAvoidPrompt, 4000);
-    const focus = [
-        extra ? `偏好：${truncate(extra, 180)}` : '',
-        avoid ? `避用：${truncate(avoid, 120)}` : '',
-    ].filter(Boolean).join('；') || '以上用户可编辑视觉层';
-    return `最终视觉优先：${focus}。必须主导整面作品的绘制、材质、轮廓与界面／装饰语言；第一眼无法辨认该偏好即视为未完成。展现形式本体保持不变。`;
+    const extra = cleanEditableVisualPrompt(settings?.visualExtraPrompt, VISUAL_EXTRA_PROMPT_MAX_CHARS);
+    const avoid = cleanEditableVisualPrompt(settings?.visualAvoidPrompt, VISUAL_AVOID_PROMPT_MAX_CHARS);
+    if (!extra && !avoid) return '';
+
+    // 偏好与避用项不能共用同一个“必须主导整面作品”谓语。尤其只填写避用项时，
+    // “避用：蓝白系统 UI。必须主导整面作品”会形成自相矛盾的近输出强锁。
+    const clauses = [];
+    if (extra) {
+        clauses.push(`用户偏好是处理本轮展现形式的方式而非整面作品的形状，须在主承载面、次级结构、边界接缝与文字层中被反复认出：${truncate(extra, 180)}`);
+    }
+    if (avoid) {
+        clauses.push(`明确避用项不得主动出现：${truncate(avoid, 120)}；除非与本轮展现形式本体存在不可避免的直接冲突`);
+    }
+    return `最终视觉偏好执行锁：${clauses.join('；')}。不得用说明文字代替实际画面落实；展现形式本体保持不变。${visualCompletionFloorRule(true)}`;
+}
+
+// 用户偏好的具体度分级：短词是 seed，已经给出多个设计方向的是 sketch，
+// 明确描述了构图／材质／光线／排版等多维关系时才视为 detailed。
+function visualPreferenceSpecificity(text) {
+    const value = String(text || '').trim();
+    if (!value) return 'none';
+    const clauses = value.split(/[，,；;。、\n]+/).map(item => item.trim()).filter(Boolean).length;
+    const dimensionPatterns = [
+        /色|饱和|冷色|暖色|明度|配色|色相/u,
+        /光|阴影|逆光|侧光|高光|反射|折射/u,
+        /纸|玻璃|金属|布|木|塑料|石|纹理|材质|网点|颗粒/u,
+        /排版|字体|字号|字重|字距|行距|标题|正文/u,
+        /构图|层级|留白|视线|错位|网格|基线|密度/u,
+        /交互|动效|切换|展开|翻面|第二状态|按钮/u,
+    ];
+    const dimensions = dimensionPatterns.reduce((count, pattern) => count + (pattern.test(value) ? 1 : 0), 0);
+    if (value.length <= 30 && clauses <= 2 && dimensions <= 2) return 'seed';
+    if (value.length <= 120 && clauses <= 6 && dimensions <= 4) return 'sketch';
+    return 'detailed';
+}
+
+// 偏好展开 + 成品完成度下限。只有开启视觉编辑时才进入 Prompt；
+// seed 会主动补足缺失设计维度，sketch 只补缺口，detailed 则优先忠实执行，避免越帮越改。
+function visualPreferenceElaborationRule(extra) {
+    const specificity = visualPreferenceSpecificity(extra);
+    const blocks = [];
+    if (specificity !== 'none') {
+        let specificityLine = '';
+        if (specificity === 'seed') {
+            specificityLine = '\n  - 本轮偏好只指定了极少数维度，属于“设计种子”而不是完整设计说明。必须主动补足未写出的构图与视线路径、层级与密度、材质接缝与工艺细节、光源方向与阴影逻辑、排版层级，以及交互第二状态；补足内容必须与该种子和本轮展现形式共用同一套视觉逻辑，不得因为用户写得短就退回默认卡片。';
+        } else if (specificity === 'sketch') {
+            specificityLine = '\n  - 本轮偏好已经给出若干设计方向，属于“视觉草图”。严格保留已写方向，仅主动补齐仍缺失的构图、光线、排版、材质细节或第二状态，不得用新的通用风格覆盖用户已经指定的部分。';
+        } else {
+            specificityLine = '\n  - 本轮偏好已接近完整视觉规格。优先忠实执行用户已经明确规定的关系，只补足工程上必要但未说明的细节，不得为了追求所谓高级感擅自改写、加戏或套入另一套风格。';
+        }
+        blocks.push(`视觉偏好展开规则:
+  - 偏好描述的是「如何处理本轮展现形式」，不是「替代本轮展现形式」。材质、色调、气质类偏好不得直接等同于整面作品的形状；把整面做成一块该材质的面板视为未完成。
+  - 「可辨认的视觉主导」按能否认出判定，不按覆盖面积判定：须在主承载面、次级结构、边界与接缝、文字层、交互第二状态之中至少四处留下同一套处理痕迹。${specificityLine}`);
+    }
+    blocks.push(visualCompletionFloorRule(false));
+    return blocks.join('\n\n');
 }
 
 function editableVisualPromptRule(settings) {
-    const official = cleanEditableVisualPrompt(settings?.visualPrompt ?? DEFAULT_VISUAL_PROMPT, 8000);
-    const extra = cleanEditableVisualPrompt(settings?.visualExtraPrompt, 4000);
-    const avoid = cleanEditableVisualPrompt(settings?.visualAvoidPrompt, 4000);
+    const official = cleanEditableVisualPrompt(settings?.visualPrompt ?? DEFAULT_VISUAL_PROMPT, VISUAL_PROMPT_MAX_CHARS);
+    const extra = cleanEditableVisualPrompt(settings?.visualExtraPrompt, VISUAL_EXTRA_PROMPT_MAX_CHARS);
+    const avoid = cleanEditableVisualPrompt(settings?.visualAvoidPrompt, VISUAL_AVOID_PROMPT_MAX_CHARS);
     if (!official && !extra && !avoid) return '';
 
     const blocks = [];
@@ -440,10 +503,12 @@ ${blocks.join('\n\n')}
 视觉自定义执行规则:
   - 上述内容只允许改变最终兔子镜成品如何呈现：视觉审美、构图、配色、材质、光影、装饰密度、媒介气质与希望／不希望出现的视觉要求；不得把“生成兔子镜成品”改成解释、分析、策划或描述兔子镜。
   - 视觉要求必须直接落实为最终 HTML/CSS 画面本体；不得用“观察视角、视觉转译、交互反馈、设计说明”等解释文字代替实际成品。若 CSS 声明了按钮、状态选择器、内容面板或交互反馈，HTML 中必须实际存在对应结构。
-  - 用户视觉偏好必须成为整面兔子镜可明确辨认的视觉主导，不得只做局部点缀；但不得抹掉本轮展现形式本体。
+  - 用户视觉偏好必须在整面兔子镜中被反复认出，不得只做局部点缀；但「被认出」不等于「把整面做成那一样东西」，也不得抹掉本轮展现形式本体。
   - 用户写入的“不希望出现的视觉”是本轮明确避用项；除非与锁定工程规则或本轮展现形式本体存在不可避免的直接冲突，否则不得主动使用。
   - 当额外视觉偏好／避用项与通用视觉审美规则发生冲突时，以用户本轮明确填写的偏好／避用项为准；用户未指定的部分再由通用视觉审美规则补足。
-  - 用户编辑内容不得取消或覆盖兔子镜的输出协议、HTML/CSS 安全、可见中文、结构完整性、移动端可读性、交互可触发性、近期冷却、维修兼容或其他核心工程规则。`;
+  - 用户编辑内容不得取消或覆盖兔子镜的输出协议、HTML/CSS 安全、可见中文、结构完整性、移动端可读性、交互可触发性、近期冷却、维修兼容或其他核心工程规则。
+
+${visualPreferenceElaborationRule(extra)}`;
 }
 
 

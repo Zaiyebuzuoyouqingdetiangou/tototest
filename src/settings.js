@@ -3,6 +3,10 @@ import { saveSettingsDebounced } from '../../../../../script.js';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
+export const VISUAL_PROMPT_MAX_CHARS = 5000;
+export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
+export const VISUAL_AVOID_PROMPT_MAX_CHARS = 1000;
+
 export const DEFAULT_VISUAL_PROMPT = String.raw`兔子镜默认视觉规则:
   - 不得以通用圆角面板、卡片列表、数据仪表盘或信息框作为默认主体，再向其中填入本轮内容。
   - 当展现形式本身属于平面媒介时，其纸面、印刷面、画布、版式、纹理、边缘与承载内容可以直接构成主要视觉本体，不视为通用面板。
@@ -134,9 +138,9 @@ export function getSettings() {
         if (raw.length <= maxChars && raw.indexOf('\r') < 0) return raw;
         return raw.replace(/\r\n?/g, '\n').slice(0, maxChars);
     };
-    settings.visualPrompt = normalizeVisualSetting(settings.visualPrompt, DEFAULT_VISUAL_PROMPT, 8000);
-    settings.visualExtraPrompt = normalizeVisualSetting(settings.visualExtraPrompt, '', 4000);
-    settings.visualAvoidPrompt = normalizeVisualSetting(settings.visualAvoidPrompt, '', 4000);
+    settings.visualPrompt = normalizeVisualSetting(settings.visualPrompt, DEFAULT_VISUAL_PROMPT, VISUAL_PROMPT_MAX_CHARS);
+    settings.visualExtraPrompt = normalizeVisualSetting(settings.visualExtraPrompt, '', VISUAL_EXTRA_PROMPT_MAX_CHARS);
+    settings.visualAvoidPrompt = normalizeVisualSetting(settings.visualAvoidPrompt, '', VISUAL_AVOID_PROMPT_MAX_CHARS);
 
     delete settings.plainTextRescueMode;
     delete settings.codeBlockRescueMode;
