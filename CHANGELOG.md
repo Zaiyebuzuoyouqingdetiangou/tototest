@@ -1,3 +1,10 @@
+## 1.3.59-test — persisted stacked-grid migration
+
+- Fix 1.3.58 not reaching some already-repaired historical independent mirrors. The full-width Grid logic itself was correct, but it lived only inside the complete interaction-rescue install pass; older mirrors can retain `data-rm-exclusive-stacked-state-*` ownership markers without necessarily re-entering that detector after an upgrade.
+- Add a lightweight persisted-state migration in `ensureExternalTools()`: only mirrors that already own 2+ exclusive-state panels under the same direct Grid parent are considered; the same full-width selector-row proof is required and authored panel grid placement is still refused.
+- The migration writes `grid-column: 1 / -1 !important` directly to the already-owned panels and is idempotent. It does not run the complete interaction library, add observers, or scan unrelated historical message DOM.
+- Keep 1.3.57 chat-entry performance changes, 1.3.56 radio/stack fixes, maintenance persistence, and palette cooldown unchanged.
+
 ## 1.3.58-test — desktop stacked-state grid span repair
 
 - Fix mutually-exclusive state/result panels that were correctly switched but auto-placed into only one column of a multi-column CSS Grid.

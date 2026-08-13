@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.58';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.58';
+import { getSettings } from './settings.js?rmv=1.3.59';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.59';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.58';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.58';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.58';
+} from './feedbackCat.js?rmv=1.3.59';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.59';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.59';
 
 
-const RUNTIME_VERSION = '1.3.58';
+const RUNTIME_VERSION = '1.3.59';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -488,6 +488,8 @@ const EXCLUSIVE_STACKED_STATE_RESCUE_ATTR = 'data-rabbit-mirror-exclusive-stacke
 const EXCLUSIVE_STACKED_STATE_COUNT_ATTR = 'data-rabbit-mirror-exclusive-stacked-state-count';
 const EXCLUSIVE_STACKED_STATE_CONTROL_ATTR = 'data-rm-exclusive-stacked-state-control';
 const EXCLUSIVE_STACKED_STATE_PANEL_ATTR = 'data-rm-exclusive-stacked-state-panel';
+const EXCLUSIVE_STACKED_STATE_GRID_SPAN_ATTR = 'data-rm-exclusive-stacked-full-grid-span';
+const EXCLUSIVE_STACKED_STATE_GRID_SPAN_COUNT_ATTR = 'data-rabbit-mirror-exclusive-stacked-grid-span-count';
 const exclusiveStackedStateRescueStates = new WeakMap();
 const CHANNEL_DIAL_CYCLE_RESCUE_ATTR = 'data-rabbit-mirror-channel-dial-cycle-rescue';
 const CHANNEL_DIAL_CYCLE_COUNT_ATTR = 'data-rabbit-mirror-channel-dial-cycle-count';
@@ -2212,6 +2214,69 @@ function findExclusiveStackedStateCandidates(root) {
     return candidates;
 }
 
+// 1.3.59: historical independent mirrors may already carry the persisted
+// exclusive-stacked-state ownership markers from an older runtime. 1.3.57 made
+// the complete interaction library lazy, so a version upgrade must not rely on
+// re-running the whole detector merely to apply a later structural layout fix.
+// This migration is deliberately cheap: it touches only already-owned state
+// panels, requires the same direct grid parent plus a full-width selector row,
+// and refuses authored grid placement. It can therefore run from
+// ensureExternalTools() even while the details body stays collapsed.
+export function repairRabbitMirrorPersistedExclusiveGridSpan(root) {
+    if (!root?.querySelectorAll) return 0;
+    if (root.getAttribute?.(EXCLUSIVE_STACKED_STATE_RESCUE_ATTR) !== 'true') return 0;
+    const ownedPanels = [...root.querySelectorAll(`[${EXCLUSIVE_STACKED_STATE_PANEL_ATTR}]`)]
+        .filter(panel => panel?.parentElement);
+    if (ownedPanels.length < 2) {
+        root.removeAttribute?.(EXCLUSIVE_STACKED_STATE_GRID_SPAN_COUNT_ATTR);
+        return 0;
+    }
+
+    const groups = new Map();
+    for (const panel of ownedPanels) {
+        const parent = panel.parentElement;
+        if (!groups.has(parent)) groups.set(parent, []);
+        groups.get(parent).push(panel);
+    }
+
+    let repaired = 0;
+    for (const [parent, panels] of groups) {
+        if (panels.length < 2) continue;
+        const parentStyle = maintenanceSafeComputedStyle(parent);
+        const display = String(parentStyle?.display || '').toLowerCase();
+        if (display !== 'grid' && display !== 'inline-grid') continue;
+
+        const controls = [...parent.children].filter(child =>
+            child?.matches?.('input[type="radio"],input[type="checkbox"]')
+            && child.hasAttribute?.(EXCLUSIVE_STACKED_STATE_CONTROL_ATTR));
+        if (controls.length < 2) continue;
+        const inputMap = new Map(controls.map(input => [input, new Set()]));
+
+        // If a previous 1.3.59 pass already wrote the exact full-span value,
+        // keep it without making the authored-placement guard fail on itself.
+        const alreadyFullSpan = panels.every(panel => {
+            const inline = String(panel.getAttribute?.('style') || '').toLowerCase();
+            return /grid-column\s*:\s*1\s*\/\s*-1(?:\s*!important)?/.test(inline)
+                && panel.getAttribute?.(EXCLUSIVE_STACKED_STATE_GRID_SPAN_ATTR) === 'true';
+        });
+        if (alreadyFullSpan) {
+            repaired += panels.length;
+            continue;
+        }
+
+        if (!exclusiveStackedPanelsNeedFullGridSpan(parent, inputMap, panels)) continue;
+        for (const panel of panels) {
+            panel.style.setProperty('grid-column', '1 / -1', 'important');
+            panel.setAttribute(EXCLUSIVE_STACKED_STATE_GRID_SPAN_ATTR, 'true');
+            repaired += 1;
+        }
+    }
+
+    if (repaired) root.setAttribute(EXCLUSIVE_STACKED_STATE_GRID_SPAN_COUNT_ATTR, String(repaired));
+    else root.removeAttribute?.(EXCLUSIVE_STACKED_STATE_GRID_SPAN_COUNT_ATTR);
+    return repaired;
+}
+
 function cleanupExclusiveStackedStateRescue(root) {
     const state = exclusiveStackedStateRescueStates.get(root);
     if (state) {
@@ -2221,6 +2286,7 @@ function cleanupExclusiveStackedStateRescue(root) {
             for (const panelState of entry.panelStates || []) {
                 restorePseudoStyleState(panelState.panel, panelState.originalStyles);
                 panelState.panel?.removeAttribute?.(EXCLUSIVE_STACKED_STATE_PANEL_ATTR);
+                panelState.panel?.removeAttribute?.(EXCLUSIVE_STACKED_STATE_GRID_SPAN_ATTR);
                 panelState.panel?.removeAttribute?.('aria-hidden');
             }
             for (const input of entry.inputMap?.keys?.() || []) {
@@ -2234,6 +2300,7 @@ function cleanupExclusiveStackedStateRescue(root) {
     }
     root?.removeAttribute?.(EXCLUSIVE_STACKED_STATE_RESCUE_ATTR);
     root?.removeAttribute?.(EXCLUSIVE_STACKED_STATE_COUNT_ATTR);
+    root?.removeAttribute?.(EXCLUSIVE_STACKED_STATE_GRID_SPAN_COUNT_ATTR);
 }
 
 function refreshExclusiveStackedStateRescue(root) {
@@ -2257,6 +2324,7 @@ function refreshExclusiveStackedStateRescue(root) {
                 // this, a desktop multi-column grid squeezes the active narrative into one
                 // narrow track and leaves the rest of the row blank.
                 panel.style.setProperty('grid-column', '1 / -1', 'important');
+                panel.setAttribute(EXCLUSIVE_STACKED_STATE_GRID_SPAN_ATTR, 'true');
             }
             if (panelState.passiveAnimated) {
                 // 弹幕/跑马灯属于“被选中的一组多个动画条目”，不是整页正文 panel。
@@ -11214,7 +11282,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.58-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.59-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
