@@ -1,4 +1,5 @@
-import { getCurrentChatKey } from './storage.js?rmv=1.3.63';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.66';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.66';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';
@@ -264,9 +265,25 @@ export function beginRabbitMirrorGenerationAttempt(chat, attemptId) {
         attemptId: String(attemptId || ''),
         startedAt: Date.now(),
         targetMessageIndex,
+        selectionMetadata: null,
     };
     writeActiveAttempt(active);
     return active;
+}
+
+
+export function attachRabbitMirrorGenerationSelection(metadata = null) {
+    const active = readActiveAttempt();
+    if (!active || !metadata || typeof metadata !== 'object') return false;
+    active.selectionMetadata = {
+        samplingMode: String(metadata.samplingMode || 'classic'),
+        themeIds: Array.isArray(metadata.themeIds) ? [...metadata.themeIds] : [],
+        formatIds: Array.isArray(metadata.formatIds) ? [...metadata.formatIds] : [],
+        userDirectiveApplied: !!metadata.userDirectiveApplied,
+        forcedVisualScenery: !!metadata.forcedVisualScenery,
+    };
+    writeActiveAttempt(active);
+    return true;
 }
 
 function messageSourceCandidates(message) {
@@ -334,10 +351,22 @@ export function captureRabbitMirrorGenerationSnapshots(chat) {
                 complete: !!(inspection.complete || base?.completeSource),
                 reason: inspection.complete ? 'complete' : inspection.reason,
                 sourceLabel: candidate.label,
+                selectionMetadata: attemptId && active?.selectionMetadata ? { ...active.selectionMetadata } : (base?.selectionMetadata || null),
                 ts: Date.now(),
             };
             if (existingIndex >= 0) snapshots.splice(existingIndex, 1);
             snapshots.push(next);
+            if (next.selectionMetadata) {
+                recordRabbitMirrorRecipe({
+                    chat: list,
+                    chatKey,
+                    messageIndex,
+                    swipeId,
+                    message,
+                    metadata: next.selectionMetadata,
+                    source: 'follow',
+                });
+            }
             changed += 1;
         }
     }
@@ -368,6 +397,7 @@ export function getRabbitMirrorGenerationSnapshot(message, chat, messageIndex, e
         sourceLabel: item.sourceLabel,
         attemptId: item.attemptId,
         ts: item.ts,
+        selectionMetadata: item.selectionMetadata ? { ...item.selectionMetadata } : null,
     };
 }
 

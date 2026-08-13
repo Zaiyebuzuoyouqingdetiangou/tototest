@@ -217,7 +217,7 @@ export const PRESENTATION_FORMATS = [
     "raw": "* **1.2.1 在线购物接口**：购物车接口 / 快递配送 / 外带订单接口 / 亲密付或副卡记录等。"
   },
   {
-    "id": "1.3.3",
+    "id": "1.3.3.platform",
     "group": "1",
     "title": "网站与应用平台",
     "summary": "",
@@ -362,7 +362,7 @@ export const PRESENTATION_FORMATS = [
     "raw": "* **1.3.3.6.1 当Char变成AI (AI Persona Parody)**: 模仿特定 AI 助手（如豆包/ChatGPT/Siri 等）的对话界面和回答语气，但“AI 的人格内核”实际上是 {{char}}。"
   },
   {
-    "id": "1.3.3",
+    "id": "1.3.3.review",
     "group": "1",
     "title": "评论系统",
     "summary": "影评、书评、食评等。",

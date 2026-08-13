@@ -43,6 +43,9 @@ export const defaultSettings = Object.freeze({
     includeSafetyPatch: false,
     avoidRepeat: true,
     cooldownRounds: 10,
+    blacklistEnabled: true,
+    blacklistedThemeIds: [],
+    blacklistedFormatIds: [],
     richFormatBias: false,
     maintenanceRabbitEnabled: true,
     maintenanceRabbitAutoSafeEnabled: false,
@@ -113,6 +116,10 @@ export function getSettings() {
     settings.formatsMin = Number(settings.formatsMin) || defaultSettings.formatsMin;
     settings.formatsMax = Number(settings.formatsMax) || defaultSettings.formatsMax;
     settings.cooldownRounds = Math.max(1, Number(settings.cooldownRounds) || defaultSettings.cooldownRounds);
+    settings.blacklistEnabled = settings.blacklistEnabled !== false;
+    const normalizeBlacklistIds = value => [...new Set((Array.isArray(value) ? value : []).map(id => String(id || '').trim()).filter(Boolean))].slice(0, 512);
+    settings.blacklistedThemeIds = normalizeBlacklistIds(settings.blacklistedThemeIds);
+    settings.blacklistedFormatIds = normalizeBlacklistIds(settings.blacklistedFormatIds);
     if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
     if (settings.maintenanceRabbitEnabled === undefined) {
         settings.maintenanceRabbitEnabled = legacyRescueWasEnabled || defaultSettings.maintenanceRabbitEnabled;

@@ -1,11 +1,12 @@
-import { getSettings } from './settings.js?rmv=1.3.63';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.63';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan } from './outputSanitizer.js?rmv=1.3.63';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.63';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.63';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.63';
+import { getSettings } from './settings.js?rmv=1.3.66';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.66';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan } from './outputSanitizer.js?rmv=1.3.66';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.66';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.66';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.66';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.66';
 
-const RUNTIME_VERSION = '1.3.63';
+const RUNTIME_VERSION = '1.3.66';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -931,6 +932,8 @@ ${executionLock}
   themeLabels:Array.isArray(details.metadata?.themeLabels)?details.metadata.themeLabels:[],
   formatLabels:Array.isArray(details.metadata?.formatLabels)?details.metadata.formatLabels:[],
   executionLockChars:executionLock.length,
+  userDirectiveApplied:!!details.metadata?.userDirectiveApplied,
+  forcedVisualScenery:!!details.metadata?.forcedVisualScenery,
  };
  const {response:r,result,profile,attempts,requestDiagnostic}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,diagnosticContext:requestSelectionDiagnostic});
  if(!r.ok){
@@ -3409,6 +3412,7 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   }
   const initialHtml=scrubIndependentInteractionState(html,html);
   const completed={html:initialHtml||html,initialHtml:'',sourceHash,bodyHash,displayHash,reasoningHash,paletteFingerprint,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION,apiRequest:result?.requestDiagnostic||null,executionLockChars:Number(result?.executionLockChars||0)};
+  recordRabbitMirrorRecipe({ chat:ctx.chat, chatKey:chatKey(ctx), messageIndex:index, swipeId:swipeId(msg), message:msg, metadata:result?.requestDiagnostic||null, source:'independent' });
   appendHistoryEntry(slot,completed);
   const next=readStore(); saveRecordForSlot(next,slot,completed); writeStore(next);
   setOwnerLockForBase(baseSlot,slot,sourceHash);

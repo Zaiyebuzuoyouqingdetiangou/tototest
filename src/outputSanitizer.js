@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.63';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.63';
+import { getSettings } from './settings.js?rmv=1.3.66';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.66';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.63';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.63';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.63';
+} from './feedbackCat.js?rmv=1.3.66';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.66';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.66';
+import { RECIPE_RECORDED_EVENT, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, toggleBlacklistItem } from './blacklist.js?rmv=1.3.66';
 
 
-const RUNTIME_VERSION = '1.3.63';
+const RUNTIME_VERSION = '1.3.66';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -64,7 +65,8 @@ function ensureFeedbackCatRuntimeStyle() {
     isolation: isolate !important;
 }
 [${TOOL_ENTRY_HOST_ATTR}] > button[${MAINTENANCE_RABBIT_ATTR}],
-[${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}] {
+[${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}],
+[${TOOL_ENTRY_HOST_ATTR}] > button[${RECIPE_BUTTON_ATTR}] {
     all: initial !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -108,7 +110,9 @@ function ensureFeedbackCatRuntimeStyle() {
 [${TOOL_ENTRY_HOST_ATTR}] > button[${MAINTENANCE_RABBIT_ATTR}]::before,
 [${TOOL_ENTRY_HOST_ATTR}] > button[${MAINTENANCE_RABBIT_ATTR}]::after,
 [${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}]::before,
-[${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}]::after {
+[${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}]::after,
+[${TOOL_ENTRY_HOST_ATTR}] > button[${RECIPE_BUTTON_ATTR}]::before,
+[${TOOL_ENTRY_HOST_ATTR}] > button[${RECIPE_BUTTON_ATTR}]::after {
     content: none !important;
     display: none !important;
 }
@@ -123,6 +127,8 @@ function isCurrentRuntime() {
 // Cached SillyTavern script module. In module builds, chat is not guaranteed to be exposed on globalThis.
 let hostScriptModule = null;
 let outputHostSubscriptions = [];
+let recipeRecordedHandler = null;
+let recipeOutsideCloseCleanup = null;
 
 // 0.32.68: 新增源码恢复链：在 TH/高亮插件生成代码壳后，直接用原始消息的清洗副本瞬时重绘当前显示层；不写回 mes/swipe/display_text；
 // 0.32.67: 一次性交互诊断升级为兔子镜总诊断，可检查交互、代码块、纯文字源码、显示源与触发链；急救逻辑保持不变；
@@ -6554,7 +6560,7 @@ function getRabbitMirrorSummaryText(root) {
     if (!summary) return '';
     const clone = summary.cloneNode?.(true);
     if (clone?.querySelectorAll) {
-        clone.querySelectorAll(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`).forEach(node => node.remove());
+        clone.querySelectorAll(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`).forEach(node => node.remove());
     }
     return String((clone || summary).textContent || '')
         .replace(/\s+/g, ' ')
@@ -11320,6 +11326,8 @@ const MAINTENANCE_AUTO_SAFE_VERSION = 'safe-v2-state-preserving';
 const FEEDBACK_CAT_ATTR = 'data-rabbit-mirror-feedback-cat';
 const RESAY_ATTR = 'data-rabbit-mirror-resay';
 const FEEDBACK_CAT_MENU_ATTR = 'data-rabbit-mirror-feedback-cat-menu';
+const RECIPE_BUTTON_ATTR = 'data-rabbit-mirror-recipe';
+const RECIPE_MENU_ATTR = 'data-rabbit-mirror-recipe-menu';
 const FEEDBACK_RESAY_EVENT = 'rabbitmirror:resay';
 const FEEDBACK_HISTORY_EVENT = 'rabbitmirror:history';
 const SELECTION_ONLY_FALLBACK_ATTR = 'data-rabbit-mirror-selection-only-fallback';
@@ -11427,7 +11435,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.63-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.66-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -11678,7 +11686,7 @@ function diagnosticMessageBody(root) {
 
 function diagnosticIsInternalUiNode(node) {
     if (!node) return false;
-    if (node.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return true;
+    if (node.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return true;
     return !!node.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`);
 }
 
@@ -11694,7 +11702,7 @@ function diagnosticContentSnapshot(root) {
     };
     const clone = root?.cloneNode?.(true);
     if (!clone?.querySelectorAll) return fallback;
-    clone.querySelectorAll(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${FEEDBACK_CAT_ATTR}]`)
+    clone.querySelectorAll(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`)
         .forEach(node => node.remove());
     return {
         html: String(clone.innerHTML || ''),
@@ -12251,7 +12259,7 @@ ${styleTexts}`;
     const renderedBodyElementCount = primaryDetails ? [...(primaryDetails.children || [])].filter(child => {
         const tag = String(child?.tagName || '').toLowerCase();
         if (!tag || tag === 'summary' || tag === 'style' || tag === 'script' || tag === 'br') return false;
-        if (child.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`) || child.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)) return false;
+        if (child.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`) || child.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)) return false;
         if (tag === 'p' && !String(child.textContent || '').trim() && !child.children?.length) return false;
         return true;
     }).length : 0;
@@ -13232,7 +13240,7 @@ function fillInChoiceHasExistingControl(root) {
         .some(element => {
             if (outerSummary && (element === outerSummary || outerSummary.contains?.(element))) return false;
             if (element === outerDetails) return false;
-            if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return false;
+            if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return false;
             return true;
         });
 }
@@ -13609,7 +13617,7 @@ function structuredStaticDisclosureHasExistingInteraction(root) {
     ].join(',');
     return diagnosticQueryContentAll(root, selector).some(element => {
         if (outerSummary && (element === outerSummary || outerSummary.contains?.(element))) return false;
-        if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return false;
+        if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return false;
         return true;
     });
 }
@@ -14253,7 +14261,7 @@ function maintenanceReachableInteractionEvidence(root, routeSummary, checkedDept
     const contentInteractiveElementCount = diagnosticQueryContentAll(root, interactiveSelector)
         .filter(element => {
             if (outerSummary && (element === outerSummary || outerSummary.contains?.(element))) return false;
-            if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return false;
+            if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return false;
             return true;
         }).length;
 
@@ -15118,6 +15126,7 @@ function maintenanceMirrorBodyEvidence(candidate) {
         `[${MAINTENANCE_MENU_ATTR}]`,
         `[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`,
         `[${FEEDBACK_CAT_MENU_ATTR}]`,
+        `[${RECIPE_MENU_ATTR}]`,
         `[${SOURCE_TRUNCATION_NOTICE_ATTR}]`,
     ].join(','))?.forEach(node => node.remove());
 
@@ -15850,6 +15859,28 @@ function bindFeedbackCatOutsideClose(panel, button) {
     }, 0);
 }
 
+function bindRecipeOutsideClose(panel, button) {
+    // Keep exactly one outside-close listener. The 1.3.64 implementation removed stale listeners
+    // only on the *next* pointerdown; repeated keyboard/programmatic open-close cycles could leave
+    // detached-panel listeners behind until another pointer event happened.
+    try { recipeOutsideCloseCleanup?.(); } catch {}
+    let closeOnOutside = null;
+    const timer = setTimeout(() => {
+        if (!panel?.isConnected) return;
+        closeOnOutside = event => {
+            if (!panel.isConnected || (!panel.contains(event.target) && event.target !== button)) {
+                closeRecipeMenu();
+            }
+        };
+        document.addEventListener('pointerdown', closeOnOutside, true);
+    }, 0);
+    recipeOutsideCloseCleanup = () => {
+        clearTimeout(timer);
+        if (closeOnOutside) document.removeEventListener('pointerdown', closeOnOutside, true);
+        closeOnOutside = null;
+    };
+}
+
 function feedbackCatSourceIdentity(root) {
     const messageId = getMessageIndexFromMirrorNode(root);
     const chat = getAvailableHostChat();
@@ -16175,7 +16206,117 @@ function handleFeedbackCatClick(event, root, button) {
     event.stopPropagation();
     event.stopImmediatePropagation?.();
     if (rabbitMirrorExternalGenerationNotice(root, 'feedback')) return;
+    closeRecipeMenu();
     showFeedbackCatMenu(root, button);
+}
+
+
+function closeRecipeMenu() {
+    try { recipeOutsideCloseCleanup?.(); } catch {}
+    recipeOutsideCloseCleanup = null;
+    document.querySelectorAll?.(`[${RECIPE_MENU_ATTR}]`)?.forEach(panel => panel.remove());
+}
+
+function rabbitMirrorRecipeIdentity(root) {
+    const details = root?.matches?.('details') ? root : root?.querySelector?.(':scope > details') || root?.querySelector?.('details');
+    const chat = getAvailableHostChat();
+    const ownerChat = String(details?.dataset?.rabbitMirrorOwnerChat || '').trim();
+    const ownerMesid = Number(details?.dataset?.rabbitMirrorOwnerMesid);
+    const messageIndex = Number.isInteger(ownerMesid) && ownerMesid >= 0 ? ownerMesid : getMessageIndexFromMirrorNode(root);
+    const message = messageIndex >= 0 ? chat?.[messageIndex] : null;
+    const ownerSwipe = Number(details?.dataset?.rabbitMirrorOwnerSwipe);
+    const swipeId = Number.isInteger(ownerSwipe) && ownerSwipe >= 0
+        ? ownerSwipe
+        : Number.isInteger(message?.swipe_id) && message.swipe_id >= 0
+            ? message.swipe_id
+            : 0;
+    const chatKey = ownerChat || getCurrentChatKey(chat);
+    return { chatKey, messageIndex, swipeId, message };
+}
+
+function rabbitMirrorRecipeForRoot(root) {
+    const identity = rabbitMirrorRecipeIdentity(root);
+    return getRabbitMirrorRecipe(identity);
+}
+
+function recipeButtonTitle(recipe) {
+    if (!recipe) return '本轮抽签：暂无可读取的抽取记录';
+    const count = (recipe.themes?.length || 0) + (recipe.formats?.length || 0);
+    const blocked = [...(recipe.themes || []), ...(recipe.formats || [])].filter(item => isBlacklisted(item.kind, item.id)).length;
+    return `本轮抽签：${count} 项${blocked ? `；其中 ${blocked} 项已加入黑名单` : ''}`;
+}
+
+function recipePanelRow(item) {
+    const blocked = isBlacklisted(item.kind, item.id);
+    const kindLabel = item.kind === 'format' ? '展现形式' : '主题 / 元素';
+    const action = item?.ambiguous
+        ? blocked ? '解除两项黑名单' : '同时拉黑两项'
+        : blocked ? '解除黑名单' : '加入黑名单';
+    const ambiguityNote = item?.ambiguous
+        ? '<div style="font-size:9px;opacity:.58;margin-top:3px;line-height:1.35;">旧版记录无法判断当时实际是哪一项；操作会同时作用于这两个旧同 ID 项目。</div>'
+        : '';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(127,127,127,.18);">
+      <div style="min-width:0;flex:1;line-height:1.35;">
+        <div style="font-size:10px;opacity:.58;margin-bottom:2px;">${kindLabel}</div>
+        <div style="font-size:12px;font-weight:700;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(item.id)} ${feedbackCatEscapeHtml(item.title)}</div>
+        ${ambiguityNote}
+      </div>
+      <button type="button" data-rm-recipe-blacklist-kind="${feedbackCatEscapeHtml(item.kind)}" data-rm-recipe-blacklist-id="${feedbackCatEscapeHtml(item.id)}" style="flex:0 0 auto;border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:5px 8px;background:${blocked ? 'rgba(127,127,127,.12)' : 'rgba(190,70,70,.08)'};color:inherit;cursor:pointer;font:inherit;font-size:11px;">${blocked ? '✓ ' : '🚫 '}${action}</button>
+    </div>`;
+}
+
+function showRecipeMenu(root, button) {
+    closeRecipeMenu();
+    closeFeedbackCatMenu();
+    closeMaintenanceRabbitMenu();
+    const recipe = rabbitMirrorRecipeForRoot(root);
+    if (!recipe) {
+        globalThis.toastr?.info?.('这面兔子镜没有可读取的本轮抽签记录。新生成的兔子镜会自动记录。');
+        return false;
+    }
+    const state = getBlacklistState();
+    const items = [...(recipe.themes || []), ...(recipe.formats || [])];
+    const panel = document.createElement('div');
+    panel.setAttribute(RECIPE_MENU_ATTR, 'true');
+    panel.style.cssText = 'position:fixed;z-index:2147483646;box-sizing:border-box;padding:12px 13px;border:1px solid rgba(127,127,127,.35);border-radius:10px;background:var(--SmartThemeBlurTintColor,rgba(28,28,32,.97));color:var(--SmartThemeBodyColor,#eee);box-shadow:0 10px 32px rgba(0,0,0,.28);overflow:auto;font-family:inherit;';
+    const directiveNote = recipe.userDirectiveApplied ? '本轮含用户明确点菜；黑名单只影响之后的随机抽取。' : '';
+    const forcedNote = recipe.forcedVisualScenery ? '本轮含固定动态视觉场景；固定模式会优先于随机黑名单。' : '';
+    panel.innerHTML = `<div style="font-weight:800;font-size:13px;margin-bottom:3px;">🎲 本轮抽签</div>
+      <div style="font-size:10px;opacity:.62;line-height:1.45;margin-bottom:7px;">显示的是这一面兔子镜当时真实抽中的内部项目，不做 AI 事后分析。</div>
+      ${items.map(recipePanelRow).join('') || '<div style="padding:8px 0;opacity:.68;font-size:11px;">本轮没有记录主题或展现形式。</div>'}
+      <div style="font-size:10px;opacity:.68;line-height:1.5;margin-top:9px;">${state.enabled ? '黑名单已启用：加入后从下一轮随机抽取开始排除。' : '黑名单目前暂时停用：名单会保留，但随机抽取暂不排除。'}${directiveNote ? `<br>${feedbackCatEscapeHtml(directiveNote)}` : ''}${forcedNote ? `<br>${feedbackCatEscapeHtml(forcedNote)}` : ''}</div>`;
+    document.body.appendChild(panel);
+    positionFeedbackCatPanel(panel, button, 360);
+    panel.addEventListener('click', event => {
+        const action = event.target?.closest?.('[data-rm-recipe-blacklist-kind][data-rm-recipe-blacklist-id]');
+        if (!action || !panel.contains(action)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const kind = action.getAttribute('data-rm-recipe-blacklist-kind') === 'format' ? 'format' : 'theme';
+        const id = String(action.getAttribute('data-rm-recipe-blacklist-id') || '');
+        const wasBlocked = isBlacklisted(kind, id);
+        const nowBlocked = toggleBlacklistItem(kind, id);
+        if (nowBlocked === wasBlocked) {
+            globalThis.toastr?.warning?.(`黑名单没有修改：${id}。项目可能已失效，或名单已达到容量上限。`);
+        } else {
+            globalThis.toastr?.success?.(nowBlocked ? `已加入黑名单：${id}；从下一轮随机抽取开始生效。` : `已解除黑名单：${id}`);
+        }
+        const freshRecipe = rabbitMirrorRecipeForRoot(root);
+        button.title = recipeButtonTitle(freshRecipe);
+        button.setAttribute('aria-label', button.title);
+        closeRecipeMenu();
+        showRecipeMenu(root, button);
+    });
+    bindRecipeOutsideClose(panel, button);
+    return true;
+}
+
+function handleRecipeClick(event, root, button) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    if (rabbitMirrorExternalGenerationNotice(root, 'feedback')) return;
+    showRecipeMenu(root, button);
 }
 
 function maintenanceMobileLayoutComputedStyle(element) {
@@ -16244,8 +16385,8 @@ function maintenanceMobileLayoutTextLength(element) {
 function maintenanceMobileLayoutIsInternal(element) {
     if (!element?.matches) return true;
     if (element.matches('style,script,link,meta,br,summary')) return true;
-    if (element.closest?.(`[${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return true;
-    if (element.matches(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return true;
+    if (element.closest?.(`[${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return true;
+    if (element.matches(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return true;
     if (element.matches(`[${MOBILE_INLINE_ANNOTATION_ORIGINAL_ATTR}], [${MOBILE_INLINE_ANNOTATION_MIRROR_ATTR}]`)) return true;
     return false;
 }
@@ -18561,6 +18702,40 @@ function ensureFeedbackCatButton(root, summary, host) {
     return current;
 }
 
+
+function ensureRecipeButton(root, summary, host) {
+    const existing = [...summary.querySelectorAll?.(`[${RECIPE_BUTTON_ATTR}]`) || []];
+    const recipe = rabbitMirrorRecipeForRoot(root);
+    if (!recipe) {
+        existing.forEach(button => button.remove());
+        return null;
+    }
+    let current = existing.find(button => button.getAttribute(RUNTIME_VERSION_ATTR) === RUNTIME_VERSION) || existing[0] || null;
+    existing.filter(button => button !== current).forEach(button => button.remove());
+    if (!current) current = document.createElement('button');
+    current.type = 'button';
+    current.className = 'rabbit-mirror-recipe-button';
+    current.setAttribute(RECIPE_BUTTON_ATTR, 'true');
+    current.setAttribute(RUNTIME_VERSION_ATTR, RUNTIME_VERSION);
+    current.textContent = '🎲';
+    current.title = recipeButtonTitle(recipe);
+    current.setAttribute('aria-label', current.title);
+    if (current.parentElement !== host) host.appendChild(current);
+    normalizeRabbitMirrorToolButton(current);
+    return current;
+}
+
+function installRecipeButtonForRoot(root) {
+    if (!isCurrentRuntime() || !root?.querySelector) return false;
+    const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
+    const summary = details?.querySelector?.(':scope > summary') || details?.querySelector?.('summary');
+    if (!summary) return false;
+    const host = ensureRabbitMirrorToolHost(summary);
+    if (!host) return false;
+    ensureRecipeButton(root, summary, host);
+    return true;
+}
+
 function installMaintenanceRabbitForRoot(root) {
     if (!isCurrentRuntime() || !root?.querySelector) return false;
     clearOrphanedStructuredStaticDisclosureArtifacts(root);
@@ -18586,7 +18761,7 @@ function installFeedbackCatForRoot(root) {
 
 function removeEmptyRabbitMirrorToolHosts(chatRoot = getChatRoot()) {
     chatRoot?.querySelectorAll?.(`[${TOOL_ENTRY_HOST_ATTR}]`)?.forEach(host => {
-        if (!host.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RESAY_ATTR}]`)) host.remove();
+        if (!host.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}]`)) host.remove();
     });
 }
 
@@ -18642,6 +18817,11 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } 
                 console.debug('[RabbitMirror] feedback cat install recovered for one mirror:', error);
             }
         }
+        try {
+            installRecipeButtonForRoot(root);
+        } catch (error) {
+            console.debug('[RabbitMirror] recipe button install recovered for one mirror:', error);
+        }
     });
     if (feedbackEnabled) updateFeedbackCatButtonTitles();
 }
@@ -18657,6 +18837,10 @@ export function refreshMaintenanceRabbits() {
 }
 
 export function refreshFeedbackCats() {
+    installMaintenanceRabbitsInChatDom();
+}
+
+export function refreshRecipeButtons() {
     installMaintenanceRabbitsInChatDom();
 }
 
@@ -21089,17 +21273,21 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
     removeToolEntryDelegation();
     toolEntryDelegationRoot = chatRoot;
     toolEntryDelegatedPointerHandler = event => {
-        const button = event.target?.closest?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`);
+        const button = event.target?.closest?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`);
         if (!button || !chatRoot.contains(button)) return;
         event.stopPropagation();
     };
     toolEntryDelegatedClickHandler = event => {
-        const button = event.target?.closest?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`);
+        const button = event.target?.closest?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`);
         if (!button || !chatRoot.contains(button)) return;
         const root = rabbitMirrorToolRootFromButton(button);
         if (!root) return;
         if (button.matches(`[${MAINTENANCE_RABBIT_ATTR}]`)) {
             handleMaintenanceRabbitClick(event, root, button);
+            return;
+        }
+        if (button.matches(`[${RECIPE_BUTTON_ATTR}]`)) {
+            handleRecipeClick(event, root, button);
             return;
         }
         handleFeedbackCatClick(event, root, button);
@@ -21205,6 +21393,18 @@ export async function initOutputSanitizer() {
     // Scheduling the same pass again 180ms later only re-scanned every historical mirror
     // during startup; later DOM changes and host events still use the coalesced scheduler.
     installMaintenanceRabbitsInChatDom();
+    if (recipeRecordedHandler) globalThis.removeEventListener?.(RECIPE_RECORDED_EVENT, recipeRecordedHandler);
+    recipeRecordedHandler = event => {
+        const index = Number(event?.detail?.messageIndex);
+        setTimeout(() => {
+            if (!isCurrentRuntime()) return;
+            const chatRoot = getChatRoot();
+            if (!chatRoot || !Number.isInteger(index) || index < 0) return;
+            const messageRoot = [...(chatRoot.querySelectorAll?.('.mes[mesid], [mesid].mes') || [])].find(node => Number(node.getAttribute?.('mesid')) === index);
+            if (messageRoot) installMaintenanceRabbitsInScope(messageRoot);
+        }, 60);
+    };
+    globalThis.addEventListener?.(RECIPE_RECORDED_EVENT, recipeRecordedHandler);
 
     try {
         const mod = await import('../../../../../script.js');
@@ -21239,6 +21439,8 @@ export async function initOutputSanitizer() {
 
 export function destroyOutputSanitizer() {
     unsubscribeOutputHostEvents();
+    if (recipeRecordedHandler) globalThis.removeEventListener?.(RECIPE_RECORDED_EVENT, recipeRecordedHandler);
+    recipeRecordedHandler = null;
     chatInstallObserver?.disconnect?.();
     chatInstallObserver = null;
     chatRootReadyObserver?.disconnect?.();
@@ -21260,6 +21462,7 @@ export function destroyOutputSanitizer() {
     removeFeedbackCatsInChatDom();
     closeMaintenanceRabbitMenu();
     closeFeedbackCatMenu();
+    closeRecipeMenu();
     removeAllInteractionDiagnosticPanels();
     document?.getElementById?.(FEEDBACK_CAT_RUNTIME_STYLE_ID)?.remove?.();
     if (globalThis.__rabbitMirrorOutputSanitizerCleanup === destroyOutputSanitizer) delete globalThis.__rabbitMirrorOutputSanitizerCleanup;

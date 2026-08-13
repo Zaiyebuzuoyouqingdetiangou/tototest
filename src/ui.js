@@ -1,14 +1,15 @@
-import { DEFAULT_VISUAL_PROMPT, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.63';
-import { clearLastCombo } from './storage.js?rmv=1.3.63';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.63';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.63';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.3.63';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.63';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.63';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.63';
+import { DEFAULT_VISUAL_PROMPT, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.66';
+import { clearLastCombo } from './storage.js?rmv=1.3.66';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.66';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.66';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.3.66';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.66';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.66';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.66';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.3.66';
 
-const SETTINGS_UI_VERSION = '1.3.62-visual-editor';
-const RUNTIME_VERSION = '1.3.63';
+const SETTINGS_UI_VERSION = '1.3.66-blacklist';
+const RUNTIME_VERSION = '1.3.66';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -58,6 +59,28 @@ function escapeHtml(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+
+function renderBlacklistSettings() {
+    const target = $('#rh_blacklist_summary');
+    if (!target.length) return;
+    const settings = getSettings();
+    const themes = blacklistEntries('theme');
+    const formats = blacklistEntries('format');
+    const stats = blacklistPoolStats();
+    const row = item => `<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid color-mix(in srgb,currentColor 10%,transparent);">
+      <span style="min-width:0;flex:1;overflow-wrap:anywhere;">${escapeHtml(item.id)} ${escapeHtml(item.title)}</span>
+      <button type="button" class="menu_button rh-blacklist-remove" data-kind="${escapeHtml(item.kind)}" data-id="${escapeHtml(item.id)}" style="padding:2px 7px;min-height:24px;">解除</button>
+    </div>`;
+    const section = (title, items) => `<div style="margin-top:7px;"><div style="font-weight:700;font-size:11px;opacity:.74;margin-bottom:2px;">${title}（${items.length}）</div>${items.length ? items.map(row).join('') : '<div style="opacity:.55;font-size:11px;padding:3px 0;">暂无</div>'}</div>`;
+    const warnings = [];
+    if (stats.themePoolEmpty) warnings.push('主题 / 元素候选已全部加入黑名单，随机主题将没有候选。');
+    if (stats.formatPoolEmpty) warnings.push('展现形式候选已全部加入黑名单，随机形式将没有候选。');
+    target.html(`<div style="font-size:11px;line-height:1.5;opacity:.78;">当前${settings.blacklistEnabled !== false ? '启用' : '暂停'}；主题 / 元素 ${themes.length}/${stats.themeTotal}，展现形式 ${formats.length}/${stats.formatTotal}。黑名单只过滤随机抽取，不向模型追加任何 Prompt。</div>
+      ${warnings.length ? `<div style="margin-top:5px;color:#d97706;font-size:11px;line-height:1.45;">${warnings.map(escapeHtml).join('<br>')}</div>` : ''}
+      ${section('主题 / 元素', themes)}
+      ${section('展现形式', formats)}`);
 }
 
 function independentApiProfileLabel(diagnostic) {
@@ -138,6 +161,8 @@ function renderTokenMeter(record = getLastRabbitMirrorTokenRecord()) {
 
 function attachTokenMeterListener() {
     try { globalThis.__rabbitMirrorTokenMeterUiCleanup?.(); } catch {}
+    try { globalThis.__rabbitMirrorBlacklistUiCleanup?.(); } catch {}
+    globalThis.__rabbitMirrorBlacklistUiCleanup = null;
     const handler = event => renderTokenMeter(event?.detail || getLastRabbitMirrorTokenRecord());
     globalThis.addEventListener?.(TOKEN_METER_EVENT, handler);
     globalThis.__rabbitMirrorTokenMeterUiCleanup = () => globalThis.removeEventListener?.(TOKEN_METER_EVENT, handler);
@@ -328,6 +353,13 @@ export function initRabbitMirrorUI() {
 
           <label class="checkbox_label"><input id="rh_avoid_repeat" type="checkbox"> 10轮冷却：避免重复主题/展现形式/整体观感</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 2px 26px;opacity:.72;font-size:12px;line-height:1.45;">仅记录已经实际生成成功的兔子镜；用于避免连续复用相近的结构骨架与整体视觉家族。</div>
+
+          <div style="margin-top:12px;padding-top:10px;border-top:1px solid color-mix(in srgb,currentColor 12%,transparent);">
+            <label class="checkbox_label" style="font-weight:700;"><input id="rh_blacklist_enabled" type="checkbox"> 🚫 启用抽签黑名单</label>
+            <div class="rabbit-mirror-subnote" style="margin:-2px 0 7px 26px;opacity:.76;font-size:12px;line-height:1.5;">每面兔子镜标题旁的 🎲 会列出本轮真实抽中的主题 / 元素和展现形式。加入黑名单后，从下一轮随机抽取开始直接从候选池排除；不增加 Token。明确点菜和固定动态视觉场景仍可覆盖随机黑名单。</div>
+            <div id="rh_blacklist_summary" style="padding:8px 9px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:8px;font-size:11px;line-height:1.45;max-height:240px;overflow:auto;"></div>
+            <button id="rh_blacklist_clear" class="menu_button" type="button" style="margin-top:7px;">清空全部黑名单</button>
+          </div>
         </div>
       </details>
 
@@ -429,6 +461,10 @@ export function initRabbitMirrorUI() {
     const independentDiagnosticListener = event => renderIndependentApiDiagnostic(event?.detail || null);
     globalThis.addEventListener?.(API_REQUEST_DIAGNOSTIC_EVENT, independentDiagnosticListener);
     globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup = () => globalThis.removeEventListener?.(API_REQUEST_DIAGNOSTIC_EVENT, independentDiagnosticListener);
+    try { globalThis.__rabbitMirrorBlacklistUiCleanup?.(); } catch {}
+    const blacklistListener = () => { checked('#rh_blacklist_enabled', getSettings().blacklistEnabled !== false); renderBlacklistSettings(); };
+    globalThis.addEventListener?.(BLACKLIST_CHANGED_EVENT, blacklistListener);
+    globalThis.__rabbitMirrorBlacklistUiCleanup = () => globalThis.removeEventListener?.(BLACKLIST_CHANGED_EVENT, blacklistListener);
     checked('#rh_feedback_cat', settings.feedbackCatEnabled);
     checked('#rh_maintenance_rabbit', settings.maintenanceRabbitEnabled);
     checked('#rh_maintenance_auto_safe', settings.maintenanceRabbitAutoSafeEnabled);
@@ -438,6 +474,8 @@ export function initRabbitMirrorUI() {
     checked('#rh_creative_expansion', settings.creativeExpansionMode);
     checked('#rh_force_visual_scenery', settings.forceVisualScenery);
     checked('#rh_avoid_repeat', settings.avoidRepeat);
+    checked('#rh_blacklist_enabled', settings.blacklistEnabled !== false);
+    renderBlacklistSettings();
     checked('#rh_memory_scan_enabled', settings.memoryScanEnabled);
     checked('#rh_visual_prompt_enabled', settings.visualPromptEditingEnabled);
     $('#rh_visual_prompt').val(settings.visualPrompt ?? DEFAULT_VISUAL_PROMPT);
@@ -571,6 +609,25 @@ export function initRabbitMirrorUI() {
     $('#rh_creative_expansion').on('change', e => updateSettings({ creativeExpansionMode: e.target.checked }));
     $('#rh_force_visual_scenery').on('change', e => updateSettings({ forceVisualScenery: e.target.checked }));
     $('#rh_avoid_repeat').on('change', e => updateSettings({ avoidRepeat: e.target.checked }));
+    $('#rh_blacklist_enabled').on('change', e => {
+        setBlacklistEnabled(e.target.checked);
+        renderBlacklistSettings();
+        refreshRecipeButtons();
+        toastr?.info?.(e.target.checked ? '抽签黑名单已启用：从下一轮随机抽取开始排除名单项目。' : '抽签黑名单已暂停：名单保留，但随机抽取暂不排除。');
+    });
+    $('#rh_blacklist_summary').on('click', '.rh-blacklist-remove', function () {
+        const kind = String($(this).data('kind') || '') === 'format' ? 'format' : 'theme';
+        const id = String($(this).data('id') || '');
+        if (removeBlacklistItem(kind, id)) toastr?.success?.(`已解除黑名单：${id}`);
+        renderBlacklistSettings();
+        refreshRecipeButtons();
+    });
+    $('#rh_blacklist_clear').on('click', () => {
+        clearBlacklist('all');
+        renderBlacklistSettings();
+        refreshRecipeButtons();
+        toastr?.success?.('已清空全部抽签黑名单');
+    });
 
     $('#rh_copy_regex').on('click', async () => {
         try {
@@ -617,6 +674,8 @@ export function destroyRabbitMirrorUI() {
     }
     uiMountRetryCount = 0;
     try { globalThis.__rabbitMirrorTokenMeterUiCleanup?.(); } catch {}
+    try { globalThis.__rabbitMirrorBlacklistUiCleanup?.(); } catch {}
+    globalThis.__rabbitMirrorBlacklistUiCleanup = null;
     globalThis.__rabbitMirrorTokenMeterUiCleanup = null;
     try { globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup?.(); } catch {}
     globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup = null;
