@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.59';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.59';
+import { getSettings } from './settings.js?rmv=1.3.61';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.61';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.59';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.59';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.59';
+} from './feedbackCat.js?rmv=1.3.61';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.61';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.61';
 
 
-const RUNTIME_VERSION = '1.3.59';
+const RUNTIME_VERSION = '1.3.61';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -2214,7 +2214,7 @@ function findExclusiveStackedStateCandidates(root) {
     return candidates;
 }
 
-// 1.3.59: historical independent mirrors may already carry the persisted
+// 1.3.61: historical independent mirrors may already carry the persisted
 // exclusive-stacked-state ownership markers from an older runtime. 1.3.57 made
 // the complete interaction library lazy, so a version upgrade must not rely on
 // re-running the whole detector merely to apply a later structural layout fix.
@@ -2252,7 +2252,7 @@ export function repairRabbitMirrorPersistedExclusiveGridSpan(root) {
         if (controls.length < 2) continue;
         const inputMap = new Map(controls.map(input => [input, new Set()]));
 
-        // If a previous 1.3.59 pass already wrote the exact full-span value,
+        // If a previous 1.3.61 pass already wrote the exact full-span value,
         // keep it without making the authored-placement guard fail on itself.
         const alreadyFullSpan = panels.every(panel => {
             const inline = String(panel.getAttribute?.('style') || '').toLowerCase();
@@ -11282,7 +11282,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.59-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.61-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -12250,6 +12250,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         getRawAssistantMessageForRenderedRoot(root),
     );
     const mobileLayout = inspectMaintenanceMobileLayout(root);
+    const viewportLayout = inspectMaintenanceViewportLayout(root);
     const nestedDetailsPopupCandidateCount = findNestedDetailsPopupClippingCandidates(root).length;
     const mobileInlineAnnotationCandidateCount = findMobileInlineAnnotationCandidates(root).length;
     const structuredStaticDisclosureCandidateCount = findStructuredStaticDisclosureCandidates(root).length;
@@ -12395,7 +12396,8 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `内部details弹出结果裁切=${nestedDetailsPopupCandidateCount} repaired=${root.getAttribute?.(NESTED_DETAILS_POPUP_COUNT_ATTR) || '0'}`,
         `手机端行内批注=${mobileInlineAnnotationCandidateCount} repaired=${root.getAttribute?.(MOBILE_INLINE_ANNOTATION_COUNT_ATTR) || '0'}`,
         `动态视觉长正文越界=${mobileLayout.visualSceneryOverflowCount || 0} repaired=${root.getAttribute?.(VISUAL_SCENERY_MOBILE_OVERFLOW_COUNT_ATTR) || '0'}`,
-        `repairScope=${root.getAttribute?.(MOBILE_LAYOUT_SCOPE_ATTR) || '(无)'} patched=${root.getAttribute?.(MOBILE_LAYOUT_RESCUE_COUNT_ATTR) || '0'}`,
+        `当前窗口压窄=${viewportLayout.squeezedCount || 0} 裁切=${viewportLayout.overflowCount || 0} x=${viewportLayout.overflowXCount || 0} y=${viewportLayout.overflowYCount || 0} pointer=${viewportLayout.pointerBlockedCount || 0}`,
+        `repairScope=${root.getAttribute?.(MOBILE_LAYOUT_SCOPE_ATTR) || '(无)'} mobilePatched=${root.getAttribute?.(MOBILE_LAYOUT_RESCUE_COUNT_ATTR) || '0'} viewportPatched=${root.getAttribute?.(VIEWPORT_LAYOUT_COUNT_ATTR) || '0'}`,
         '',
         '[捕获事件]',
     ];
@@ -14336,6 +14338,7 @@ function buildMaintenanceFindings(root, {
     nestedDetailsPopupCandidateCount = 0,
     mobileInlineAnnotationCandidateCount = 0,
     mobileLayout = null,
+    viewportLayout = null,
 } = {}) {
     const findings = [];
     const add = finding => findings.push(createMaintenanceFinding(finding));
@@ -14428,6 +14431,22 @@ function buildMaintenanceFindings(root, {
                 `stateContent=${Number(mobileLayout?.stateContentCount) || 0}`,
             ],
             confidence: 0.93,
+        });
+    }
+
+    if ((Number(viewportLayout?.candidateCount) || 0) > 0) {
+        add({
+            id: 'viewport-layout-squeezed-or-clipped', stage: 'visibility', mode: 'text',
+            label: `检测到 ${Number(viewportLayout?.candidateCount) || 0} 处当前窗口正文被异常压窄或被裁切`,
+            evidence: [
+                `viewportWidth=${Number(viewportLayout?.viewportWidth) || 0}`,
+                `squeezed=${Number(viewportLayout?.squeezedCount) || 0}`,
+                `overflow=${Number(viewportLayout?.overflowCount) || 0}`,
+                `overflowX=${Number(viewportLayout?.overflowXCount) || 0}`,
+                `overflowY=${Number(viewportLayout?.overflowYCount) || 0}`,
+                `pointerBlocked=${Number(viewportLayout?.pointerBlockedCount) || 0}`,
+            ],
+            confidence: 0.97,
         });
     }
 
@@ -14714,6 +14733,13 @@ function inspectMaintenanceRabbit(root) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance mobile layout inspection skipped:', error);
     }
+    let viewportLayout = { candidateCount: 0, squeezedCount: 0, overflowCount: 0, overflowXCount: 0, overflowYCount: 0, pointerBlockedCount: 0, viewportWidth: Number(globalThis.innerWidth || 0) };
+    try {
+        viewportLayout = inspectMaintenanceViewportLayout(root);
+    } catch (error) {
+        partialInspection = true;
+        console.debug('[RabbitMirror] maintenance viewport layout inspection skipped:', error);
+    }
     let languageBalance = auditVisibleLanguageBalanceText('');
     try {
         languageBalance = rabbitMirrorLanguageBalance(root);
@@ -14730,6 +14756,7 @@ function inspectMaintenanceRabbit(root) {
         nestedDetailsPopupCandidateCount,
         mobileInlineAnnotationCandidateCount,
         mobileLayout,
+        viewportLayout,
     });
     const repairPlan = maintenanceRepairModesForFindings(findings);
     if (findings.length) {
@@ -14745,6 +14772,7 @@ function inspectMaintenanceRabbit(root) {
             nestedDetailsPopupCandidateCount,
             mobileInlineAnnotationCandidateCount,
             mobileLayout,
+            viewportLayout,
             languageBalance,
         };
     }
@@ -14762,6 +14790,7 @@ function inspectMaintenanceRabbit(root) {
             nestedDetailsPopupCandidateCount,
             mobileInlineAnnotationCandidateCount,
             mobileLayout,
+            viewportLayout,
             languageBalance,
         };
     }
@@ -14787,6 +14816,7 @@ function inspectMaintenanceRabbit(root) {
             nestedDetailsPopupCandidateCount,
             mobileInlineAnnotationCandidateCount,
             mobileLayout,
+            viewportLayout,
             languageBalance,
         };
     }
@@ -14805,6 +14835,7 @@ function inspectMaintenanceRabbit(root) {
         nestedDetailsPopupCandidateCount,
         mobileInlineAnnotationCandidateCount,
         mobileLayout,
+        viewportLayout,
         languageBalance,
     };
 }
@@ -17144,6 +17175,253 @@ function installMaintenanceMobileLayoutRescue(root) {
     return count;
 }
 
+// ---------------------------------------------------------------------------
+// 1.3.61: 当前视口“被压窄正文 / 长内容裁切”急救。
+//
+// 1.3.60 首次补上宽屏实测，但仍有三个缺口：只修当前可见 panel、滚动属性从未真正
+// 标记、以及只看 inline grid placement 容易把作者有意的窄栏误判。本版收紧为：
+// 1) 只在真实几何证据足够强时跨满 Grid；2) 已识别的互斥状态 panel 同组一起修；
+// 3) 对真实 overflow:hidden/clip 且内容超出容器的正文恢复可滚动；4) 诊断能看到这些候选。
+// ---------------------------------------------------------------------------
+const VIEWPORT_LAYOUT_RESCUE_STYLE_ATTR = 'data-rabbit-mirror-viewport-layout-rescue';
+const VIEWPORT_LAYOUT_COUNT_ATTR = 'data-rabbit-mirror-viewport-layout-count';
+const VIEWPORT_LAYOUT_SPAN_ATTR = 'data-rm-squeezed-span';
+const VIEWPORT_LAYOUT_SCROLL_ATTR = 'data-rm-squeezed-scroll';
+const VIEWPORT_LAYOUT_SCROLL_Y_ATTR = 'data-rm-squeezed-scroll-y';
+const VIEWPORT_LAYOUT_POINTER_ATTR = 'data-rm-squeezed-pointer';
+const VIEWPORT_LAYOUT_TARGET_ATTRS = Object.freeze([
+    VIEWPORT_LAYOUT_SPAN_ATTR,
+    VIEWPORT_LAYOUT_SCROLL_ATTR,
+    VIEWPORT_LAYOUT_SCROLL_Y_ATTR,
+    VIEWPORT_LAYOUT_POINTER_ATTR,
+]);
+
+// 宽屏“竖长柱”必须有非常强的几何证据，避免把正常 sidebar / 菜单 / 标签栏拉满。
+const VIEWPORT_SQUEEZE_MAX_WIDTH_PX = 320;
+const VIEWPORT_SQUEEZE_MIN_PARENT_WIDTH_PX = 480;
+const VIEWPORT_SQUEEZE_MIN_TEXT = 60;
+const VIEWPORT_SQUEEZE_MIN_RATIO = 4;
+const VIEWPORT_SQUEEZE_MAX_PARENT_FRACTION = 0.42;
+
+function viewportLayoutHasAuthoredGridPlacement(element) {
+    const inline = String(element?.getAttribute?.('style') || '').toLowerCase();
+    if (/grid-(?:column|area|row)\s*:/.test(inline)) return true;
+    const style = maintenanceSafeComputedStyle(element);
+    if (!style) return false;
+    const start = String(style.gridColumnStart || 'auto').trim().toLowerCase();
+    const end = String(style.gridColumnEnd || 'auto').trim().toLowerCase();
+    const rowStart = String(style.gridRowStart || 'auto').trim().toLowerCase();
+    const rowEnd = String(style.gridRowEnd || 'auto').trim().toLowerCase();
+    return !['', 'auto'].includes(start) || !['', 'auto'].includes(end)
+        || !['', 'auto'].includes(rowStart) || !['', 'auto'].includes(rowEnd);
+}
+
+function viewportLayoutHasAuthoredNarrowSize(element, parentWidth = 0) {
+    const inline = String(element?.getAttribute?.('style') || '').toLowerCase();
+    for (const match of inline.matchAll(/(?:^|;)\s*(width|max-width|min-width|flex-basis)\s*:\s*([^;]+)/g)) {
+        const value = String(match[2] || '').trim();
+        if (!value || /^(?:auto|none|max-content|min-content|fit-content)$/.test(value)) continue;
+        const px = maintenanceMobileLayoutLengthPx(value, Math.max(1, parentWidth));
+        // width:100% / max-width:100% 是“填满轨道”，并不代表作者想要窄栏；只有显式约束到
+        // 父容器一半以下、且绝对尺寸确实偏窄时才视为作者意图。
+        if (px > 0 && px <= VIEWPORT_SQUEEZE_MAX_WIDTH_PX + 20 && px < parentWidth * 0.5) return true;
+    }
+    const style = maintenanceSafeComputedStyle(element);
+    if (!style) return false;
+    const maxWidthText = String(style.maxWidth || '').trim().toLowerCase();
+    if (!maxWidthText || maxWidthText === 'none') return false;
+    const maxWidth = maintenanceMobileLayoutLengthPx(maxWidthText, Math.max(1, parentWidth));
+    return maxWidth > 0 && maxWidth <= VIEWPORT_SQUEEZE_MAX_WIDTH_PX + 20 && maxWidth < parentWidth * 0.5;
+}
+
+function viewportLayoutIntentionalNarrowHint(element) {
+    const tokens = getClassTokens(element).join(' ');
+    const role = String(element?.getAttribute?.('role') || '');
+    return /(?:^|[-_\s])(?:sidebar|side-bar|rail|toc|menu|nav|toolbar|badge|tag|legend|avatar|icon-list)(?:$|[-_\s])/i.test(`${tokens} ${role}`);
+}
+
+function viewportLayoutContentHint(element) {
+    if (!element) return false;
+    if (element.hasAttribute?.(EXCLUSIVE_STACKED_STATE_PANEL_ATTR)
+        || element.hasAttribute?.(MOBILE_LAYOUT_STATE_CONTENT_ATTR)) return true;
+    const tokens = getClassTokens(element).join(' ');
+    const role = String(element.getAttribute?.('role') || '');
+    return /(?:^|[-_\s])(?:panel|content|detail|body|text|comment|commentary|note|story|log|screen|viewport|drawer|popup|result|description|desc|article)(?:$|[-_\s])/i.test(`${tokens} ${role}`);
+}
+
+function viewportLayoutSharedStatePanels(element, parent) {
+    if (!element || !parent?.children) return [element].filter(Boolean);
+    const direct = [...parent.children].filter(child => !maintenanceMobileLayoutIsInternal(child));
+    if (element.hasAttribute?.(EXCLUSIVE_STACKED_STATE_PANEL_ATTR)) {
+        const owned = direct.filter(child => child.hasAttribute?.(EXCLUSIVE_STACKED_STATE_PANEL_ATTR));
+        return owned.length >= 2 ? owned : [element];
+    }
+    const stateInputs = direct.filter(child => child.matches?.('input[type="radio"], input[type="checkbox"]'));
+    if (stateInputs.length < 2) return [element];
+    const meaningfulTokens = getClassTokens(element)
+        .filter(token => /(?:panel|content|detail|body|comment|result|pane|view)/i.test(token));
+    if (!meaningfulTokens.length) return [element];
+    const siblings = direct.filter(child => child !== element
+        && meaningfulTokens.some(token => child.classList?.contains?.(token))
+        && maintenanceMobileLayoutTextLength(child) >= 20
+        && !viewportLayoutHasAuthoredGridPlacement(child));
+    return siblings.length ? [element, ...siblings] : [element];
+}
+
+function findViewportSqueezedCandidates(root) {
+    if (!root?.querySelectorAll) return [];
+    const found = [];
+    const seen = new Set();
+    for (const element of root.querySelectorAll('*')) {
+        if (maintenanceMobileLayoutIsInternal(element) || seen.has(element)) continue;
+        if (!maintenanceIsVisibleContentElement(element)) continue;
+        const parent = element.parentElement;
+        if (!parent || parent === root) continue;
+        const parentStyle = maintenanceSafeComputedStyle(parent);
+        const parentDisplay = String(parentStyle?.display || '').toLowerCase();
+        // 通用强修只处理 Grid。Flex 的窄栏很常见（例如 sidebar），不能仅凭几何擅自拉满。
+        if (parentDisplay !== 'grid' && parentDisplay !== 'inline-grid') continue;
+        if (viewportLayoutHasAuthoredGridPlacement(element) || viewportLayoutIntentionalNarrowHint(element)) continue;
+
+        const rect = maintenanceMobileLayoutRect(element);
+        const parentRect = maintenanceMobileLayoutRect(parent);
+        if (!rect || !parentRect || rect.width <= 0 || rect.height <= 0) continue;
+        if (parentRect.width < VIEWPORT_SQUEEZE_MIN_PARENT_WIDTH_PX) continue;
+        if (rect.width >= VIEWPORT_SQUEEZE_MAX_WIDTH_PX) continue;
+        if (rect.width >= parentRect.width * VIEWPORT_SQUEEZE_MAX_PARENT_FRACTION) continue;
+        if (viewportLayoutHasAuthoredNarrowSize(element, parentRect.width)) continue;
+        if (maintenanceMobileLayoutTextLength(element) < VIEWPORT_SQUEEZE_MIN_TEXT) continue;
+        if (rect.height / Math.max(1, rect.width) < VIEWPORT_SQUEEZE_MIN_RATIO) continue;
+        const writingMode = String(maintenanceSafeComputedStyle(element)?.writingMode || '').toLowerCase();
+        if (writingMode && !writingMode.startsWith('horizontal')) continue;
+        // 只修最外层被压窄的那一个，避免父子同时改写。
+        if (found.some(item => item.element.contains?.(element))) continue;
+        const group = viewportLayoutSharedStatePanels(element, parent);
+        for (const candidate of group) {
+            if (!candidate || seen.has(candidate) || viewportLayoutHasAuthoredGridPlacement(candidate)) continue;
+            seen.add(candidate);
+            found.push({ element: candidate, reason: 'grid-span' });
+        }
+    }
+    return found;
+}
+
+function findViewportOverflowCandidates(root) {
+    if (!root?.querySelectorAll) return [];
+    const found = [];
+    for (const element of root.querySelectorAll('*')) {
+        if (maintenanceMobileLayoutIsInternal(element) || !maintenanceIsVisibleContentElement(element)) continue;
+        const textLength = maintenanceMobileLayoutTextLength(element);
+        if (textLength < 40) continue;
+        const style = maintenanceSafeComputedStyle(element);
+        if (!style) continue;
+        const position = String(style.position || '').toLowerCase();
+        if (position === 'absolute' || position === 'fixed') continue;
+        const clientWidth = Number(element.clientWidth || 0);
+        const clientHeight = Number(element.clientHeight || 0);
+        if (clientWidth <= 2 || clientHeight <= 2) continue;
+        const overflow = String(style.overflow || '').toLowerCase();
+        const overflowX = String(style.overflowX || overflow).toLowerCase();
+        const overflowY = String(style.overflowY || overflow).toLowerCase();
+        const clippedX = /(?:hidden|clip)/.test(overflowX) && Number(element.scrollWidth || 0) > clientWidth + 4;
+        const clippedY = /(?:hidden|clip)/.test(overflowY) && Number(element.scrollHeight || 0) > clientHeight + 6;
+        if (clippedX && !clippedY && maintenanceHasIntentionalMarquee(element)) continue;
+        // 容器级裁切只在“正文/状态面板”或叶级文字上放开，避免把整个视觉画框变成滚动盒。
+        const directText = maintenanceDirectTextLength(element) > 0;
+        const semanticLeaf = !element.querySelector?.('div,section,article,main,aside,header,footer,ul,ol,table,figure,details,form');
+        const contentHint = viewportLayoutContentHint(element);
+        if (!contentHint && !directText && !semanticLeaf) continue;
+        const hasInteractive = !!element.querySelector?.('a[href],button,label,input,select,textarea,[role="button"],[tabindex]');
+        const explicitlyActive = element.getAttribute?.(EXCLUSIVE_STACKED_STATE_PANEL_ATTR) === 'active'
+            || element.getAttribute?.('aria-hidden') === 'false'
+            || element.hasAttribute?.(MOBILE_LAYOUT_STATE_ACTIVE_ATTR);
+        const pointerBlocked = explicitlyActive && hasInteractive && String(style.pointerEvents || '').toLowerCase() === 'none';
+        if (!clippedX && !clippedY && !pointerBlocked) continue;
+        found.push({ element, clippedX, clippedY, pointerBlocked, reason: pointerBlocked && !clippedX && !clippedY ? 'pointer' : 'overflow' });
+        if (found.length >= 24) break;
+    }
+    return found;
+}
+
+function inspectMaintenanceViewportLayout(root) {
+    const squeezed = findViewportSqueezedCandidates(root);
+    const overflow = findViewportOverflowCandidates(root);
+    return {
+        candidateCount: squeezed.length + overflow.length,
+        squeezedCount: squeezed.length,
+        overflowCount: overflow.length,
+        overflowXCount: overflow.filter(item => item.clippedX).length,
+        overflowYCount: overflow.filter(item => item.clippedY).length,
+        pointerBlockedCount: overflow.filter(item => item.pointerBlocked).length,
+        viewportWidth: Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0)),
+    };
+}
+
+function maintenanceViewportLayoutCss(scopeToken) {
+    const scope = `[${MOBILE_LAYOUT_SCOPE_ATTR}="${scopeToken}"]`;
+    return `
+${scope} [${VIEWPORT_LAYOUT_SPAN_ATTR}] { grid-column: 1 / -1 !important; min-width: 0 !important; max-width: 100% !important; box-sizing: border-box !important; overflow-wrap: break-word !important; }
+${scope} [${VIEWPORT_LAYOUT_SCROLL_ATTR}] { max-width: 100% !important; overflow-x: auto !important; overscroll-behavior-inline: contain !important; -webkit-overflow-scrolling: touch !important; touch-action: pan-x pan-y !important; }
+${scope} [${VIEWPORT_LAYOUT_SCROLL_Y_ATTR}] { overflow-y: auto !important; overscroll-behavior-block: contain !important; -webkit-overflow-scrolling: touch !important; touch-action: pan-x pan-y !important; }
+${scope} [${VIEWPORT_LAYOUT_POINTER_ATTR}] { pointer-events: auto !important; }
+`;
+}
+
+function installMaintenanceViewportLayoutRescue(root) {
+    if (!root?.querySelectorAll || !root?.isConnected) return 0;
+    let scopeToken = root.getAttribute(MOBILE_LAYOUT_SCOPE_ATTR);
+    if (!scopeToken) {
+        scopeToken = maintenanceMobileLayoutCreateScopeToken();
+        root.setAttribute(MOBILE_LAYOUT_SCOPE_ATTR, scopeToken);
+    }
+    // 先撤回上一轮标记再重新测量：视口变了、状态面板换了，候选也会变。
+    for (const attr of VIEWPORT_LAYOUT_TARGET_ATTRS) {
+        root.querySelectorAll(`[${attr}]`).forEach(element => element.removeAttribute(attr));
+    }
+
+    const squeezed = findViewportSqueezedCandidates(root);
+    const overflow = findViewportOverflowCandidates(root);
+    if (!squeezed.length && !overflow.length) {
+        root.querySelector(`style[${VIEWPORT_LAYOUT_RESCUE_STYLE_ATTR}]`)?.remove();
+        root.removeAttribute(VIEWPORT_LAYOUT_COUNT_ATTR);
+        return 0;
+    }
+
+    const marked = new Set();
+    for (const { element } of squeezed) {
+        maintenanceMobileLayoutMark(element, VIEWPORT_LAYOUT_SPAN_ATTR, marked);
+    }
+    for (const { element, clippedX, clippedY, pointerBlocked } of overflow) {
+        if (clippedX) maintenanceMobileLayoutMark(element, VIEWPORT_LAYOUT_SCROLL_ATTR, marked);
+        if (clippedY) maintenanceMobileLayoutMark(element, VIEWPORT_LAYOUT_SCROLL_Y_ATTR, marked);
+        if (pointerBlocked) maintenanceMobileLayoutMark(element, VIEWPORT_LAYOUT_POINTER_ATTR, marked);
+    }
+
+    let style = root.querySelector(`style[${VIEWPORT_LAYOUT_RESCUE_STYLE_ATTR}]`);
+    if (!style) {
+        style = document.createElement('style');
+        style.setAttribute(VIEWPORT_LAYOUT_RESCUE_STYLE_ATTR, 'true');
+        root.appendChild(style);
+    }
+    style.textContent = maintenanceViewportLayoutCss(scopeToken);
+    root.setAttribute(VIEWPORT_LAYOUT_COUNT_ATTR, String(marked.size));
+    return marked.size;
+}
+
+// 当前视口是否会让窄屏样式表生效。
+function maintenanceMobileRescueAppliesNow() {
+    const width = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
+    return width > 0 && width <= MOBILE_LAYOUT_BREAKPOINT_PX;
+}
+
+// 1.3.61: 窄屏预置不再在宽屏上“先写一套以后也许用得上”。只有用户此刻真的在窄屏，
+// 且只读巡逻确实发现 mobile layout 风险时才执行，避免好好的桌面镜面被自动维修污染。
+function shouldRunMaintenanceMobileLayoutRescue(root) {
+    if (!maintenanceMobileRescueAppliesNow()) return false;
+    try { return Number(inspectMaintenanceMobileLayout(root)?.candidateCount || 0) > 0; }
+    catch { return false; }
+}
+
 function maintenanceUserRepairInspection(root, mode) {
     const inspection = inspectMaintenanceRabbit(root);
     const independent = isIndependentMaintenanceRoot(root);
@@ -17160,7 +17438,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.18';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.19';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -17172,7 +17450,9 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
     // “排版不适配／内容显示不全”共用同一条手动路线：先修窄屏容器关系，再复测叶级文字裁切。
     { id: 'mobile-inline-annotation-flow-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => installMobileInlineAnnotationRescue(target) },
     { id: 'nested-details-popup-flow-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairNestedDetailsPopupClipping(target) },
-    { id: 'mobile-layout-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root ? installMaintenanceMobileLayoutRescue(target) : 0 },
+    { id: 'mobile-layout-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root && shouldRunMaintenanceMobileLayoutRescue(target) ? installMaintenanceMobileLayoutRescue(target) : 0 },
+    // 1.3.61: 与上一条配对——上一条只写 @media(max-width:640px)，这条按当前视口实测并写入无 media query 的样式表。
+    { id: 'viewport-layout-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root ? installMaintenanceViewportLayoutRescue(target) : 0 },
     { id: 'text-clipping-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMaintenanceTextClipping(target) },
     { id: 'webkit-3d-flip-compat', modes: ['interaction', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => installWebKit3DFlipRescue(target) },
     { id: 'interaction-id-scope', modes: ['source', 'interaction', 'style', 'all'], bucket: 'scope', perTarget: true, run: ({ target }) => { scopeRabbitMirrorInteractionIds(target); return 1; } },
@@ -17370,13 +17650,16 @@ function scheduleMaintenanceScopedFollowups(root, summaryText, messageIndex, mod
     // first pass. Do not repeat the complete repair library four more times: that old
     // follow-up pattern is unnecessary here and was the source of the post-click hitch.
     // Keep only one lightweight tool/persistence refresh; no observer/polling is added.
-    if (mode === 'interaction' && isIndependentMaintenanceRoot(root)) {
+    if (isIndependentMaintenanceRoot(root) && ['interaction', 'text', 'style'].includes(mode)) {
+        // 独立 API 镜面首轮维修已经直接作用于当前 live DOM。交互、排版和样式都不再
+        // 在 80/350/900/1800ms 把整套库重复跑四遍；那会让几何判定随着每次改写继续
+        // 漂移，也会放大 CPU 峰值。只做一次轻量工具/持久化刷新。
         setTimeout(() => {
             const liveRoot = findLiveMaintenanceRoot(root, summaryText, messageIndex) || root;
             if (!liveRoot?.isConnected) return;
             installMaintenanceRabbitForRoot(liveRoot);
             notifyIndependentRepairPersistence(liveRoot);
-        }, 120);
+        }, 140);
         return;
     }
     const sourceModes = new Set(['source', 'code', 'plainText', 'style', 'all']);
@@ -17792,7 +18075,20 @@ function runMaintenanceUserRepair(root, button, mode) {
                     setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.unknown, `已尝试维修；仍无法安全确认：${after.reason}`);
                 } else {
                     const autoNote = mode === 'auto' ? `（自动选择：${effectiveMode}）` : '';
-                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.idle, `维修路线已执行${autoNote}，请实际确认是否恢复正常`);
+                    // 1.3.61: 排版类修复原本无论如何都报“已执行”。窄屏样式表在宽屏上不可能生效，
+                    // 用户因此看到“修了 30 处但画面没变”，只能得出“维修兔判断错误”。这里如实说明。
+                    const executedModuleCount = id => Number((libraryResult.executed || []).find(item => item?.id === id)?.count || 0);
+                    const mobileOnlyMarks = executedModuleCount('mobile-layout-rescue');
+                    const viewportMarks = executedModuleCount('viewport-layout-rescue');
+                    const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
+                    let layoutNote = '';
+                    if (mobileOnlyMarks) {
+                        layoutNote = `；已在当前窄屏修复 ${mobileOnlyMarks} 处手机排版风险`;
+                    }
+                    if (viewportMarks) {
+                        layoutNote += `；已按当前窗口修复 ${viewportMarks} 处压窄／裁切／滚动问题`;
+                    }
+                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.idle, `维修路线已执行${autoNote}${layoutNote}，请实际确认是否恢复正常`);
                 }
                 notifyIndependentRepairPersistence(afterRoot);
             }, 360);

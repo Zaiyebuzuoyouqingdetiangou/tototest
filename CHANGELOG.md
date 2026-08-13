@@ -1,3 +1,15 @@
+# 1.3.61 TEST — 当前视口排版/裁切闭环，收紧维修兔误修
+
+- 审计 1.3.60 后保留“宽屏必须按当前实际几何判断”的方向，但修正四个遗漏：新定义的滚动属性此前从未被任何元素标记；隐藏的同组状态 panel 不会被修；宽屏自动维修仍会写入整套手机预置；新宽屏候选未进入维修兔 finding，因此自动维修并不会因为“竖长柱”主动选择排版路线。
+- `viewport-layout-rescue` 现在只对高置信 Grid 竖长正文跨满整行：父 Grid 至少 480px、正文宽度 <320px 且 <父宽 42%、文字≥60、高宽比≥4，并排除 sidebar/nav/menu/toolbar 等窄栏提示、作者显式 grid placement 和显式窄尺寸约束。
+- 已经由“叠层正文互斥”识别的状态 panel 会按同一 Grid 父层成组处理；当前可见 panel 一旦证实被压窄，同组隐藏 panel 一起获得同样的 full-span，切换选项后不会再次变成细长柱。
+- 长内容滚动真正落地：对当前可见、正文型容器中真实 `overflow:hidden/clip` 且 `scrollWidth/scrollHeight` 超出 client box 的候选，分别恢复横向/纵向 `overflow:auto`；若同一可见正文里有可交互控件但祖先 `pointer-events:none`，只在该正文容器上恢复 pointer-events。跑马灯/绝对定位视觉层仍跳过。
+- 新增当前视口排版 inspection/finding：维修兔可直接报告“当前窗口正文被异常压窄或裁切”，自动维修会因此进入 `text` 路线，而不再依赖手机诊断。全链路诊断新增当前窗口 squeeze/overflow/x/y/pointer 计数。
+- `mobile-layout-rescue` 不再在 2500px/3400px 等宽屏先写几十个 `data-rm-mobile-*` 预置。只有当前实际视口 ≤640px 且只读巡逻确实发现 mobile layout 风险时才执行；避免排版本来正常时点自动维修却把未来手机布局一起改掉。
+- 独立 API 的 text/style/interaction 手动维修不再在 80/350/900/1800ms 把整套维修库重复执行四遍，只保留一次轻量工具/持久化刷新，降低误修累积和 CPU 峰值。
+- 新 viewport layout 样式/标记正式纳入独立 API 维修持久化分类：只有带维修持久化标记的镜面保留；普通运行时缓存不会意外留下。
+- 不改独立 API 请求发送、stream、重试、超时、外置挂载、配色冷却和 1.3.57 长聊天延迟激活链。
+
 ## 1.3.59-test — persisted stacked-grid migration
 
 - Fix 1.3.58 not reaching some already-repaired historical independent mirrors. The full-width Grid logic itself was correct, but it lived only inside the complete interaction-rescue install pass; older mirrors can retain `data-rm-exclusive-stacked-state-*` ownership markers without necessarily re-entering that detector after an upgrade.

@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.3.59';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.59';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan } from './outputSanitizer.js?rmv=1.3.59';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.59';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.59';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.59';
+import { getSettings } from './settings.js?rmv=1.3.61';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.61';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan } from './outputSanitizer.js?rmv=1.3.61';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.61';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.61';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.61';
 
-const RUNTIME_VERSION = '1.3.59';
+const RUNTIME_VERSION = '1.3.61';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -1909,7 +1909,7 @@ function ensureExternalTools(host){
  stampExternalDetailsOwnership(host);
  const details=host.querySelector?.(':scope > details');
  armExternalInteractionTools(host,details);
- // 1.3.59: old independent mirrors can already contain persisted exclusive-state
+ // 1.3.61: old independent mirrors can already contain persisted exclusive-state
  // ownership markers even when the complete interaction library is not rerun on
  // this upgrade. Apply the cheap structural grid-span migration independently.
  try{ if(details) repairRabbitMirrorPersistedExclusiveGridSpan(details); }catch(error){ console.debug('[RabbitMirror] persisted stacked-grid migration skipped:',error); }
@@ -2624,7 +2624,7 @@ function stripIndependentTransientLayoutArtifacts(details){
  }
  const transientStyles=['style[data-rabbit-mirror-independent-mobile-spatial-style]'];
  if(!preserveMaintenance){
-  transientStyles.push('style[data-rabbit-mirror-mobile-layout-rescue]','style[data-rabbit-mirror-visual-scenery-overflow-rescue]');
+  transientStyles.push('style[data-rabbit-mirror-mobile-layout-rescue]','style[data-rabbit-mirror-visual-scenery-overflow-rescue]','style[data-rabbit-mirror-viewport-layout-rescue]');
  }
  details.querySelectorAll(transientStyles.join(',')).forEach(node=>node.remove());
  if(!preserveMaintenance){
@@ -2637,14 +2637,15 @@ function stripIndependentTransientLayoutArtifacts(details){
  ];
  const maintenanceAttrs=[
   'data-rabbit-mirror-mobile-layout-scope','data-rabbit-mirror-mobile-layout-count',
-  'data-rabbit-mirror-visual-scenery-overflow-count',
+  'data-rabbit-mirror-visual-scenery-overflow-count','data-rabbit-mirror-viewport-layout-count',
   'data-rm-mobile-fit','data-rm-mobile-min','data-rm-mobile-grid-collapse','data-rm-mobile-matrix-preserve',
   'data-rm-mobile-matrix-active','data-rm-mobile-matrix-cell','data-rm-mobile-flex-wrap','data-rm-mobile-state-row',
   'data-rm-mobile-flex-stack','data-rm-mobile-single-column','data-rm-mobile-fluid-title','data-rm-mobile-compact-padding',
   'data-rm-mobile-compact-gap','data-rm-mobile-media','data-rm-mobile-scroll','data-rm-mobile-break-text',
   'data-rm-mobile-state-content','data-rm-mobile-state-active','data-rm-mobile-section-stack-preserve','data-rm-mobile-screen-shell-preserve',
   'data-rm-mobile-relation-tree','data-rm-mobile-relation-branch','data-rm-mobile-relation-cell','data-rm-mobile-relation-detail',
-  'data-rm-mobile-relation-side'
+  'data-rm-mobile-relation-side',
+  'data-rm-squeezed-span','data-rm-squeezed-scroll','data-rm-squeezed-scroll-y','data-rm-squeezed-pointer'
  ];
  const attrs=preserveMaintenance ? runtimeAttrs : [...runtimeAttrs,...maintenanceAttrs];
  const nodes=[details,...details.querySelectorAll('*')];

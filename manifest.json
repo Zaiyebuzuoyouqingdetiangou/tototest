@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.3.59",
-  "css": "style.css?rmv=1.3.59",
+  "js": "index.js?rmv=1.3.61",
+  "css": "style.css?rmv=1.3.61",
   "author": "Toto",
-  "version": "1.3.59",
+  "version": "1.3.61",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版：修复已持久化旧独立 API 镜面的桌面 Grid 互斥正文窄列；保留长聊天减卡、交互维修持久化与配色重复冷却。"
+  "description": "兔子镜测试版：当前视口竖长/裁切/长文滚动修复，收紧维修兔宽屏误修；保留长聊天减卡、交互维修持久化与配色重复冷却。"
 }
