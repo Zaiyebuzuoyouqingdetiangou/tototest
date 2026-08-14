@@ -1,13 +1,13 @@
-import { getSettings } from './settings.js?rmv=1.3.76';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.76';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.3.76';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.76';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.76';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.76';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.76';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.76';
+import { getSettings } from './settings.js?rmv=1.3.77';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.77';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.3.77';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.77';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.77';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.77';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.77';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.77';
 
-const RUNTIME_VERSION = '1.3.76';
+const RUNTIME_VERSION = '1.3.77';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -1269,7 +1269,7 @@ function applyExternalHostGeometryPlan(host,plan){
  }
  if(host.dataset.rmExternalWidthMode!==plan.mode) host.dataset.rmExternalWidthMode=plan.mode;
 }
-// 1.3.76: 冷启动／缓存恢复后的一次性几何复测。
+// 1.3.77: 冷启动／缓存恢复后的一次性几何复测。
 //
 // refreshExternalHostGeometry 只在浏览器宽度真的变化时才重算（externalViewportWidthSignature
 // 守卫）。这在稳态下是对的，但页面刚加载时第一次测量往往发生在字体、头像和主题 CSS 还没
@@ -1721,13 +1721,13 @@ function scrubIndependentInteractionState(html='',baselineHtml=''){
  details.querySelectorAll('[data-rabbit-mirror-interaction-diagnostic]').forEach(node=>node.remove());
  baseline?.querySelectorAll?.('[data-rabbit-mirror-interaction-diagnostic]')?.forEach?.(node=>node.remove());
  restoreEncodedInteractionBaselines(details);
- // 1.3.76: 手动维修触发持久化时，横向裁切急救的 runtime CSS/属性同样无条件剔除，
+ // 1.3.77: 手动维修触发持久化时，横向裁切急救的 runtime CSS/属性同样无条件剔除，
  // 不受维修标志保护，避免它被序列化进缓存。
  try{ clearRabbitMirrorHorizontalClipArtifacts(details); }catch(error){ console.debug('[RabbitMirror] horizontal clip scrub skipped:',error); }
  // 1.3.52: 与 1.3.45 的排版维修保持一致——带维修兔持久化标记的记录，
  // 其结构性急救样式表属于修复结果而不是运行时污染，必须保留。
  // 运行时选中状态（input.checked / aria-pressed / data-rm-*-active）仍然照常净化。
- // 1.3.76: 横向裁切急救的产物全部是 transient runtime artifact，绝不随缓存或聊天
+ // 1.3.77: 横向裁切急救的产物全部是 transient runtime artifact，绝不随缓存或聊天
  // metadata 一起保存。这里在读取 preserveMaintenance 之前无条件清理，因此即使 root 带
  // data-rabbit-mirror-maintenance-persisted-layout="true" 也不会被保留。
  try{ clearRabbitMirrorHorizontalClipArtifacts(details); }catch(error){ console.debug('[RabbitMirror] horizontal clip artifact cleanup skipped:',error); }
@@ -1942,7 +1942,7 @@ function activateExternalInteractionTools(host,details){
   return false;
  }
 }
-// 1.3.76: 横向裁切检测必须在 details 真正展开、内部完成布局之后才有意义。
+// 1.3.77: 横向裁切检测必须在 details 真正展开、内部完成布局之后才有意义。
 // 这里完全复用 armExternalInteractionTools 既有的 ready / toggle 首次激活路径，
 // 不新增任何 toggle、resize 或 observer 监听器。
 function runExternalHorizontalClipRescue(details){

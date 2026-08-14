@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.76';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.76';
+import { getSettings } from './settings.js?rmv=1.3.77';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.77';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.76';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.76';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.76';
-import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.76';
+} from './feedbackCat.js?rmv=1.3.77';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.77';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.77';
+import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.77';
 
 
-const RUNTIME_VERSION = '1.3.76';
+const RUNTIME_VERSION = '1.3.77';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -11590,7 +11590,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.76-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.77-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -17949,26 +17949,25 @@ ${scope} [${VIEWPORT_LAYOUT_POINTER_ATTR}] { pointer-events: auto !important; }
 }
 
 // ---------------------------------------------------------------------------
-// 1.3.76: 移动端横向裁切急救。
+// 1.3.77: 移动端横向裁切急救。
 //
 // 目标只有一种形态：窄屏下确实存在横向内容溢出，而最近的祖先用 overflow-x:hidden/clip
 // 把它裁掉了，于是用户既看不到完整内容、也无法横向滚动。
 //
-// 这条路线刻意不覆盖"外置几何把整面镜子量窄了"——那是 1.3.76 的几何复测负责的问题，
+// 这条路线刻意不覆盖"外置几何把整面镜子量窄了"——那是 1.3.77 的几何复测负责的问题，
 // 让排版急救去替几何擦屁股只会掩盖真正的故障点。
 //
 // 全部产物都是 transient：不写任何持久化 marker，也不做 rehydrate。每次挂载重新按
 // scrollWidth/clientWidth 实测即可自然重建，不会出现"标记还在但能力没恢复"的状态。
 // ---------------------------------------------------------------------------
 const HCLIP_SCOPE_ATTR = 'data-rm-hclip-scope';
-const HCLIP_CONTENT_ATTR = 'data-rm-hclip-content';
 const HCLIP_SCROLLER_ATTR = 'data-rm-hclip-scroller';
 const HCLIP_KEEP_Y_ATTR = 'data-rm-hclip-keep-y';
 const HCLIP_REPORT_ATTR = 'data-rm-hclip-report';
 const HCLIP_STYLE_ATTR = 'data-rabbit-mirror-horizontal-clip-rescue';
 // 所有 transient 产物共用这个前缀，便于无条件清理。
 const HCLIP_TRANSIENT_ATTRS = Object.freeze([
-    HCLIP_SCOPE_ATTR, HCLIP_CONTENT_ATTR, HCLIP_SCROLLER_ATTR, HCLIP_KEEP_Y_ATTR, HCLIP_REPORT_ATTR,
+    HCLIP_SCOPE_ATTR, HCLIP_SCROLLER_ATTR, HCLIP_KEEP_Y_ATTR, HCLIP_REPORT_ATTR,
 ]);
 
 const HCLIP_BREAKPOINT_PX = 640;
@@ -18165,8 +18164,6 @@ function inspectHorizontalClip(root) {
 function maintenanceHorizontalClipCss(scopeToken) {
     const scope = `[${HCLIP_SCOPE_ATTR}="${scopeToken}"]`;
     return `
-${scope} [${HCLIP_CONTENT_ATTR}] { min-width: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
-${scope} [${HCLIP_CONTENT_ATTR}] > * { min-width: 0 !important; }
 ${scope} [${HCLIP_SCROLLER_ATTR}] { overflow-x: auto !important; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
 ${scope} [${HCLIP_SCROLLER_ATTR}][${HCLIP_KEEP_Y_ATTR}="hidden"] { overflow-y: hidden !important; }
 ${scope} [${HCLIP_SCROLLER_ATTR}][${HCLIP_KEEP_Y_ATTR}="clip"] { overflow-y: clip !important; }
@@ -18224,20 +18221,11 @@ export function installMaintenanceHorizontalClipRescue(root) {
             scrollWidth: plan.scrollWidth,
             clientWidth: plan.clientWidth,
         };
-        // 第一层：先修内容自身的可收缩性。
-        for (const item of plan.content) item.element.setAttribute(HCLIP_CONTENT_ATTR, 'true');
-        const afterContentFix = hclipOverflowAmount(plan.container);
-        if (afterContentFix < HCLIP_MIN_OVERFLOW_PX) {
-            report.repaired += 1;
-            report.targets.push({
-                stage: 'content-only',
-                target: hclipElementPath(plan.container),
-                before,
-                after: { ...before, scrollWidth: Number(plan.container.scrollWidth || 0), clientWidth: Number(plan.container.clientWidth || 0) },
-            });
-            continue;
-        }
-        // 第二层：仍有明确横向裁切，才改最近的裁切祖先，且只动 overflow-x。
+        // 1.3.77 hotfix: 不再改写正文／视觉组件自身的 width、max-width 或 min-width。
+        // 1.3.76 的 content-shrink 第一步会把模型有意设置的固定宽度视觉舞台压成父容器宽度，
+        // 在纯外置手机布局里形成“标题正常、正文突然变窄”的回归。
+        // 既然已经有真实横向溢出 + 有意义内容贡献者 + 最近裁切祖先这三重证据，
+        // 最保守的修复就是只让该裁切祖先横向可滚动，完整保留作者原本的内容几何。
         const keepY = hclipPreservedOverflowY(plan.style);
         plan.container.setAttribute(HCLIP_SCROLLER_ATTR, 'true');
         plan.container.setAttribute(HCLIP_KEEP_Y_ATTR, keepY);
@@ -18347,7 +18335,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
     { id: 'mobile-layout-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root && shouldRunMaintenanceMobileLayoutRescue(target) ? installMaintenanceMobileLayoutRescue(target) : 0 },
     // 1.3.62: 与上一条配对——上一条只写 @media(max-width:640px)，这条按当前视口实测并写入无 media query 的样式表。
     { id: 'viewport-layout-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root ? installMaintenanceViewportLayoutRescue(target) : 0 },
-    // 1.3.76: 仅处理「确有横向溢出且被最近祖先裁掉」这一种形态，产物全部为 transient。
+    // 1.3.77: 仅处理「确有横向溢出且被最近祖先裁掉」这一种形态，产物全部为 transient。
     { id: 'horizontal-clip-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root ? installMaintenanceHorizontalClipRescue(target) : 0 },
     { id: 'text-clipping-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMaintenanceTextClipping(target) },
     { id: 'webkit-3d-flip-compat', modes: ['interaction', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => installWebKit3DFlipRescue(target) },
@@ -19284,7 +19272,7 @@ function ensureFeedbackCatButton(root, summary, host) {
 function ensureRecipeButton(root, summary, host) {
     const existing = [...summary.querySelectorAll?.(`[${RECIPE_BUTTON_ATTR}]`) || []];
     const recipe = rabbitMirrorRecipeForRoot(root);
-    // 1.3.76: 没有记录时保留按钮，只改提示语。
+    // 1.3.77: 没有记录时保留按钮，只改提示语。
     // 1.3.65 收紧了 getRabbitMirrorRecipe：Swipe 已知时只认该 Swipe 自己的精确记录，
     // 避免上一个 Swipe 的配方冒充当前正文。那个收紧是对的，但这里当时直接把按钮删掉，
     // 于是所有没有精确记录的兔子镜（尤其是记录功能上线前生成的全部历史镜面）看起来像
