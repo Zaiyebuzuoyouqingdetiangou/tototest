@@ -1,3 +1,27 @@
+## 1.3.76 TEST — 移动端横向裁切急救（单独一版，只修有真实裁切证据的最近祖先）
+
+- 只处理一种形态：窄屏下确实存在横向内容溢出，而最近的祖先用 `overflow-x:hidden/clip` 把它裁掉，用户既看不到完整内容也无法横向滚动。不覆盖「外置几何把整面镜子量窄」——那是 1.3.75 几何复测的职责。
+- 触发条件按序收紧：手机窄视口（≤640px）→ root 可见 → 语义候选预筛（跳过插件自身 UI 与无子元素容器，上限 140）→ 真实几何溢出（`scrollWidth - clientWidth ≥ 8px`，不靠 CSS 猜）→ 最近裁切祖先 computed `overflow-x` 必须为 `hidden`/`clip`。`getComputedStyle` 只对确认溢出的少数容器调用，不对全部 descendants 无差别执行布局读。
+- 装饰判定要求组合证据，不使用单信号 OR：必须同时满足脱离文档流（absolute/fixed）、无有意义文本（压缩后 <12 字）、无交互后代、无正文／状态语义，再叠加 `pointer-events:none` 或明显小装饰尺寸（≤64px）才升级为高置信装饰。`img/video/iframe/canvas/svg/picture/object/embed` 及包含它们的容器一律按内容处理，不因无文本判装饰。
+- 确有溢出但找不到任何明确的有意义正文越界贡献者时保守跳过，不改动 `overflow`，并计入新增的 `horizontalClipSkippedUncertain`。
+- 修复分两层且顺序保守：先只修内容自身的可收缩性（`min-width:0` / `max-width:100%` / `box-sizing:border-box` / 子项 `min-width:0`）；若真实溢出已消除则停止，不碰祖先。仅在仍存在明确横向裁切时才改最近裁切祖先，且只改 `overflow-x:auto`，按原 computed 值保留 `overflow-y`（`hidden`/`clip`/`scroll`/`auto` 原样保留，规范上已计算为 auto 的 `visible` 归一到 auto），绝不把整个 `overflow:hidden` 粗暴改成 `overflow:auto`，也不解除纵向裁切。
+- 幂等：每次执行先整体撤回上一轮 transient 产物再重新实测，连跑多次不会继续叠加。
+- 完全不持久化：不写任何 marker、不做 rehydrate，因此不会出现「marker 还在但修复能力没恢复」。全部产物统一使用专用前缀 `data-rm-hclip-*` 与独立的 `<style data-rabbit-mirror-horizontal-clip-rescue>`，不复用既有 mobile / viewport rescue 的持久化标记。
+- `stripIndependentTransientLayoutArtifacts()` 在读取 `preserveMaintenance` 之前无条件清理这些产物，因此即使 root 带 `data-rabbit-mirror-maintenance-persisted-layout="true"` 也不会被保留；手动维修触发的持久化路径（`scrubIndependentInteractionState()`）同样无条件剔除，不会被序列化进缓存或聊天 metadata。
+- 折叠的历史镜面不做深度几何扫描：已展开的 ready 镜面立即检测，折叠镜面复用 `armExternalInteractionTools()` 既有的 ready / toggle 首次激活路径，在真正展开后才检测。不新增 toggle、resize、MutationObserver、ResizeObserver 或轮询。
+- 诊断新增：`horizontalClipCandidates`、`horizontalClipRepaired`、`horizontalClipSkippedDecorative`、`horizontalClipSkippedExistingScroller`、`horizontalClipSkippedUncertain`，并输出实际修改的祖先定位、修复前后的 `overflow-x/y` 与 `scrollWidth/clientWidth`。
+- 不改 Prompt、不增加 Token、不新增 API 请求；不改动 desktop 健康布局；未修改任何既有维修兔模块，仅新增 `horizontal-clip-rescue` 一条。
+
+## 1.3.75 TEST — 外置几何冷启动复测 / 🎲 按钮保留 / 本地状态生命周期三项修复
+
+- 修复「退出很久重新进入变窄、出下一条回复又自己恢复」。`runQueuedExternalHostGeometryRefresh()` 的宽度签名守卫只在浏览器宽度真的变化时才允许重算几何，这在稳态下正确；但页面刚加载时第一次测量常常发生在字体、头像与主题 CSS 尚未稳定的时刻，量到偏窄的 `.mes_text` 盒子并写入 `--rm-external-lane-width` 后，`innerWidth` 一直不变，这个偏窄值再也不会被更正，直到下一条回复重新挂载 host。
+- 新增 `scheduleExternalHostGeometrySettleRecheck()`：挂载／缓存恢复完成后做最多两次定点复测（420ms、1500ms）。首次复测结果与首测一致即停止，不安排第二次；每个 host 每次挂载只安排一轮，重复调用 `ensureExternalTools()` 不会累积定时器。首测被推翻时同步让宽度签名失效，避免后续 resize 因签名相同被跳过。不新增 MutationObserver、ResizeObserver、addEventListener 或轮询。
+- 🎲 按钮在没有抽签记录时不再消失。1.3.65 收紧 `getRabbitMirrorRecipe()`（Swipe 已知时只认该 Swipe 的精确记录，避免上一个 Swipe 的配方冒充当前正文）是正确的，但 `ensureRecipeButton()` 当时直接删除按钮，导致所有没有精确记录的兔子镜——尤其是记录功能上线前生成的全部历史镜面——看起来像功能整个消失。现在按钮保留，标题改为「本轮抽签：这一面没有可读取的记录」，点开沿用既有提示。
+- 修复 stale pending 污染冷却历史。`pendingTs` 此前只写入、从不读取；生成被取消、请求失败或页面刷新后，pending 会一直留在 localStorage，之后任意一面兔子镜渲染完成都会把这个从未生成过的组合当作本轮结果写进正式历史，并把新镜面的视觉指纹贴到旧组合上。现改为双判据：页面会话标记不同即确定丢弃；同会话内超过 12 小时上限兜底丢弃。该上限远大于任何仍可能完成的生成（副 API 单次 5 分钟 × 最多 12 次 profile 回退 ≈ 60 分钟；跟随模式无自有超时），宁可漏判也不误杀慢请求。
+- 修复 scoped store 的读路径写放大与外来 chat 桶永不回收。读路径改为只做内存过滤、不再写盘；回收挂到 `recordGenerationAttempt()` / `setDirectiveScopedPick()` 本来就要写盘的时刻，每次额外回收一个已整桶过期的外来 chat，无需定时器且回收速度与使用频率成正比。
+- 修复 `writeScopedStore()` 配额失败后无恢复。仅在确认为容量类错误（QuotaExceededError / NS_ERROR_DOM_QUOTA_REACHED / code 22 / 1014）时丢弃最旧的外来 chat 桶并重试一次；SecurityError、存储被禁用等非容量错误保持原样告警返回，不删除任何数据、不重试。永不动当前 chat 的数据。
+- 不改 Prompt、不增加 Token、不新增 API 请求；不改独立 API 请求／stream／重试／超时；未改动维修兔排版与交互链、配色冷却、黑名单候选池。
+
 ## 1.3.74 TEST — 动画移动交互与维修工具重建
 
 - 修复持续旋转/移动的小型 label 在部分 Safari/WebView 中 pointerdown 与 pointerup 之间发生位移，最终 click 被浏览器丢弃、导致隐藏 radio/checkbox 无法切换的问题。仅对“小命中区 + 动画移动 + checked 已证明存在第二层内容”的高置信结构启用 pointer 补偿；正常 click 成功时不重复触发。

@@ -8,6 +8,71 @@ const MAX_DIRECTIVE_PICKS_PER_CHAT = 24;
 const ATTEMPT_TTL_MS = 12 * 60 * 60 * 1000;
 const DIRECTIVE_PICK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+// 抽签写入 pending 后，只有真正渲染出兔子镜才会提交。若生成被取消、请求失败或页面刷新，
+// pending 会一直留在 localStorage；之后任意一面兔子镜渲染完成都会把这个从未生成过的组合
+// 当作本轮结果写进正式历史，污染冷却与避让，并把新镜子的视觉指纹贴到旧组合上。
+//
+// 页面会话标记是主判据：它在模块加载时生成且不持久化，因此上一次页面会话写入的 pending
+// 一定不等于当前值，可以确定那次生成已经不可能仍在进行。
+const PENDING_SESSION_TOKEN = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+
+// 同一次页面会话内的兜底上限。必须显著大于任何仍可能正常完成的生成：
+// 副 API 单次请求上限 5 分钟，profile 回退最多 12 次串行，理论最坏约 60 分钟；
+// 跟随模式没有自己的超时，完全跟随宿主生成生命周期。因此取与本文件既有「生成相关本地
+// 状态」同一量级的 12 小时，留出十余倍余量，宁可漏判也不误杀慢请求。真正兜住孤儿
+// pending 的是会话标记：任何漏判都会在下一次页面加载时被清掉。
+const PENDING_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+
+// 容量类错误与权限／禁用类错误必须区分：前者可以靠丢弃过期数据自救，后者丢多少都没用，
+// 删数据只会白白损失状态。
+function isStorageQuotaError(error) {
+    if (!error) return false;
+    const name = String(error.name || '');
+    const code = Number(error.code);
+    return name === 'QuotaExceededError'
+        || name === 'NS_ERROR_DOM_QUOTA_REACHED'
+        || code === 22
+        || code === 1014;
+}
+
+function scopedBucketFullyExpired(bucket, ttlMs, now) {
+    if (!Array.isArray(bucket)) return true;
+    if (!bucket.length) return true;
+    return bucket.every(item => !item || now - Number(item.ts || 0) > ttlMs);
+}
+
+// 读路径只做内存过滤，因此过期的外来 chat 桶需要一个回收出口。挂在本来就要写盘的时刻，
+// 每次只回收第一个遇到的全过期外来桶：无需定时器或轮询，回收速度与使用频率自然成正比，
+// 单次写入的额外开销也保持恒定。
+function reclaimOneExpiredForeignBucket(store, currentKey, ttlMs) {
+    if (!store || typeof store !== 'object') return '';
+    const now = Date.now();
+    for (const key of Object.keys(store)) {
+        if (key === currentKey) continue;
+        if (!scopedBucketFullyExpired(store[key], ttlMs, now)) continue;
+        delete store[key];
+        return key;
+    }
+    return '';
+}
+
+// 配额自救：丢弃最旧的外来 chat 桶（按桶内最新条目时间比较），永不动当前 chat 的数据。
+function dropOldestForeignBucket(store, currentKey) {
+    if (!store || typeof store !== 'object') return false;
+    let oldestKey = '';
+    let oldestTs = Infinity;
+    for (const key of Object.keys(store)) {
+        if (key === currentKey) continue;
+        const bucket = Array.isArray(store[key]) ? store[key] : [];
+        let newest = 0;
+        for (const item of bucket) newest = Math.max(newest, Number(item?.ts || 0));
+        if (newest < oldestTs) { oldestTs = newest; oldestKey = key; }
+    }
+    if (!oldestKey) return false;
+    delete store[oldestKey];
+    return true;
+}
+
 function hashText(text) {
     let hash = 2166136261;
     for (const char of String(text || '')) {
@@ -84,13 +149,30 @@ function readScopedStore(storageKey) {
     }
 }
 
-function writeScopedStore(storageKey, value) {
+function writeScopedStore(storageKey, value, currentKey = '') {
+    const store = value && typeof value === 'object' ? value : {};
     try {
-        localStorage.setItem(storageKey, JSON.stringify(value && typeof value === 'object' ? value : {}));
+        localStorage.setItem(storageKey, JSON.stringify(store));
         return true;
     } catch (error) {
-        console.warn('[RabbitMirror] Failed to store scoped generation state:', error);
-        return false;
+        // 只有容量类错误才值得靠丢数据自救。SecurityError、存储被禁用、权限异常等
+        // 丢多少桶都不会成功，此时删除数据是纯损失。
+        if (!isStorageQuotaError(error)) {
+            console.warn('[RabbitMirror] Failed to store scoped generation state:', error);
+            return false;
+        }
+        if (!dropOldestForeignBucket(store, currentKey)) {
+            console.warn('[RabbitMirror] Scoped generation state over quota and nothing safe to drop:', error);
+            return false;
+        }
+        // 最多重试一次：仍然失败说明不是靠丢一个桶能解决的问题。
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(store));
+            return true;
+        } catch (retryError) {
+            console.warn('[RabbitMirror] Scoped generation state still over quota after reclaim:', retryError);
+            return false;
+        }
     }
 }
 
@@ -103,14 +185,11 @@ export function getRecentGenerationAttemptIds(chatKey, limit = 10) {
     if (!key) return { themeIds: [], formatIds: [], themeGroups: [], formatGroups: [] };
     const store = readScopedStore(ATTEMPT_STORAGE_KEY);
     const now = Date.now();
+    // 读路径只做内存过滤，不写盘：读操作不应产生副作用，单条过期就整表序列化在长聊天里
+    // 也是明确的写放大。实际回收发生在 recordGenerationAttempt 本来就要写盘的时刻。
     const items = Array.isArray(store[key])
         ? store[key].filter(item => item && now - Number(item.ts || 0) <= ATTEMPT_TTL_MS)
         : [];
-    if (items.length !== (Array.isArray(store[key]) ? store[key].length : 0)) {
-        if (items.length) store[key] = items;
-        else delete store[key];
-        writeScopedStore(ATTEMPT_STORAGE_KEY, store);
-    }
     const recent = items.slice(-Math.max(1, Number(limit) || 10));
     const themeIds = new Set();
     const formatIds = new Set();
@@ -150,7 +229,8 @@ export function recordGenerationAttempt(combo, { chatKey = '', attemptId = '', d
         ts: now,
     });
     store[key] = items.slice(-MAX_ATTEMPTS_PER_CHAT);
-    return writeScopedStore(ATTEMPT_STORAGE_KEY, store);
+    reclaimOneExpiredForeignBucket(store, key, ATTEMPT_TTL_MS);
+    return writeScopedStore(ATTEMPT_STORAGE_KEY, store, key);
 }
 
 export function getDirectiveScopedPick(chatKey, directiveScopeKey) {
@@ -162,12 +242,8 @@ export function getDirectiveScopedPick(chatKey, directiveScopeKey) {
     const items = Array.isArray(store[chat])
         ? store[chat].filter(item => item && now - Number(item.ts || 0) <= DIRECTIVE_PICK_TTL_MS)
         : [];
+    // 同上：读路径无副作用，回收挂在 setDirectiveScopedPick 的写盘时刻。
     const found = items.find(item => item.scopeKey === scope) || null;
-    if (items.length !== (Array.isArray(store[chat]) ? store[chat].length : 0)) {
-        if (items.length) store[chat] = items;
-        else delete store[chat];
-        writeScopedStore(DIRECTIVE_PICK_STORAGE_KEY, store);
-    }
     return found ? { ...found } : null;
 }
 
@@ -188,7 +264,8 @@ export function setDirectiveScopedPick(chatKey, directiveScopeKey, combo) {
         ts: now,
     });
     store[chat] = items.slice(-MAX_DIRECTIVE_PICKS_PER_CHAT);
-    return writeScopedStore(DIRECTIVE_PICK_STORAGE_KEY, store);
+    reclaimOneExpiredForeignBucket(store, chat, DIRECTIVE_PICK_TTL_MS);
+    return writeScopedStore(DIRECTIVE_PICK_STORAGE_KEY, store, chat);
 }
 
 
@@ -407,7 +484,12 @@ export function getRecentInteractionFamilyCounts(limit = 5) {
 export function setPendingCombo(combo) {
     try {
         if (!combo) return;
-        const pending = { ...combo, signature: signatureOf(combo), pendingTs: Date.now() };
+        const pending = {
+            ...combo,
+            signature: signatureOf(combo),
+            pendingTs: Date.now(),
+            pendingSession: PENDING_SESSION_TOKEN,
+        };
         localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
     } catch (error) {
         console.warn('[RabbitMirror] Failed to store pending combo:', error);
@@ -420,6 +502,21 @@ export function commitPendingCombo(visualSignature = '', visualSkeleton = '', ri
         if (!raw) return;
         const pending = JSON.parse(raw);
         if (!pending || typeof pending !== 'object') return;
+
+        // pending 只对创建它的那一次生成有意义。这里判定它是否已经不可能属于当前这次提交：
+        //  1. 会话标记不同 —— 写入它的页面会话已经结束，那次生成绝无可能仍在进行；
+        //  2. 同会话内超过保守上限 —— 兜底，阈值远大于任何仍可能完成的生成；
+        //  3. 缺少时间戳 —— 无从判断新旧，按不可信处理。
+        // 命中任一条就丢弃，不写入历史：让一个从未生成过的组合进入冷却，比丢一条记录糟得多。
+        // 提交只由「某面兔子镜已渲染完成」触发，真正在途的请求不会走到这里。
+        const pendingSession = String(pending.pendingSession || '');
+        const pendingAt = Number(pending.pendingTs);
+        const staleSession = !!pendingSession && pendingSession !== PENDING_SESSION_TOKEN;
+        const staleAge = !Number.isFinite(pendingAt) || Date.now() - pendingAt > PENDING_MAX_AGE_MS;
+        if (staleSession || staleAge) {
+            localStorage.removeItem(PENDING_KEY);
+            return;
+        }
 
         const history = readHistory();
         const now = Date.now();

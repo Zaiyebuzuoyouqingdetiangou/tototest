@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.74';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.74';
+import { getSettings } from './settings.js?rmv=1.3.76';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.76';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.74';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.74';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.74';
-import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.74';
+} from './feedbackCat.js?rmv=1.3.76';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.76';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.76';
+import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.76';
 
 
-const RUNTIME_VERSION = '1.3.74';
+const RUNTIME_VERSION = '1.3.76';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -11590,7 +11590,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.74-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.76-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -12705,6 +12705,15 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `手机端行内批注=${mobileInlineAnnotationCandidateCount} repaired=${root.getAttribute?.(MOBILE_INLINE_ANNOTATION_COUNT_ATTR) || '0'}`,
         `动态视觉长正文越界=${mobileLayout.visualSceneryOverflowCount || 0} repaired=${root.getAttribute?.(VISUAL_SCENERY_MOBILE_OVERFLOW_COUNT_ATTR) || '0'}`,
         `当前窗口压窄=${viewportLayout.squeezedCount || 0} 裁切=${viewportLayout.overflowCount || 0} x=${viewportLayout.overflowXCount || 0} y=${viewportLayout.overflowYCount || 0} pointer=${viewportLayout.pointerBlockedCount || 0}`,
+        (() => {
+            let hclip = {};
+            try { hclip = JSON.parse(root.getAttribute?.(HCLIP_REPORT_ATTR) || '{}') || {}; } catch { hclip = {}; }
+            const target = Array.isArray(hclip.targets) && hclip.targets.length ? hclip.targets[0] : null;
+            const detail = target
+                ? `；目标=${target.target} 阶段=${target.stage} overflow-x ${target.before?.overflowX}→${target.after?.overflowX} overflow-y ${target.before?.overflowY}→${target.after?.overflowY} scrollWidth ${target.before?.scrollWidth}→${target.after?.scrollWidth} clientWidth ${target.before?.clientWidth}→${target.after?.clientWidth}`
+                : '';
+            return `横向裁切 horizontalClipCandidates=${hclip.candidates || 0} horizontalClipRepaired=${hclip.repaired || 0} horizontalClipSkippedDecorative=${hclip.skippedDecorative || 0} horizontalClipSkippedExistingScroller=${hclip.skippedExistingScroller || 0} horizontalClipSkippedUncertain=${hclip.skippedUncertain || 0}${detail}`;
+        })(),
         `repairScope=${root.getAttribute?.(MOBILE_LAYOUT_SCOPE_ATTR) || '(无)'} mobilePatched=${root.getAttribute?.(MOBILE_LAYOUT_RESCUE_COUNT_ATTR) || '0'} viewportPatched=${root.getAttribute?.(VIEWPORT_LAYOUT_COUNT_ATTR) || '0'}`,
         '',
         '[捕获事件]',
@@ -17939,6 +17948,316 @@ ${scope} [${VIEWPORT_LAYOUT_POINTER_ATTR}] { pointer-events: auto !important; }
 `;
 }
 
+// ---------------------------------------------------------------------------
+// 1.3.76: 移动端横向裁切急救。
+//
+// 目标只有一种形态：窄屏下确实存在横向内容溢出，而最近的祖先用 overflow-x:hidden/clip
+// 把它裁掉了，于是用户既看不到完整内容、也无法横向滚动。
+//
+// 这条路线刻意不覆盖"外置几何把整面镜子量窄了"——那是 1.3.76 的几何复测负责的问题，
+// 让排版急救去替几何擦屁股只会掩盖真正的故障点。
+//
+// 全部产物都是 transient：不写任何持久化 marker，也不做 rehydrate。每次挂载重新按
+// scrollWidth/clientWidth 实测即可自然重建，不会出现"标记还在但能力没恢复"的状态。
+// ---------------------------------------------------------------------------
+const HCLIP_SCOPE_ATTR = 'data-rm-hclip-scope';
+const HCLIP_CONTENT_ATTR = 'data-rm-hclip-content';
+const HCLIP_SCROLLER_ATTR = 'data-rm-hclip-scroller';
+const HCLIP_KEEP_Y_ATTR = 'data-rm-hclip-keep-y';
+const HCLIP_REPORT_ATTR = 'data-rm-hclip-report';
+const HCLIP_STYLE_ATTR = 'data-rabbit-mirror-horizontal-clip-rescue';
+// 所有 transient 产物共用这个前缀，便于无条件清理。
+const HCLIP_TRANSIENT_ATTRS = Object.freeze([
+    HCLIP_SCOPE_ATTR, HCLIP_CONTENT_ATTR, HCLIP_SCROLLER_ATTR, HCLIP_KEEP_Y_ATTR, HCLIP_REPORT_ATTR,
+]);
+
+const HCLIP_BREAKPOINT_PX = 640;
+// 低于这个像素差不算"真实溢出"：亚像素与滚动条宽度都会造成 1–4px 的假阳性。
+const HCLIP_MIN_OVERFLOW_PX = 8;
+// 候选容器扫描上限，避免超大镜面上做无差别布局读。
+const HCLIP_MAX_CONTAINERS = 140;
+// 有意义正文的最低压缩字符数。
+const HCLIP_MEANINGFUL_TEXT = 12;
+// 明显小装饰的尺寸上限。
+const HCLIP_DECORATIVE_MAX_PX = 64;
+
+const HCLIP_MEDIA_TAGS = new Set(['IMG', 'VIDEO', 'IFRAME', 'CANVAS', 'SVG', 'PICTURE', 'OBJECT', 'EMBED']);
+const HCLIP_INTERACTIVE_SELECTOR = 'a[href],button,input,select,textarea,label,details,summary,[role="button"],[role="link"],[role="checkbox"],[role="radio"],[role="tab"],[tabindex]:not([tabindex="-1"])';
+
+// 诊断用的可读定位串，只取标签、id、前两个 class 与在父层中的序号。
+function hclipElementPath(element) {
+    if (!element?.tagName) return '(unknown)';
+    const tag = String(element.tagName).toLowerCase();
+    const id = element.id ? `#${element.id}` : '';
+    const classes = String(element.className || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(name => `.${name}`).join('');
+    const siblings = [...(element.parentElement?.children || [])];
+    const index = siblings.indexOf(element);
+    return `${tag}${id}${classes}[${index >= 0 ? index : '?'}]`;
+}
+
+function hclipCompactText(element) {
+    return String(element?.textContent || '').replace(/\s+/g, '').length;
+}
+
+function hclipViewportWidth() {
+    return Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
+}
+
+function hclipSafeStyle(element) {
+    try { return typeof getComputedStyle === 'function' ? getComputedStyle(element) : null; }
+    catch { return null; }
+}
+
+function hclipSafeRect(element) {
+    try { return element?.getBoundingClientRect?.() || null; }
+    catch { return null; }
+}
+
+// 真实横向溢出证据。只用 scrollWidth/clientWidth，不靠 CSS 猜。
+function hclipOverflowAmount(element) {
+    const scrollWidth = Number(element?.scrollWidth || 0);
+    const clientWidth = Number(element?.clientWidth || 0);
+    if (!scrollWidth || !clientWidth) return 0;
+    return scrollWidth - clientWidth;
+}
+
+function hclipOverflowXMode(style) {
+    return String(style?.overflowX || '').trim().toLowerCase();
+}
+
+// 已经能横向滚动的容器不重复改造。
+function hclipIsExistingScroller(style) {
+    const mode = hclipOverflowXMode(style);
+    return mode === 'auto' || mode === 'scroll' || mode === 'overlay';
+}
+
+function hclipIsClipping(style) {
+    const mode = hclipOverflowXMode(style);
+    return mode === 'hidden' || mode === 'clip';
+}
+
+// 保留原纵向裁切。overflow-x 一旦不是 visible，visible 的 overflow-y 在规范上本就计算为 auto，
+// 因此这里把 visible 归一到 auto，其余原样保留，绝不把纵向一起放开或收紧。
+function hclipPreservedOverflowY(style) {
+    const mode = String(style?.overflowY || '').trim().toLowerCase();
+    if (mode === 'hidden' || mode === 'clip' || mode === 'scroll') return mode;
+    return 'auto';
+}
+
+// 高置信装饰判定。必须是组合证据，任何单一信号都不足以判定。
+// pointer-events:none 与低文本量只作为辅助证据；媒体元素不因无文本被判成装饰。
+function hclipDecorativeVerdict(element, style, rect) {
+    if (!element || !style) return 'uncertain';
+    const tag = String(element.tagName || '').toUpperCase();
+    // 媒体本身就是内容，缺文本说明不了任何事。
+    if (HCLIP_MEDIA_TAGS.has(tag) || element.querySelector?.('img,video,iframe,canvas,svg,picture,object,embed')) return 'content';
+    const position = String(style.position || '').trim().toLowerCase();
+    const detached = position === 'absolute' || position === 'fixed';
+    if (!detached) return 'content';
+    if (hclipCompactText(element) >= HCLIP_MEANINGFUL_TEXT) return 'content';
+    if (element.querySelector?.(HCLIP_INTERACTIVE_SELECTOR)) return 'content';
+    // 正文／状态语义：一旦命中就按内容处理，宁可不修也不要修错。
+    const semantic = `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('aria-label') || ''} ${element.getAttribute?.('role') || ''}`.toLowerCase();
+    if (/(panel|content|body|text|detail|result|status|state|log|entry|card|dialog|message|note|正文|内容|面板|状态|记录|说明)/.test(semantic)) return 'content';
+    // 到这里已经满足：脱离文档流 + 无有意义文本 + 无交互后代 + 无正文语义。
+    // 还需要至少一项辅助证据才升级为高置信装饰。
+    const pointerNone = String(style.pointerEvents || '').trim().toLowerCase() === 'none';
+    const width = Math.max(0, Number(rect?.width || 0));
+    const height = Math.max(0, Number(rect?.height || 0));
+    const tinyOrnament = width > 0 && height > 0 && width <= HCLIP_DECORATIVE_MAX_PX && height <= HCLIP_DECORATIVE_MAX_PX;
+    if (pointerNone || tinyOrnament) return 'decorative';
+    return 'uncertain';
+}
+
+// 找出真正越过裁切容器右边界的直接贡献者。只在确认溢出之后才做，且只看直接子元素。
+function hclipBoundaryContributors(container) {
+    const containerRect = hclipSafeRect(container);
+    if (!containerRect) return [];
+    const limit = containerRect.left + Number(container.clientWidth || containerRect.width || 0);
+    const found = [];
+    for (const child of [...(container.children || [])]) {
+        if (maintenanceMobileLayoutIsInternal(child)) continue;
+        const rect = hclipSafeRect(child);
+        if (!rect) continue;
+        const overshoot = rect.right - limit;
+        if (overshoot < HCLIP_MIN_OVERFLOW_PX && Number(child.scrollWidth || 0) - Number(child.clientWidth || 0) < HCLIP_MIN_OVERFLOW_PX) continue;
+        found.push({ element: child, style: hclipSafeStyle(child), rect, overshoot });
+    }
+    return found;
+}
+
+function hclipCollectClippingContainers(root) {
+    // 语义预筛：只看可能承载正文／交互／grid-flex 内容的容器，且跳过插件自身 UI。
+    // 这一步不做任何布局读。
+    const candidates = [];
+    for (const element of root.querySelectorAll('div,section,article,main,figure,ul,ol,table')) {
+        if (candidates.length >= HCLIP_MAX_CONTAINERS) break;
+        if (maintenanceMobileLayoutIsInternal(element)) continue;
+        if (!element.children?.length) continue;
+        candidates.push(element);
+    }
+    return candidates;
+}
+
+function inspectHorizontalClip(root) {
+    const stats = {
+        viewportWidth: hclipViewportWidth(),
+        narrow: false,
+        candidates: 0,
+        repaired: 0,
+        skippedDecorative: 0,
+        skippedExistingScroller: 0,
+        skippedUncertain: 0,
+        plans: [],
+    };
+    if (!root?.querySelectorAll || !root?.isConnected) return stats;
+    // 1) 仅手机窄视口
+    if (!stats.viewportWidth || stats.viewportWidth > HCLIP_BREAKPOINT_PX) return stats;
+    stats.narrow = true;
+    // 2) root 可见
+    const rootRect = hclipSafeRect(root);
+    if (!rootRect || rootRect.width <= 0 || rootRect.height <= 0) return stats;
+
+    // 3) 语义候选 → 4) 几何溢出（只有溢出的少数才进入 getComputedStyle）
+    for (const container of hclipCollectClippingContainers(root)) {
+        const overflow = hclipOverflowAmount(container);
+        if (overflow < HCLIP_MIN_OVERFLOW_PX) continue;
+        const style = hclipSafeStyle(container);
+        if (!style) continue;
+        // 6) 中间已有有效横向滚动容器：不重复改造
+        if (hclipIsExistingScroller(style)) { stats.skippedExistingScroller += 1; continue; }
+        // 4) 该祖先 computed overflow-x 必须是 hidden/clip；只有纵向溢出不处理
+        if (!hclipIsClipping(style)) continue;
+        stats.candidates += 1;
+
+        // 5) 判定越界贡献者是正文还是纯装饰
+        const contributors = hclipBoundaryContributors(container);
+        const content = [];
+        let decorative = 0;
+        let uncertain = 0;
+        for (const item of contributors) {
+            const verdict = hclipDecorativeVerdict(item.element, item.style, item.rect);
+            if (verdict === 'content') content.push(item);
+            else if (verdict === 'decorative') decorative += 1;
+            else uncertain += 1;
+        }
+        if (!content.length) {
+            // 找不到任何明确的有意义正文贡献者：保守跳过，不动 overflow。
+            if (uncertain) stats.skippedUncertain += 1;
+            else if (decorative) stats.skippedDecorative += 1;
+            else stats.skippedUncertain += 1;
+            continue;
+        }
+        stats.plans.push({
+            container,
+            style,
+            overflow,
+            scrollWidth: Number(container.scrollWidth || 0),
+            clientWidth: Number(container.clientWidth || 0),
+            content,
+            decorative,
+            uncertain,
+        });
+    }
+    return stats;
+}
+
+function maintenanceHorizontalClipCss(scopeToken) {
+    const scope = `[${HCLIP_SCOPE_ATTR}="${scopeToken}"]`;
+    return `
+${scope} [${HCLIP_CONTENT_ATTR}] { min-width: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
+${scope} [${HCLIP_CONTENT_ATTR}] > * { min-width: 0 !important; }
+${scope} [${HCLIP_SCROLLER_ATTR}] { overflow-x: auto !important; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
+${scope} [${HCLIP_SCROLLER_ATTR}][${HCLIP_KEEP_Y_ATTR}="hidden"] { overflow-y: hidden !important; }
+${scope} [${HCLIP_SCROLLER_ATTR}][${HCLIP_KEEP_Y_ATTR}="clip"] { overflow-y: clip !important; }
+${scope} [${HCLIP_SCROLLER_ATTR}][${HCLIP_KEEP_Y_ATTR}="scroll"] { overflow-y: scroll !important; }
+${scope} [${HCLIP_SCROLLER_ATTR}][${HCLIP_KEEP_Y_ATTR}="auto"] { overflow-y: auto !important; }
+`;
+}
+
+export function clearRabbitMirrorHorizontalClipArtifacts(root) {
+    if (!root?.querySelectorAll) return 0;
+    let cleared = 0;
+    for (const attr of HCLIP_TRANSIENT_ATTRS) {
+        for (const element of [root, ...root.querySelectorAll(`[${attr}]`)]) {
+            if (element?.hasAttribute?.(attr)) { element.removeAttribute(attr); cleared += 1; }
+        }
+    }
+    for (const style of root.querySelectorAll(`style[${HCLIP_STYLE_ATTR}]`)) { style.remove(); cleared += 1; }
+    return cleared;
+}
+
+export function installMaintenanceHorizontalClipRescue(root) {
+    if (!root?.querySelectorAll || !root?.isConnected) return 0;
+    // 幂等：先整体撤回上一轮的 transient 产物，再重新实测。跑两次不会继续叠加。
+    clearRabbitMirrorHorizontalClipArtifacts(root);
+
+    const stats = inspectHorizontalClip(root);
+    const report = {
+        viewportWidth: stats.viewportWidth,
+        narrow: stats.narrow,
+        candidates: stats.candidates,
+        repaired: 0,
+        skippedDecorative: stats.skippedDecorative,
+        skippedExistingScroller: stats.skippedExistingScroller,
+        skippedUncertain: stats.skippedUncertain,
+        targets: [],
+    };
+    if (!stats.plans.length) {
+        if (stats.narrow && (stats.candidates || stats.skippedDecorative || stats.skippedExistingScroller || stats.skippedUncertain)) {
+            root.setAttribute(HCLIP_REPORT_ATTR, JSON.stringify(report));
+        }
+        return 0;
+    }
+
+    const scopeToken = maintenanceMobileLayoutCreateScopeToken();
+    root.setAttribute(HCLIP_SCOPE_ATTR, scopeToken);
+    let style = document.createElement('style');
+    style.setAttribute(HCLIP_STYLE_ATTR, 'true');
+    style.textContent = maintenanceHorizontalClipCss(scopeToken);
+    root.appendChild(style);
+
+    for (const plan of stats.plans) {
+        const before = {
+            overflowX: hclipOverflowXMode(plan.style),
+            overflowY: String(plan.style.overflowY || '').trim().toLowerCase(),
+            scrollWidth: plan.scrollWidth,
+            clientWidth: plan.clientWidth,
+        };
+        // 第一层：先修内容自身的可收缩性。
+        for (const item of plan.content) item.element.setAttribute(HCLIP_CONTENT_ATTR, 'true');
+        const afterContentFix = hclipOverflowAmount(plan.container);
+        if (afterContentFix < HCLIP_MIN_OVERFLOW_PX) {
+            report.repaired += 1;
+            report.targets.push({
+                stage: 'content-only',
+                target: hclipElementPath(plan.container),
+                before,
+                after: { ...before, scrollWidth: Number(plan.container.scrollWidth || 0), clientWidth: Number(plan.container.clientWidth || 0) },
+            });
+            continue;
+        }
+        // 第二层：仍有明确横向裁切，才改最近的裁切祖先，且只动 overflow-x。
+        const keepY = hclipPreservedOverflowY(plan.style);
+        plan.container.setAttribute(HCLIP_SCROLLER_ATTR, 'true');
+        plan.container.setAttribute(HCLIP_KEEP_Y_ATTR, keepY);
+        report.repaired += 1;
+        report.targets.push({
+            stage: 'ancestor-scroll-x',
+            target: hclipElementPath(plan.container),
+            before,
+            after: {
+                overflowX: 'auto',
+                overflowY: keepY,
+                scrollWidth: Number(plan.container.scrollWidth || 0),
+                clientWidth: Number(plan.container.clientWidth || 0),
+            },
+        });
+    }
+    root.setAttribute(HCLIP_REPORT_ATTR, JSON.stringify(report));
+    return report.repaired;
+}
+
 function installMaintenanceViewportLayoutRescue(root) {
     if (!root?.querySelectorAll || !root?.isConnected) return 0;
     const structuralGridSpanCount = repairRabbitMirrorSelectorPanelGridSpan(root);
@@ -18028,6 +18347,8 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
     { id: 'mobile-layout-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root && shouldRunMaintenanceMobileLayoutRescue(target) ? installMaintenanceMobileLayoutRescue(target) : 0 },
     // 1.3.62: 与上一条配对——上一条只写 @media(max-width:640px)，这条按当前视口实测并写入无 media query 的样式表。
     { id: 'viewport-layout-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root ? installMaintenanceViewportLayoutRescue(target) : 0 },
+    // 1.3.76: 仅处理「确有横向溢出且被最近祖先裁掉」这一种形态，产物全部为 transient。
+    { id: 'horizontal-clip-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root ? installMaintenanceHorizontalClipRescue(target) : 0 },
     { id: 'text-clipping-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMaintenanceTextClipping(target) },
     { id: 'webkit-3d-flip-compat', modes: ['interaction', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => installWebKit3DFlipRescue(target) },
     { id: 'interaction-id-scope', modes: ['source', 'interaction', 'style', 'all'], bucket: 'scope', perTarget: true, run: ({ target }) => { scopeRabbitMirrorInteractionIds(target); return 1; } },
@@ -18963,10 +19284,11 @@ function ensureFeedbackCatButton(root, summary, host) {
 function ensureRecipeButton(root, summary, host) {
     const existing = [...summary.querySelectorAll?.(`[${RECIPE_BUTTON_ATTR}]`) || []];
     const recipe = rabbitMirrorRecipeForRoot(root);
-    if (!recipe) {
-        existing.forEach(button => button.remove());
-        return null;
-    }
+    // 1.3.76: 没有记录时保留按钮，只改提示语。
+    // 1.3.65 收紧了 getRabbitMirrorRecipe：Swipe 已知时只认该 Swipe 自己的精确记录，
+    // 避免上一个 Swipe 的配方冒充当前正文。那个收紧是对的，但这里当时直接把按钮删掉，
+    // 于是所有没有精确记录的兔子镜（尤其是记录功能上线前生成的全部历史镜面）看起来像
+    // 功能消失了。点开时的「没有可读取的记录」提示本来就已经存在，让它去承担说明责任。
     let current = existing.find(button => button.getAttribute(RUNTIME_VERSION_ATTR) === RUNTIME_VERSION) || existing[0] || null;
     existing.filter(button => button !== current).forEach(button => button.remove());
     if (!current) current = document.createElement('button');
@@ -18975,8 +19297,9 @@ function ensureRecipeButton(root, summary, host) {
     current.setAttribute(RECIPE_BUTTON_ATTR, 'true');
     current.setAttribute(RUNTIME_VERSION_ATTR, RUNTIME_VERSION);
     current.textContent = '🎲';
-    current.title = recipeButtonTitle(recipe);
+    current.title = recipe ? recipeButtonTitle(recipe) : '本轮抽签：这一面没有可读取的记录';
     current.setAttribute('aria-label', current.title);
+    current.dataset.rmRecipeAvailable = recipe ? 'true' : 'false';
     if (current.parentElement !== host) host.appendChild(current);
     normalizeRabbitMirrorToolButton(current);
     return current;

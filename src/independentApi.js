@@ -1,13 +1,13 @@
-import { getSettings } from './settings.js?rmv=1.3.74';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.74';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan } from './outputSanitizer.js?rmv=1.3.74';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.74';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.74';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.74';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.74';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.74';
+import { getSettings } from './settings.js?rmv=1.3.76';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.76';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.3.76';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.76';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.76';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.76';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.76';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.76';
 
-const RUNTIME_VERSION = '1.3.74';
+const RUNTIME_VERSION = '1.3.76';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -1269,6 +1269,43 @@ function applyExternalHostGeometryPlan(host,plan){
  }
  if(host.dataset.rmExternalWidthMode!==plan.mode) host.dataset.rmExternalWidthMode=plan.mode;
 }
+// 1.3.76: 冷启动／缓存恢复后的一次性几何复测。
+//
+// refreshExternalHostGeometry 只在浏览器宽度真的变化时才重算（externalViewportWidthSignature
+// 守卫）。这在稳态下是对的，但页面刚加载时第一次测量往往发生在字体、头像和主题 CSS 还没
+// 稳定的时刻：此时量到的 .mes_text 盒子偏窄，被写进 --rm-external-lane-width，而之后
+// innerWidth 一直没变，于是这个偏窄值再也不会被更正——直到下一条回复重新挂载 host。
+// 表现就是"退出很久重新进来变窄，出下一条回复又自己恢复"。
+//
+// 这里在挂载完成后补两次定点复测。不新增任何 observer/listener，也不轮询：每个 host 每次
+// 挂载最多两个一次性 setTimeout，且第一次复测若结果与首测一致就不再安排第二次。
+const EXTERNAL_GEOMETRY_SETTLE_STEPS_MS=[420,1500];
+function scheduleExternalHostGeometrySettleRecheck(host,step=0){
+ if(!host?.isConnected || host.dataset.rmSource!=='independent') return;
+ if(String(host.dataset.rmPlacement||'external')!=='external') return;
+ const delay=EXTERNAL_GEOMETRY_SETTLE_STEPS_MS[step];
+ if(!Number.isFinite(delay)) return;
+ if(step===0){
+  // 幂等：同一次挂载只安排一轮，重复调用 ensureExternalTools 不会累积定时器。
+  if(host.dataset.rmGeometrySettlePass==='done' || host.dataset.rmGeometrySettlePass==='running') return;
+  host.dataset.rmGeometrySettlePass='running';
+ }
+ globalThis.setTimeout?.(()=>{
+  if(!host?.isConnected){ delete host.dataset?.rmGeometrySettlePass; return; }
+  const before=host.style.getPropertyValue('--rm-external-lane-width');
+  try{ syncExternalHostGeometry(messageElementForExternalHost(host),host); }
+  catch(error){ console.debug('[RabbitMirror] external geometry settle recheck skipped:',error); }
+  const after=host.style.getPropertyValue('--rm-external-lane-width');
+  if(before!==after){
+   host.dataset.rmGeometrySettleCorrected='true';
+   // 首测被证明不可信：让后续任何 resize/orientation 也不要因为宽度签名相同而跳过。
+   externalGeometryLastSignature=0;
+   scheduleExternalHostGeometrySettleRecheck(host,step+1);
+   return;
+  }
+  host.dataset.rmGeometrySettlePass='done';
+ },delay);
+}
 function syncExternalHostGeometry(el,host){
  if(!host?.isConnected) return;
  applyExternalHostGeometryPlan(host,computeExternalHostGeometryPlan(el,host));
@@ -1684,9 +1721,16 @@ function scrubIndependentInteractionState(html='',baselineHtml=''){
  details.querySelectorAll('[data-rabbit-mirror-interaction-diagnostic]').forEach(node=>node.remove());
  baseline?.querySelectorAll?.('[data-rabbit-mirror-interaction-diagnostic]')?.forEach?.(node=>node.remove());
  restoreEncodedInteractionBaselines(details);
+ // 1.3.76: 手动维修触发持久化时，横向裁切急救的 runtime CSS/属性同样无条件剔除，
+ // 不受维修标志保护，避免它被序列化进缓存。
+ try{ clearRabbitMirrorHorizontalClipArtifacts(details); }catch(error){ console.debug('[RabbitMirror] horizontal clip scrub skipped:',error); }
  // 1.3.52: 与 1.3.45 的排版维修保持一致——带维修兔持久化标记的记录，
  // 其结构性急救样式表属于修复结果而不是运行时污染，必须保留。
  // 运行时选中状态（input.checked / aria-pressed / data-rm-*-active）仍然照常净化。
+ // 1.3.76: 横向裁切急救的产物全部是 transient runtime artifact，绝不随缓存或聊天
+ // metadata 一起保存。这里在读取 preserveMaintenance 之前无条件清理，因此即使 root 带
+ // data-rabbit-mirror-maintenance-persisted-layout="true" 也不会被保留。
+ try{ clearRabbitMirrorHorizontalClipArtifacts(details); }catch(error){ console.debug('[RabbitMirror] horizontal clip artifact cleanup skipped:',error); }
  const preserveMaintenance=details.getAttribute?.(MAINTENANCE_PERSISTED_LAYOUT_ATTR)==='true';
  const removableStyleAttrs=preserveMaintenance ? RUNTIME_STATE_STYLE_ATTRS : PERSISTED_STATE_STYLE_ATTRS;
  details.querySelectorAll(removableStyleAttrs.map(name=>`style[${name}]`).join(',')).forEach(node=>node.remove());
@@ -1898,6 +1942,13 @@ function activateExternalInteractionTools(host,details){
   return false;
  }
 }
+// 1.3.76: 横向裁切检测必须在 details 真正展开、内部完成布局之后才有意义。
+// 这里完全复用 armExternalInteractionTools 既有的 ready / toggle 首次激活路径，
+// 不新增任何 toggle、resize 或 observer 监听器。
+function runExternalHorizontalClipRescue(details){
+ try{ if(details?.isConnected && details.open) installMaintenanceHorizontalClipRescue(details); }
+ catch(error){ console.debug('[RabbitMirror] horizontal clip rescue skipped:',error); }
+}
 function armExternalInteractionTools(host,details){
  if(!details || externalInteractionActivatedDetails.has(details)) return;
  const ready=host?.dataset?.rmState==='ready';
@@ -1909,6 +1960,7 @@ function armExternalInteractionTools(host,details){
  // user actually opens, before any later click inside its body.
  if(details.open || details.hasAttribute?.('open')){
   activateExternalInteractionTools(host,details);
+  runExternalHorizontalClipRescue(details);
   return;
  }
  details.setAttribute?.(DEFERRED_INTERACTION_RESCUE_ATTR,'true');
@@ -1916,6 +1968,7 @@ function armExternalInteractionTools(host,details){
  const onToggle=()=>{
   if(!details?.isConnected || !details.open) return;
   if(activateExternalInteractionTools(host,details)){
+   runExternalHorizontalClipRescue(details);
    details.removeEventListener?.('toggle',onToggle);
    externalInteractionActivationHandlers.delete(details);
   }
@@ -1926,6 +1979,8 @@ function armExternalInteractionTools(host,details){
 function ensureExternalTools(host){
  if(!host?.isConnected) return;
  stampExternalDetailsOwnership(host);
+ // 挂载／缓存恢复后补一次定点几何复测，纠正在布局稳定前量到的偏窄正文栏。
+ try{ scheduleExternalHostGeometrySettleRecheck(host); }catch(error){ console.debug('[RabbitMirror] geometry settle schedule skipped:',error); }
  const details=host.querySelector?.(':scope > details');
  armExternalInteractionTools(host,details);
  // 1.3.62: old independent mirrors can already contain persisted exclusive-state
