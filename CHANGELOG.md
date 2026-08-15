@@ -1,3 +1,12 @@
+## 1.3.82 TEST — 手机版 pure-external 与 external_then_inline 同 lane
+
+- 基于 1.3.81 实际源码，仅调整手机版独立 API 的 pure-external 外层几何。
+- pure-external 不再把 `.mes_text` 的测量宽度作为外壳宽度 authority；改为直接使用与 external_then_inline 相同的 structural content lane（通常是 `.mes_text` 的 containing block / `.mes_block`）。
+- `.mes_text` 宽度仍保留为只读诊断值，不再写入 `--rm-external-lane-width`。
+- 这次不修改 `<details>` 内部作品宽度：280px 票根、320px 舞台、固定 SVG、满宽或超宽作品都继续尊重模型自身 CSS。
+- 保留 1.3.81 的 geometry cycle / 420ms + 1500ms 诊断复测，但 canonical structural lane 立即生效，不允许旧的 message-text last-known-good 再把 pure-external 拉窄。
+- 未修改 external_then_inline、embedded/inline、维修兔、horizontal clip rescue、Prompt、Token、独立 API 请求链。
+
 ## 1.3.80 TEST — 手机纯外置正文 lane 共识纠偏 / 两次 settle 复测真正执行
 
 - 对比正式 1.3.20 与测试 1.3.77 后定位：正式版 pure-external 始终跟随稳定父 lane，容易偏宽；1.3.77 手机端改为优先当前 `.mes_text`，方向更接近正文，但某些 iOS/缓存恢复帧会把临时偏窄的正文盒子当成最终宽度并写进 `--rm-external-lane-width`。

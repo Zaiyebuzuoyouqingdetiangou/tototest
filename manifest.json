@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.3.81",
-  "css": "style.css?rmv=1.3.81",
+  "js": "index.js?rmv=1.3.82",
+  "css": "style.css?rmv=1.3.82",
   "author": "Toto",
-  "version": "1.3.81",
+  "version": "1.3.82",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版：修复手机版纯外置 external geometry 生命周期。当前消息以 structural lane 作为安全边界，.mes_text 仅在当前 geometry cycle 的有限时间验证后成为 confirmed visual lane；保留 last-known-good，不依赖邻近消息，不修改内部作品宽度。"
+  "description": "兔子镜测试版：修复手机版纯外置与“外置后内嵌”宽度不一致。pure-external 直接使用同一条消息的 structural content lane（通常为 .mes_text 的 containing block / .mes_block），不再让 .mes_text 的瞬时窄宽决定外壳；内部作品宽度保持完全自由。"
 }
