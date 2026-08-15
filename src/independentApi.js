@@ -1,13 +1,13 @@
-import { getSettings } from './settings.js?rmv=1.3.79';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.79';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.3.79';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.79';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.79';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.79';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.79';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.79';
+import { getSettings } from './settings.js?rmv=1.3.80';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.80';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.3.80';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.80';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.80';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.80';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.80';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.80';
 
-const RUNTIME_VERSION = '1.3.79';
+const RUNTIME_VERSION = '1.3.80';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -1189,6 +1189,57 @@ function elementContentBoxRect(node){
   return {left,right,width};
  }catch{ return null; }
 }
+function medianNumber(values=[]){
+ const sorted=values.filter(Number.isFinite).sort((a,b)=>a-b);
+ if(!sorted.length) return 0;
+ const mid=Math.floor(sorted.length/2);
+ return sorted.length%2 ? sorted[mid] : (sorted[mid-1]+sorted[mid])/2;
+}
+function nearbyMessageBodyLaneConsensus(el){
+ const parent=el?.parentElement;
+ const ownLane=stableMessageContentLane(el);
+ const ownLaneBox=elementContentBoxRect(ownLane);
+ if(!parent?.children || !ownLaneBox || ownLaneBox.width<220) return null;
+ const siblings=[...parent.children];
+ const origin=siblings.indexOf(el);
+ if(origin<0) return null;
+ const samples=[];
+ const ctx=getContext();
+ const chat=Array.isArray(ctx?.chat) ? ctx.chat : [];
+ const ownerId=Number(externalOwnerMesid(el));
+ const ownerRoleKnown=Number.isInteger(ownerId) && ownerId>=0 && !!chat[ownerId];
+ const ownerIsUser=ownerRoleKnown ? !!chat[ownerId]?.is_user : false;
+ const pushSample=node=>{
+  if(!node?.matches?.('.mes[mesid], [mesid].mes, [mesid]')) return;
+  const candidateId=Number(externalOwnerMesid(node));
+  if(ownerRoleKnown && Number.isInteger(candidateId) && candidateId>=0 && chat[candidateId] && !!chat[candidateId]?.is_user!==ownerIsUser) return;
+  const body=messageBody(node);
+  const lane=stableMessageContentLane(node);
+  if(!body || body===node || !lane) return;
+  const bodyBox=elementContentBoxRect(body);
+  const laneBox=elementContentBoxRect(lane);
+  if(!bodyBox || !laneBox || laneBox.width<220 || bodyBox.width<220) return;
+  if(bodyBox.left<laneBox.left-8 || bodyBox.right>laneBox.right+8) return;
+  const widthRatio=bodyBox.width/laneBox.width;
+  if(!Number.isFinite(widthRatio) || widthRatio<.55 || widthRatio>1.04) return;
+  const leftRatio=(bodyBox.left-laneBox.left)/laneBox.width;
+  if(!Number.isFinite(leftRatio) || leftRatio<-.04 || leftRatio>.35) return;
+  samples.push({widthRatio,leftRatio,width:bodyBox.width,left:bodyBox.left});
+ };
+ for(let distance=1; distance<=8 && samples.length<4; distance++){
+  pushSample(siblings[origin-distance]);
+  if(samples.length<4) pushSample(siblings[origin+distance]);
+ }
+ if(samples.length<2) return null;
+ const widthRatios=samples.map(sample=>sample.widthRatio);
+ const widthRatio=medianNumber(widthRatios);
+ const leftRatio=medianNumber(samples.map(sample=>sample.leftRatio));
+ const spread=Math.max(...widthRatios)-Math.min(...widthRatios);
+ const width=medianNumber(samples.map(sample=>sample.width));
+ const left=medianNumber(samples.map(sample=>sample.left));
+ if(!Number.isFinite(widthRatio) || !Number.isFinite(width) || !Number.isFinite(left) || spread>.14) return null;
+ return {count:samples.length,widthRatio,leftRatio,width,left,spread};
+}
 function computeExternalHostGeometryPlan(el,host){
  if(!host?.isConnected) return {skip:true};
  const source=String(host.dataset.rmSource||'independent');
@@ -1226,23 +1277,38 @@ function computeExternalHostGeometryPlan(el,host){
   const laneBox=elementContentBoxRect(lane);
   if(!laneBox || contentWidth<=0) throw new Error('invalid content-lane geometry');
 
-  // Desktop keeps the established parent content-lane geometry so the PC-only
-  // compact-shell stage can cap genuinely narrow visual objects. On narrow
-  // screens, use the *actual rendered message text lane* as the reference when
-  // it is stable. This makes pure external follow the same visual正文 width the
-  // user sees in SillyTavern instead of inheriting a stale/shrunken outer lane.
-  // No new observer/listener is installed: this only changes the reference box
-  // used by the existing geometry sync/retry/resize path.
+  // Desktop keeps the established parent content-lane geometry. On narrow
+  // screens we still prefer the rendered .mes_text lane, but a cold/cache-restored
+  // message can temporarily report a much narrower box than neighbouring normal
+  // messages. In that high-confidence case, use the nearby message-lane consensus
+  // instead of freezing the transient width into --rm-external-lane-width.
+  // This is a bounded sibling read only during the existing geometry sync path:
+  // no observer, polling or full-chat scan is introduced.
   const viewportWidth=Number(globalThis.innerWidth || globalThis.screen?.width || 0);
   const bodyBox=body && body!==el ? elementContentBoxRect(body) : null;
-  const mobileBodyLooksStable=!!(viewportWidth>0 && viewportWidth<900 && bodyBox
+  const mobileBodyMeasurable=!!(viewportWidth>0 && viewportWidth<900 && bodyBox
     && bodyBox.width>=220
-    && bodyBox.width>=laneBox.width*.75
+    && bodyBox.width>=laneBox.width*.55
     && bodyBox.left>=contentLeft-8
     && bodyBox.right<=contentRight+8
     && bodyBox.width<=contentWidth+16);
-  const refBox=mobileBodyLooksStable ? bodyBox : laneBox;
-  const mode=mobileBodyLooksStable ? 'mobile-message-text-lane' : 'inline-parent-content-box';
+  const mobileBodyLooksStable=!!(mobileBodyMeasurable && bodyBox.width>=laneBox.width*.75);
+  let refBox=mobileBodyLooksStable ? bodyBox : laneBox;
+  let mode=mobileBodyLooksStable ? 'mobile-message-text-lane' : 'inline-parent-content-box';
+  if(mobileBodyMeasurable){
+   const consensus=nearbyMessageBodyLaneConsensus(el);
+   const ownRatio=laneBox.width>0 ? bodyBox.width/laneBox.width : 1;
+   const materiallyNarrower=!!(consensus
+     && consensus.count>=2
+     && consensus.widthRatio-ownRatio>=.10
+     && consensus.width-bodyBox.width>=28
+     && consensus.left>=contentLeft-8
+     && consensus.left+consensus.width<=contentRight+16);
+   if(materiallyNarrower){
+    refBox={left:consensus.left,right:consensus.left+consensus.width,width:consensus.width};
+    mode='mobile-nearby-message-consensus';
+   }
+  }
   let left=Number(refBox.left||0)-contentLeft;
   let width=Number(refBox.width||0);
   if(!Number.isFinite(left) || !Number.isFinite(width)) throw new Error('invalid content-lane geometry');
@@ -1269,7 +1335,7 @@ function applyExternalHostGeometryPlan(host,plan){
  }
  if(host.dataset.rmExternalWidthMode!==plan.mode) host.dataset.rmExternalWidthMode=plan.mode;
 }
-// 1.3.78: 冷启动／缓存恢复后的一次性几何复测。
+// 1.3.77: 冷启动／缓存恢复后的一次性几何复测。
 //
 // refreshExternalHostGeometry 只在浏览器宽度真的变化时才重算（externalViewportWidthSignature
 // 守卫）。这在稳态下是对的，但页面刚加载时第一次测量往往发生在字体、头像和主题 CSS 还没
@@ -1300,6 +1366,10 @@ function scheduleExternalHostGeometrySettleRecheck(host,step=0){
    host.dataset.rmGeometrySettleCorrected='true';
    // 首测被证明不可信：让后续任何 resize/orientation 也不要因为宽度签名相同而跳过。
    externalGeometryLastSignature=0;
+  }
+  // 两个定点复测都必须实际执行。旧逻辑只有第一次已经变化时才安排 1500ms
+  // 复测，导致“420ms 时仍窄、稍后才稳定”的 iOS/缓存恢复场景永远停在坏值。
+  if(Number.isFinite(EXTERNAL_GEOMETRY_SETTLE_STEPS_MS[step+1])){
    scheduleExternalHostGeometrySettleRecheck(host,step+1);
    return;
   }
@@ -1721,13 +1791,13 @@ function scrubIndependentInteractionState(html='',baselineHtml=''){
  details.querySelectorAll('[data-rabbit-mirror-interaction-diagnostic]').forEach(node=>node.remove());
  baseline?.querySelectorAll?.('[data-rabbit-mirror-interaction-diagnostic]')?.forEach?.(node=>node.remove());
  restoreEncodedInteractionBaselines(details);
- // 1.3.78: 手动维修触发持久化时，横向裁切急救的 runtime CSS/属性同样无条件剔除，
+ // 1.3.77: 手动维修触发持久化时，横向裁切急救的 runtime CSS/属性同样无条件剔除，
  // 不受维修标志保护，避免它被序列化进缓存。
  try{ clearRabbitMirrorHorizontalClipArtifacts(details); }catch(error){ console.debug('[RabbitMirror] horizontal clip scrub skipped:',error); }
  // 1.3.52: 与 1.3.45 的排版维修保持一致——带维修兔持久化标记的记录，
  // 其结构性急救样式表属于修复结果而不是运行时污染，必须保留。
  // 运行时选中状态（input.checked / aria-pressed / data-rm-*-active）仍然照常净化。
- // 1.3.78: 横向裁切急救的产物全部是 transient runtime artifact，绝不随缓存或聊天
+ // 1.3.77: 横向裁切急救的产物全部是 transient runtime artifact，绝不随缓存或聊天
  // metadata 一起保存。这里在读取 preserveMaintenance 之前无条件清理，因此即使 root 带
  // data-rabbit-mirror-maintenance-persisted-layout="true" 也不会被保留。
  try{ clearRabbitMirrorHorizontalClipArtifacts(details); }catch(error){ console.debug('[RabbitMirror] horizontal clip artifact cleanup skipped:',error); }
@@ -1942,7 +2012,7 @@ function activateExternalInteractionTools(host,details){
   return false;
  }
 }
-// 1.3.78: 横向裁切检测必须在 details 真正展开、内部完成布局之后才有意义。
+// 1.3.77: 横向裁切检测必须在 details 真正展开、内部完成布局之后才有意义。
 // 这里完全复用 armExternalInteractionTools 既有的 ready / toggle 首次激活路径，
 // 不新增任何 toggle、resize 或 observer 监听器。
 function runExternalHorizontalClipRescue(details){

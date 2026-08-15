@@ -1,5 +1,5 @@
-import { getCurrentChatKey } from './storage.js?rmv=1.3.79';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.79';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.80';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.80';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';

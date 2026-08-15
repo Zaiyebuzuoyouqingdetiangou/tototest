@@ -1,19 +1,10 @@
-## 1.3.79 TEST — 只修异常缩水，不统一内部作品宽度
+## 1.3.80 TEST — 手机纯外置正文 lane 共识纠偏 / 两次 settle 复测真正执行
 
-- 撤回 1.3.78 在手机端对独立 API 纯外置 `<details>` 所有直接正文子元素统一写入 `width:100% / max-width:100% / min-width:0` 的规则。该规则虽然能把某些异常窄列撑回外壳宽度，但也会把模型有意设计的窄幅票据、小舞台、终端屏幕、海报、固定尺寸 SVG/视觉物一并拉满，长期会抹平兔子镜的展现形式差异。
-- 外层几何职责保持不变：external shell 继续使用 `--rm-external-lane-width / --rm-external-lane-left` 跟随宿主 `.mes_text` 正文 lane，`details` 继续填满 shell；1.3.75 的冷启动／缓存恢复 settle recheck 继续负责“整面兔子镜被首帧错误量窄”的问题。
-- 内部作品宽度重新完全尊重模型 authored CSS；不再把“外壳可用宽度”误解为“所有作品必须满宽”。作品本来窄就保留窄，本来固定宽就保留固定宽，本来超宽则保留尺寸。
-- 真实超宽且被 `overflow-x:hidden/clip` 裁掉时，继续沿用 1.3.77/1.3.78 的 transient horizontal-clip rescue：只开放最近裁切祖先的横向滚动，不压缩、不拉伸正文自身。
-- 保留 1.3.78 新增的只读外置几何诊断行，后续若再遇到“标题宽、正文异常窄”，可直接看到 shell/details/summary/body/宿主正文栏的 rect/clientWidth，而不是再用全局 CSS 猜测。
-- 不改 Prompt、不增加 Token、不新增 API 请求；不新增 observer/resize listener/轮询；不修改黑名单、挨打猫、维修交互、配色冷却与抽签候选逻辑。
-
-## 1.3.78 TEST — 手机端外置正文强制占满 details / 新增只读几何仪表盘
-
-- 修复手机端外置兔子镜「外壳与标题是正常宽度，但正文明显更窄」的问题。实测：440 视口下标题壳约 370px、宿主正文栏约 353px，而兔子镜正文 `clientWidth` 仅 254px，正文比自己的外壳窄约 108px。
-- 1.3.14 起的设计意图本就是「正文保持与 external_then_inline 相同的 content-lane 尺寸，只有标题壳 shrink-wrap 自己的标签」，但正文一侧从未把这一点显式写进 CSS，一直依赖「块级子元素自然撑满父容器」这个默认行为。现在把该意图显式落地：手机端（≤899px）外置独立兔子镜的正文子元素强制 `width:100%` / `max-width:100%` / `min-width:0` / `box-sizing:border-box`。
-- 该规则对块级子元素只可能让它回到应有宽度，不可能让它更窄；仅作用于 `[data-rm-source="independent"][data-rm-placement="external"]` 的 details 直接子元素，排除 `summary`/`style`/`script`；桌面端完全不受影响。
-- 诊断第 9 节新增只读几何仪表盘，一行摊开外壳、details、summary、正文与宿主正文栏的 `rect/clientWidth`，以及 `--rm-external-lane-width`、`--rm-external-lane-left`、`placement`、`compactShell`。纯读取，不改任何行为、不新增监听器或定时器。
-- 不改 Prompt、不增加 Token、不新增 API 请求；未改动维修兔判定逻辑、几何计算、黑名单与配色冷却。
+- 对比正式 1.3.20 与测试 1.3.77 后定位：正式版 pure-external 始终跟随稳定父 lane，容易偏宽；1.3.77 手机端改为优先当前 `.mes_text`，方向更接近正文，但某些 iOS/缓存恢复帧会把临时偏窄的正文盒子当成最终宽度并写进 `--rm-external-lane-width`。
+- 新增有界 nearby-message lane consensus：只在窄屏、当前 `.mes_text` 可测且明显比附近普通消息正文比例更窄时触发；最多检查相邻 8 个 sibling 位置、收集最多 4 条有效消息，至少 2 条且宽度比例 spread ≤0.14 才视为稳定共识。纠偏使用中位宽度比例与中位左 inset，不直接回退正式版的整块父 lane，因此避免从「过窄」跳成「过宽」。
+- 正常当前 `.mes_text` 与附近消息一致时完全不改，仍保持 1.3.51 以来「手机纯外置跟随正文 lane」的设计；没有可靠邻近样本时沿用既有 body/lane fallback。
+- 修复 `scheduleExternalHostGeometrySettleRecheck()` 的逻辑遗漏：旧代码只有 420ms 复测已经改变宽度时才会安排 1500ms；若布局在 420ms 之后才稳定，第二次复测永远不会发生。现在 420ms 与 1500ms 两次都会真正执行，仍然是每个 host 每次挂载最多两次一次性 timeout。
+- 不修改内置/外置后内嵌宽度，不修改模型生成的内部视觉宽度，不新增 observer、resize listener、轮询或全聊天扫描；Prompt、Token、API、黑名单、挨打猫、维修兔交互链保持不变。
 
 ## 1.3.77 TEST — 撤回 1.3.76 正文缩宽步骤 / 横向裁切只开滚动
 
