@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.77';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.77';
+import { getSettings } from './settings.js?rmv=1.3.79';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.79';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.77';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.77';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.77';
-import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.77';
+} from './feedbackCat.js?rmv=1.3.79';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.79';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.79';
+import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.79';
 
 
-const RUNTIME_VERSION = '1.3.77';
+const RUNTIME_VERSION = '1.3.79';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -11590,7 +11590,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.77-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.79-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -12713,6 +12713,29 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
                 ? `；目标=${target.target} 阶段=${target.stage} overflow-x ${target.before?.overflowX}→${target.after?.overflowX} overflow-y ${target.before?.overflowY}→${target.after?.overflowY} scrollWidth ${target.before?.scrollWidth}→${target.after?.scrollWidth} clientWidth ${target.before?.clientWidth}→${target.after?.clientWidth}`
                 : '';
             return `横向裁切 horizontalClipCandidates=${hclip.candidates || 0} horizontalClipRepaired=${hclip.repaired || 0} horizontalClipSkippedDecorative=${hclip.skippedDecorative || 0} horizontalClipSkippedExistingScroller=${hclip.skippedExistingScroller || 0} horizontalClipSkippedUncertain=${hclip.skippedUncertain || 0}${detail}`;
+        })(),
+        (() => {
+            // 1.3.78: 只读几何仪表盘。不改任何行为，用于把「外壳多宽 / details 多宽 / 正文多宽」
+            // 一次性摊开，避免再靠截图反推。
+            const shell = root.closest?.('.rabbit-mirror-external-shell') || null;
+            if (!shell) return '外置几何 (非外置镜面)';
+            const body = [...(root.children || [])].find(child => {
+                const tag = String(child?.tagName || '').toUpperCase();
+                return tag && tag !== 'SUMMARY' && tag !== 'STYLE' && tag !== 'SCRIPT';
+            }) || null;
+            const box = element => {
+                if (!element) return '-';
+                let rect = null;
+                try { rect = element.getBoundingClientRect?.(); } catch { rect = null; }
+                return `${Math.round(Number(rect?.width || 0))}/${Number(element.clientWidth || 0)}`;
+            };
+            const mesText = shell.closest?.('.mes')?.querySelector?.('.mes_text') || null;
+            const laneVar = String(shell.style?.getPropertyValue?.('--rm-external-lane-width') || '').trim() || '(未设置)';
+            const leftVar = String(shell.style?.getPropertyValue?.('--rm-external-lane-left') || '').trim() || '(未设置)';
+            const summary = root.querySelector?.(':scope > summary') || null;
+            return `外置几何 placement=${shell.dataset?.rmPlacement || '?'} compactShell=${shell.dataset?.rmIndependentExternalCompactShell || 'false'}`
+                + ` laneVar=${laneVar} leftVar=${leftVar}`
+                + ` 宽度(rect/client) 外壳=${box(shell)} details=${box(root)} summary=${box(summary)} 正文=${box(body)} 宿主正文栏=${box(mesText)}`;
         })(),
         `repairScope=${root.getAttribute?.(MOBILE_LAYOUT_SCOPE_ATTR) || '(无)'} mobilePatched=${root.getAttribute?.(MOBILE_LAYOUT_RESCUE_COUNT_ATTR) || '0'} viewportPatched=${root.getAttribute?.(VIEWPORT_LAYOUT_COUNT_ATTR) || '0'}`,
         '',
@@ -17949,12 +17972,12 @@ ${scope} [${VIEWPORT_LAYOUT_POINTER_ATTR}] { pointer-events: auto !important; }
 }
 
 // ---------------------------------------------------------------------------
-// 1.3.77: 移动端横向裁切急救。
+// 1.3.78: 移动端横向裁切急救。
 //
 // 目标只有一种形态：窄屏下确实存在横向内容溢出，而最近的祖先用 overflow-x:hidden/clip
 // 把它裁掉了，于是用户既看不到完整内容、也无法横向滚动。
 //
-// 这条路线刻意不覆盖"外置几何把整面镜子量窄了"——那是 1.3.77 的几何复测负责的问题，
+// 这条路线刻意不覆盖"外置几何把整面镜子量窄了"——那是 1.3.78 的几何复测负责的问题，
 // 让排版急救去替几何擦屁股只会掩盖真正的故障点。
 //
 // 全部产物都是 transient：不写任何持久化 marker，也不做 rehydrate。每次挂载重新按
@@ -18221,7 +18244,7 @@ export function installMaintenanceHorizontalClipRescue(root) {
             scrollWidth: plan.scrollWidth,
             clientWidth: plan.clientWidth,
         };
-        // 1.3.77 hotfix: 不再改写正文／视觉组件自身的 width、max-width 或 min-width。
+        // 1.3.78 hotfix: 不再改写正文／视觉组件自身的 width、max-width 或 min-width。
         // 1.3.76 的 content-shrink 第一步会把模型有意设置的固定宽度视觉舞台压成父容器宽度，
         // 在纯外置手机布局里形成“标题正常、正文突然变窄”的回归。
         // 既然已经有真实横向溢出 + 有意义内容贡献者 + 最近裁切祖先这三重证据，
@@ -18335,7 +18358,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
     { id: 'mobile-layout-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root && shouldRunMaintenanceMobileLayoutRescue(target) ? installMaintenanceMobileLayoutRescue(target) : 0 },
     // 1.3.62: 与上一条配对——上一条只写 @media(max-width:640px)，这条按当前视口实测并写入无 media query 的样式表。
     { id: 'viewport-layout-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root ? installMaintenanceViewportLayoutRescue(target) : 0 },
-    // 1.3.77: 仅处理「确有横向溢出且被最近祖先裁掉」这一种形态，产物全部为 transient。
+    // 1.3.78: 仅处理「确有横向溢出且被最近祖先裁掉」这一种形态，产物全部为 transient。
     { id: 'horizontal-clip-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root ? installMaintenanceHorizontalClipRescue(target) : 0 },
     { id: 'text-clipping-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMaintenanceTextClipping(target) },
     { id: 'webkit-3d-flip-compat', modes: ['interaction', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => installWebKit3DFlipRescue(target) },
@@ -19272,7 +19295,7 @@ function ensureFeedbackCatButton(root, summary, host) {
 function ensureRecipeButton(root, summary, host) {
     const existing = [...summary.querySelectorAll?.(`[${RECIPE_BUTTON_ATTR}]`) || []];
     const recipe = rabbitMirrorRecipeForRoot(root);
-    // 1.3.77: 没有记录时保留按钮，只改提示语。
+    // 1.3.78: 没有记录时保留按钮，只改提示语。
     // 1.3.65 收紧了 getRabbitMirrorRecipe：Swipe 已知时只认该 Swipe 自己的精确记录，
     // 避免上一个 Swipe 的配方冒充当前正文。那个收紧是对的，但这里当时直接把按钮删掉，
     // 于是所有没有精确记录的兔子镜（尤其是记录功能上线前生成的全部历史镜面）看起来像
