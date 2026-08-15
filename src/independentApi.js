@@ -1,13 +1,13 @@
-import { getSettings } from './settings.js?rmv=1.3.81';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.81';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.3.81';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.81';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.81';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.81';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.81';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.81';
+import { getSettings } from './settings.js?rmv=1.3.82';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.82';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.3.82';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.82';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.82';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.82';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.82';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.82';
 
-const RUNTIME_VERSION = '1.3.81';
+const RUNTIME_VERSION = '1.3.82';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -1292,6 +1292,14 @@ function confirmExternalHostGeometry(host,geometry,reason='',source='message-tex
 }
 function chooseMobileExternalAppliedGeometry(host,plan){
  const structural=plan?.structural;
+ // 1.3.82: mobile pure-external must use the same structural content lane as
+ // external_then_inline.  The mounted .mes_text box is useful diagnostics, but
+ // it is not a safe width authority here: on iOS/WebView it can stay at a
+ // transiently narrow value long enough to pass time-stability checks.  Never
+ // let an old message-text confirmation override the structural lane.
+ if(plan?.mobileIndependent && plan?.canonicalStructuralLane){
+  return {geometry:structural,kind:'structural'};
+ }
  const confirmed=confirmedExternalHostGeometry(host);
  if(confirmed){
   return {geometry:clampGeometryToStructural(confirmed,structural),kind:String(host.dataset.rmGeometryConfirmedCycle||'')===String(host.dataset.rmGeometryCycleId||'')?'confirmed':'last-known-good'};
@@ -1363,15 +1371,21 @@ function computeExternalHostGeometryPlan(el,host){
      if(bodyWidth>=220) bodyGeometry={left:bodyLeft,width:bodyWidth};
     }
    }
-   const candidate=clampGeometryToStructural(bodyGeometry||structural,structural);
+   // 1.3.82: pure-external on mobile intentionally mirrors the exact same
+   // containing content lane used by external_then_inline.  Keep bodyGeometry
+   // only as read-only diagnostics; do not copy its width into the external
+   // shell.  This preserves narrow/wide artwork inside <details> while fixing
+   // the placement-only discrepancy between the two display modes.
+   const candidate=structural;
    return {
     clear:false,
     mobileIndependent:true,
-    mode:bodyGeometry ? 'mobile-message-text-candidate' : 'mobile-structural-candidate',
+    canonicalStructuralLane:true,
+    mode:'mobile-structural-content-lane',
     structural,
     body:bodyGeometry,
     candidate,
-    candidateSource:bodyGeometry ? 'message-text' : 'structural',
+    candidateSource:'structural',
    };
   }
 
@@ -1424,9 +1438,9 @@ function applyMobileExternalHostGeometryPlan(host,plan,context={}){
  const beforeLeft=host.style.getPropertyValue('--rm-external-lane-left');
  if(beforeWidth!==width) host.style.setProperty('--rm-external-lane-width',width);
  if(beforeLeft!==left) host.style.setProperty('--rm-external-lane-left',left);
- let mode='mobile-structural-provisional';
- if(selected.kind==='last-known-good') mode='mobile-last-known-good';
- else if(selected.kind==='confirmed') mode=host.dataset.rmGeometryConfirmedSource==='message-text' ? 'mobile-confirmed-message-text-lane' : 'mobile-confirmed-structural-lane';
+ let mode=plan.canonicalStructuralLane ? 'mobile-structural-content-lane' : 'mobile-structural-provisional';
+ if(!plan.canonicalStructuralLane && selected.kind==='last-known-good') mode='mobile-last-known-good';
+ else if(!plan.canonicalStructuralLane && selected.kind==='confirmed') mode=host.dataset.rmGeometryConfirmedSource==='message-text' ? 'mobile-confirmed-message-text-lane' : 'mobile-confirmed-structural-lane';
  host.dataset.rmExternalWidthMode=mode;
  host.dataset.rmGeometryMode=mode;
  return {changed:beforeWidth!==width || beforeLeft!==left,mode};
