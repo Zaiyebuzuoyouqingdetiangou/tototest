@@ -1,13 +1,13 @@
-import { getSettings } from './settings.js?rmv=1.3.80';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.80';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.3.80';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.80';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.80';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.80';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.80';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.80';
+import { getSettings } from './settings.js?rmv=1.3.81';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.81';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.3.81';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.81';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.81';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.81';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.81';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.81';
 
-const RUNTIME_VERSION = '1.3.80';
+const RUNTIME_VERSION = '1.3.81';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -51,6 +51,10 @@ let externalGeometryFrame = 0;
 let externalGeometryTimer = 0;
 let externalGeometryLastSignature = '';
 let externalGeometryListenersInstalled = false;
+let externalGeometryCycleSequence = 0;
+let externalGeometryLifecycleEpoch = 1;
+let externalGeometryLifecycleReason = 'runtime-init';
+const externalGeometryOwnerNodes = new WeakMap();
 const pending = new Map();
 let feedbackActionListenerInstalled = false;
 let repairPersistenceListenerInstalled = false;
@@ -1189,56 +1193,110 @@ function elementContentBoxRect(node){
   return {left,right,width};
  }catch{ return null; }
 }
-function medianNumber(values=[]){
- const sorted=values.filter(Number.isFinite).sort((a,b)=>a-b);
- if(!sorted.length) return 0;
- const mid=Math.floor(sorted.length/2);
- return sorted.length%2 ? sorted[mid] : (sorted[mid-1]+sorted[mid])/2;
+const EXTERNAL_GEOMETRY_CYCLE_VERSION='1';
+const EXTERNAL_GEOMETRY_STABILITY_TOLERANCE_PX=3;
+const EXTERNAL_GEOMETRY_SETTLE_STEPS_MS=[420,1500];
+function roundedGeometryNumber(value){
+ const number=Number(value);
+ return Number.isFinite(number) ? Math.round(number*10)/10 : 0;
 }
-function nearbyMessageBodyLaneConsensus(el){
- const parent=el?.parentElement;
- const ownLane=stableMessageContentLane(el);
- const ownLaneBox=elementContentBoxRect(ownLane);
- if(!parent?.children || !ownLaneBox || ownLaneBox.width<220) return null;
- const siblings=[...parent.children];
- const origin=siblings.indexOf(el);
- if(origin<0) return null;
- const samples=[];
- const ctx=getContext();
- const chat=Array.isArray(ctx?.chat) ? ctx.chat : [];
- const ownerId=Number(externalOwnerMesid(el));
- const ownerRoleKnown=Number.isInteger(ownerId) && ownerId>=0 && !!chat[ownerId];
- const ownerIsUser=ownerRoleKnown ? !!chat[ownerId]?.is_user : false;
- const pushSample=node=>{
-  if(!node?.matches?.('.mes[mesid], [mesid].mes, [mesid]')) return;
-  const candidateId=Number(externalOwnerMesid(node));
-  if(ownerRoleKnown && Number.isInteger(candidateId) && candidateId>=0 && chat[candidateId] && !!chat[candidateId]?.is_user!==ownerIsUser) return;
-  const body=messageBody(node);
-  const lane=stableMessageContentLane(node);
-  if(!body || body===node || !lane) return;
-  const bodyBox=elementContentBoxRect(body);
-  const laneBox=elementContentBoxRect(lane);
-  if(!bodyBox || !laneBox || laneBox.width<220 || bodyBox.width<220) return;
-  if(bodyBox.left<laneBox.left-8 || bodyBox.right>laneBox.right+8) return;
-  const widthRatio=bodyBox.width/laneBox.width;
-  if(!Number.isFinite(widthRatio) || widthRatio<.55 || widthRatio>1.04) return;
-  const leftRatio=(bodyBox.left-laneBox.left)/laneBox.width;
-  if(!Number.isFinite(leftRatio) || leftRatio<-.04 || leftRatio>.35) return;
-  samples.push({widthRatio,leftRatio,width:bodyBox.width,left:bodyBox.left});
- };
- for(let distance=1; distance<=8 && samples.length<4; distance++){
-  pushSample(siblings[origin-distance]);
-  if(samples.length<4) pushSample(siblings[origin+distance]);
+function geometryCssValue(value){ return `${roundedGeometryNumber(value)}px`; }
+function geometryNearlyEqual(a,b,tolerance=EXTERNAL_GEOMETRY_STABILITY_TOLERANCE_PX){
+ if(!a || !b) return false;
+ return Math.abs(Number(a.left)-Number(b.left))<=tolerance
+  && Math.abs(Number(a.width)-Number(b.width))<=tolerance;
+}
+function readGeometryDataset(host,prefix){
+ const width=Number(host?.dataset?.[`${prefix}Width`]);
+ const left=Number(host?.dataset?.[`${prefix}Left`]);
+ if(!Number.isFinite(width) || width<=0 || !Number.isFinite(left)) return null;
+ return {width,left};
+}
+function writeGeometryDataset(host,prefix,geometry){
+ if(!host?.dataset || !geometry) return;
+ host.dataset[`${prefix}Width`]=String(roundedGeometryNumber(geometry.width));
+ host.dataset[`${prefix}Left`]=String(roundedGeometryNumber(geometry.left));
+}
+function clearGeometryDataset(host,prefix){
+ if(!host?.dataset) return;
+ delete host.dataset[`${prefix}Width`];
+ delete host.dataset[`${prefix}Left`];
+}
+function clampGeometryToStructural(geometry,structural){
+ if(!geometry || !structural) return structural || geometry || null;
+ const structuralLeft=Number(structural.left);
+ const structuralWidth=Math.max(0,Number(structural.width));
+ const structuralRight=structuralLeft+structuralWidth;
+ if(!Number.isFinite(structuralLeft) || !Number.isFinite(structuralWidth) || structuralWidth<=0) return geometry;
+ let left=Number(geometry.left);
+ let width=Math.max(0,Number(geometry.width));
+ if(!Number.isFinite(left) || !Number.isFinite(width) || width<=0) return structural;
+ left=Math.max(structuralLeft,Math.min(left,structuralRight));
+ width=Math.min(width,Math.max(0,structuralRight-left));
+ if(width<=0) return structural;
+ return {left,width};
+}
+function confirmedExternalHostGeometry(host){ return readGeometryDataset(host,'rmGeometryConfirmed'); }
+function markExternalGeometryLifecycle(reason='lifecycle-refresh'){
+ externalGeometryLifecycleEpoch+=1;
+ externalGeometryLifecycleReason=String(reason||'lifecycle-refresh');
+}
+function beginExternalHostGeometryCycle(host,reason='geometry-refresh',el=null){
+ if(!host?.dataset || host.dataset.rmSource!=='independent' || String(host.dataset.rmPlacement||'external')!=='external') return '';
+ const cycleId=String(++externalGeometryCycleSequence);
+ host.dataset.rmGeometryCycleId=cycleId;
+ host.dataset.rmGeometryCycleVersion=EXTERNAL_GEOMETRY_CYCLE_VERSION;
+ host.dataset.rmGeometryCycleReason=String(reason||'geometry-refresh');
+ host.dataset.rmGeometryLifecycleEpoch=String(externalGeometryLifecycleEpoch);
+ host.dataset.rmGeometrySettleState='pending';
+ delete host.dataset.rmGeometrySettlePass;
+ delete host.dataset.rmGeometrySettleCycle;
+ delete host.dataset.rmGeometrySettleCorrected;
+ clearGeometryDataset(host,'rmGeometryCandidate');
+ clearGeometryDataset(host,'rmGeometryLate');
+ delete host.dataset.rmGeometryCandidateSource;
+ delete host.dataset.rmGeometryLateSource;
+ if(el) externalGeometryOwnerNodes.set(host,el);
+ return cycleId;
+}
+function ensureExternalHostGeometryCycle(el,host,forceReason=''){
+ if(!host?.dataset || host.dataset.rmSource!=='independent' || String(host.dataset.rmPlacement||'external')!=='external') return '';
+ const current=String(host.dataset.rmGeometryCycleId||'');
+ const ownerKnown=externalGeometryOwnerNodes.has(host);
+ const previousOwner=ownerKnown ? externalGeometryOwnerNodes.get(host) : null;
+ let reason='';
+ if(!current) reason='new-host';
+ else if(!ownerKnown) reason='runtime-adopt';
+ else if(el && previousOwner!==el) reason='owner-dom-replaced';
+ else if(String(host.dataset.rmGeometryLifecycleEpoch||'')!==String(externalGeometryLifecycleEpoch)) reason=externalGeometryLifecycleReason||'lifecycle-refresh';
+ else if(forceReason) reason=String(forceReason);
+ if(reason) return beginExternalHostGeometryCycle(host,reason,el);
+ if(el) externalGeometryOwnerNodes.set(host,el);
+ return current;
+}
+function updateExternalGeometryDiagnostics(host,plan){
+ if(!host?.dataset || !plan?.mobileIndependent) return;
+ writeGeometryDataset(host,'rmGeometryStructural',plan.structural);
+ if(plan.body){ writeGeometryDataset(host,'rmGeometryBody',plan.body); }
+ else clearGeometryDataset(host,'rmGeometryBody');
+ writeGeometryDataset(host,'rmGeometryCandidate',plan.candidate);
+ host.dataset.rmGeometryCandidateSource=String(plan.candidateSource||'structural');
+}
+function confirmExternalHostGeometry(host,geometry,reason='',source='message-text'){
+ if(!host?.dataset || !geometry) return null;
+ writeGeometryDataset(host,'rmGeometryConfirmed',geometry);
+ host.dataset.rmGeometryConfirmedCycle=String(host.dataset.rmGeometryCycleId||'');
+ host.dataset.rmGeometryConfirmedReason=String(reason||'time-stable');
+ host.dataset.rmGeometryConfirmedSource=String(source||'message-text');
+ return geometry;
+}
+function chooseMobileExternalAppliedGeometry(host,plan){
+ const structural=plan?.structural;
+ const confirmed=confirmedExternalHostGeometry(host);
+ if(confirmed){
+  return {geometry:clampGeometryToStructural(confirmed,structural),kind:String(host.dataset.rmGeometryConfirmedCycle||'')===String(host.dataset.rmGeometryCycleId||'')?'confirmed':'last-known-good'};
  }
- if(samples.length<2) return null;
- const widthRatios=samples.map(sample=>sample.widthRatio);
- const widthRatio=medianNumber(widthRatios);
- const leftRatio=medianNumber(samples.map(sample=>sample.leftRatio));
- const spread=Math.max(...widthRatios)-Math.min(...widthRatios);
- const width=medianNumber(samples.map(sample=>sample.width));
- const left=medianNumber(samples.map(sample=>sample.left));
- if(!Number.isFinite(widthRatio) || !Number.isFinite(width) || !Number.isFinite(left) || spread>.14) return null;
- return {count:samples.length,widthRatio,leftRatio,width,left,spread};
+ return {geometry:structural,kind:'structural'};
 }
 function computeExternalHostGeometryPlan(el,host){
  if(!host?.isConnected) return {skip:true};
@@ -1277,118 +1335,190 @@ function computeExternalHostGeometryPlan(el,host){
   const laneBox=elementContentBoxRect(lane);
   if(!laneBox || contentWidth<=0) throw new Error('invalid content-lane geometry');
 
-  // Desktop keeps the established parent content-lane geometry. On narrow
-  // screens we still prefer the rendered .mes_text lane, but a cold/cache-restored
-  // message can temporarily report a much narrower box than neighbouring normal
-  // messages. In that high-confidence case, use the nearby message-lane consensus
-  // instead of freezing the transient width into --rm-external-lane-width.
-  // This is a bounded sibling read only during the existing geometry sync path:
-  // no observer, polling or full-chat scan is introduced.
+  let structuralLeft=Number(laneBox.left||0)-contentLeft;
+  let structuralWidth=Number(laneBox.width||0);
+  if(!Number.isFinite(structuralLeft) || !Number.isFinite(structuralWidth)) throw new Error('invalid structural-lane geometry');
+  structuralLeft=Math.max(0,Math.min(structuralLeft,Math.max(0,contentWidth-1)));
+  structuralWidth=Math.min(structuralWidth,Math.max(0,contentWidth-structuralLeft));
+  if(structuralWidth<220 || (contentWidth>=320 && structuralWidth<contentWidth*.55)) return {clear:true,mode:'stable-fallback'};
+  const structural={left:structuralLeft,width:structuralWidth};
+
   const viewportWidth=Number(globalThis.innerWidth || globalThis.screen?.width || 0);
-  const bodyBox=body && body!==el ? elementContentBoxRect(body) : null;
-  const mobileBodyMeasurable=!!(viewportWidth>0 && viewportWidth<900 && bodyBox
-    && bodyBox.width>=220
-    && bodyBox.width>=laneBox.width*.55
-    && bodyBox.left>=contentLeft-8
-    && bodyBox.right<=contentRight+8
-    && bodyBox.width<=contentWidth+16);
-  const mobileBodyLooksStable=!!(mobileBodyMeasurable && bodyBox.width>=laneBox.width*.75);
-  let refBox=mobileBodyLooksStable ? bodyBox : laneBox;
-  let mode=mobileBodyLooksStable ? 'mobile-message-text-lane' : 'inline-parent-content-box';
-  if(mobileBodyMeasurable){
-   const consensus=nearbyMessageBodyLaneConsensus(el);
-   const ownRatio=laneBox.width>0 ? bodyBox.width/laneBox.width : 1;
-   const materiallyNarrower=!!(consensus
-     && consensus.count>=2
-     && consensus.widthRatio-ownRatio>=.10
-     && consensus.width-bodyBox.width>=28
-     && consensus.left>=contentLeft-8
-     && consensus.left+consensus.width<=contentRight+16);
-   if(materiallyNarrower){
-    refBox={left:consensus.left,right:consensus.left+consensus.width,width:consensus.width};
-    mode='mobile-nearby-message-consensus';
+  if(viewportWidth>0 && viewportWidth<900){
+   const bodyBox=body && body!==el ? elementContentBoxRect(body) : null;
+   const bodyMeasurable=!!(bodyBox
+     && bodyBox.width>=220
+     && bodyBox.left>=laneBox.left-8
+     && bodyBox.right<=laneBox.right+8
+     && bodyBox.left>=contentLeft-8
+     && bodyBox.right<=contentRight+8
+     && bodyBox.width<=contentWidth+16);
+   let bodyGeometry=null;
+   if(bodyMeasurable){
+    let bodyLeft=Number(bodyBox.left||0)-contentLeft;
+    let bodyWidth=Number(bodyBox.width||0);
+    if(Number.isFinite(bodyLeft) && Number.isFinite(bodyWidth)){
+     bodyLeft=Math.max(0,Math.min(bodyLeft,Math.max(0,contentWidth-1)));
+     bodyWidth=Math.min(bodyWidth,Math.max(0,contentWidth-bodyLeft));
+     if(bodyWidth>=220) bodyGeometry={left:bodyLeft,width:bodyWidth};
+    }
    }
+   const candidate=clampGeometryToStructural(bodyGeometry||structural,structural);
+   return {
+    clear:false,
+    mobileIndependent:true,
+    mode:bodyGeometry ? 'mobile-message-text-candidate' : 'mobile-structural-candidate',
+    structural,
+    body:bodyGeometry,
+    candidate,
+    candidateSource:bodyGeometry ? 'message-text' : 'structural',
+   };
   }
-  let left=Number(refBox.left||0)-contentLeft;
-  let width=Number(refBox.width||0);
-  if(!Number.isFinite(left) || !Number.isFinite(width)) throw new Error('invalid content-lane geometry');
-  left=Math.max(0,Math.min(left,Math.max(0,contentWidth-1)));
-  width=Math.min(width,Math.max(0,contentWidth-left));
-  if(width<220 || (contentWidth>=320 && width<contentWidth*.55)) return {clear:true,mode:'stable-fallback'};
+
   return {
    clear:false,
-   mode,
-   width:`${Math.round(width*10)/10}px`,
-   left:`${Math.round(left*10)/10}px`,
+   mode:'inline-parent-content-box',
+   width:geometryCssValue(structural.width),
+   left:geometryCssValue(structural.left),
   };
  }catch{
   return {clear:true,mode:'stable-fallback'};
  }
 }
-function applyExternalHostGeometryPlan(host,plan){
- if(!host || !plan || plan.skip) return;
- if(plan.clear){
-  clearExternalHostGeometryTokens(host);
- }else{
-  if(host.style.getPropertyValue('--rm-external-lane-width')!==plan.width) host.style.setProperty('--rm-external-lane-width',plan.width);
-  if(host.style.getPropertyValue('--rm-external-lane-left')!==plan.left) host.style.setProperty('--rm-external-lane-left',plan.left);
+function applyMobileExternalHostGeometryPlan(host,plan,context={}){
+ updateExternalGeometryDiagnostics(host,plan);
+ const phase=String(context.phase||'early');
+ const cycleId=String(context.cycleId||host.dataset.rmGeometryCycleId||'');
+ if(cycleId && String(host.dataset.rmGeometryCycleId||'')!==cycleId) return {changed:false,stale:true};
+ const candidate=clampGeometryToStructural(plan.candidate||plan.structural,plan.structural);
+ if(phase==='settle-420'){
+  writeGeometryDataset(host,'rmGeometryLate',candidate);
+  host.dataset.rmGeometryLateSource=String(plan.candidateSource||'structural');
+  host.dataset.rmGeometrySettleState='late-420-recorded';
+ }else if(phase==='settle-1500'){
+  const previous=readGeometryDataset(host,'rmGeometryLate');
+  if(previous && geometryNearlyEqual(previous,candidate)){
+   confirmExternalHostGeometry(host,candidate,'stable-420-1500',plan.candidateSource);
+   host.dataset.rmGeometrySettleState='confirmed';
+  }else{
+   writeGeometryDataset(host,'rmGeometryLate',candidate);
+   host.dataset.rmGeometryLateSource=String(plan.candidateSource||'structural');
+   host.dataset.rmGeometrySettleState='await-final-confirm';
+  }
+ }else if(phase==='settle-final'){
+  const previous=readGeometryDataset(host,'rmGeometryLate');
+  if(previous && geometryNearlyEqual(previous,candidate)){
+   confirmExternalHostGeometry(host,candidate,'stable-1500-final-frame',plan.candidateSource);
+   host.dataset.rmGeometrySettleState='confirmed';
+  }else{
+   host.dataset.rmGeometrySettleState='unconfirmed';
+  }
  }
- if(host.dataset.rmExternalWidthMode!==plan.mode) host.dataset.rmExternalWidthMode=plan.mode;
+ const selected=chooseMobileExternalAppliedGeometry(host,plan);
+ const applied=selected.geometry;
+ if(!applied) return {changed:false};
+ const width=geometryCssValue(applied.width);
+ const left=geometryCssValue(applied.left);
+ writeGeometryDataset(host,'rmGeometryApplied',applied);
+ const beforeWidth=host.style.getPropertyValue('--rm-external-lane-width');
+ const beforeLeft=host.style.getPropertyValue('--rm-external-lane-left');
+ if(beforeWidth!==width) host.style.setProperty('--rm-external-lane-width',width);
+ if(beforeLeft!==left) host.style.setProperty('--rm-external-lane-left',left);
+ let mode='mobile-structural-provisional';
+ if(selected.kind==='last-known-good') mode='mobile-last-known-good';
+ else if(selected.kind==='confirmed') mode=host.dataset.rmGeometryConfirmedSource==='message-text' ? 'mobile-confirmed-message-text-lane' : 'mobile-confirmed-structural-lane';
+ host.dataset.rmExternalWidthMode=mode;
+ host.dataset.rmGeometryMode=mode;
+ return {changed:beforeWidth!==width || beforeLeft!==left,mode};
 }
-// 1.3.77: 冷启动／缓存恢复后的一次性几何复测。
-//
-// refreshExternalHostGeometry 只在浏览器宽度真的变化时才重算（externalViewportWidthSignature
-// 守卫）。这在稳态下是对的，但页面刚加载时第一次测量往往发生在字体、头像和主题 CSS 还没
-// 稳定的时刻：此时量到的 .mes_text 盒子偏窄，被写进 --rm-external-lane-width，而之后
-// innerWidth 一直没变，于是这个偏窄值再也不会被更正——直到下一条回复重新挂载 host。
-// 表现就是"退出很久重新进来变窄，出下一条回复又自己恢复"。
-//
-// 这里在挂载完成后补两次定点复测。不新增任何 observer/listener，也不轮询：每个 host 每次
-// 挂载最多两个一次性 setTimeout，且第一次复测若结果与首测一致就不再安排第二次。
-const EXTERNAL_GEOMETRY_SETTLE_STEPS_MS=[420,1500];
-function scheduleExternalHostGeometrySettleRecheck(host,step=0){
+function applyExternalHostGeometryPlan(host,plan,context={}){
+ if(!host || !plan || plan.skip) return {changed:false};
+ if(plan.clear){
+  const hadWidth=!!host.style.getPropertyValue('--rm-external-lane-width');
+  const hadLeft=!!host.style.getPropertyValue('--rm-external-lane-left');
+  clearExternalHostGeometryTokens(host);
+  if(host.dataset.rmExternalWidthMode!==plan.mode) host.dataset.rmExternalWidthMode=plan.mode;
+  host.dataset.rmGeometryMode=String(plan.mode||'stable-fallback');
+  return {changed:hadWidth||hadLeft,mode:plan.mode};
+ }
+ if(plan.mobileIndependent) return applyMobileExternalHostGeometryPlan(host,plan,context);
+ const beforeWidth=host.style.getPropertyValue('--rm-external-lane-width');
+ const beforeLeft=host.style.getPropertyValue('--rm-external-lane-left');
+ if(beforeWidth!==plan.width) host.style.setProperty('--rm-external-lane-width',plan.width);
+ if(beforeLeft!==plan.left) host.style.setProperty('--rm-external-lane-left',plan.left);
+ if(host.dataset.rmExternalWidthMode!==plan.mode) host.dataset.rmExternalWidthMode=plan.mode;
+ host.dataset.rmGeometryMode=String(plan.mode||'inline-parent-content-box');
+ return {changed:beforeWidth!==plan.width || beforeLeft!==plan.left,mode:plan.mode};
+}
+function finishExternalHostGeometrySettle(host,cycleId){
+ if(!host?.isConnected || String(host.dataset.rmGeometryCycleId||'')!==String(cycleId||'')) return;
+ host.dataset.rmGeometrySettlePass='done';
+ host.dataset.rmGeometrySettleCycle=String(cycleId||'');
+ host.dataset.rmGeometrySettleState=host.dataset.rmGeometrySettleState==='confirmed' ? 'done-confirmed' : 'done-provisional';
+}
+function scheduleExternalHostGeometryFinalConfirm(host,cycleId){
+ const run=()=>{
+  if(!host?.isConnected || String(host.dataset.rmGeometryCycleId||'')!==String(cycleId||'')) return;
+  const before=host.style.getPropertyValue('--rm-external-lane-width');
+  try{ syncExternalHostGeometry(messageElementForExternalHost(host),host,{phase:'settle-final',cycleId}); }
+  catch(error){ console.debug('[RabbitMirror] external geometry final confirmation skipped:',error); }
+  const after=host.style.getPropertyValue('--rm-external-lane-width');
+  if(before!==after) host.dataset.rmGeometrySettleCorrected='true';
+  finishExternalHostGeometrySettle(host,cycleId);
+ };
+ if(typeof requestAnimationFrame==='function') requestAnimationFrame(()=>requestAnimationFrame(run));
+ else globalThis.setTimeout?.(run,0);
+}
+function scheduleExternalHostGeometrySettleRecheck(host,step=0,expectedCycle=''){
  if(!host?.isConnected || host.dataset.rmSource!=='independent') return;
  if(String(host.dataset.rmPlacement||'external')!=='external') return;
+ const el=messageElementForExternalHost(host);
+ const cycleId=String(expectedCycle||ensureExternalHostGeometryCycle(el,host)||'');
+ if(!cycleId || String(host.dataset.rmGeometryCycleId||'')!==cycleId) return;
  const delay=EXTERNAL_GEOMETRY_SETTLE_STEPS_MS[step];
  if(!Number.isFinite(delay)) return;
  if(step===0){
-  // 幂等：同一次挂载只安排一轮，重复调用 ensureExternalTools 不会累积定时器。
-  if(host.dataset.rmGeometrySettlePass==='done' || host.dataset.rmGeometrySettlePass==='running') return;
+  if(host.dataset.rmGeometrySettleCycle===cycleId && (host.dataset.rmGeometrySettlePass==='running' || host.dataset.rmGeometrySettlePass==='done')) return;
+  host.dataset.rmGeometrySettleCycle=cycleId;
   host.dataset.rmGeometrySettlePass='running';
+  host.dataset.rmGeometrySettleState='scheduled';
  }
  globalThis.setTimeout?.(()=>{
-  if(!host?.isConnected){ delete host.dataset?.rmGeometrySettlePass; return; }
+  if(!host?.isConnected || String(host.dataset.rmGeometryCycleId||'')!==cycleId) return;
   const before=host.style.getPropertyValue('--rm-external-lane-width');
-  try{ syncExternalHostGeometry(messageElementForExternalHost(host),host); }
+  const phase=step===0 ? 'settle-420' : 'settle-1500';
+  try{ syncExternalHostGeometry(messageElementForExternalHost(host),host,{phase,cycleId}); }
   catch(error){ console.debug('[RabbitMirror] external geometry settle recheck skipped:',error); }
   const after=host.style.getPropertyValue('--rm-external-lane-width');
-  if(before!==after){
-   host.dataset.rmGeometrySettleCorrected='true';
-   // 首测被证明不可信：让后续任何 resize/orientation 也不要因为宽度签名相同而跳过。
-   externalGeometryLastSignature=0;
-  }
-  // 两个定点复测都必须实际执行。旧逻辑只有第一次已经变化时才安排 1500ms
-  // 复测，导致“420ms 时仍窄、稍后才稳定”的 iOS/缓存恢复场景永远停在坏值。
+  if(before!==after) host.dataset.rmGeometrySettleCorrected='true';
   if(Number.isFinite(EXTERNAL_GEOMETRY_SETTLE_STEPS_MS[step+1])){
-   scheduleExternalHostGeometrySettleRecheck(host,step+1);
+   scheduleExternalHostGeometrySettleRecheck(host,step+1,cycleId);
    return;
   }
-  host.dataset.rmGeometrySettlePass='done';
+  if(host.dataset.rmGeometrySettleState==='await-final-confirm'){
+   scheduleExternalHostGeometryFinalConfirm(host,cycleId);
+   return;
+  }
+  finishExternalHostGeometrySettle(host,cycleId);
  },delay);
 }
-function syncExternalHostGeometry(el,host){
- if(!host?.isConnected) return;
- applyExternalHostGeometryPlan(host,computeExternalHostGeometryPlan(el,host));
+function syncExternalHostGeometry(el,host,context={}){
+ if(!host?.isConnected) return {changed:false};
+ return applyExternalHostGeometryPlan(host,computeExternalHostGeometryPlan(el,host),context);
 }
 function scheduleExternalHostGeometry(el,host){
- syncExternalHostGeometry(el,host);
+ const cycleId=ensureExternalHostGeometryCycle(el,host);
+ syncExternalHostGeometry(el,host,{phase:'early',cycleId});
  const retry=()=>{
-  if(host?.isConnected) syncExternalHostGeometry(el||messageElementForExternalHost(host),host);
+  if(host?.isConnected && String(host.dataset.rmGeometryCycleId||'')===String(cycleId||'')){
+   syncExternalHostGeometry(el||messageElementForExternalHost(host),host,{phase:'early',cycleId});
+  }
  };
  if(typeof requestAnimationFrame==='function'){
   requestAnimationFrame(()=>requestAnimationFrame(retry));
  }
  setTimeout(retry,120);
+ scheduleExternalHostGeometrySettleRecheck(host,0,cycleId);
 }
 function clearOrphanExternalHostTimer(mesid=''){
  const id=String(mesid||'');
@@ -1451,6 +1581,7 @@ function placeExternalHost(el,host,key='',source='independent'){
  host.hidden=false;
  delete host.dataset.rmAwaitingOwner;
  clearOrphanExternalHostTimer(externalOwnerMesid(el));
+ ensureExternalHostGeometryCycle(el,host,needsReanchor?'external-reanchor':'');
  scheduleExternalHostGeometry(el,host);
  if(previousParent?.hasAttribute?.(INLINE_ANCHOR_ATTR) && !previousParent.querySelector?.(`[${SOURCE_ATTR}]`)) previousParent.remove();
  return true;
@@ -1564,9 +1695,19 @@ function refreshExternalHostGeometry(){
  if(!hosts.length) return;
  // Layout reads are allowed only after a *real browser-width change*. Never call
  // this path merely because a SillyTavern drawer/modal changed the app layout.
- // Read all plans first, then write, avoiding read/write layout thrashing.
- const plans=hosts.map(host=>[host,computeExternalHostGeometryPlan(messageElementForExternalHost(host),host)]);
- for(const [host,plan] of plans) applyExternalHostGeometryPlan(host,plan);
+ // On mobile, a real viewport-width change opens a new per-host geometry cycle;
+ // the viewport signature remains only the cheap global trigger, not lane validity.
+ const viewportWidth=externalViewportWidthSignature();
+ const mobile=viewportWidth>0 && viewportWidth<900;
+ const plans=hosts.map(host=>{
+  const el=messageElementForExternalHost(host);
+  const cycleId=mobile ? beginExternalHostGeometryCycle(host,'viewport-change',el) : '';
+  return [host,computeExternalHostGeometryPlan(el,host),cycleId];
+ });
+ for(const [host,plan,cycleId] of plans) applyExternalHostGeometryPlan(host,plan,{phase:'early',cycleId});
+ if(mobile){
+  for(const [host,,cycleId] of plans) scheduleExternalHostGeometrySettleRecheck(host,0,cycleId);
+ }
 }
 function externalViewportWidthSignature(){
  // IMPORTANT: this guard must stay DOM-read-free. Reading #chat rect/clientWidth
@@ -2049,7 +2190,7 @@ function armExternalInteractionTools(host,details){
 function ensureExternalTools(host){
  if(!host?.isConnected) return;
  stampExternalDetailsOwnership(host);
- // 挂载／缓存恢复后补一次定点几何复测，纠正在布局稳定前量到的偏窄正文栏。
+ // 当前 external geometry cycle 的有限定点复测；同一 cycle 幂等，新 cycle 可重新验证。
  try{ scheduleExternalHostGeometrySettleRecheck(host); }catch(error){ console.debug('[RabbitMirror] geometry settle schedule skipped:',error); }
  const details=host.querySelector?.(':scope > details');
  armExternalInteractionTools(host,details);
@@ -3362,6 +3503,7 @@ function resumeRabbitMirrorLifecycle(event){
   const currentMode=runtimeMode();
   if(currentMode==='off') return;
   const last=assistantMessages(getContext()).at(-1);
+  markExternalGeometryLifecycle('background-resume');
   syncAll();
   if(currentMode==='independent' && last) scheduleMessageGeneration(last.i,160,true);
  },80);
@@ -4519,6 +4661,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
      const handler=()=>{
        hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); cancelAllIndependentFlights('chat-changed'); messageSourceRevisions.clear();
        if(runtimeMode()==='independent' && automaticGenerationCutovers.size) ensureAutomaticGenerationCutover(getContext());
+       markExternalGeometryLifecycle('chat-changed');
        syncAll(); scheduleLatest(700);
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
