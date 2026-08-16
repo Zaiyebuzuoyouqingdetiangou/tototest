@@ -1,15 +1,15 @@
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.0';
-import { clearLastCombo } from './storage.js?rmv=1.4.0';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.0';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.0';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.0';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.0';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.0';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.0';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.4.0';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.102';
+import { clearLastCombo } from './storage.js?rmv=1.3.102';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.102';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.102';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.3.102';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.102';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.102';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.102';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.3.102';
 
-const SETTINGS_UI_VERSION = '1.4.0-visual-maintenance';
-const RUNTIME_VERSION = '1.4.0';
+const SETTINGS_UI_VERSION = '1.3.102-visual-maintenance';
+const RUNTIME_VERSION = '1.3.102';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -143,7 +143,7 @@ function renderTokenMeter(record = getLastRabbitMirrorTokenRecord()) {
     if (!record) {
         main.text('尚无生成记录');
         exact.text('发送下一轮消息后自动更新。');
-        detail.text('只统计兔子镜小剧场自己写入的 Prompt。');
+        detail.text('只统计兔子镜测试版自己写入的 Prompt。');
         return;
     }
     if (record.status === 'independent') {
@@ -165,7 +165,7 @@ function renderTokenMeter(record = getLastRabbitMirrorTokenRecord()) {
     if (record.status !== 'injected') {
         main.text('0 Token');
         exact.text(tokenMeterNoInjectionLabel(record.reason));
-        detail.text('未向当前主模型追加兔子镜小剧场 Prompt。');
+        detail.text('未向当前主模型追加兔子镜测试版 Prompt。');
         return;
     }
 
@@ -290,7 +290,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4</span>
+      <b>兔子镜测试版</b><span class="rabbit-mirror-toto-watermark">TOTOv1.3 · 1.3.102</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -341,11 +341,11 @@ export function initRabbitMirrorUI() {
 
       <div id="rh_token_meter" class="rabbit-mirror-token-meter" aria-live="polite">
         <div class="rabbit-mirror-token-meter-head">
-          <b>本轮兔子镜小剧场注入</b>
+          <b>本轮兔子镜测试版注入</b>
           <span data-rh-token-meter-main>尚无生成记录</span>
         </div>
         <div data-rh-token-meter-exact class="rabbit-mirror-token-meter-exact">发送下一轮消息后自动更新。</div>
-        <div data-rh-token-meter-detail class="rabbit-mirror-token-meter-detail">只统计兔子镜小剧场自己写入的 Prompt。</div>
+        <div data-rh-token-meter-detail class="rabbit-mirror-token-meter-detail">只统计兔子镜测试版自己写入的 Prompt。</div>
         <div class="rabbit-mirror-token-meter-note">字符数为精确值；Token 因模型分词器不同只能估算，因此同时给出保守范围。统计面板本身不会注入模型。</div>
       </div>
 

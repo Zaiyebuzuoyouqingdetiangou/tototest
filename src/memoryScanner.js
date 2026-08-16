@@ -270,7 +270,7 @@ function readGlobalProvider(providerId) {
 
     const result = api.getInjectedHistory();
     if (result && typeof result.then === 'function') {
-        throw new Error('当前版本暂不支持异步 getInjectedHistory 接口');
+        throw new Error('当前测试版暂不支持异步 getInjectedHistory 接口');
     }
 
     let snapshot = null;
