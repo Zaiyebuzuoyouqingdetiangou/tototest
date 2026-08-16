@@ -1,10 +1,8 @@
-# 1.3.96 TEST / RC
+# 1.3.97 TEST / RC
 
-- 修复独立 API “拉取模型”把 SillyTavern 的 HTTP 200 + `error:true` 当成成功的问题。现在会先检查 payload 级错误，再解析模型列表，不再把真实上游失败糊成“0 个模型”。
-- 模型列表解析兼容 OpenAI 风格 `data`、顶层数组，以及 `models / items / result / results` 和一层嵌套 `data.*` 等常见返回结构；模型 ID 支持 `id / model / model_id / name / slug`。
-- “拉取模型”失败只清空候选建议，不清除用户手动输入的 model ID；错误提示会区分 HTTP 错误、SillyTavern/upstream `error:true`、成功但没有可识别列表。
-- “测试连接”继续坚持不发计费生成请求，但不再把“/models 不可用”显示成“连接成功 0 个模型”。若已有手动 model ID，会明确提示：无法通过 `/models` 无付费验证，不代表 `/chat/completions` 一定不可用，应由用户主动生成一次验证。
-- 不修改独立 API 生成请求、stream/retry、Prompt、Lannuomi、配色、黑名单、维修兔或 1.3.95 的高置信自动排版修复。
+- 修复独立 API 模型列表“已拉取 N 个，但下拉只显示少量模型”的 UI 回归。根因是 1.3.90 为支持手动 model ID 改成 `input[list] + datalist` 后，浏览器会按输入框当前值自动过滤原生 datalist；例如后端实际返回 23 个，当前模型字符串只匹配 2 个时，界面看起来就像只剩 2 个。
+- 模型选择改为“完整 `<select>` + 独立手动 model ID 输入框”：拉取成功后所有返回模型始终保留在下拉框；从下拉选择会同步写入 model ID；手动填写未出现在 `/models` 中的自定义 ID 仍然有效。
+- 拉取失败只重置候选下拉，不清手动 model ID；不新增 API 请求，不修改 `/models` 解析、生成请求、stream/retry、Prompt、维修兔、配色或黑名单。
 
 # 1.3.95 TEST / RC
 

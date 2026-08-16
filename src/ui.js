@@ -1,15 +1,15 @@
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.96';
-import { clearLastCombo } from './storage.js?rmv=1.3.96';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.96';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.96';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.3.96';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.96';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.96';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.96';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.3.96';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.97';
+import { clearLastCombo } from './storage.js?rmv=1.3.97';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.97';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.97';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.3.97';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.97';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.97';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.97';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.3.97';
 
-const SETTINGS_UI_VERSION = '1.3.96-visual-maintenance';
-const RUNTIME_VERSION = '1.3.96';
+const SETTINGS_UI_VERSION = '1.3.97-visual-maintenance';
+const RUNTIME_VERSION = '1.3.97';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -290,7 +290,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜测试版</b><span class="rabbit-mirror-toto-watermark">TOTOv1.3 · 1.3.96</span>
+      <b>兔子镜测试版</b><span class="rabbit-mirror-toto-watermark">TOTOv1.3 · 1.3.97</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -322,9 +322,11 @@ export function initRabbitMirrorUI() {
               <button id="rh_independent_models" class="menu_button" type="button">拉取模型</button>
               <button id="rh_independent_test" class="menu_button" type="button">测试连接</button>
             </div>
-            <input id="rh_independent_model" class="text_pole" type="text" list="rh_independent_model_list" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="模型 ID，可拉取后选择，也可直接手动填写">
-            <datalist id="rh_independent_model_list"></datalist>
-            <div style="opacity:.66;font-size:11px;line-height:1.45;">若服务不提供 <code>/models</code>，拉取失败也不影响手动填写模型 ID。API 地址若已以 /v1、/v2、/v4 等版本段结尾会原样使用；未带版本段时继续默认补 /v1。</div>
+            <select id="rh_independent_model_select" class="text_pole" aria-label="已拉取模型列表">
+              <option value="">先点击“拉取模型”获取完整列表</option>
+            </select>
+            <input id="rh_independent_model" class="text_pole" type="text" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="模型 ID；可从上方完整列表选择，也可直接手动填写">
+            <div style="opacity:.66;font-size:11px;line-height:1.45;">拉取成功后，上方下拉框会保留完整模型列表，不会因当前模型 ID 被浏览器过滤；选择后会自动写入模型 ID。若服务不提供 <code>/models</code>，拉取失败也不影响手动填写。API 地址若已以 /v1、/v2、/v4 等版本段结尾会原样使用；未带版本段时继续默认补 /v1。</div>
             <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;">
               <label>温度 <input id="rh_independent_temperature" class="text_pole" type="number" min="0" max="2" step="0.1" style="width:82px;"></label>
               <label>最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
@@ -534,22 +536,45 @@ export function initRabbitMirrorUI() {
     // Safari may emit repeated input/autofill events as the drawer opens, which made the UI stutter.
     $('#rh_independent_base, #rh_independent_key, #rh_independent_model').on('change blur', saveIndependentFields);
     $('#rh_independent_temperature, #rh_independent_max_tokens').on('change', saveIndependentFields);
+    const renderIndependentModelSelect = (models, currentModel='') => {
+        const select=$('#rh_independent_model_select');
+        const current=String(currentModel||'').trim();
+        select.empty().append($('<option>').val('').text(models.length ? `已拉取 ${models.length} 个模型，请选择` : '先点击“拉取模型”获取完整列表'));
+        for(const id of models){
+            select.append($('<option>').val(id).text(id));
+        }
+        // 只有当前手动模型确实存在于列表时才选中；自定义 ID 保持在文本框，不伪装成列表项。
+        select.val(models.includes(current) ? current : '');
+    };
+    $('#rh_independent_model_select').on('change', e => {
+        const model=String(e.target.value||'').trim();
+        if(!model) return;
+        $('#rh_independent_model').val(model);
+        updateSettings({independentApiModel:model});
+    });
+    $('#rh_independent_model').on('change blur', () => {
+        const current=String($('#rh_independent_model').val()||'').trim();
+        const select=$('#rh_independent_model_select');
+        const exists=select.find('option').toArray().some(option=>String(option.value||'')===current);
+        select.val(exists ? current : '');
+    });
     $('#rh_independent_models').on('click', async () => {
         saveIndependentFields();
         const current=String($('#rh_independent_model').val() || getSettings().independentApiModel || '').trim();
         try {
             const models=await fetchIndependentModels();
-            $('#rh_independent_model_list').html(models.map(id=>`<option value="${escapeHtml(id)}"></option>`).join(''));
+            renderIndependentModelSelect(models,current);
             if(current) {
                 $('#rh_independent_model').val(current);
             } else if(models[0]) {
                 $('#rh_independent_model').val(models[0]);
+                $('#rh_independent_model_select').val(models[0]);
                 updateSettings({independentApiModel:models[0]});
             }
-            toastr?.success?.(`已拉取 ${models.length} 个模型；也可以手动填写模型 ID`);
+            toastr?.success?.(`已拉取 ${models.length} 个模型；完整列表已显示在模型下拉框中`);
         } catch(error) {
             // 拉取失败只清候选列表，不碰用户已经手动填写的 model ID。
-            $('#rh_independent_model_list').empty();
+            renderIndependentModelSelect([],current);
             if(current) $('#rh_independent_model').val(current);
             toastr?.warning?.(`模型列表拉取失败；手动模型 ID 不受影响。${String(error?.message||error)}`);
         }

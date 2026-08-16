@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.96';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.96';
+import { getSettings } from './settings.js?rmv=1.3.97';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.97';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.96';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.96';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.96';
-import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.96';
+} from './feedbackCat.js?rmv=1.3.97';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.97';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.97';
+import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.97';
 
 
-const RUNTIME_VERSION = '1.3.96';
+const RUNTIME_VERSION = '1.3.97';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -2945,9 +2945,9 @@ const NESTED_DETAILS_REPLACEMENT_HOST_ATTR = 'data-rm-nested-details-replacement
 const NESTED_DETAILS_REPLACEMENT_STYLE_ATTR = 'data-rabbit-mirror-nested-details-replacement-style';
 const NESTED_DETAILS_REPLACEMENT_BOUND_ATTR = 'data-rm-nested-details-replacement-bound';
 const NESTED_DETAILS_REPLACEMENT_BINDING_PROP = '__rabbitMirrorNestedDetailsReplacementBinding';
-const NESTED_DETAILS_REPLACEMENT_BINDING_VERSION = '1.3.96';
+const NESTED_DETAILS_REPLACEMENT_BINDING_VERSION = '1.3.97';
 const NESTED_DETAILS_DEFERRED_BINDING_PROP = '__rabbitMirrorNestedDetailsDeferredBinding';
-const NESTED_DETAILS_DEFERRED_BINDING_VERSION = '1.3.96';
+const NESTED_DETAILS_DEFERRED_BINDING_VERSION = '1.3.97';
 const nestedDetailsDeferredChecks = new WeakSet();
 const NESTED_DETAILS_POPUP_RESCUE_ATTR = 'data-rm-nested-details-popup-rescue';
 const NESTED_DETAILS_POPUP_HOST_ATTR = 'data-rm-nested-details-popup-host';
@@ -8571,7 +8571,7 @@ function refreshTargetRescue(root) {
 }
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
-const NESTED_DETAILS_FALLBACK_HANDLER_VERSION = '1.3.96';
+const NESTED_DETAILS_FALLBACK_HANDLER_VERSION = '1.3.97';
 
 function installNestedDetailsFallback(root) {
     if (!root?.querySelectorAll || !root?.addEventListener) return;
@@ -11748,7 +11748,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.96-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.97-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -19077,7 +19077,7 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
         ['missing-checked-control-class', installMissingCheckedSubjectClassRescue],
         ['webkit-3d-flip-compat', installWebKit3DFlipRescue],
         ['visual-scenery-mobile-overflow', installVisualSceneryMobileNarrativeOverflowRescue],
-        // 1.3.96: 两类高置信排版修复进入自动安全层，但只在真实展开、可测布局下运行。
+        // 1.3.97: 两类高置信排版修复进入自动安全层，但只在真实展开、可测布局下运行。
         // 不提升 text/mobile-layout/annotation/完整交互/源码恢复，避免自动改变可见内容或消息源。
         ['viewport-layout-rescue', installMaintenanceAutoSafeViewportLayoutRescue],
         ['nested-details-popup-flow-repair', installMaintenanceAutoSafeNestedDetailsPopupRescue],
