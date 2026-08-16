@@ -1,10 +1,10 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.82';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.82';
-import { pickCombination } from './picker.js?rmv=1.3.82';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRepeatedPaletteFamily, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.3.82';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.82';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.82';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.3.82';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.87';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.87';
+import { pickCombination } from './picker.js?rmv=1.3.87';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRepeatedPaletteFamily, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.3.87';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.87';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.87';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.3.87';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -249,9 +249,10 @@ function paletteCooldownRule() {
             : '';
         blocks.push(String.raw`
 配色重复冷却【由近期实际输出触发，近 ${repeated.window} 轮中有 ${repeated.count} 轮落在同一配色家族】:
-  - 近期主要承载面持续落在「${repeated.label}」。本轮必须换到明显不同的色相家族与冷暖关系。
-  - 明度、冷暖、色相、饱和度四项中至少有两项必须发生可见变化；只降低饱和度或只更换强调色不算改变。${creamLine}
-  - 新配色仍须从本轮展现形式的材质、环境、光线与空间关系中生长出来，不得为了躲避冷却机械轮换到另一种固定配色。`);
+  - 近期主要承载面持续落在「${repeated.label}」。不要沿用这个配色家族。
+  - 但也不要为了制造差异而机械换色相：请重新从本轮展现形式的材质、环境与光线关系推导配色，让色相自然落到不同的家族上。${creamLine}
+  - 若重新推导后仍然落回同一家族，说明推导过度依赖默认审美而不是本轮媒介本身，须回到材质与光线重新判断。
+  - 换家族仍须保持明确的色彩主次、明度层级与光源一致性，不得为了避重复破坏本轮媒介自身的配色逻辑。`);
     }
 
     return blocks.join('\n');
@@ -402,6 +403,11 @@ function legacyPresentationEmbodimentRule() {
   - 当展现形式适合单色、低彩度或有限色域时，可以保持克制，但仍须依靠明度、纹理、材质与空间层次形成完整视觉。`;
 }
 
+function globalCompletionFloorRule(compact = false) {
+    const rule = '展现形式与媒介本体决定具体长相。成品须主次清楚，比例、空间、材质、信息组织、细节与配色均符合本轮媒介与内容；配色须有主次，不得平均竞争。不得为追求「高级感」固定套用某一种布局、材质、视觉效果或配色。';
+    return compact ? `全局视觉地板：${rule}` : `全局视觉地板【始终适用】：\n${rule}`;
+}
+
 function cleanEditableVisualPrompt(value, maxChars = VISUAL_PROMPT_MAX_CHARS) {
     const text = String(value ?? '')
         .replace(/\r\n?/g, '\n')
@@ -413,16 +419,13 @@ function cleanEditableVisualPrompt(value, maxChars = VISUAL_PROMPT_MAX_CHARS) {
 
 function visualCompletionFloorRule(compact = false) {
     if (compact) {
-        return '成品完成度下限：完成度不等于堆装饰；即使走极简也要有主层／信息层／微细节层的清楚层级、可辨认的对齐与留白节奏、文字层级，以及至少一处由本轮媒介自然生长出的工艺细节；不得为凑高级感退回通用卡片、统一圆角、无意义投影或装饰堆叠。';
+        return '视觉编辑补足：用户偏好只决定如何处理本轮展现形式，不提供统一骨架；短偏好未说明的构图、层级、材质、光线、排版与交互由本轮媒介主动补足，不得为了所谓高级感额外套固定卡片、圆角、毛玻璃或装饰模板。';
     }
-    return `成品完成度下限【只在视觉编辑开启时适用；完成度不等于复杂度】:
+    return `视觉编辑补足【只在视觉编辑开启时适用】:
   - 即使用户只写一个颜色、材质或气质词，也不得因此缩减本轮展现形式本来应有的结构、阅读路径与交互完成度；用户没指定的维度由本轮展现形式与通用视觉规则主动补足。
-  - 至少形成三层可感知层级：主承载层、信息／次级结构层、近看才能发现的微细节层。三层可以由材质、光影、排版、空间或状态变化形成，不要求额外增加卡片、面板或装饰块。
-  - 边界与转折至少有一处体现本轮媒介真实的厚度、接缝、裁切、压痕、折射、印刷／像素痕迹、阴影关系或材质过渡之一；不要求每条边都加边框或投影。
-  - 存在可辨认的对齐系统（网格、基线、模数或有意的错位关系），留白有疏密节奏而不是所有区域统一 padding。
-  - 文字须有字号／字重／字距／行距／位置中的至少两种层级对比，不得全部同号同重；文字层级必须服从本轮媒介而不是套固定信息卡。
-  - 至少一处只有靠近观察才会发现、且与本轮媒介相符的工艺细节；极简形式也应通过比例、留白、微纹理或精细边界成立，而不是靠堆叠装饰制造“高级”。
-  - 若本轮存在交互第二状态，第二状态必须沿用同一材质、光线与排版体系，同时产生真实可辨认的状态变化。`;
+  - 用户偏好描述的是如何处理本轮媒介，不是统一布局骨架；不得因为偏好词相同就复用固定标题区、卡片区、信息栏、三段式或同一套组件顺序。
+  - 视觉主次、对齐、留白、文字层级、边界工艺与交互第二状态都应从本轮媒介本体重新推导；完成度不等于复杂度，也不要求固定层数或额外面板。
+  - 极简形式可以保持克制；毛玻璃、渐变、发光、投影等效果在媒介适合时可以充分使用，但必须服务当前材质、空间与信息关系，而不是代替设计本身。`;
 }
 
 function compactVisualPreferenceExecutionLock(settings) {
@@ -598,7 +601,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const avoidLines = [
         interaction ? `交互冷却：${interaction.label}（近五轮 ${interaction.count} 次）；${interaction.exactBan}` : '',
         palette?.active ? `配色冷却：剩余 ${palette.remaining} 轮；主要承载面改用中／高明度，不延续低明度底盘，也不得退回米黄／奶油底。` : '',
-        repeatedPalette ? `配色重复冷却：近 ${repeatedPalette.window} 轮有 ${repeatedPalette.count} 轮落在「${repeatedPalette.label}」；本轮必须换色相家族与冷暖关系${repeatedPalette.cream ? '，禁止继续使用米黄／奶油／米色底' : ''}。` : '',
+        repeatedPalette ? `配色重复冷却：近 ${repeatedPalette.window} 轮有 ${repeatedPalette.count} 轮落在「${repeatedPalette.label}」；从本轮材质与光线重新推导配色，让色相落到不同家族${repeatedPalette.cream ? '，禁止继续使用米黄／奶油／米色底' : ''}。` : '',
         innerDetailsBlocked ? '内部折叠冷却：本轮最外层兔子镜内部不得再使用 details/summary。' : '',
         riskCorrection ? `近期真实输出纠偏：${riskCorrection}` : '',
     ].filter(Boolean);
@@ -608,6 +611,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
 - 抽取模式：${samplingModeLabel(combo, settings)}。
 - 内容构思锁：以“${themes}”作为观察角度、关系组织与细节取材；必须从当前助手正文提取具体动作、情绪、关系变化或物件痕迹，不得只把主题写进标题。
 - UI／媒介构思锁：以“${formats}”作为首个主要视觉本体；DOM/CSS 必须真实呈现其形态、材质、空间关系、阅读路径和操作方式，不得退化为通用卡片、信息面板或只换皮的标签页。
+- ${globalCompletionFloorRule(true)}
 ${visualPreferenceLock ? `- ${visualPreferenceLock}` : ''}
 ${directiveText ? `- 用户本轮点菜仍为最高优先，必须同时落实：${directiveText}` : ''}
 
@@ -655,6 +659,7 @@ ${selectedFormats}`);
     } else {
         chunks.push(legacyPresentationEmbodimentRule());
     }
+    chunks.push(globalCompletionFloorRule());
     chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
     chunks.push(interactionFamilyCooldownRule());
     chunks.push(innerDetailsCooldownRule());

@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.3.82",
-  "css": "style.css?rmv=1.3.82",
+  "js": "index.js?rmv=1.3.87",
+  "css": "style.css?rmv=1.3.87",
   "author": "Toto",
-  "version": "1.3.82",
+  "version": "1.3.87",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版：修复手机版纯外置与“外置后内嵌”宽度不一致。pure-external 直接使用同一条消息的 structural content lane（通常为 .mes_text 的 containing block / .mes_block），不再让 .mes_text 的瞬时窄宽决定外壳；内部作品宽度保持完全自由。"
+  "description": "兔子镜测试版：把全局完成度与默认配色压成一条短“全局视觉地板”，继续由展现形式/媒介本体决定具体长相；修复内部 details 兜底监听器在 clone/序列化后可能因残留标记而不重绑的问题，并让独立 API 外层折叠首次展开先完成一次绘制、再执行重交互急救，降低 Safari 首次展开卡顿。"
 }

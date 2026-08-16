@@ -382,10 +382,19 @@ const PALETTE_HUE_LABELS = {
 // 会被算成三个不同家族而永远不触发重复冷却，正好放过最需要拦的那一种。
 function isCreamAttractor(fingerprint) {
     if (!fingerprint) return false;
-    return String(fingerprint.brightness || '') === 'light'
-        && String(fingerprint.temperature || '') === 'warm'
-        && String(fingerprint.saturation || '') === 'low'
-        && ['orange', 'yellow', 'neutral', 'red'].includes(String(fingerprint.hueFamily || 'neutral'));
+    if (String(fingerprint.brightness || '') !== 'light' || String(fingerprint.temperature || '') !== 'warm') return false;
+    const hueFamily = String(fingerprint.hueFamily || 'neutral');
+    const saturation = String(fingerprint.saturation || '');
+    const averageLuminance = Number(fingerprint.averageLuminance);
+    // HSL saturation is misleading near white: literal beige/ivory/old-lace/cream
+    // often report medium/high saturation even though they are perceptually pale
+    // warm neutrals. Keep the original low-saturation path, and additionally
+    // collapse very bright orange/yellow/neutral families into the same attractor.
+    const lowSaturationWarmNeutral = saturation === 'low' && ['orange', 'yellow', 'neutral', 'red'].includes(hueFamily);
+    const paleWarmNeutral = ['orange', 'yellow', 'neutral'].includes(hueFamily)
+        && Number.isFinite(averageLuminance)
+        && averageLuminance >= 228;
+    return lowSaturationWarmNeutral || paleWarmNeutral;
 }
 
 export function paletteFamilyKey(fingerprint) {
@@ -408,7 +417,9 @@ export function describePaletteFamily(fingerprint) {
     const hue = PALETTE_HUE_LABELS[String(fingerprint.hueFamily || 'neutral')] || '';
     const base = [brightness, temperature, hue, saturation].filter(Boolean).join('');
     if (!base) return '';
-    return isCreamAttractor(fingerprint) ? `${base}（米黄／奶油／米色底盘）` : base;
+    // Do not echo HSL's misleading near-white saturation label back into the
+    // prompt once this fingerprint has been recognized as the cream attractor.
+    return isCreamAttractor(fingerprint) ? '高明度暖中性（米黄／奶油／米色底盘）' : base;
 }
 
 // 近 window 轮中，最新一轮所属的配色家族出现了 threshold 次及以上即视为重复。

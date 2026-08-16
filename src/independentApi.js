@@ -1,13 +1,13 @@
-import { getSettings } from './settings.js?rmv=1.3.82';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.82';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.3.82';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.82';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.82';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.82';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.82';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.82';
+import { getSettings } from './settings.js?rmv=1.3.87';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.87';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.3.87';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.87';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.87';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.87';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.87';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.87';
 
-const RUNTIME_VERSION = '1.3.82';
+const RUNTIME_VERSION = '1.3.87';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -1554,6 +1554,7 @@ function placeExternalHost(el,host,key='',source='independent'){
  const previousParent=host.parentElement;
  const desired=source==='independent' ? independentPlacementForState(host.dataset.rmState||'ready') : 'external';
  if(source!=='independent' || desired!=='external') restoreExternalHostRendering(host);
+ if(source==='independent' && desired!=='external') restoreIndependentExternalAutoRootWidth(host);
  if(source==='follow'){
   const anchor=followExternalAnchorForMessage(el,true);
   if(!anchor) return false;
@@ -1720,7 +1721,13 @@ function refreshExternalHostGeometry(){
  });
  for(const [host,plan,cycleId] of plans) applyExternalHostGeometryPlan(host,plan,{phase:'early',cycleId});
  if(mobile){
-  for(const [host,,cycleId] of plans) scheduleExternalHostGeometrySettleRecheck(host,0,cycleId);
+  for(const [host,,cycleId] of plans){
+   const details=host.querySelector?.(':scope > details[data-rabbit-mirror-external-details="true"], :scope > details');
+   if(details?.open) rescueIndependentExternalAutoRootWidth(host);
+   scheduleExternalHostGeometrySettleRecheck(host,0,cycleId);
+  }
+ }else{
+  for(const [host] of plans) restoreIndependentExternalAutoRootWidth(host);
  }
 }
 function externalViewportWidthSignature(){
@@ -2152,6 +2159,7 @@ function removeIndependentResayButtons(host){
 const DEFERRED_INTERACTION_RESCUE_ATTR='data-rabbit-mirror-deferred-interaction-rescue';
 const externalInteractionActivatedDetails=new WeakSet();
 const externalInteractionActivationHandlers=new WeakMap();
+const externalInteractionActivationScheduledDetails=new WeakSet();
 function activateExternalInteractionTools(host,details){
  if(!details || externalInteractionActivatedDetails.has(details)) return false;
  try{
@@ -2174,6 +2182,28 @@ function runExternalHorizontalClipRescue(details){
  try{ if(details?.isConnected && details.open) installMaintenanceHorizontalClipRescue(details); }
  catch(error){ console.debug('[RabbitMirror] horizontal clip rescue skipped:',error); }
 }
+function scheduleExternalInteractionActivationAfterOpenPaint(host,details,onToggle=null){
+ if(!details?.isConnected || !details.open || externalInteractionActivatedDetails.has(details)) return false;
+ if(externalInteractionActivationScheduledDetails.has(details)) return true;
+ externalInteractionActivationScheduledDetails.add(details);
+ const run=()=>{
+  externalInteractionActivationScheduledDetails.delete(details);
+  if(!details?.isConnected || !details.open || externalInteractionActivatedDetails.has(details)) return;
+  if(activateExternalInteractionTools(host,details)){
+   runExternalHorizontalClipRescue(details);
+   const boundToggle=onToggle||externalInteractionActivationHandlers.get(details);
+   if(boundToggle) details.removeEventListener?.('toggle',boundToggle,false);
+   externalInteractionActivationHandlers.delete(details);
+  }
+ };
+ // The old path ran the entire interaction rescue library synchronously inside the
+ // native <details> toggle event. On complex mirrors Safari cannot paint the opened
+ // body until that scan finishes, so a successful tap looks like a dead/cancelled tap.
+ // Yield one paint first; internal controls are still rehydrated immediately after it.
+ if(typeof requestAnimationFrame==='function') requestAnimationFrame(()=>setTimeout(run,0));
+ else setTimeout(run,0);
+ return true;
+}
 function armExternalInteractionTools(host,details){
  if(!details || externalInteractionActivatedDetails.has(details)) return;
  const ready=host?.dataset?.rmState==='ready';
@@ -2182,21 +2212,19 @@ function armExternalInteractionTools(host,details){
  // Historical ready mirrors are mounted collapsed. Running the full rescue library
  // for every collapsed mirror during CHAT_CHANGED is pure startup cost: no internal
  // control can be used until the details is opened. Activate only the mirror the
- // user actually opens, before any later click inside its body.
+ // user actually opens. The expensive rescue pass yields one paint so the outer
+ // disclosure itself stays responsive on Safari/iOS.
  if(details.open || details.hasAttribute?.('open')){
-  activateExternalInteractionTools(host,details);
-  runExternalHorizontalClipRescue(details);
+  rescueIndependentExternalAutoRootWidth(host);
+  scheduleExternalInteractionActivationAfterOpenPaint(host,details);
   return;
  }
  details.setAttribute?.(DEFERRED_INTERACTION_RESCUE_ATTR,'true');
  if(externalInteractionActivationHandlers.has(details)) return;
  const onToggle=()=>{
   if(!details?.isConnected || !details.open) return;
-  if(activateExternalInteractionTools(host,details)){
-   runExternalHorizontalClipRescue(details);
-   details.removeEventListener?.('toggle',onToggle);
-   externalInteractionActivationHandlers.delete(details);
-  }
+  rescueIndependentExternalAutoRootWidth(host);
+  scheduleExternalInteractionActivationAfterOpenPaint(host,details,onToggle);
  };
  details.addEventListener?.('toggle',onToggle,false);
  externalInteractionActivationHandlers.set(details,onToggle);
@@ -2890,6 +2918,9 @@ function scheduleExternalShellTint(host,html=''){
 const INDEPENDENT_CONTENT_WIDTH_RESCUE_ATTR='data-rabbit-mirror-independent-content-width-rescue';
 const INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR='data-rabbit-mirror-independent-content-width-baseline';
 const INDEPENDENT_EXTERNAL_STAGE_NEUTRALIZED_ATTR='data-rabbit-mirror-independent-external-stage-neutralized';
+const INDEPENDENT_EXTERNAL_AUTO_ROOT_WIDTH_RESCUE='auto-root-fill';
+const INDEPENDENT_EXTERNAL_AUTO_ROOT_WIDTH_RATIO=.84;
+const INDEPENDENT_EXTERNAL_AUTO_ROOT_WIDTH_BREAKPOINT=900;
 const MAINTENANCE_PERSISTED_LAYOUT_ATTR='data-rabbit-mirror-maintenance-persisted-layout';
 
 function captureIndependentContentWidthBaseline(element){
@@ -2908,6 +2939,140 @@ function restoreIndependentContentWidthBaseline(element){
  element.removeAttribute(INDEPENDENT_EXTERNAL_STAGE_NEUTRALIZED_ATTR);
  return true;
 }
+function independentExternalDirectContentRoot(details){
+ if(!details?.children) return null;
+ return [...details.children].find(node=>!['SUMMARY','STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node?.tagName)) || null;
+}
+function independentExternalSizingDeclarationHasIntent(style){
+ if(!style?.getPropertyValue) return false;
+ const explicit=['width','inline-size','max-width','max-inline-size','min-width','min-inline-size'];
+ for(const property of explicit){
+  const value=String(style.getPropertyValue(property)||'').trim().toLowerCase();
+  if(!value) continue;
+  // min-width:0 is a common generic flex/grid safety rule, not an authored width.
+  if((property==='min-width'||property==='min-inline-size') && /^(?:0(?:\.0+)?(?:px|%|em|rem|vw|vh)?|auto|initial|unset|revert|revert-layer)$/.test(value)) continue;
+  // max-width:100% / none are also generic containment/non-constraint declarations.
+  // They do not express a narrower authored size and must not suppress Safari's
+  // pure-external auto-root width rescue.
+  if((property==='max-width'||property==='max-inline-size') && /^(?:100%|none|initial|unset|revert|revert-layer)$/.test(value)) continue;
+  return true;
+ }
+ return false;
+}
+function independentExternalSelectorMayTargetRoot(selectorText='',element=null){
+ const selector=String(selectorText||'');
+ if(!selector || !element) return false;
+ try{ if(element.matches?.(selector)) return true; }catch{}
+ // A state rule may not match until :hover/:checked changes. Conservatively keep
+ // authored width intent when the root's own id/class is in the final compound.
+ for(const branch of selector.split(',')){
+  if(branch.includes('::')) continue;
+  const compounds=branch.trim().split(/\s+|>|\+|~/).filter(Boolean);
+  const tail=compounds[compounds.length-1]||'';
+  if(element.id && tail.includes(`#${element.id}`)) return true;
+  for(const name of [...(element.classList||[])]){
+   if(name && tail.includes(`.${name}`)) return true;
+  }
+ }
+ return false;
+}
+function independentExternalRootHasAuthorSizingIntent(details,body){
+ if(!details || !body) return true;
+ if(independentExternalSizingDeclarationHasIntent(body.style)) return true;
+ // Generated author CSS lives in local <style> elements. RabbitMirror's own
+ // runtime rescue styles are marked data-rabbit-mirror-* and must not be
+ // mistaken for author sizing intent.
+ for(const styleElement of details.querySelectorAll?.('style')||[]){
+  const internal=[...(styleElement.attributes||[])].some(attr=>String(attr.name||'').startsWith('data-rabbit-mirror-'));
+  if(internal) continue;
+  try{
+   const visit=rules=>{
+    for(const rule of [...(rules||[])]){
+     if(rule?.cssRules && visit(rule.cssRules)) return true;
+     if(!rule?.selectorText || !rule?.style) continue;
+     if(!independentExternalSelectorMayTargetRoot(rule.selectorText,body)) continue;
+     if(independentExternalSizingDeclarationHasIntent(rule.style)) return true;
+    }
+    return false;
+   };
+   if(visit(styleElement.sheet?.cssRules)) return true;
+  }catch{
+   // Local generated styles should normally expose CSSOM. If Safari refuses,
+   // preserve behavior rather than guessing at an unreadable authored width.
+   const text=String(styleElement.textContent||'');
+   const tokens=[body.id&&`#${body.id}`,...[...(body.classList||[])].map(name=>name&&`.${name}`)].filter(Boolean);
+   if(tokens.some(token=>text.includes(token)) && /(?:^|[;{])\s*(?:width|inline-size|max-width|max-inline-size|min-width|min-inline-size)\s*:/i.test(text)) return true;
+  }
+ }
+ return false;
+}
+function independentExternalAutoRootWidthShouldRescue({viewportWidth=0,containerWidth=0,bodyWidth=0,display='',position='',floatMode='none',authorSizing=false,marginLeft=0,marginRight=0}={}){
+ if(!(viewportWidth>0 && viewportWidth<INDEPENDENT_EXTERNAL_AUTO_ROOT_WIDTH_BREAKPOINT)) return false;
+ if(authorSizing || containerWidth<220 || bodyWidth<120 || bodyWidth>containerWidth+2) return false;
+ if(bodyWidth/containerWidth>=INDEPENDENT_EXTERNAL_AUTO_ROOT_WIDTH_RATIO) return false;
+ if(!['block','flex','grid','flow-root','list-item'].includes(String(display||'').toLowerCase())) return false;
+ if(['absolute','fixed'].includes(String(position||'').toLowerCase())) return false;
+ if(String(floatMode||'none').toLowerCase()!=='none') return false;
+ if(Math.abs(Number(marginLeft)||0)>2 || Math.abs(Number(marginRight)||0)>2) return false;
+ return true;
+}
+function restoreIndependentExternalAutoRootWidth(host){
+ if(!host || host.dataset?.rmIndependentExternalAutoRootWidthRescue!==INDEPENDENT_EXTERNAL_AUTO_ROOT_WIDTH_RESCUE) return false;
+ const details=host.querySelector?.(':scope > details[data-rabbit-mirror-external-details="true"], :scope > details');
+ const body=independentExternalDirectContentRoot(details);
+ const changed=body ? restoreIndependentContentWidthBaseline(body) : false;
+ delete host.dataset.rmIndependentExternalAutoRootWidthRescue;
+ delete host.dataset.rmIndependentExternalAutoRootWidthBefore;
+ delete host.dataset.rmIndependentExternalAutoRootWidthAfter;
+ return changed;
+}
+function rescueIndependentExternalAutoRootWidth(host){
+ if(!host?.isConnected || host.dataset.rmSource!=='independent' || host.dataset.rmState!=='ready' || host.dataset.rmPlacement!=='external') return false;
+ const details=host.querySelector?.(':scope > details[data-rabbit-mirror-external-details="true"], :scope > details');
+ if(!details?.open || typeof getComputedStyle!=='function') return false;
+ const body=independentExternalDirectContentRoot(details);
+ if(!body?.isConnected) return false;
+ if(host.dataset.rmIndependentExternalAutoRootWidthRescue===INDEPENDENT_EXTERNAL_AUTO_ROOT_WIDTH_RESCUE && body.hasAttribute?.(INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR)) return true;
+ const viewportWidth=Number(globalThis.innerWidth || globalThis.screen?.width || 0);
+ if(!(viewportWidth>0 && viewportWidth<INDEPENDENT_EXTERNAL_AUTO_ROOT_WIDTH_BREAKPOINT)){
+  restoreIndependentExternalAutoRootWidth(host);
+  return false;
+ }
+ let style,bodyRect,contentWidth=0;
+ try{
+  style=getComputedStyle(body);
+  bodyRect=body.getBoundingClientRect();
+  const pseudo=getComputedStyle(details,'::details-content');
+  contentWidth=parseFloat(pseudo?.inlineSize||pseudo?.width||'')||0;
+ }catch{return false;}
+ if(!(contentWidth>0)) contentWidth=Number(elementContentBoxRect(details)?.width||0);
+ const bodyWidth=Math.max(0,Number(bodyRect?.width||0));
+ const authorSizing=independentExternalRootHasAuthorSizingIntent(details,body);
+ const shouldRescue=independentExternalAutoRootWidthShouldRescue({
+  viewportWidth,containerWidth:contentWidth,bodyWidth,
+  display:style?.display,position:style?.position,floatMode:style?.cssFloat,
+  authorSizing,marginLeft:parseFloat(style?.marginLeft||'0')||0,marginRight:parseFloat(style?.marginRight||'0')||0,
+ });
+ if(!shouldRescue) return false;
+ captureIndependentContentWidthBaseline(body);
+ body.style.setProperty('width','100%','important');
+ body.style.setProperty('inline-size','100%','important');
+ body.style.setProperty('max-width','100%','important');
+ body.style.setProperty('max-inline-size','100%','important');
+ body.style.setProperty('box-sizing','border-box','important');
+ body.setAttribute(INDEPENDENT_CONTENT_WIDTH_RESCUE_ATTR,INDEPENDENT_EXTERNAL_AUTO_ROOT_WIDTH_RESCUE);
+ let afterWidth=0;
+ try{ afterWidth=Math.max(0,Number(body.getBoundingClientRect()?.width||0)); }catch{}
+ if(afterWidth<contentWidth*.94){
+  restoreIndependentContentWidthBaseline(body);
+  return false;
+ }
+ host.dataset.rmIndependentExternalAutoRootWidthRescue=INDEPENDENT_EXTERNAL_AUTO_ROOT_WIDTH_RESCUE;
+ host.dataset.rmIndependentExternalAutoRootWidthBefore=String(Math.round(bodyWidth*10)/10);
+ host.dataset.rmIndependentExternalAutoRootWidthAfter=String(Math.round(afterWidth*10)/10);
+ return true;
+}
+
 function stripIndependentTransientLayoutArtifacts(details){
  if(!details?.querySelectorAll) return details;
  // One-shot diagnostics belong to the current live DOM only. A cached/remounted

@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.82';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.82';
+import { getSettings } from './settings.js?rmv=1.3.87';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.87';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.82';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.82';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.82';
-import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.82';
+} from './feedbackCat.js?rmv=1.3.87';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.87';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.87';
+import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.87';
 
 
-const RUNTIME_VERSION = '1.3.82';
+const RUNTIME_VERSION = '1.3.87';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -2944,6 +2944,8 @@ const NESTED_DETAILS_REPLACEMENT_ATTR = 'data-rm-nested-details-replacement';
 const NESTED_DETAILS_REPLACEMENT_HOST_ATTR = 'data-rm-nested-details-replacement-host';
 const NESTED_DETAILS_REPLACEMENT_STYLE_ATTR = 'data-rabbit-mirror-nested-details-replacement-style';
 const NESTED_DETAILS_REPLACEMENT_BOUND_ATTR = 'data-rm-nested-details-replacement-bound';
+const NESTED_DETAILS_REPLACEMENT_BINDING_PROP = '__rabbitMirrorNestedDetailsReplacementBinding';
+const NESTED_DETAILS_REPLACEMENT_BINDING_VERSION = '1.3.87';
 const NESTED_DETAILS_POPUP_RESCUE_ATTR = 'data-rm-nested-details-popup-rescue';
 const NESTED_DETAILS_POPUP_HOST_ATTR = 'data-rm-nested-details-popup-host';
 const NESTED_DETAILS_POPUP_CONTENT_ATTR = 'data-rm-nested-details-popup-content';
@@ -8565,10 +8567,18 @@ function refreshTargetRescue(root) {
     root.dataset.rabbitMirrorTargetFallback = 'true';
 }
 
+const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
+const NESTED_DETAILS_FALLBACK_HANDLER_VERSION = '1.3.87';
+
 function installNestedDetailsFallback(root) {
-    if (!root?.querySelectorAll || root.dataset.rabbitMirrorDetailsFallback === 'true') return;
+    if (!root?.querySelectorAll || !root?.addEventListener) return;
+    const existing = root[NESTED_DETAILS_FALLBACK_HANDLER_PROP];
+    if (existing?.version === NESTED_DETAILS_FALLBACK_HANDLER_VERSION && typeof existing?.handler === 'function') return;
+    if (existing?.handler) {
+        try { root.removeEventListener?.('click', existing.handler, true); } catch {}
+    }
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
-    root.addEventListener('click', event => {
+    const handler = event => {
         const summary = event.target?.closest?.('summary');
         const details = summary?.parentElement;
         if (!summary || !details || details.tagName !== 'DETAILS' || details === outerDetails || !root.contains(details)) return;
@@ -8577,7 +8587,18 @@ function installNestedDetailsFallback(root) {
         setTimeout(() => {
             if (details.isConnected && details.open === before) details.open = !before;
         }, 0);
-    }, true);
+    };
+    root.addEventListener('click', handler, true);
+    try {
+        Object.defineProperty(root, NESTED_DETAILS_FALLBACK_HANDLER_PROP, {
+            configurable: true,
+            writable: true,
+            value: { version: NESTED_DETAILS_FALLBACK_HANDLER_VERSION, handler },
+        });
+    } catch {
+        root[NESTED_DETAILS_FALLBACK_HANDLER_PROP] = { version: NESTED_DETAILS_FALLBACK_HANDLER_VERSION, handler };
+    }
+    // data 属性只供诊断，不再作为“监听器仍存活”的证据；clone/序列化不会保留 JS 监听器。
     root.dataset.rabbitMirrorDetailsFallback = 'true';
 }
 
@@ -8707,24 +8728,46 @@ function installNestedDetailsReplacementContainment(root) {
             }
             patched += 1;
         }
-        if (details.getAttribute(NESTED_DETAILS_REPLACEMENT_BOUND_ATTR) === 'true') continue;
         const contentChildren = directReadableDetailsChildren(details, summary);
+        const existingBinding = details[NESTED_DETAILS_REPLACEMENT_BINDING_PROP];
+        const sameLiveChildren = existingBinding?.version === NESTED_DETAILS_REPLACEMENT_BINDING_VERSION
+            && existingBinding.entries?.length === contentChildren.length
+            && existingBinding.entries.every((entry, index) => entry.child === contentChildren[index]);
+        if (sameLiveChildren) continue;
+        for (const entry of existingBinding?.entries || []) {
+            try { entry.child?.removeEventListener?.('click', entry.onClick, false); } catch {}
+            try { entry.child?.removeEventListener?.('keydown', entry.onKeydown, false); } catch {}
+        }
+        const entries = [];
         for (const child of contentChildren) {
-            child.addEventListener('click', event => {
+            const onClick = event => {
                 if (!details.open) return;
                 const interactive = event.target?.closest?.('a, button, input, label, select, textarea, summary, [role="button"], [contenteditable="true"]');
                 if (interactive && interactive !== child) return;
                 details.open = false;
-            }, false);
-            child.addEventListener('keydown', event => {
+            };
+            const onKeydown = event => {
                 if (!details.open || (event.key !== 'Enter' && event.key !== ' ')) return;
                 event.preventDefault();
                 details.open = false;
-            }, false);
+            };
+            child.addEventListener('click', onClick, false);
+            child.addEventListener('keydown', onKeydown, false);
+            entries.push({ child, onClick, onKeydown });
             if (!child.hasAttribute('tabindex')) child.setAttribute('tabindex', '0');
             if (!child.hasAttribute('role')) child.setAttribute('role', 'button');
             if (!child.getAttribute('aria-label')) child.setAttribute('aria-label', '轻触返回上一面');
         }
+        try {
+            Object.defineProperty(details, NESTED_DETAILS_REPLACEMENT_BINDING_PROP, {
+                configurable: true,
+                writable: true,
+                value: { version: NESTED_DETAILS_REPLACEMENT_BINDING_VERSION, entries },
+            });
+        } catch {
+            details[NESTED_DETAILS_REPLACEMENT_BINDING_PROP] = { version: NESTED_DETAILS_REPLACEMENT_BINDING_VERSION, entries };
+        }
+        // 该属性仅供诊断；真正的 live 绑定状态由上面的不可序列化 JS property 判断。
         details.setAttribute(NESTED_DETAILS_REPLACEMENT_BOUND_ATTR, 'true');
     }
     if (patched || root.querySelector?.(`[${NESTED_DETAILS_REPLACEMENT_ATTR}="true"]`)) {
@@ -11590,7 +11633,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.82-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.87-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
