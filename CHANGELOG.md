@@ -1,3 +1,36 @@
+# 1.3.101 TEST / RC
+
+- 独立 API 单次请求契约：一次自动兔子镜最多只发送 1 次正文生成 POST。删除 1.3.100 的 transient 自动补救、同轮 profile fallback 与空流自动切非流式重发；HTTP/网络/解析失败均结束本轮并显示可手动重新生成的错误。
+- 保留历代 API 兼容成果：12 套 system/user、token 字段、temperature、stream/non-stream profile 不删除。参数/流式兼容失败时只把“下一候选 profile”暂存到本地；只有玩家明确点击“重新生成兔子镜”时，下一轮才使用该候选，因此每次点击仍只有 1 次 POST。语义完整成功后继续记忆已验证 profile，后续自动兔子镜直接复用成功组合。
+- 防旧版无限请求回归：新增 exact chat+mesid+swipe+sourceHash 失败闸门。某一轮失败后，即使 SillyTavern 再次触发 MESSAGE_UPDATED / CHARACTER_MESSAGE_RENDERED / GENERATION_ENDED 等事件，也不会为同一正文重新自动 POST；玩家手动重试会清除此闸门，若再次失败则重新锁住。
+- 防双击重复计费：同一 exact identity 已有 pending/global flight 时，即使再次点击手动重说也复用现有 task，不会 cancel 后另起第二个并发请求。
+- 启动速度：在保留 DOM streaming / 宿主生成事件强门控的前提下，将弱生成 flag 宽限从 30s 降至 8s、普通正文稳定窗从 1400ms 降至 800ms、弱证据稳定窗从 4500ms 降至 1500ms、前 12 秒轮询粒度从 760ms 降至 350ms；正常收到生成结束事件时，副 API 可更快启动。
+- 等待失败不静默：消息身份连续无法重建到 60s 时也显示明确错误与“重新生成兔子镜”入口，并明确该轮 0 次副 API 请求。
+- 不修改 Prompt、维修兔、模型列表 UI、配色、黑名单、独立 API URL 归一化、SillyTavern 内置 custom generate 通道、5 分钟请求 timeout 或成品挂载结构。
+
+# 1.3.100 TEST / RC
+
+- 独立 API：修正 1.3.99 对临时网关/连接失败“第一次失败即结束”的过度收紧。明确的 408/502/503/504/520/522/523，以及带网关/连接临时故障证据的 500，可在同一个 single-flight / runId 内对同一 profile 自动补救 1 次；补救前短暂等待 1.6 秒。
+- 防无限请求：临时补救预算是整个逻辑请求共享的硬上限 1 次，不按 profile 重置；第二次仍失败立即结束并显示现有错误，不从 `finally()`、宿主事件或生成轮询另起新一轮。参数不兼容仍只走固定有限 profile 列表。
+- 防重复计费边界：429、鉴权、额度/余额、普通未知 500、HTTP 200 已收到非空但无法解析的流/正文均不进入临时自动重试；真正参数错误仍按兼容 profile fallback，真正空流仍保留原有一次非流式兼容兜底。
+- 保留 1.3.99 的 `upstream`/`stream` 误判修复和弱生成/正文稳定超时提示；不修改 Prompt、维修兔、模型列表、配色、黑名单、挂载链或生成调度。
+
+# 1.3.99 TEST / RC
+
+- 独立 API：修正兼容参数判定中 `/stream/i` 会误命中 `upstream` 的问题。HTTP 500 现在只有在“已知请求字段 + 明确不兼容词”同时出现时才允许 profile fallback，普通网关/上游 500 会立即停止，避免全 profile 扇出和潜在重复计费。
+- 独立 API：弱生成标志/正文稳定门在 60 秒窗口耗尽后不再裸 `finish()`；现在显示“等待正文稳定超时”，并明确本轮没有发送副 API 请求，可手动重新生成。
+- 防回归：保留同一 chat+mesid+swipe+sourceHash 的 pending/global-flight 单飞锁、成功 owner/cache 短路、render-only `hasGenerationWorkFor` 门控以及 `finally()` 不自动再调度，防止恢复旧版“同一正文反复请求/一直生成”问题。
+- 其余 Prompt、维修兔、模型列表 UI、配色、黑名单与请求 5 分钟超时边界不变。
+
+# 1.3.98 TEST / RC
+
+- 修复独立 API 的参数 profile 记忆实际从未落盘的问题：只有在 HTTP 成功、正文可解析、完整兔子镜结构与非空主体全部通过后，才调用 `rememberApiProfile()`；下一轮优先复用真正验证过的参数组合。
+- 已记忆 profile 不再成为单点失败：仍然优先尝试记忆项，但若供应商能力变化并返回可判定的参数不兼容错误，会继续后续兼容 profile，而不是只试一次就结束。
+- 主回复生成门拆分强/弱证据：DOM streaming 与短期宿主生命周期事件继续严格等待；`isGenerating / is_send_press / is_group_generating` 等可能残留的全局布尔值只保留有限宽限，超过宽限后仍要求当前正文指纹额外稳定再启动副 API，避免移动端 stale flag 把请求锁死十分钟。
+- 强生成证据持续超过原 10 分钟上限时不再静默 `finish()`；外置占位会明确显示“等待正文结束超时”，允许用户确认正文已结束后手动重新生成。
+- HTTP 200 不再直接等同于兼容成功：`error:true`/错误 payload 会按真实语义处理；明确属于参数兼容问题才继续 fallback。真正空的流式 body 可跳过其余 streaming 组合并尝试非流式兼容；若已收到无法解析的流数据或非空成功 payload，为避免重复计费不自动二次请求，而是明确报错。
+- 不修改 Prompt、上下文预算、维修兔、模型列表 UI、配色/黑名单、独立 API 5 分钟请求 timeout 或成品挂载链。
+
 # 1.3.97 TEST / RC
 
 - 修复独立 API 模型列表“已拉取 N 个，但下拉只显示少量模型”的 UI 回归。根因是 1.3.90 为支持手动 model ID 改成 `input[list] + datalist` 后，浏览器会按输入框当前值自动过滤原生 datalist；例如后端实际返回 23 个，当前模型字符串只匹配 2 个时，界面看起来就像只剩 2 个。

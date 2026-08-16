@@ -1,14 +1,14 @@
-import { getSettings } from './settings.js?rmv=1.3.97';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.97';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.3.97';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.97';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.97';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.97';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.97';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.97';
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.3.97';
+import { getSettings } from './settings.js?rmv=1.3.101';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.101';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.3.101';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.101';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.101';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.101';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.101';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.101';
+import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.3.101';
 
-const RUNTIME_VERSION = '1.3.97';
+const RUNTIME_VERSION = '1.3.101';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -16,6 +16,20 @@ const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_req
 const OWNER_LOCK_STORE_KEY = 'rabbit_mirror_independent_owner_locks_v1';
 const API_REQUEST_DIAGNOSTIC_EVENT = 'rabbitmirror:independent-api-diagnostic';
 const API_PROFILE_SCHEMA = 2;
+const API_PROFILE_ORDER = [
+ 'chat_system_user_full',
+ 'chat_system_user_completion',
+ 'chat_system_user_no_temp_full',
+ 'chat_system_user_no_temp_completion',
+ 'chat_system_user_minimal',
+ 'chat_user_only_full',
+ 'chat_user_only_completion',
+ 'chat_user_only_no_temp_full',
+ 'chat_user_only_no_temp_completion',
+ 'chat_user_only_minimal',
+ 'chat_system_user_nostream',
+ 'chat_user_only_nostream',
+];
 const DEGRADED_PROFILE_RECHECK_MS = 6 * 60 * 60 * 1000;
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
 const EXTERNAL_SHELL_ATTR = 'data-rabbit-mirror-external-shell';
@@ -57,6 +71,21 @@ let externalGeometryLifecycleEpoch = 1;
 let externalGeometryLifecycleReason = 'runtime-init';
 const externalGeometryOwnerNodes = new WeakMap();
 const pending = new Map();
+// A failed automatic generation owns its exact chat+mesid+swipe+sourceHash until
+// the player explicitly retries. Host render/update events may repeat after a
+// failure, but they must never silently turn that failure into another paid POST.
+const automaticFailureStops = new Map();
+const AUTOMATIC_FAILURE_STOP_LIMIT = 320;
+function automaticFailureKey(slot='',sourceHash=''){ return flightIdentity(String(slot||''),String(sourceHash||'')); }
+function hasAutomaticFailureStop(slot='',sourceHash=''){ return automaticFailureStops.has(automaticFailureKey(slot,sourceHash)); }
+function markAutomaticFailureStop(slot='',sourceHash='',reason=''){
+ const key=automaticFailureKey(slot,sourceHash); if(!key) return;
+ automaticFailureStops.delete(key);
+ automaticFailureStops.set(key,{ts:Date.now(),reason:String(reason||'').slice(0,180)});
+ while(automaticFailureStops.size>AUTOMATIC_FAILURE_STOP_LIMIT){ automaticFailureStops.delete(automaticFailureStops.keys().next().value); }
+}
+function clearAutomaticFailureStop(slot='',sourceHash=''){ automaticFailureStops.delete(automaticFailureKey(slot,sourceHash)); }
+function clearAutomaticFailureStops(){ automaticFailureStops.clear(); }
 let feedbackActionListenerInstalled = false;
 let repairPersistenceListenerInstalled = false;
 const orphanExternalHostTimers = new Map();
@@ -69,11 +98,13 @@ const CONTEXT_TRANSCRIPT_BUDGET = 52000;
 const CONTEXT_TOTAL_BUDGET = 76000;
 const OWNER_REATTACH_WAIT_MS = 60000;
 const ACTIVE_GENERATION_WAIT_MS = 10 * 60 * 1000;
-const SOURCE_STABLE_WAIT_MS = 1400;
+const WEAK_GENERATION_FLAG_GRACE_MS = 8 * 1000;
+const WEAK_GENERATION_SOURCE_STABLE_WAIT_MS = 1500;
+const SOURCE_STABLE_WAIT_MS = 800;
 const INDEPENDENT_REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 const HOST_GENERATION_EVENT_HINT_MS = 15000;
 const GENERATION_PLACEHOLDER_POLL_LIMIT_MS = 12000;
-const GENERATION_PLACEHOLDER_POLL_INTERVAL_MS = 760;
+const GENERATION_PLACEHOLDER_POLL_INTERVAL_MS = 350;
 const generationPolls = new Map();
 let storageWarningShown = false;
 let lastIndependentRequestConfig = '';
@@ -376,13 +407,56 @@ function getRememberedApiProfile(st){
  if(!record || typeof record!=='object' || Number(record.schema)!==API_PROFILE_SCHEMA) return '';
  if(Math.abs(Number(record.temperature)-normalizedConfiguredTemperature(st))>0.0001) return '';
  if(profileIsDegraded(record.profile) && Date.now()-Number(record.ts||0)>DEGRADED_PROFILE_RECHECK_MS) return '';
- return String(record.profile||'');
+ return API_PROFILE_ORDER.includes(String(record.profile||'')) ? String(record.profile||'') : '';
+}
+function getStagedApiProfile(st){
+ const key=apiProfileKey(st); if(!key) return '';
+ const record=readApiProfileStore()[key];
+ if(!record || typeof record!=='object' || Number(record.schema)!==API_PROFILE_SCHEMA) return '';
+ if(Math.abs(Number(record.temperature)-normalizedConfiguredTemperature(st))>0.0001) return '';
+ const next=String(record.nextProfile||'');
+ return API_PROFILE_ORDER.includes(next) ? next : '';
+}
+function stageNextApiProfile(st,nextProfile='',reason=''){
+ const key=apiProfileKey(st); const next=String(nextProfile||'');
+ if(!key || !API_PROFILE_ORDER.includes(next)) return '';
+ const store=readApiProfileStore();
+ const current=store[key]&&typeof store[key]==='object'?store[key]:{};
+ store[key]={
+  ...current,
+  schema:API_PROFILE_SCHEMA,
+  temperature:normalizedConfiguredTemperature(st),
+  nextProfile:next,
+  nextReason:String(reason||'').slice(0,160),
+  nextTs:Date.now(),
+  runtime:RUNTIME_VERSION,
+ };
+ writeApiProfileStore(store);
+ return next;
+}
+function clearStagedApiProfile(st){
+ const key=apiProfileKey(st); if(!key) return;
+ const store=readApiProfileStore(); const current=store[key];
+ if(!current || typeof current!=='object' || (!current.nextProfile && !current.nextReason && !current.nextTs)) return;
+ const next={...current}; delete next.nextProfile; delete next.nextReason; delete next.nextTs;
+ if(!next.profile) delete store[key]; else store[key]=next;
+ writeApiProfileStore(store);
+}
+function forgetRememberedApiProfileIfMatches(st,profile=''){
+ const key=apiProfileKey(st); if(!key||!profile) return;
+ const store=readApiProfileStore(); const current=store[key];
+ if(!current || typeof current!=='object' || String(current.profile||'')!==String(profile||'')) return;
+ const next={...current,profile:'',ts:Date.now(),runtime:RUNTIME_VERSION};
+ store[key]=next; writeApiProfileStore(store);
 }
 function rememberApiProfile(st,profile){
  const key=apiProfileKey(st); if(!key||!profile) return;
  const store=readApiProfileStore();
+ // A semantically valid RabbitMirror response proves this profile works. Clear
+ // any staged manual-retry candidate so future automatic mirrors stay one-shot
+ // on the proven profile.
  store[key]={schema:API_PROFILE_SCHEMA,profile:String(profile),temperature:normalizedConfiguredTemperature(st),ts:Date.now(),runtime:RUNTIME_VERSION};
- const entries=Object.entries(store).sort((a,b)=>Number(b[1]?.ts||0)-Number(a[1]?.ts||0));
+ const entries=Object.entries(store).sort((a,b)=>Number(b[1]?.ts||b[1]?.nextTs||0)-Number(a[1]?.ts||a[1]?.nextTs||0));
  writeApiProfileStore(Object.fromEntries(entries.slice(0,80)));
 }
 function readOwnerLockStore(){ try{ const value=JSON.parse(localStorage.getItem(OWNER_LOCK_STORE_KEY)||'{}'); return value&&typeof value==='object'?value:{}; }catch{return {};} }
@@ -423,25 +497,28 @@ export function getLastIndependentApiRequestDiagnostic(){ return readLastIndepen
 export { API_REQUEST_DIAGNOSTIC_EVENT };
 function hashText(text=''){ let h=2166136261; for(const ch of String(text)){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619);} return (h>>>0).toString(36); }
 function getContext(){ try { return globalThis.SillyTavern?.getContext?.() || {}; } catch { return {}; } }
-function hostGenerationLooksActive(){
+function hostGenerationActivity(){
  const ctx=getContext();
- const flags=[
+ const weakFlags=[
   ctx?.isGenerating,
   ctx?.is_generating,
   ctx?.is_send_press,
   globalThis.is_send_press,
   globalThis.is_group_generating,
  ];
- if(flags.some(value=>value===true)) return true;
+ const weak=weakFlags.some(value=>value===true);
+ let dom=false;
  try{
-  if(document.querySelector?.('#chat .mes.streaming, #chat .mes[data-is-streaming="true"], #chat .mes[is_generating="true"], #chat .mes[data-generating="true"]')) return true;
+  dom=!!document.querySelector?.('#chat .mes.streaming, #chat .mes[data-is-streaming="true"], #chat .mes[is_generating="true"], #chat .mes[data-generating="true"]');
  }catch{}
  // GENERATION_ENDED can occasionally be missed by mobile WebViews. Treat the
- // event-only flag as a short hint, never as a ten-minute permanent lock.
- if(hostGenerationInProgress && hostGenerationHintStartedAt && Date.now()-hostGenerationHintStartedAt<HOST_GENERATION_EVENT_HINT_MS) return true;
- if(hostGenerationInProgress){ hostGenerationInProgress=false; hostGenerationHintStartedAt=0; }
- return false;
+ // event-only flag as a short, strong hint. Context/global booleans are weaker:
+ // some hosts leave them true after the visible reply has already stabilized.
+ const eventHint=!!(hostGenerationInProgress && hostGenerationHintStartedAt && Date.now()-hostGenerationHintStartedAt<HOST_GENERATION_EVENT_HINT_MS);
+ if(hostGenerationInProgress && !eventHint){ hostGenerationInProgress=false; hostGenerationHintStartedAt=0; }
+ return {active:dom||eventHint||weak,strong:dom||eventHint,weak};
 }
+function hostGenerationLooksActive(){ return hostGenerationActivity().active; }
 function legacyChatKey(ctx){ const meta=ctx?.chatMetadata||globalThis.chat_metadata||{}; return String(meta.chat_id||meta.chatId||meta.file_name||ctx?.characterId||ctx?.groupId||'chat'); }
 function chatKey(ctx){ try{ return String(getCurrentChatKey?.(Array.isArray(ctx?.chat)?ctx.chat:null) || legacyChatKey(ctx)); }catch{ return legacyChatKey(ctx); } }
 function swipeId(msg){ return Number(msg?.swipe_id ?? msg?.swipeId ?? 0) || 0; }
@@ -875,11 +952,12 @@ function parseSsePayload(text=''){
 async function readApiResponse(response){
  const contentType=String(response.headers?.get?.('content-type')||'').toLowerCase();
  const raw=await response.text();
- if(/text\/event-stream|application\/x-ndjson/.test(contentType) || /^\s*data:/m.test(raw)){
-   const parsed=parseSsePayload(raw); return {raw,payload:parsed.payload,text:parsed.text};
+ const streamed=/text\/event-stream|application\/x-ndjson/.test(contentType) || /^\s*data:/m.test(raw);
+ if(streamed){
+   const parsed=parseSsePayload(raw); return {raw,payload:parsed.payload,text:parsed.text,streamed:true,contentType};
  }
- try{ const payload=JSON.parse(raw); return {raw,payload,text:extractResponseText(payload)}; }
- catch{ return {raw,payload:null,text:String(raw||'').trim()}; }
+ try{ const payload=JSON.parse(raw); return {raw,payload,text:extractResponseText(payload),streamed:false,contentType}; }
+ catch{ return {raw,payload:null,text:String(raw||'').trim(),streamed:false,contentType}; }
 }
 function extractMirrorInner(raw){
  const cleaned=cleanRabbitMirrorOutput(raw);
@@ -912,8 +990,21 @@ function independentRequestProfiles(st,systemPrompt,userPrompt,options={}){
   chat_user_only_nostream:{kind:'chat',body:{model,messages:userOnly,max_completion_tokens:maxTokens,stream:false}},
  };
  const remembered=getRememberedApiProfile(st);
- const order=[remembered,'chat_system_user_full','chat_system_user_completion','chat_system_user_no_temp_full','chat_system_user_no_temp_completion','chat_system_user_minimal','chat_user_only_full','chat_user_only_completion','chat_user_only_no_temp_full','chat_user_only_no_temp_completion','chat_user_only_minimal','chat_system_user_nostream','chat_user_only_nostream'].filter(Boolean);
+ const order=[remembered,...API_PROFILE_ORDER].filter(Boolean);
  return [...new Set(order)].map(name=>({name,...profiles[name]})).filter(x=>x.body&&x.kind);
+}
+function nextCompatibilityProfileName(currentProfile='',preferNonStreaming=false){
+ const current=String(currentProfile||'');
+ const start=Math.max(-1,API_PROFILE_ORDER.indexOf(current));
+ const tail=API_PROFILE_ORDER.slice(start+1);
+ if(preferNonStreaming){
+  const wantsUserOnly=/user_only/i.test(current);
+  const matched=tail.find(name=>!profileUsesStreaming(name) && profileUsesSystemMessage(name)!==wantsUserOnly);
+  if(matched) return matched;
+  const any=tail.find(name=>!profileUsesStreaming(name));
+  if(any) return any;
+ }
+ return tail[0]||'';
 }
 
 function compactRemoteError(status,raw=''){
@@ -932,56 +1023,125 @@ function compactRemoteError(status,raw=''){
 }
 
 function retryableParameterError(status,result){
- if(![400,422,500].includes(Number(status))) return false;
+ const code=Number(status);
+ if(![400,422,500].includes(code)) return false;
  const text=`${result?.raw||''} ${safeJson(result?.payload||{},4000)}`;
- return /invalid[_ -]?request|invalid[_ -]?parameter|parameter|参数错误|参数有误|unsupported|not supported|unknown field|max_tokens|max_completion_tokens|temperature|stream/i.test(text);
+ // 400/422 are ordinary request-validation responses, so a bounded parameter
+ // vocabulary is enough to justify trying another compatibility profile. Keep
+ // `stream` on a word boundary so gateway text such as `upstream` can never
+ // masquerade as a stream-parameter error.
+ const parameterEvidence=/invalid[_ -]?request|invalid[_ -]?parameter|\bparameter\b|参数错误|参数有误|unsupported|not supported|unknown[_ -]?(?:field|parameter)|\bmax_tokens\b|\bmax_completion_tokens\b|\btemperature\b|\bstream\b/i;
+ if(!parameterEvidence.test(text)) return false;
+ if(code!==500) return true;
+ // HTTP 500 is commonly produced by relays/proxies for upstream outages. Never
+ // fan out across every profile on a generic 500: require an explicit relation
+ // between a known request field and a strong incompatibility word.
+ const strong500=/\b(?:invalid|unsupported|unknown)[_ -]?(?:parameter|field)\b|\b(?:parameter|field)\b[^\n\r]{0,40}\b(?:invalid|unsupported|not\s+supported|unknown)\b|\b(?:max_tokens|max_completion_tokens|temperature|stream)\b[^\n\r]{0,80}\b(?:invalid|unsupported|not\s+supported|unknown|not\s+allowed|not\s+accepted)\b|\b(?:invalid|unsupported|not\s+supported|unknown|not\s+allowed|not\s+accepted)\b[^\n\r]{0,80}\b(?:max_tokens|max_completion_tokens|temperature|stream)\b|参数(?:错误|有误|不支持)/i;
+ return strong500.test(text);
+}
+function responsePayloadErrorText(payload){
+ const error=payload?.error;
+ if(!error) return '';
+ if(typeof error==='string') return error.trim();
+ if(error&&typeof error==='object'){
+  for(const value of [error.message,error.msg,error.detail,error.code]){ const text=String(value??'').trim(); if(text) return text; }
+  return String(safeJson(error,1600)||'').trim();
+ }
+ return String(error||'').trim();
 }
 async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={}){
  const attempts=[];
  const rememberedProfile=getRememberedApiProfile(st);
+ const stagedProfile=options.manualRetry ? getStagedApiProfile(st) : '';
  const profiles=independentRequestProfiles(st,systemPrompt,userPrompt,options);
- const rememberedMatch=rememberedProfile ? profiles.filter(item=>item.name===rememberedProfile).slice(0,1) : [];
- const selectedProfiles=rememberedMatch.length ? rememberedMatch : profiles;
- for(const profile of selectedProfiles){
-  const url=endpoint(st.independentApiBaseUrl,profile.kind==='responses'?'/responses':'/chat/completions');
-  const r=await fetchIndependentUrl(url,{method:'POST',headers:headers(st),body:JSON.stringify(profile.body),signal:options.signal});
-  const result=await readApiResponse(r);
-  attempts.push({profile:profile.name,status:r.status,detail:String(result.raw||'').slice(0,280)});
-  const diagnosticBase={
-   ok:!!r.ok,
-   status:Number(r.status||0),
-   model:String(st.independentApiModel||''),
-   baseUrl:normalizeBase(st.independentApiBaseUrl||''),
-   configuredTemperature:normalizedConfiguredTemperature(st),
-   profile:profile.name,
-   temperatureSent:Object.prototype.hasOwnProperty.call(profile.body||{},'temperature'),
-   systemMessageSent:profileUsesSystemMessage(profile.name),
-   streamSent:profile.body?.stream!==false,
-   tokenField:profileTokenField(profile.name),
-   rememberedProfile,
-   attempts:attempts.map(item=>({profile:item.profile,status:item.status})),
-   ...(options.diagnosticContext && typeof options.diagnosticContext==='object' ? options.diagnosticContext : {}),
-  };
-  if(r.ok){
-   const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,requestCount:attempts.length,automaticProfileFallback:!rememberedProfile});
-   return {response:r,result,profile:profile.name,attempts,requestDiagnostic};
-  }
-  if(!retryableParameterError(r.status,result) && ![404,405].includes(Number(r.status))){
-   const requestDiagnostic=publishIndependentApiRequestDiagnostic(diagnosticBase);
-   return {response:r,result,profile:profile.name,attempts,requestDiagnostic};
-  }
+ const profile=(stagedProfile && profiles.find(item=>item.name===stagedProfile)) || profiles[0];
+ if(!profile){
+  const semanticError='独立 API 没有可用的请求参数模式。请重新保存副 API 设置后再试。';
+  return {response:{ok:false,status:0},result:{raw:'',payload:null,text:'',streamed:false},profile:'',attempts,requestDiagnostic:null,semanticError};
  }
- const last=attempts[attempts.length-1]||{};
- const lastProfile=String(last.profile||'unknown');
- const requestDiagnostic=publishIndependentApiRequestDiagnostic({
-  ok:false,status:Number(last.status||500),model:String(st.independentApiModel||''),baseUrl:normalizeBase(st.independentApiBaseUrl||''),
-  configuredTemperature:normalizedConfiguredTemperature(st),profile:lastProfile,temperatureSent:profileUsesTemperature(lastProfile),
-  systemMessageSent:profileUsesSystemMessage(lastProfile),streamSent:profileUsesStreaming(lastProfile),tokenField:profileTokenField(lastProfile),
-  rememberedProfile,attempts:attempts.map(item=>({profile:item.profile,status:item.status})),requestCount:attempts.length,automaticProfileFallback:!rememberedProfile,
+ const url=endpoint(st.independentApiBaseUrl,profile.kind==='responses'?'/responses':'/chat/completions');
+ let r=null; let result=null;
+ try{
+  r=await fetchIndependentUrl(url,{method:'POST',headers:headers(st),body:JSON.stringify(profile.body),signal:options.signal});
+  result=await readApiResponse(r);
+ }catch(error){
+  if(options.signal?.aborted || error?.name==='AbortError') throw error;
+  attempts.push({profile:profile.name,status:0,detail:String(error?.message||error||'').slice(0,280),kind:'transport'});
+  const requestDiagnostic=publishIndependentApiRequestDiagnostic({
+   ok:false,status:0,model:String(st.independentApiModel||''),baseUrl:normalizeBase(st.independentApiBaseUrl||''),
+   configuredTemperature:normalizedConfiguredTemperature(st),profile:profile.name,temperatureSent:Object.prototype.hasOwnProperty.call(profile.body||{},'temperature'),
+   systemMessageSent:profileUsesSystemMessage(profile.name),streamSent:profile.body?.stream!==false,tokenField:profileTokenField(profile.name),
+   rememberedProfile,stagedProfile,attempts:[{profile:profile.name,status:0,kind:'transport'}],requestCount:1,automaticProfileFallback:false,automaticRetry:false,
+   ...(options.diagnosticContext && typeof options.diagnosticContext==='object' ? options.diagnosticContext : {}),
+  });
+  error.rabbitMirrorRequestDiagnostic=requestDiagnostic;
+  throw error;
+ }
+ attempts.push({profile:profile.name,status:r.status,detail:String(result.raw||'').slice(0,280),kind:'response'});
+ const diagnosticBase={
+  ok:!!r.ok,
+  status:Number(r.status||0),
+  model:String(st.independentApiModel||''),
+  baseUrl:normalizeBase(st.independentApiBaseUrl||''),
+  configuredTemperature:normalizedConfiguredTemperature(st),
+  profile:profile.name,
+  temperatureSent:Object.prototype.hasOwnProperty.call(profile.body||{},'temperature'),
+  systemMessageSent:profileUsesSystemMessage(profile.name),
+  streamSent:profile.body?.stream!==false,
+  tokenField:profileTokenField(profile.name),
+  rememberedProfile,
+  stagedProfile,
+  attempts:[{profile:profile.name,status:Number(r.status||0),kind:'response'}],
+  requestCount:1,
+  automaticProfileFallback:false,
+  automaticRetry:false,
   ...(options.diagnosticContext && typeof options.diagnosticContext==='object' ? options.diagnosticContext : {}),
- });
- return {response:{ok:false,status:last.status||500},result:{raw:last.detail||''},profile:lastProfile,attempts,requestDiagnostic};
+ };
+ const stageCompatibility=(reason='',preferNonStreaming=false)=>{
+  const next=nextCompatibilityProfileName(profile.name,preferNonStreaming);
+  if(next){
+   stageNextApiProfile(st,next,reason);
+   forgetRememberedApiProfileIfMatches(st,profile.name);
+  }
+  return next;
+ };
+ if(r.ok){
+  const parsedText=String(result.text||'').trim();
+  const payloadError=responsePayloadErrorText(result.payload);
+  if(parsedText){
+   const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:true,nextProfile:''});
+   return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:''};
+  }
+  if(payloadError){
+   const compatibility=retryableParameterError(400,result);
+   const next=compatibility?stageCompatibility('http-200-parameter-error',false):'';
+   const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,semanticFailure:'error-payload',nextProfile:next});
+   const suffix=next?`；本轮不会自动再次请求。点击“重新生成兔子镜”时将尝试下一兼容模式：${next}`:'；本轮不会自动再次请求，请手动重试。';
+   return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:`副 API 返回错误：${compactRemoteError(200,payloadError||result.raw||'')||'未知上游错误'}${suffix}`};
+  }
+  const raw=String(result.raw||'').trim();
+  if(!raw && profileUsesStreaming(profile.name)){
+   const next=stageCompatibility('empty-stream',true);
+   const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,semanticFailure:'empty-stream',nextProfile:next});
+   const suffix=next?`点击“重新生成兔子镜”时将尝试非流式兼容模式：${next}。`:'请手动重新生成兔子镜。';
+   return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:`副 API 返回了空的流式响应。本轮只发送了 1 次生成请求，不会自动切换参数再次请求；${suffix}`};
+  }
+  if(result.streamed){
+   const next=stageCompatibility('unparsed-stream',true);
+   const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,semanticFailure:'unparsed-stream',nextProfile:next});
+   const suffix=next?`手动重新生成时将尝试：${next}`:'请手动重试';
+   return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:`副 API 已返回流式数据，但兔子镜没有解析到正文。为避免重复计费，本轮不会自动再次请求；${suffix}。`};
+  }
+  const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,semanticFailure:'empty-content',nextProfile:''});
+  return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:'副 API 返回 HTTP 200，但没有解析到正文。本轮只发送了 1 次生成请求，不会自动再次请求；请手动重新生成兔子镜。'};
+ }
+ let next='';
+ if(retryableParameterError(r.status,result)) next=stageCompatibility(`http-${Number(r.status||0)}-parameter-error`,false);
+ const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,nextProfile:next});
+ return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:''};
 }
+
+
 function wrappedIndependentMirrorHtml(inner=''){
  return `<toto data-rabbit-mirror="true" style="display:block;">${String(inner||'')}</toto>`;
 }
@@ -1058,7 +1218,7 @@ function commitIndependentVisualResult(inner=''){
   return scanned.paletteFingerprint||null;
  }catch(error){ console.debug('[RabbitMirror] independent visual signature skipped:',error); return null; }
 }
-async function callIndependentApi(ctx,index,msg,signal=null){
+async function callIndependentApi(ctx,index,msg,signal=null,requestOptions={}){
  const st=getSettings(); if(!st.independentApiBaseUrl||!st.independentApiModel) throw new Error('独立 API 尚未完成地址与模型设置');
  const generationScopeKey=`independent:${Date.now().toString(36)}:${index}:${swipeId(msg)}`;
  const activeFeedback=st.feedbackCatEnabled!==false ? getActiveFeedbackForCurrentChat(ctx.chat) : null;
@@ -1116,11 +1276,16 @@ ${independentUserTail}`;
   userDirectiveApplied:!!details.metadata?.userDirectiveApplied,
   forcedVisualScenery:!!details.metadata?.forcedVisualScenery,
  };
- const {response:r,result,profile,attempts,requestDiagnostic}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,diagnosticContext:requestSelectionDiagnostic});
+ const {response:r,result,profile,attempts,requestDiagnostic,semanticError}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,manualRetry:requestOptions.manualRetry===true,diagnosticContext:requestSelectionDiagnostic});
+ if(semanticError) throw new Error(semanticError);
  if(!r.ok){
    const detail=compactRemoteError(r.status,result.raw||'');
-   const tried=attempts.map(x=>x.profile).join(' → ');
-   throw new Error(`独立 API 请求失败：HTTP ${r.status}${detail?` · ${detail}`:''}${tried?`；已尝试兼容参数：${tried}`:''}`);
+   const mode=String(profile||'');
+   const next=String(requestDiagnostic?.nextProfile||'');
+   const retryHint=next
+    ? `；本轮只发送了 1 次生成请求。点击“重新生成兔子镜”时将尝试下一兼容模式：${next}`
+    : '；本轮只发送了 1 次生成请求，不会自动重复请求，请手动重新生成兔子镜';
+   throw new Error(`独立 API 请求失败：HTTP ${r.status}${detail?` · ${detail}`:''}${mode?`；参数模式：${mode}`:''}${retryHint}`);
  }
  const raw=String(result.text||'').trim();
  if(!raw){
@@ -1140,6 +1305,10 @@ ${independentUserTail}`;
  if(!independentMirrorBodyEvidence(inner)){
    throw new Error('独立 API 返回了只有标题或样式的空壳兔子镜；本次结果不会保存，也不会交给维修兔改写正文。请在挨打猫中使用“重说”。');
  }
+ // Capability memory is earned only after the response has passed the real
+ // RabbitMirror semantic boundary. HTTP 200 alone is not proof of a usable
+ // parameter profile.
+ rememberApiProfile(st,profile);
  return {html:inner,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
 }
 function externalOwnerMesid(el){
@@ -3776,10 +3945,28 @@ function generationWaitPollDelay(startedAt=0){
  return 3200;
 }
 function hasGenerationWorkFor(index,slot='',sourceHash=''){
+ if(hasAutomaticFailureStop(slot,sourceHash)) return true;
  if(generationPolls.has(generationPollKey(index))) return true;
  const active=pending.get(String(slot||''));
  if(active && String(active.sourceHash||'')===String(sourceHash||'')) return true;
  return globalFlights().has(flightIdentity(slot,sourceHash));
+}
+function renderGenerationGateTimeout(index,reason='generation-active'){
+ const host=ensureGenerationPlaceholderForIndex(index,false);
+ if(!host) return;
+ host.dataset.rmState='error';
+ delete host.dataset.rmReplyGenerationPlaceholder;
+ const details=host.querySelector?.(':scope > details');
+ if(!details) return;
+ const stabilityTimeout=reason==='source-stability';
+ const identityMissing=reason==='identity-missing';
+ setPlaceholderSummary(details,identityMissing?'【兔子镜：没有找到当前回复】':(stabilityTimeout?'【兔子镜：等待正文稳定超时】':'【兔子镜：等待正文结束超时】'));
+ renderExternalErrorBody(details,identityMissing
+  ? '本轮等待期间没有重新找到这条回复对应的稳定消息身份，因此没有发送副 API 请求。请确认回复仍然存在后，点击“重新生成兔子镜”。'
+  : (stabilityTimeout
+   ? '正文没有在本轮等待窗口内形成可安全生成的稳定版本。兔子镜没有发送副 API 请求；确认正文已经稳定后，可点击“重新生成兔子镜”。'
+   : 'SillyTavern 持续报告正文仍在生成。兔子镜为避免与主回复并发请求，已停止本轮自动等待；确认正文已经结束后，可点击“重新生成兔子镜”。'));
+ ensureExternalTools(host);
 }
 function scheduleMessageGeneration(index,delay=260,sourceAware=true){
  const initialContext=getContext();
@@ -3787,7 +3974,7 @@ function scheduleMessageGeneration(index,delay=260,sourceAware=true){
  if(suppressesAutomaticGeneration(initialContext,index) || hasExistingFollowRabbitMirror(initialContext,index,initialMessage)) return null;
  const pollKey=generationPollKey(index); const previous=generationPolls.get(pollKey);
  if(previous){ previous.cancelled=true; if(previous.timer) clearTimeout(previous.timer); }
- const state={cancelled:false,timer:0,startedAt:Date.now(),stableSince:0,lastHash:'',lastRevision:-1};
+ const state={cancelled:false,timer:0,startedAt:Date.now(),stableSince:0,lastHash:'',lastRevision:-1,weakActiveSince:0};
  generationPolls.set(pollKey,state);
  const finish=()=>{ if(generationPolls.get(pollKey)===state) generationPolls.delete(pollKey); };
  const queue=ms=>{ state.timer=setTimeout(()=>{ state.timer=0; poll(); },ms); };
@@ -3796,16 +3983,31 @@ function scheduleMessageGeneration(index,delay=260,sourceAware=true){
   const live=currentGenerationIdentity(index);
   if(live && (suppressesAutomaticGeneration(live.ctx,index) || hasExistingFollowRabbitMirror(live.ctx,index,live.msg))){ finish(); return; }
   if(live) cancelSupersededFlightsForBase(live.baseSlot,live.sourceHash);
-  if(!live){ if(Date.now()-state.startedAt<OWNER_REATTACH_WAIT_MS) queue(generationWaitPollDelay(state.startedAt)); else finish(); return; }
-  if(hostGenerationLooksActive()){ state.stableSince=0; state.lastHash=''; state.lastRevision=-1; if(Date.now()-state.startedAt<ACTIVE_GENERATION_WAIT_MS) queue(generationWaitPollDelay(state.startedAt)); else finish(); return; }
+  if(!live){ if(Date.now()-state.startedAt<OWNER_REATTACH_WAIT_MS) queue(generationWaitPollDelay(state.startedAt)); else { finish(); renderGenerationGateTimeout(index,'identity-missing'); } return; }
+  if(hasAutomaticFailureStop(live.slot,live.sourceHash)){ finish(); return; }
+  const activity=hostGenerationActivity();
+  if(activity.strong){
+   state.weakActiveSince=0; state.stableSince=0; state.lastHash=''; state.lastRevision=-1;
+   if(Date.now()-state.startedAt<ACTIVE_GENERATION_WAIT_MS) queue(generationWaitPollDelay(state.startedAt));
+   else { finish(); renderGenerationGateTimeout(index); }
+   return;
+  }
+  if(activity.weak){
+   if(!state.weakActiveSince) state.weakActiveSince=Date.now();
+   if(Date.now()-state.weakActiveSince<WEAK_GENERATION_FLAG_GRACE_MS){
+    state.stableSince=0; state.lastHash=''; state.lastRevision=-1; queue(generationWaitPollDelay(state.startedAt)); return;
+   }
+  }else state.weakActiveSince=0;
   cancelFlightsForSlot(live.slot,live.sourceHash);
   if(!sourceAware){ finish(); void generateFor(index,live.msg,false,false); return; }
   if(live.sourceHash!==state.lastHash || live.revision!==state.lastRevision){
    state.lastHash=live.sourceHash; state.lastRevision=live.revision; state.stableSince=Date.now();
   }
   const hasBody=String(live.msg?.mes||'').trim().length>0;
-  if(hasBody && state.stableSince && Date.now()-state.stableSince>=SOURCE_STABLE_WAIT_MS){ finish(); void generateFor(index,live.msg,false,true); return; }
-  if(Date.now()-state.startedAt<OWNER_REATTACH_WAIT_MS) queue(GENERATION_PLACEHOLDER_POLL_INTERVAL_MS); else finish();
+  const stableWait=activity.weak?WEAK_GENERATION_SOURCE_STABLE_WAIT_MS:SOURCE_STABLE_WAIT_MS;
+  if(hasBody && state.stableSince && Date.now()-state.stableSince>=stableWait){ finish(); void generateFor(index,live.msg,false,true); return; }
+  if(Date.now()-state.startedAt<OWNER_REATTACH_WAIT_MS) queue(GENERATION_PLACEHOLDER_POLL_INTERVAL_MS);
+  else { finish(); renderGenerationGateTimeout(index,'source-stability'); }
  };
  queue(delay);
 }
@@ -3961,6 +4163,8 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  const baseSlot=messageBaseSlotKey(ctx,index,msg);
  if(st.enabled===false || st.autoRabbitMirrorInjection===false || st.generationSource!=='independent' || runtimeMode()!=='independent') return;
  if(!force && (suppressesAutomaticGeneration(ctx,index) || hasExistingFollowRabbitMirror(ctx,index,msg))) return;
+ if(!force && hasAutomaticFailureStop(slot,sourceHash)) return;
+ if(force) clearAutomaticFailureStop(slot,sourceHash);
  const el=messageElement(index);
  // Keep cross-device migration/reconciliation out of the paid request critical
  // path. Normal sync passes handle it; generation only reads the already-present
@@ -4007,13 +4211,13 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   }
  }
  const existing=pending.get(slot);
- if(existing && existing.sourceHash===sourceHash && existing.revision===revision && !force){
+ if(existing && existing.sourceHash===sourceHash && existing.revision===revision){
   if(el) ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
   existing.task?.finally?.(()=>queueMessageSync([index]));
   return existing.task;
  }
  const flightKey=flightIdentity(slot,sourceHash); const shared=globalFlights().get(flightKey);
- if(shared?.task && !force){
+ if(shared?.task){
   if(el) ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
   shared.task.finally?.(()=>queueMessageSync([index]));
   return shared.task;
@@ -4037,7 +4241,7 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   flight.timedOut=true;
   try{ controller.abort('independent-request-timeout'); }catch{}
  },INDEPENDENT_REQUEST_TIMEOUT_MS);
- const task=callIndependentApi(ctx,index,msg,controller.signal).then(result=>{
+ const task=callIndependentApi(ctx,index,msg,controller.signal,{manualRetry:force}).then(result=>{
   if(!stillCurrent()){ stale=true; return; }
   // One chat+mesid+swipe owner accepts only its first successful automatic
   // result. Later DOM/source rewrites cannot replace A with B; explicit resay
@@ -4059,6 +4263,7 @@ async function generateFor(index,msg,force=false,sourceAware=true){
    }
   }
   const html=String(result?.html||'');
+  clearAutomaticFailureStop(slot,sourceHash);
   const paletteFingerprint=commitIndependentVisualResult(html);
   if(result?.feedbackId && result?.feedbackPrompt){
    const liveFeedback=getActiveFeedbackForCurrentChat(getContext().chat);
@@ -4084,6 +4289,7 @@ async function generateFor(index,msg,force=false,sourceAware=true){
    stale=true;
    return;
   }
+  markAutomaticFailureStop(slot,sourceHash,String(err?.message||err||'generation-failed'));
   console.error('[RabbitMirror] independent generation failed',err);
   {
    const liveEl=messageElement(index);
@@ -5264,7 +5470,7 @@ export function destroyIndependentRabbitMirror(){
  removeIndependentActionBridge();
  lastIndependentRequestConfig='';
  disconnectObserver(); unsubscribeHostEvents(); removeFeedbackMirrorActionListeners(); removeRepairPersistenceListener(); removeExternalGeometryListeners(); removeBackgroundLifecycleListeners();
- syncRunning=false; pending.clear(); messageSourceRevisions.clear(); preparedReadyHtmlCache.clear();
+ syncRunning=false; pending.clear(); clearAutomaticFailureStops(); messageSourceRevisions.clear(); preparedReadyHtmlCache.clear();
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(host=>restoreFollowInline(host));
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());
  removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);
