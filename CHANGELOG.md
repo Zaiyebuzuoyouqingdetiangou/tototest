@@ -1,3 +1,27 @@
+# 1.3.96 TEST / RC
+
+- 修复独立 API “拉取模型”把 SillyTavern 的 HTTP 200 + `error:true` 当成成功的问题。现在会先检查 payload 级错误，再解析模型列表，不再把真实上游失败糊成“0 个模型”。
+- 模型列表解析兼容 OpenAI 风格 `data`、顶层数组，以及 `models / items / result / results` 和一层嵌套 `data.*` 等常见返回结构；模型 ID 支持 `id / model / model_id / name / slug`。
+- “拉取模型”失败只清空候选建议，不清除用户手动输入的 model ID；错误提示会区分 HTTP 错误、SillyTavern/upstream `error:true`、成功但没有可识别列表。
+- “测试连接”继续坚持不发计费生成请求，但不再把“/models 不可用”显示成“连接成功 0 个模型”。若已有手动 model ID，会明确提示：无法通过 `/models` 无付费验证，不代表 `/chat/completions` 一定不可用，应由用户主动生成一次验证。
+- 不修改独立 API 生成请求、stream/retry、Prompt、Lannuomi、配色、黑名单、维修兔或 1.3.95 的高置信自动排版修复。
+
+# 1.3.95 TEST / RC
+
+- 小小维修兔自动安全层新增 `viewport-layout-rescue`，但只在外层兔子镜已展开且根节点存在真实可测宽高时运行；折叠态/0×0 布局直接跳过，继续依赖 1.3.94 的单镜展开巡检在绘制稳定后补查。
+- `nested-details-popup-flow-repair` 进入自动安全层时额外要求对应内层 `<details>` 已由用户主动打开；原有候选条件仍必须同时满足 absolute/fixed 内容、hidden/clip 裁切祖先与实际几何/offset 越界证据。手动维修保持原行为，可处理折叠态源码层候选。
+- 不提升 `text-clipping-repair`、`mobile-layout-rescue`、`mobile-inline-annotation-flow-repair`、`complete-interaction-library` 或 code/plain/rendered DOM 源码恢复；这些仍需手动确认，避免自动改变内容呈现、状态桥接或消息源。
+- 不新增 observer、timer、轮询或额外 toggle listener；复用 1.3.94 已有的“当前消息定点巡检 + 单镜展开补巡检”。Prompt、API、配色、黑名单、维修兔手动完整库均不改。
+
+# 1.3.94 TEST / RC
+
+- 修复“小小维修兔自动巡检”偶发完全不运行：`MESSAGE_RECEIVED / CHARACTER_MESSAGE_RENDERED / GENERATION_ENDED / GENERATION_STOPPED / MESSAGE_SWIPED / MESSAGE_UPDATED / MESSAGE_EDITED` 现在优先定位当前消息做 scoped 工具恢复与巡检，不再依赖 MutationObserver 恰好命中新节点。
+- 启动 1.1 秒历史保护期内，如果可靠宿主事件确认是当前新消息，不再把它写进历史 baseline；改为保护期结束后延迟巡检。历史聊天进入时仍不会全量自动维修。
+- 自动巡检去重从“只看聊天源码 signature”改为“源码 + 当前 live DOM/checked/open 状态”；同一消息源码未变但 DOM 被重建、clone 或状态结构变化时可重新检查。
+- 历史镜面只绑定轻量 `toggle` 监听；用户真正打开某一面时，才对该面补一次 live DOM 巡检。未打开的历史镜面不做重巡检。
+- 保留自动模式的安全边界：仍只自动执行不会擅自改变用户展开/选择状态的高置信修复；完整检查发现其余问题时将维修兔标成可维修，交给用户手动确认。
+- 当前消息事件解析成功时不再额外触发一次全聊天工具扫描；无法解析消息 ID 时才回退到原有 coalesced 全聊天轻量恢复，避免长聊天性能回退。
+
 # 1.3.93 TEST / RC
 
 - **进入长聊天减负**：`CHAT_CHANGED` 的全聊天工具恢复不再对所有历史兔子镜同步执行嵌套 `<details>` 的 `getComputedStyle / getBoundingClientRect` 候选检测；历史镜面只恢复轻量监听与已持久化的维修标记，真正的重布局判断延迟到该嵌套折叠被打开，或外层兔子镜打开时其中已有折叠处于 open 状态后再执行。

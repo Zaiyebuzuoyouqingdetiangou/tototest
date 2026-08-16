@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.93';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.93';
+import { getSettings } from './settings.js?rmv=1.3.96';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.96';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.93';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.93';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.93';
-import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.93';
+} from './feedbackCat.js?rmv=1.3.96';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.96';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.96';
+import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.96';
 
 
-const RUNTIME_VERSION = '1.3.93';
+const RUNTIME_VERSION = '1.3.96';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -2945,9 +2945,9 @@ const NESTED_DETAILS_REPLACEMENT_HOST_ATTR = 'data-rm-nested-details-replacement
 const NESTED_DETAILS_REPLACEMENT_STYLE_ATTR = 'data-rabbit-mirror-nested-details-replacement-style';
 const NESTED_DETAILS_REPLACEMENT_BOUND_ATTR = 'data-rm-nested-details-replacement-bound';
 const NESTED_DETAILS_REPLACEMENT_BINDING_PROP = '__rabbitMirrorNestedDetailsReplacementBinding';
-const NESTED_DETAILS_REPLACEMENT_BINDING_VERSION = '1.3.93';
+const NESTED_DETAILS_REPLACEMENT_BINDING_VERSION = '1.3.96';
 const NESTED_DETAILS_DEFERRED_BINDING_PROP = '__rabbitMirrorNestedDetailsDeferredBinding';
-const NESTED_DETAILS_DEFERRED_BINDING_VERSION = '1.3.93';
+const NESTED_DETAILS_DEFERRED_BINDING_VERSION = '1.3.96';
 const nestedDetailsDeferredChecks = new WeakSet();
 const NESTED_DETAILS_POPUP_RESCUE_ATTR = 'data-rm-nested-details-popup-rescue';
 const NESTED_DETAILS_POPUP_HOST_ATTR = 'data-rm-nested-details-popup-host';
@@ -8571,7 +8571,7 @@ function refreshTargetRescue(root) {
 }
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
-const NESTED_DETAILS_FALLBACK_HANDLER_VERSION = '1.3.93';
+const NESTED_DETAILS_FALLBACK_HANDLER_VERSION = '1.3.96';
 
 function installNestedDetailsFallback(root) {
     if (!root?.querySelectorAll || !root?.addEventListener) return;
@@ -8907,7 +8907,7 @@ function nestedDetailsPopupOffsetLikelyOutside(content) {
     return false;
 }
 
-function findNestedDetailsPopupClippingCandidates(root) {
+function findNestedDetailsPopupClippingCandidates(root, { requireOpen = false } = {}) {
     if (!root?.querySelectorAll) return [];
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
     const candidates = [];
@@ -8915,6 +8915,7 @@ function findNestedDetailsPopupClippingCandidates(root) {
 
     for (const details of root.querySelectorAll('details')) {
         if (details === outerDetails || details.hasAttribute(NESTED_DETAILS_REPLACEMENT_ATTR)) continue;
+        if (requireOpen && !details.open) continue;
         const summary = details.querySelector?.(':scope > summary');
         if (!summary) continue;
         for (const content of directReadableDetailsChildren(details, summary)) {
@@ -8995,12 +8996,15 @@ function ensureNestedDetailsPopupRescueStyle(root) {
     return style;
 }
 
-function repairNestedDetailsPopupClipping(root) {
+function repairNestedDetailsPopupClipping(root, { requireOpen = false } = {}) {
     if (!root?.querySelectorAll) return 0;
-    const candidates = findNestedDetailsPopupClippingCandidates(root);
+    const candidates = findNestedDetailsPopupClippingCandidates(root, { requireOpen });
     let repaired = 0;
     for (const { details, content } of candidates) {
         if (!details?.isConnected || !content?.isConnected) continue;
+        // 自动安全巡逻只允许处理用户已经主动展开的内层 details。折叠态没有可靠
+        // 几何，也不应该为了“维修”提前改变第二层内容的呈现。手动维修保持原行为。
+        if (requireOpen && !details.open) continue;
         details.setAttribute(NESTED_DETAILS_POPUP_RESCUE_ATTR, 'true');
         content.setAttribute(NESTED_DETAILS_POPUP_CONTENT_ATTR, 'true');
         details.parentElement?.setAttribute?.(NESTED_DETAILS_POPUP_HOST_ATTR, 'true');
@@ -11631,7 +11635,7 @@ function releaseIndependentMaintenanceLiveRepair(root, delay = 700) {
 const maintenancePreRepairSnapshots = new Map();
 const MAINTENANCE_AUTO_SAFE_ATTR = 'data-rabbit-mirror-auto-safe-maintenance';
 const MAINTENANCE_AUTO_SAFE_RESULT_ATTR = 'data-rabbit-mirror-auto-safe-result';
-const MAINTENANCE_AUTO_SAFE_VERSION = 'safe-v2-state-preserving';
+const MAINTENANCE_AUTO_SAFE_VERSION = 'safe-v3-live-patrol';
 const FEEDBACK_CAT_ATTR = 'data-rabbit-mirror-feedback-cat';
 const RESAY_ATTR = 'data-rabbit-mirror-resay';
 const FEEDBACK_CAT_MENU_ATTR = 'data-rabbit-mirror-feedback-cat-menu';
@@ -11744,7 +11748,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.93-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.96-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -18988,6 +18992,29 @@ function maintenanceAutoSafeCountAttribute(root, attribute) {
     return Number.parseInt(root?.getAttribute?.(attribute) || '0', 10) || 0;
 }
 
+function maintenanceAutoSafeHasSettledOpenLayout(root) {
+    if (!root?.isConnected) return false;
+    const outerDetails = root.matches?.('details')
+        ? root
+        : root.querySelector?.(':scope > details') || root.querySelector?.('details');
+    if (outerDetails && !outerDetails.open) return false;
+    const rect = maintenanceMobileLayoutRect(outerDetails || root);
+    return !!rect && rect.width > 1 && rect.height > 1;
+}
+
+function installMaintenanceAutoSafeViewportLayoutRescue(root) {
+    // 视口类修复必须建立在真实展开后的布局上；折叠 details 的 0×0 几何不参与自动判断。
+    if (!maintenanceAutoSafeHasSettledOpenLayout(root)) return 0;
+    return installMaintenanceViewportLayoutRescue(root);
+}
+
+function installMaintenanceAutoSafeNestedDetailsPopupRescue(root) {
+    // 除了外层已展开，内层 details 也必须已经由用户主动打开；随后继续沿用原有
+    // absolute/fixed + clipping ancestor + 实际越界的高置信候选判定。
+    if (!maintenanceAutoSafeHasSettledOpenLayout(root)) return 0;
+    return repairNestedDetailsPopupClipping(root, { requireOpen: true });
+}
+
 
 function captureMaintenanceAutoSafeUiState(root) {
     if (!root?.querySelectorAll) return null;
@@ -19050,6 +19077,10 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
         ['missing-checked-control-class', installMissingCheckedSubjectClassRescue],
         ['webkit-3d-flip-compat', installWebKit3DFlipRescue],
         ['visual-scenery-mobile-overflow', installVisualSceneryMobileNarrativeOverflowRescue],
+        // 1.3.96: 两类高置信排版修复进入自动安全层，但只在真实展开、可测布局下运行。
+        // 不提升 text/mobile-layout/annotation/完整交互/源码恢复，避免自动改变可见内容或消息源。
+        ['viewport-layout-rescue', installMaintenanceAutoSafeViewportLayoutRescue],
+        ['nested-details-popup-flow-repair', installMaintenanceAutoSafeNestedDetailsPopupRescue],
     ];
     for (const [id, installer] of safeInstallers) {
         try {
@@ -19557,7 +19588,7 @@ function removeFeedbackCatsInChatDom() {
 
 
 const PALETTE_DEDUPE_CHECKED_ATTR = 'data-rabbit-mirror-palette-dedupe-checked';
-function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } = {}) {
+function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, autoSafeForceCurrent = false } = {}) {
     if (!isCurrentRuntime() || !scope?.querySelectorAll) return;
     const maintenanceEnabled = isMaintenanceRabbitEnabled();
     const feedbackEnabled = isFeedbackCatEnabled();
@@ -19588,10 +19619,19 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } 
                     // Auto-safe is a new/scoped-message feature. CHAT_CHANGED history
                     // restoration must not serialize every historical root for a signature
                     // or enqueue automatic repairs merely because the user entered a chat.
-                    scheduleMaintenanceAutoSafeForRoot(root, maintenanceButton);
+                    scheduleMaintenanceAutoSafeForRoot(root, maintenanceButton, { forceCurrent: autoSafeForceCurrent });
                 }
             } catch (error) {
                 console.debug('[RabbitMirror] maintenance rabbit install recovered for one mirror:', error);
+            }
+        }
+        if (maintenanceEnabled) {
+            try {
+                // 1.3.94: full-chat history restoration only binds this lightweight toggle listener.
+                // It performs no inspection until the user actually opens this one mirror.
+                installMaintenanceAutoSafeOpenPatrol(root);
+            } catch (error) {
+                console.debug('[RabbitMirror] auto-safe open-patrol binding skipped for one mirror:', error);
             }
         }
         if (maintenanceEnabled) {
@@ -19622,6 +19662,7 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } 
 function installMaintenanceRabbitsInChatDom() {
     const chatRoot = getChatRoot();
     if (!chatRoot) return;
+    pruneMaintenanceAutoSafeOpenBindings();
     installMaintenanceRabbitsInScope(chatRoot, { allowGlobalRemoval: true });
 }
 
@@ -21972,8 +22013,10 @@ const maintenanceInstallTimers = new Set();
 
 const maintenanceAutoSafePendingRoots = new Map();
 const maintenanceAutoSafeBaselineSignatures = new Set();
-const maintenanceAutoSafeAttemptedRoots = new WeakMap();
+let maintenanceAutoSafeAttemptedRoots = new WeakMap();
 const maintenanceAutoSafeStartupCaptureTimers = new Set();
+const maintenanceAutoSafeCurrentMessageTimers = new Map();
+const maintenanceAutoSafeOpenBindings = new Map();
 let maintenanceAutoSafeReady = false;
 let maintenanceAutoSafeStartupTimer = 0;
 
@@ -21993,6 +22036,52 @@ function maintenanceAutoSafeSignature(root) {
     return `${chatKey}:${messageIndex}:${hashInteractionSignature(`${summary}\n${source}`)}`;
 }
 
+
+// Auto patrol needs a second identity beside the persisted message source. A mirror can keep
+// exactly the same mes/swipe text while its live DOM is rebuilt, cloned or reaches a different
+// checked/open state. Only current/scoped mirrors pay this cost; full-chat baseline capture keeps
+// using maintenanceAutoSafeSignature() so entering a long chat never serializes every old mirror.
+function maintenanceAutoSafeLiveFingerprint(root) {
+    if (!root?.querySelectorAll) return '';
+    let structural = '';
+    try {
+        const clone = root.cloneNode(true);
+        clone.querySelectorAll?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}]`).forEach(node => node.remove());
+        const volatile = new Set([
+            RUNTIME_VERSION_ATTR,
+            MAINTENANCE_AUTO_SAFE_ATTR,
+            MAINTENANCE_AUTO_SAFE_RESULT_ATTR,
+            MAINTENANCE_STATE_ATTR,
+            MAINTENANCE_REASON_ATTR,
+            MAINTENANCE_REPAIR_ATTR,
+        ]);
+        for (const node of [clone, ...(clone.querySelectorAll?.('*') || [])]) {
+            for (const attribute of [...(node.attributes || [])]) {
+                if (volatile.has(attribute.name)) node.removeAttribute(attribute.name);
+            }
+        }
+        structural = String(clone.innerHTML || clone.outerHTML || '');
+    } catch {
+        structural = String(root.innerHTML || root.textContent || '');
+    }
+    const state = [...root.querySelectorAll('details, input, select, textarea')]
+        .slice(0, 512)
+        .map((node, index) => {
+            if (node.matches?.('details')) return `d${index}:${node.open ? 1 : 0}`;
+            if (node.matches?.('input[type="checkbox"], input[type="radio"]')) return `i${index}:${node.checked ? 1 : 0}:${node.disabled ? 1 : 0}`;
+            if (node.matches?.('select')) return `s${index}:${Number(node.selectedIndex)}`;
+            return `t${index}:${String(node.value || '').length}`;
+        })
+        .join('|');
+    return hashInteractionSignature(`${structural}\n${state}`);
+}
+
+function maintenanceAutoSafeAttemptKey(root, sourceSignature = '') {
+    const source = sourceSignature || maintenanceAutoSafeSignature(root);
+    if (!source) return '';
+    return `${source}:${maintenanceAutoSafeLiveFingerprint(root)}`;
+}
+
 function trimMaintenanceAutoSafeSet(set, max = 600) {
     while (set.size > max) set.delete(set.values().next().value);
 }
@@ -22007,12 +22096,18 @@ function captureMaintenanceAutoSafeBaseline() {
     trimMaintenanceAutoSafeSet(maintenanceAutoSafeBaselineSignatures);
 }
 
+function cancelMaintenanceAutoSafeCurrentMessageTimers() {
+    for (const timer of maintenanceAutoSafeCurrentMessageTimers.values()) clearTimeout(timer);
+    maintenanceAutoSafeCurrentMessageTimers.clear();
+}
+
 function cancelMaintenanceAutoSafeTimers() {
     for (const [root, entry] of maintenanceAutoSafePendingRoots.entries()) {
         clearTimeout(entry.timer);
         if (root?.getAttribute?.(MAINTENANCE_AUTO_SAFE_ATTR) === 'pending') root.removeAttribute(MAINTENANCE_AUTO_SAFE_ATTR);
     }
     maintenanceAutoSafePendingRoots.clear();
+    cancelMaintenanceAutoSafeCurrentMessageTimers();
     for (const timer of maintenanceAutoSafeStartupCaptureTimers) clearTimeout(timer);
     maintenanceAutoSafeStartupCaptureTimers.clear();
     if (maintenanceAutoSafeStartupTimer) clearTimeout(maintenanceAutoSafeStartupTimer);
@@ -22022,6 +22117,7 @@ function cancelMaintenanceAutoSafeTimers() {
 function initializeMaintenanceAutoSafeStartupGuard() {
     cancelMaintenanceAutoSafeTimers();
     maintenanceAutoSafeBaselineSignatures.clear();
+    maintenanceAutoSafeAttemptedRoots = new WeakMap();
     maintenancePreRepairSnapshots.clear();
     maintenanceAutoSafeReady = false;
     if (!isMaintenanceAutoSafeEnabled()) return;
@@ -22045,23 +22141,43 @@ function initializeMaintenanceAutoSafeStartupGuard() {
 export function configureMaintenanceAutoSafeMode(enabled) {
     cancelMaintenanceAutoSafeTimers();
     maintenanceAutoSafeBaselineSignatures.clear();
+    maintenanceAutoSafeAttemptedRoots = new WeakMap();
     maintenanceAutoSafeReady = !!enabled;
     if (enabled) captureMaintenanceAutoSafeBaseline();
 }
 
-function scheduleMaintenanceAutoSafeForRoot(root, button) {
+function scheduleMaintenanceAutoSafeForRoot(root, button, { forceCurrent = false, delay = 720 } = {}) {
     if (!isMaintenanceAutoSafeEnabled() || !root?.isConnected || !button?.isConnected) return false;
-    const signature = maintenanceAutoSafeSignature(root);
-    if (!signature) return false;
+    const sourceSignature = maintenanceAutoSafeSignature(root);
+    if (!sourceSignature) return false;
+
+    // Startup history protection remains intact for generic DOM-observer installs. Reliable
+    // current-message host events and an explicit user-open are different: defer them until the
+    // 1.1s guard is ready instead of misclassifying the genuinely new mirror as historical.
     if (!maintenanceAutoSafeReady) {
-        maintenanceAutoSafeBaselineSignatures.add(signature);
-        return false;
+        if (!forceCurrent) {
+            maintenanceAutoSafeBaselineSignatures.add(sourceSignature);
+            return false;
+        }
+        const pending = maintenanceAutoSafePendingRoots.get(root);
+        if (pending?.timer) clearTimeout(pending.timer);
+        root.setAttribute(MAINTENANCE_AUTO_SAFE_ATTR, 'pending');
+        const timer = setTimeout(() => {
+            maintenanceAutoSafePendingRoots.delete(root);
+            if (!root?.isConnected || !button?.isConnected) return;
+            scheduleMaintenanceAutoSafeForRoot(root, button, { forceCurrent: true, delay: Math.min(420, Math.max(180, Number(delay) || 320)) });
+        }, 1180);
+        maintenanceAutoSafePendingRoots.set(root, { signature: `startup:${sourceSignature}`, timer });
+        return true;
     }
-    if (maintenanceAutoSafeBaselineSignatures.has(signature)) return false;
-    if (maintenanceAutoSafeAttemptedRoots.get(root) === signature) return false;
+
+    if (!forceCurrent && maintenanceAutoSafeBaselineSignatures.has(sourceSignature)) return false;
+    const attemptKey = maintenanceAutoSafeAttemptKey(root, sourceSignature);
+    if (!attemptKey) return false;
+    if (maintenanceAutoSafeAttemptedRoots.get(root) === attemptKey) return false;
 
     const pending = maintenanceAutoSafePendingRoots.get(root);
-    if (pending?.signature === signature) return false;
+    if (pending?.signature === attemptKey) return false;
     if (pending?.timer) clearTimeout(pending.timer);
 
     root.setAttribute(MAINTENANCE_AUTO_SAFE_ATTR, 'pending');
@@ -22069,17 +22185,110 @@ function scheduleMaintenanceAutoSafeForRoot(root, button) {
         maintenanceAutoSafePendingRoots.delete(root);
         if (!isMaintenanceAutoSafeEnabled() || !maintenanceAutoSafeReady) return;
         if (!root?.isConnected || !button?.isConnected) return;
-        const liveSignature = maintenanceAutoSafeSignature(root);
-        if (liveSignature !== signature) {
-            scheduleMaintenanceAutoSafeForRoot(root, button);
+        const liveSourceSignature = maintenanceAutoSafeSignature(root);
+        if (liveSourceSignature !== sourceSignature) {
+            scheduleMaintenanceAutoSafeForRoot(root, button, { forceCurrent, delay: 260 });
             return;
         }
-        maintenanceAutoSafeAttemptedRoots.set(root, signature);
+        const liveAttemptKey = maintenanceAutoSafeAttemptKey(root, liveSourceSignature);
+        if (liveAttemptKey !== attemptKey) {
+            // The live DOM was still settling after the first render signal. Wait once more and
+            // inspect the settled node instead of permanently remembering the early snapshot.
+            scheduleMaintenanceAutoSafeForRoot(root, button, { forceCurrent, delay: 260 });
+            return;
+        }
         root.setAttribute(MAINTENANCE_AUTO_SAFE_ATTR, 'attempted');
-        runMaintenanceSafeAutomaticRepairs(root, button);
-    }, 720);
-    maintenanceAutoSafePendingRoots.set(root, { signature, timer });
+        try {
+            runMaintenanceSafeAutomaticRepairs(root, button);
+        } catch (error) {
+            console.debug('[RabbitMirror] auto-safe patrol failed:', error);
+            setMaintenanceRabbitState(button, MAINTENANCE_STATES.idle, '自动巡逻未完成，可点击巡逻重试；未对当前兔子镜作额外修改');
+        } finally {
+            const postSourceSignature = maintenanceAutoSafeSignature(root) || liveSourceSignature;
+            const postAttemptKey = maintenanceAutoSafeAttemptKey(root, postSourceSignature) || liveAttemptKey;
+            maintenanceAutoSafeAttemptedRoots.set(root, postAttemptKey);
+        }
+    }, Math.max(120, Number(delay) || 720));
+    maintenanceAutoSafePendingRoots.set(root, { signature: attemptKey, timer });
     return true;
+}
+
+function maintenanceAutoSafeEventMessageIndex(value, { fallbackLatest = false } = {}) {
+    const chat = getAvailableHostChat();
+    const raw = value && typeof value === 'object'
+        ? (value.messageId ?? value.mesid ?? value.index)
+        : value;
+    const parsed = Number(raw);
+    if (Number.isInteger(parsed) && parsed >= 0 && chat[parsed] && !chat[parsed]?.is_user) return parsed;
+    if (!fallbackLatest) return -1;
+    for (let index = chat.length - 1; index >= 0; index -= 1) {
+        if (chat[index] && !chat[index]?.is_user) return index;
+    }
+    return -1;
+}
+
+function scheduleMaintenanceAutoSafeForMessageIndex(messageIndex, { delay = 180, attempts = 3 } = {}) {
+    const index = Number(messageIndex);
+    if (!Number.isInteger(index) || index < 0) return false;
+    const chatKey = (() => {
+        try { return String(getCurrentChatKey?.() || 'chat'); } catch { return 'chat'; }
+    })();
+    const key = `${chatKey}:${index}`;
+    const previous = maintenanceAutoSafeCurrentMessageTimers.get(key);
+    if (previous) clearTimeout(previous);
+
+    const run = remaining => {
+        const timer = setTimeout(() => {
+            maintenanceAutoSafeCurrentMessageTimers.delete(key);
+            if (!isCurrentRuntime()) return;
+            const messageRoot = getRenderedMessageElement(index);
+            if (!messageRoot?.isConnected) {
+                if (remaining > 1) run(remaining - 1);
+                return;
+            }
+            // This is a current-message scoped pass, never a full-chat history pass. It installs
+            // the normal tools and forces auto patrol to bypass only the startup/history baseline.
+            installMaintenanceRabbitsInScope(messageRoot, { autoSafeForceCurrent: true });
+        }, Math.max(60, Number(delay) || 180));
+        maintenanceAutoSafeCurrentMessageTimers.set(key, timer);
+    };
+    run(Math.max(1, Number(attempts) || 1));
+    return true;
+}
+
+function installMaintenanceAutoSafeOpenPatrol(root) {
+    if (!root?.querySelector) return false;
+    const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
+    if (!details?.addEventListener) return false;
+    if (maintenanceAutoSafeOpenBindings.has(details)) return true;
+    const handler = () => {
+        if (!isCurrentRuntime() || !isMaintenanceAutoSafeEnabled() || !details.open) return;
+        const liveRoot = root?.isConnected ? root : (details.matches?.('details') ? details : null);
+        const button = liveRoot?.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`);
+        if (!liveRoot?.isConnected || !button?.isConnected) return;
+        if (rabbitMirrorExternalGenerationState(liveRoot) === 'loading') return;
+        // Opening a mirror is an explicit signal that this one live DOM matters now. Re-check only
+        // this mirror after its open layout has settled; historical mirrors that stay closed remain cheap.
+        scheduleMaintenanceAutoSafeForRoot(liveRoot, button, { forceCurrent: true, delay: 320 });
+    };
+    details.addEventListener('toggle', handler, false);
+    maintenanceAutoSafeOpenBindings.set(details, handler);
+    return true;
+}
+
+function pruneMaintenanceAutoSafeOpenBindings() {
+    for (const [details, handler] of maintenanceAutoSafeOpenBindings.entries()) {
+        if (details?.isConnected) continue;
+        try { details?.removeEventListener?.('toggle', handler, false); } catch {}
+        maintenanceAutoSafeOpenBindings.delete(details);
+    }
+}
+
+function removeMaintenanceAutoSafeOpenBindings() {
+    for (const [details, handler] of maintenanceAutoSafeOpenBindings.entries()) {
+        try { details?.removeEventListener?.('toggle', handler, false); } catch {}
+    }
+    maintenanceAutoSafeOpenBindings.clear();
 }
 
 function scheduleMaintenanceRabbitInstall() {
@@ -22266,19 +22475,42 @@ export async function initOutputSanitizer() {
         const eventSource = mod?.eventSource;
         const eventTypes = mod?.event_types || {};
         if (eventSource?.on) {
-            const installEvents = [
-                eventTypes.GENERATION_STOPPED,
-                eventTypes.GENERATION_ENDED,
+            const historyOnlyEvents = [eventTypes.CHAT_CHANGED].filter(Boolean);
+            for (const eventName of [...new Set(historyOnlyEvents)]) {
+                const handler = () => {
+                    installChatMutationObserver();
+                    cancelMaintenanceAutoSafeCurrentMessageTimers();
+                    scheduleMaintenanceRabbitInstall();
+                };
+                eventSource.on(eventName, handler);
+                outputHostSubscriptions.push({ eventSource, eventName, handler });
+            }
+
+            const currentMessageEvents = [
+                eventTypes.MESSAGE_RECEIVED,
                 eventTypes.CHARACTER_MESSAGE_RENDERED,
-                eventTypes.CHAT_CHANGED,
                 eventTypes.MESSAGE_SWIPED,
                 eventTypes.MESSAGE_UPDATED,
                 eventTypes.MESSAGE_EDITED,
             ].filter(Boolean);
-            for (const eventName of [...new Set(installEvents)]) {
-                const handler = () => {
+            for (const eventName of [...new Set(currentMessageEvents)]) {
+                const handler = messageId => {
                     installChatMutationObserver();
-                    scheduleMaintenanceRabbitInstall();
+                    const index = maintenanceAutoSafeEventMessageIndex(messageId, { fallbackLatest: eventName === eventTypes.CHARACTER_MESSAGE_RENDERED });
+                    if (index >= 0) scheduleMaintenanceAutoSafeForMessageIndex(index, { delay: 180, attempts: 3 });
+                    else scheduleMaintenanceRabbitInstall();
+                };
+                eventSource.on(eventName, handler);
+                outputHostSubscriptions.push({ eventSource, eventName, handler });
+            }
+
+            const generationFinishedEvents = [eventTypes.GENERATION_STOPPED, eventTypes.GENERATION_ENDED].filter(Boolean);
+            for (const eventName of [...new Set(generationFinishedEvents)]) {
+                const handler = messageId => {
+                    installChatMutationObserver();
+                    const index = maintenanceAutoSafeEventMessageIndex(messageId, { fallbackLatest: true });
+                    if (index >= 0) scheduleMaintenanceAutoSafeForMessageIndex(index, { delay: 220, attempts: 3 });
+                    else scheduleMaintenanceRabbitInstall();
                 };
                 eventSource.on(eventName, handler);
                 outputHostSubscriptions.push({ eventSource, eventName, handler });
@@ -22309,7 +22541,9 @@ export function destroyOutputSanitizer() {
     for (const timer of maintenanceInstallTimers) clearTimeout(timer);
     maintenanceInstallTimers.clear();
     cancelMaintenanceAutoSafeTimers();
+    removeMaintenanceAutoSafeOpenBindings();
     maintenanceAutoSafeBaselineSignatures.clear();
+    maintenanceAutoSafeAttemptedRoots = new WeakMap();
     maintenancePreRepairSnapshots.clear();
     maintenanceAutoSafeReady = false;
     removeMaintenanceRabbitsInChatDom();

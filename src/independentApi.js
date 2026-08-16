@@ -1,14 +1,14 @@
-import { getSettings } from './settings.js?rmv=1.3.93';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.93';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.3.93';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.93';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.93';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.93';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.93';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.93';
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.3.93';
+import { getSettings } from './settings.js?rmv=1.3.96';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.96';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.3.96';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.96';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.96';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.96';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.96';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.96';
+import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.3.96';
 
-const RUNTIME_VERSION = '1.3.93';
+const RUNTIME_VERSION = '1.3.96';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -719,16 +719,113 @@ async function fetchIndependentUrl(url,options={}){
   throw new Error(`SillyTavern 内置副 API 通道请求失败：${error?.message||error}`);
  }
 }
+function independentModelListError(message,code='MODEL_LIST_UNAVAILABLE'){
+ const error=new Error(String(message||'模型列表不可用'));
+ error.code=code;
+ return error;
+}
+function compactIndependentPayloadError(payload){
+ if(!payload || typeof payload!=='object') return '';
+ const candidates=[
+  typeof payload.error==='string'?payload.error:'',
+  payload.error?.message,
+  payload.message,
+  payload.detail,
+  typeof payload.data?.error==='string'?payload.data.error:'',
+  payload.data?.error?.message,
+  payload.data?.message,
+  payload.data?.detail,
+  typeof payload.data?.data?.error==='string'?payload.data.data.error:'',
+  payload.data?.data?.error?.message,
+  payload.data?.data?.message,
+ ];
+ return candidates.map(value=>String(value||'').trim()).find(Boolean)?.slice(0,220) || '';
+}
+function independentPayloadHasError(payload){
+ if(!payload || typeof payload!=='object') return false;
+ if(payload.error===true) return true;
+ if(typeof payload.error==='string' && payload.error.trim()) return true;
+ if(payload.error && typeof payload.error==='object' && !Array.isArray(payload.error)) return true;
+ return false;
+}
+function independentModelId(value){
+ if(typeof value==='string') return value.trim();
+ if(!value || typeof value!=='object') return '';
+ const candidate=value.id ?? value.model ?? value.model_id ?? value.name ?? value.slug ?? '';
+ return String(candidate||'').trim();
+}
+function extractIndependentModelList(payload){
+ const queues=[];
+ const push=(value)=>{ if(Array.isArray(value)) queues.push(value); };
+ push(payload);
+ if(payload && typeof payload==='object'){
+  push(payload.data);
+  push(payload.models);
+  push(payload.items);
+  push(payload.result);
+  push(payload.results);
+  const nested=payload.data && typeof payload.data==='object' && !Array.isArray(payload.data) ? payload.data : null;
+  if(nested){
+   push(nested.data);
+   push(nested.models);
+   push(nested.items);
+   push(nested.result);
+   push(nested.results);
+  }
+ }
+ const ids=[];
+ for(const list of queues){
+  for(const item of list){
+   const id=independentModelId(item);
+   if(id) ids.push(id);
+  }
+  if(ids.length) break;
+ }
+ return [...new Set(ids)].sort((a,b)=>a.localeCompare(b));
+}
+async function readIndependentResponsePayload(response){
+ const raw=await response.text().catch(()=> '');
+ if(!raw) return {raw:'',json:null};
+ try{return {raw,json:JSON.parse(raw)};}catch{return {raw,json:null};}
+}
 export async function fetchIndependentModels(){
  const st=getSettings();
  const url=endpoint(st.independentApiBaseUrl,'/models');
- if(!url) throw new Error('请先填写 API 地址');
+ if(!url) throw independentModelListError('请先填写 API 地址','MODEL_LIST_CONFIG');
  const r=await fetchIndependentUrl(url,{method:'GET',headers:headers(st)});
- if(!r.ok){ const detail=await r.text().catch(()=> ''); throw new Error(`模型列表请求失败：HTTP ${r.status}${detail?` · ${detail.slice(0,180)}`:''}`); }
- const j=await r.json();
- return (Array.isArray(j?.data)?j.data:Array.isArray(j)?j:[]).map(x=>typeof x==='string'?x:x?.id).filter(Boolean).sort();
+ const payload=await readIndependentResponsePayload(r);
+ if(!r.ok){
+  const detail=compactIndependentPayloadError(payload.json) || String(payload.raw||'').trim().slice(0,180);
+  throw independentModelListError(`模型列表请求失败：HTTP ${r.status}${detail?` · ${detail}`:''}`,'MODEL_LIST_HTTP');
+ }
+ if(independentPayloadHasError(payload.json)){
+  const detail=compactIndependentPayloadError(payload.json);
+  throw independentModelListError(`模型列表接口返回错误${detail?`：${detail}`:'。SillyTavern 未返回上游详细原因；可能是 API Key/地址错误，或该供应商不支持 GET /models'}`,'MODEL_LIST_UPSTREAM');
+ }
+ const models=extractIndependentModelList(payload.json);
+ if(!models.length){
+  throw independentModelListError('接口返回成功，但没有可识别的模型列表；该供应商可能不提供 GET /models。手动填写的模型 ID 会继续保留。','MODEL_LIST_EMPTY');
+ }
+ return models;
 }
-export async function testIndependentConnection(){ const models=await fetchIndependentModels(); return {ok:true,models}; }
+export async function testIndependentConnection(){
+ const st=getSettings();
+ const manualModel=String(st.independentApiModel||'').trim();
+ try{
+  const models=await fetchIndependentModels();
+  return {ok:true,verified:true,modelListAvailable:true,models,manualModel,error:''};
+ }catch(error){
+  return {
+   ok:false,
+   verified:false,
+   modelListAvailable:false,
+   models:[],
+   manualModel,
+   error:String(error?.message||error||'模型列表检测失败'),
+   code:String(error?.code||''),
+  };
+ }
+}
 function textFromContent(value){
  if(typeof value==='string') return value;
  if(Array.isArray(value)) return value.map(item=>{

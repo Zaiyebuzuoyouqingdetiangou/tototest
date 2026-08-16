@@ -1,15 +1,15 @@
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.93';
-import { clearLastCombo } from './storage.js?rmv=1.3.93';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.93';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.93';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.3.93';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.93';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.93';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.93';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.3.93';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.96';
+import { clearLastCombo } from './storage.js?rmv=1.3.96';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.96';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.96';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.3.96';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.96';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.96';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.96';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.3.96';
 
-const SETTINGS_UI_VERSION = '1.3.93-visual-maintenance';
-const RUNTIME_VERSION = '1.3.93';
+const SETTINGS_UI_VERSION = '1.3.96-visual-maintenance';
+const RUNTIME_VERSION = '1.3.96';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -290,7 +290,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜测试版</b><span class="rabbit-mirror-toto-watermark">TOTOv1.3 · 1.3.93</span>
+      <b>兔子镜测试版</b><span class="rabbit-mirror-toto-watermark">TOTOv1.3 · 1.3.96</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -536,9 +536,9 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_temperature, #rh_independent_max_tokens').on('change', saveIndependentFields);
     $('#rh_independent_models').on('click', async () => {
         saveIndependentFields();
+        const current=String($('#rh_independent_model').val() || getSettings().independentApiModel || '').trim();
         try {
             const models=await fetchIndependentModels();
-            const current=String($('#rh_independent_model').val() || getSettings().independentApiModel || '').trim();
             $('#rh_independent_model_list').html(models.map(id=>`<option value="${escapeHtml(id)}"></option>`).join(''));
             if(current) {
                 $('#rh_independent_model').val(current);
@@ -546,24 +546,25 @@ export function initRabbitMirrorUI() {
                 $('#rh_independent_model').val(models[0]);
                 updateSettings({independentApiModel:models[0]});
             }
-            if(models.length) toastr?.success?.(`已拉取 ${models.length} 个模型；也可以手动填写模型 ID`);
-            else toastr?.warning?.('接口未返回模型列表；可直接手动填写模型 ID');
+            toastr?.success?.(`已拉取 ${models.length} 个模型；也可以手动填写模型 ID`);
         } catch(error) {
+            // 拉取失败只清候选列表，不碰用户已经手动填写的 model ID。
             $('#rh_independent_model_list').empty();
-            toastr?.warning?.(`模型列表拉取失败；仍可直接手动填写模型 ID。${String(error?.message||error)}`);
+            if(current) $('#rh_independent_model').val(current);
+            toastr?.warning?.(`模型列表拉取失败；手动模型 ID 不受影响。${String(error?.message||error)}`);
         }
     });
     $('#rh_independent_test').on('click', async () => {
         saveIndependentFields();
-        try {
-            const result=await testIndependentConnection();
-            toastr?.success?.(`连接成功；可用模型 ${result.models.length} 个`);
-        } catch(error) {
-            const manualModel=String($('#rh_independent_model').val()||'').trim();
-            toastr?.[manualModel ? 'warning' : 'error']?.(manualModel
-                ? `模型列表检测失败，但已保留手动模型 ID「${manualModel}」；可直接生成验证该模型。${String(error?.message||error)}`
-                : String(error?.message||error));
+        const result=await testIndependentConnection();
+        if(result.verified) {
+            toastr?.success?.(`模型列表端点可用；检测到 ${result.models.length} 个模型`);
+            return;
         }
+        const manualModel=String($('#rh_independent_model').val() || result.manualModel || '').trim();
+        toastr?.[manualModel ? 'warning' : 'error']?.(manualModel
+            ? `无法通过 /models 无付费验证连接，但已保留手动模型 ID「${manualModel}」。这不等于生成接口不可用；请直接生成一次验证该模型。${result.error}`
+            : `连接检测未通过：${result.error}`);
     });
 
     $('#rh_enabled').on('change', e => { updateSettings({ enabled: e.target.checked, autoRabbitMirrorInjection: e.target.checked, mode: e.target.checked ? 'integrated' : 'off' }); if (e.target.checked) syncFeedbackCatExtensionPrompt(getActiveFeedbackForCurrentChat()); else clearFeedbackCatExtensionPrompt(); refreshRabbitMirrorGenerationMode(); });

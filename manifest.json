@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.3.93",
-  "css": "style.css?rmv=1.3.93",
+  "js": "index.js?rmv=1.3.96",
+  "css": "style.css?rmv=1.3.96",
   "author": "Toto",
-  "version": "1.3.93",
+  "version": "1.3.96",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版：1.3.93 正式版前 RC。进入长聊天时历史兔子镜只做轻量工具恢复，嵌套折叠的重布局检测延迟到实际展开；README/LICENSE 补充禁止将仓库链接、源码与源码压缩包提交给 AI 用于仿制、替代或衍生开发。其余 Prompt、视觉、维修兔主体与 API stream/retry 保持。"
+  "description": "兔子镜测试版：1.3.96 正式版前 RC。修复独立 API 模型列表错误处理：SillyTavern 即使以 HTTP 200 返回 error:true 也不再误判为成功；兼容 data/models/items/result 等常见模型列表结构；拉取失败不清除手动 model ID；“测试连接”不再把拿不到 /models 伪装成连接成功。1.3.95 的维修兔高置信自动排版修复保持不变。"
 }
