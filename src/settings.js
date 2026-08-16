@@ -44,7 +44,6 @@ export const defaultSettings = Object.freeze({
     samplingMode: 'classic',
     rawPolicy: 'balanced',
     showCot: false,
-    includeSafetyPatch: false,
     avoidRepeat: true,
     cooldownRounds: 10,
     blacklistEnabled: true,

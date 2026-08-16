@@ -1,3 +1,50 @@
+# 1.3.93 TEST / RC
+
+- **进入长聊天减负**：`CHAT_CHANGED` 的全聊天工具恢复不再对所有历史兔子镜同步执行嵌套 `<details>` 的 `getComputedStyle / getBoundingClientRect` 候选检测；历史镜面只恢复轻量监听与已持久化的维修标记，真正的重布局判断延迟到该嵌套折叠被打开，或外层兔子镜打开时其中已有折叠处于 open 状态后再执行。
+- `CHAT_CHANGED` 的历史工具恢复也不再为每面历史兔子镜计算完整 `outerHTML` 自动维修指纹或排队自动维修；自动安全维修继续只在新生成／新渲染的 scoped message 路径运行。
+- 新生成/新渲染消息仍保留原来的即时嵌套交互检测，避免为了性能牺牲当前镜面的可用性；clone/cache 恢复后的 live listener 会重新绑定，同一 live DOM 不重复叠加。
+- README / LICENSE 补充 AI 与二改边界：不授权把仓库链接、源码、源码压缩包、规则、母本或实现逻辑提交给生成式 AI / 代码生成工具，用于仿制、替代、生成初始版或继续开发衍生项目；并明确“先做初始版、后导入源码”不构成独立开发授权。
+- 不修改 Prompt、配色冷却、黑名单、独立 API stream/retry、pure-external 宽度救援或维修兔实际修复算法。
+
+# 1.3.92 TEST
+
+- 正式版前稳定性收口：跟随主 API 的横向裁切急救不再在全聊天工具刷新时同步读取历史镜面布局；改为仅给 live `<details>` 绑定轻量 toggle，镜面实际展开并完成一帧绘制后才检测当前镜面。收起状态不会先清空已有 transient 修复；维修兔关闭时已有监听也立即失效，重新开启无需重复叠监听；独立 API 外置链继续走原有专用入口。
+- 独立 API Base URL 正规化改为按 URL pathname 处理：新增 `/models` 完整端点剥离，query 参数保留在请求末尾，hash 丢弃；`/v1`、`/v2`、`/v4`、`/v1beta` 等显式版本仍被尊重；交给 SillyTavern 的 `custom_url` 复用同一正规化，避免 query 场景再次把完整端点当 base。
+- 独立 API 成品在绕过 SillyTavern 消息净化链并挂入 DOM 前增加安全边界：删除 script/iframe/object/embed/link/meta/base、所有 `on*` 与 `srcdoc`，剥离 javascript/vbscript/data:text/html 危险 URL；保留 checkbox/radio/label/details/style/svg 等兔子镜 CSS-only 交互与视觉结构。同一边界也用于跟随模式热更新/BFCache 从消息源码恢复 DOM 的路径。
+- CSS 隔离收口：删除 `@import`（含 CSS 转义写法），防止外部样式绕过逐镜 selector scope；递归 at-rule 同样按 CSS 标识符规则识别，转义 `@media/@supports` 不再漏过内部 selector scope。已有 scope 只有在当前镜面的精确 token 位于安全起点且不以兄弟/column combinator 向外逃逸时才跳过前缀；泛化 `[data-rabbit-mirror-css-scope]` 与跨镜 selector 不再生效。
+- 删除未被任何运行路径读取的 `includeSafetyPatch` 默认死配置。
+- 未改 Prompt 内容、Lannuomi 副 API 行为层、API stream/retry、维修兔修复主体、配色/黑名单、pure-external 宽度救援。
+
+## 1.3.91 TEST — Base URL 剥离误填端点路径 / 跟随模式补齐横向裁切自动急救
+
+- 修复用户把文档里的完整请求地址整条粘进「Base URL」时仍然 404 的问题。1.3.90 已修好「结尾是版本段就不再补 /v1」，但若用户填的是 `https://open.bigmodel.cn/api/paas/v4/chat/completions`，结尾不是版本段，仍会再补一次 `/v1`，拼出 `.../chat/completions/v1/chat/completions`。其报错形态与补 `/v1` 修复前完全一致，极易被误判为没修好。
+- `normalizeBase()` 新增 `stripKnownEndpointPath()`：规范化阶段循环剥离结尾的 `chat/completions`、`completions`、`responses`、`messages`、`embeddings`（最多三轮，覆盖 `/v1/chat/completions` 这类连续两段的写法）。只剥端点动词，绝不剥 `/v1`、`/v4`、`/v1beta` 等版本段。
+- 覆盖验证：智谱正确填法与误填完整路径、DeepSeek 两种填法、OpenAI 完整路径、Anthropic `/v1/messages`、Gemini `v1beta`、Kimi `/v1`、结尾斜杠、本地数字 IP，共 10 种输入全部拼出正确地址。
+- 补齐跟随模式（主 API）的横向裁切自动急救。该模块此前只挂在独立 API 的 `ensureExternalTools()` 上，跟随模式的兔子镜只有用户手动点维修兔时才会执行，同一故障在两条链路上的自愈能力不一致。现在在两条链路共用的 `installMaintenanceRabbitsInScope()` 中补上，受维修兔开关约束。
+- 该模块自身已按「窄视口 + 真实 `scrollWidth` 溢出证据」严格门控，桌面端与无溢出时是廉价空跑；且完全幂等（每次先撤回上一轮 transient 产物再重新实测），与独立 API 侧重复执行无副作用。
+- 不新增 observer / timer / 轮询；不改 Prompt、不增加 Token、不新增 API 请求；未改动独立 API 请求与重试链、外置几何、配色冷却、黑名单与抽签记录。
+
+## 1.3.90 TEST — 独立 API 版本路径兼容 / 手动模型 ID
+
+- 修复独立 API Base URL 被固定补 `/v1` 的兼容性缺陷。若用户地址已经以 `/v1`、`/v2`、`/v4`、`/v1beta` 等显式版本段结尾，兔子镜尊重该版本并直接拼接 `/models` 或 `/chat/completions`；未带版本段的既有地址仍默认补 `/v1`，保持旧配置兼容。
+- 模型控件由只能依赖 `/models` 的下拉框改成“可手动输入 + datalist 建议”。模型列表能拉取时提供候选；拉取失败、返回空列表或服务根本不实现 `/models` 时，不清空已填写模型，用户仍可直接输入 model ID 并生成。
+- “测试连接”仍以 `/models` 为无付费检测，不伪造成功；当模型列表不可用但已填手动 model ID 时，明确提示可直接生成验证，而不是阻断配置。
+- 不增加自动生成请求或重试；不修改副 API Prompt、stream/参数兼容重试、维修兔、宽度救援、折叠交互、配色冷却和随机黑名单。
+
+## 1.3.89 TEST — Lannuomi 原文保留 + 副 API 执行边界
+
+- 将用户提供的完整 Lannuomi 文本逐字保存在 `data/independentBehaviorPatch.js` 的 `LANNUOMI_REFERENCE_TEXT` 中，作为项目参考文本。
+- `LANNUOMI_REFERENCE_TEXT` 不进入任何模型 Prompt；副 API 仍只注入 `INDEPENDENT_BEHAVIOR_PATCH`，主 API 继续 0 注入。
+- 未修改展现形式、视觉、交互、配色、维修兔、独立 API 请求/stream/重试、宽度救援或折叠修复。
+
+## 1.3.89 TEST — 副 API 专用创作行为层
+
+- 旧 `data/safetyPatch.js` 在 1.3.87 中没有任何 import/call site，实际未进入主 API 或副 API Prompt；本版移除该死代码，替换为 `data/independentBehaviorPatch.js`。
+- 新行为层只在 `callIndependentApi()` 组装副 API system prompt 时注入；主 API / 跟随注入的 `promptBuilder` 不引用它。
+- 行为层只负责响应姿态：直接生成、减少无关说教/警告、不无故柔化、不擅改人物关系/冲突/审美/剧情方向；不重复兔子镜已有的展现形式、视觉、交互、配色或输出规则。
+- 副 API Token 计量同步计入该行为层，避免设置页低报兔子镜自身 Prompt。
+- 除版本缓存字符串外，不修改 1.3.87 的宽度救援、折叠交互、维修兔、配色冷却、随机黑名单或 API 请求/stream/重试逻辑。
+
 ## 1.3.87 TEST — 短全局视觉地板 / 折叠交互重绑定与首次展开减卡顿
 
 - 基于 1.3.86 实际源码继续修改。把「全局成品完成度地板」与默认「配色构成下限」合并为一条短「全局视觉地板」：展现形式与媒介本体继续决定具体长相；只要求主次、比例、空间、材质、信息组织、细节与配色符合本轮媒介/内容，配色不得平均竞争，并禁止为了“高级感”固定套用某一种布局、材质、视觉效果或配色。删除主 Prompt 与独立 API near-output 中重复的主色相≤2 / 高彩≤10% 等固定数值地板；配色冷却、米黄/暗底重复识别与既有色彩组织规则保持。

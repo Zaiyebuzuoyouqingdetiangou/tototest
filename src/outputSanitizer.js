@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.87';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.87';
+import { getSettings } from './settings.js?rmv=1.3.93';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.93';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.87';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.87';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.87';
-import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.87';
+} from './feedbackCat.js?rmv=1.3.93';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.93';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.93';
+import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.93';
 
 
-const RUNTIME_VERSION = '1.3.87';
+const RUNTIME_VERSION = '1.3.93';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -2945,7 +2945,10 @@ const NESTED_DETAILS_REPLACEMENT_HOST_ATTR = 'data-rm-nested-details-replacement
 const NESTED_DETAILS_REPLACEMENT_STYLE_ATTR = 'data-rabbit-mirror-nested-details-replacement-style';
 const NESTED_DETAILS_REPLACEMENT_BOUND_ATTR = 'data-rm-nested-details-replacement-bound';
 const NESTED_DETAILS_REPLACEMENT_BINDING_PROP = '__rabbitMirrorNestedDetailsReplacementBinding';
-const NESTED_DETAILS_REPLACEMENT_BINDING_VERSION = '1.3.87';
+const NESTED_DETAILS_REPLACEMENT_BINDING_VERSION = '1.3.93';
+const NESTED_DETAILS_DEFERRED_BINDING_PROP = '__rabbitMirrorNestedDetailsDeferredBinding';
+const NESTED_DETAILS_DEFERRED_BINDING_VERSION = '1.3.93';
+const nestedDetailsDeferredChecks = new WeakSet();
 const NESTED_DETAILS_POPUP_RESCUE_ATTR = 'data-rm-nested-details-popup-rescue';
 const NESTED_DETAILS_POPUP_HOST_ATTR = 'data-rm-nested-details-popup-host';
 const NESTED_DETAILS_POPUP_CONTENT_ATTR = 'data-rm-nested-details-popup-content';
@@ -8568,7 +8571,7 @@ function refreshTargetRescue(root) {
 }
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
-const NESTED_DETAILS_FALLBACK_HANDLER_VERSION = '1.3.87';
+const NESTED_DETAILS_FALLBACK_HANDLER_VERSION = '1.3.93';
 
 function installNestedDetailsFallback(root) {
     if (!root?.querySelectorAll || !root?.addEventListener) return;
@@ -8709,31 +8712,39 @@ function ensureNestedDetailsReplacementStyle(root) {
     return style;
 }
 
-function installNestedDetailsReplacementContainment(root) {
-    if (!root?.querySelectorAll) return 0;
-    const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
+function installNestedDetailsReplacementForDetails(root, details, outerDetails = null) {
+    if (!root?.querySelectorAll || !details || details === outerDetails) return 0;
+    const summary = details.querySelector?.(':scope > summary');
+    if (!summary) return 0;
+
+    // Historical mirrors that were already repaired persist the marker in HTML, while
+    // their live JS listeners are lost across clone/cache restores. Rehydrate those
+    // markers without re-reading layout. Only an unmarked details needs the expensive
+    // candidate test (computed style + geometry).
+    const alreadyPatched = details.getAttribute(NESTED_DETAILS_REPLACEMENT_ATTR) === 'true';
+    if (!alreadyPatched && !isFullHeightNestedDetailsCandidate(details, summary)) return 0;
+
     let patched = 0;
-    for (const details of root.querySelectorAll('details')) {
-        if (details === outerDetails) continue;
-        const summary = details.querySelector?.(':scope > summary');
-        if (!summary || !isFullHeightNestedDetailsCandidate(details, summary)) continue;
-        if (details.getAttribute(NESTED_DETAILS_REPLACEMENT_ATTR) !== 'true') {
-            details.setAttribute(NESTED_DETAILS_REPLACEMENT_ATTR, 'true');
-            const host = details.parentElement;
-            if (host) {
-                let originalHeight = 0;
-                try { originalHeight = Math.round(host.getBoundingClientRect?.().height || 0); } catch {}
-                if (originalHeight > 0) host.style.setProperty('--rm-nested-details-original-height', `${originalHeight}px`);
-                host.setAttribute(NESTED_DETAILS_REPLACEMENT_HOST_ATTR, 'true');
-            }
-            patched += 1;
+    if (!alreadyPatched) {
+        details.setAttribute(NESTED_DETAILS_REPLACEMENT_ATTR, 'true');
+        const host = details.parentElement;
+        if (host) {
+            let originalHeight = 0;
+            try { originalHeight = Math.round(host.getBoundingClientRect?.().height || 0); } catch {}
+            if (originalHeight > 0) host.style.setProperty('--rm-nested-details-original-height', `${originalHeight}px`);
+            host.setAttribute(NESTED_DETAILS_REPLACEMENT_HOST_ATTR, 'true');
         }
-        const contentChildren = directReadableDetailsChildren(details, summary);
-        const existingBinding = details[NESTED_DETAILS_REPLACEMENT_BINDING_PROP];
-        const sameLiveChildren = existingBinding?.version === NESTED_DETAILS_REPLACEMENT_BINDING_VERSION
-            && existingBinding.entries?.length === contentChildren.length
-            && existingBinding.entries.every((entry, index) => entry.child === contentChildren[index]);
-        if (sameLiveChildren) continue;
+        patched = 1;
+    } else {
+        details.parentElement?.setAttribute?.(NESTED_DETAILS_REPLACEMENT_HOST_ATTR, 'true');
+    }
+
+    const contentChildren = directReadableDetailsChildren(details, summary);
+    const existingBinding = details[NESTED_DETAILS_REPLACEMENT_BINDING_PROP];
+    const sameLiveChildren = existingBinding?.version === NESTED_DETAILS_REPLACEMENT_BINDING_VERSION
+        && existingBinding.entries?.length === contentChildren.length
+        && existingBinding.entries.every((entry, index) => entry.child === contentChildren[index]);
+    if (!sameLiveChildren) {
         for (const entry of existingBinding?.entries || []) {
             try { entry.child?.removeEventListener?.('click', entry.onClick, false); } catch {}
             try { entry.child?.removeEventListener?.('keydown', entry.onKeydown, false); } catch {}
@@ -8770,11 +8781,111 @@ function installNestedDetailsReplacementContainment(root) {
         // 该属性仅供诊断；真正的 live 绑定状态由上面的不可序列化 JS property 判断。
         details.setAttribute(NESTED_DETAILS_REPLACEMENT_BOUND_ATTR, 'true');
     }
-    if (patched || root.querySelector?.(`[${NESTED_DETAILS_REPLACEMENT_ATTR}="true"]`)) {
-        ensureNestedDetailsReplacementStyle(root);
-        root.dataset.rabbitMirrorNestedDetailsReplacement = String(root.querySelectorAll(`[${NESTED_DETAILS_REPLACEMENT_ATTR}="true"]`).length);
+
+    ensureNestedDetailsReplacementStyle(root);
+    root.dataset.rabbitMirrorNestedDetailsReplacement = String(root.querySelectorAll(`[${NESTED_DETAILS_REPLACEMENT_ATTR}="true"]`).length);
+    return patched;
+}
+
+function installNestedDetailsReplacementContainment(root) {
+    if (!root?.querySelectorAll) return 0;
+    const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
+    let patched = 0;
+    for (const details of root.querySelectorAll('details')) {
+        if (details === outerDetails) continue;
+        patched += installNestedDetailsReplacementForDetails(root, details, outerDetails);
     }
     return patched;
+}
+
+function scheduleNestedDetailsReplacementForDetails(root, details, outerDetails = null) {
+    if (!root?.isConnected || !details?.isConnected || !details.open) return false;
+    if (nestedDetailsDeferredChecks.has(details)) return true;
+    nestedDetailsDeferredChecks.add(details);
+    const run = () => {
+        nestedDetailsDeferredChecks.delete(details);
+        if (!root?.isConnected || !details?.isConnected || !details.open) return;
+        try {
+            installNestedDetailsReplacementForDetails(root, details, outerDetails);
+        } catch (error) {
+            console.debug('[RabbitMirror] deferred nested-details containment skipped:', error);
+        }
+    };
+    // The expensive candidate test reads computed styles and geometry. Yield one paint
+    // after the disclosure opens so Safari does not pay that layout cost while handling
+    // the tap that opened the mirror.
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => setTimeout(run, 0));
+    else setTimeout(run, 0);
+    return true;
+}
+
+function armNestedDetailsReplacementContainment(root) {
+    if (!root?.querySelectorAll) return 0;
+    const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
+    let bound = 0;
+
+    for (const details of root.querySelectorAll('details')) {
+        if (details === outerDetails) continue;
+        const summary = details.querySelector?.(':scope > summary');
+        if (!summary) continue;
+
+        // Persisted repair markers can be rehydrated without any layout reads.
+        if (details.getAttribute(NESTED_DETAILS_REPLACEMENT_ATTR) === 'true') {
+            try { installNestedDetailsReplacementForDetails(root, details, outerDetails); } catch {}
+        }
+
+        const existing = details[NESTED_DETAILS_DEFERRED_BINDING_PROP];
+        if (existing?.version === NESTED_DETAILS_DEFERRED_BINDING_VERSION && existing.onToggle) continue;
+        if (existing?.onToggle) {
+            try { details.removeEventListener('toggle', existing.onToggle, false); } catch {}
+        }
+        const onToggle = () => {
+            if (!details.open) return;
+            scheduleNestedDetailsReplacementForDetails(root, details, outerDetails);
+        };
+        details.addEventListener('toggle', onToggle, false);
+        try {
+            Object.defineProperty(details, NESTED_DETAILS_DEFERRED_BINDING_PROP, {
+                configurable: true,
+                writable: true,
+                value: { version: NESTED_DETAILS_DEFERRED_BINDING_VERSION, onToggle },
+            });
+        } catch {
+            details[NESTED_DETAILS_DEFERRED_BINDING_PROP] = { version: NESTED_DETAILS_DEFERRED_BINDING_VERSION, onToggle };
+        }
+        bound += 1;
+    }
+
+    // A historical mirror may contain a nested details that was already open before the
+    // outer RabbitMirror shell was collapsed. Opening the outer shell does not fire a
+    // nested toggle, so defer checks for only those already-open children at that moment.
+    if (outerDetails) {
+        const outerExisting = outerDetails[NESTED_DETAILS_DEFERRED_BINDING_PROP];
+        if (!(outerExisting?.version === NESTED_DETAILS_DEFERRED_BINDING_VERSION && outerExisting.outer === true && outerExisting.onToggle)) {
+            if (outerExisting?.onToggle) {
+                try { outerDetails.removeEventListener('toggle', outerExisting.onToggle, false); } catch {}
+            }
+            const onOuterToggle = () => {
+                if (!outerDetails.open) return;
+                for (const details of root.querySelectorAll('details[open]')) {
+                    if (details === outerDetails) continue;
+                    scheduleNestedDetailsReplacementForDetails(root, details, outerDetails);
+                }
+            };
+            outerDetails.addEventListener('toggle', onOuterToggle, false);
+            try {
+                Object.defineProperty(outerDetails, NESTED_DETAILS_DEFERRED_BINDING_PROP, {
+                    configurable: true,
+                    writable: true,
+                    value: { version: NESTED_DETAILS_DEFERRED_BINDING_VERSION, outer: true, onToggle: onOuterToggle },
+                });
+            } catch {
+                outerDetails[NESTED_DETAILS_DEFERRED_BINDING_PROP] = { version: NESTED_DETAILS_DEFERRED_BINDING_VERSION, outer: true, onToggle: onOuterToggle };
+            }
+            bound += 1;
+        }
+    }
+    return bound;
 }
 
 function findNestedDetailsPopupClippingAncestor(element, root) {
@@ -11633,7 +11744,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.87-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.93-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -18026,6 +18137,10 @@ const HCLIP_DECORATIVE_MAX_PX = 64;
 const HCLIP_MEDIA_TAGS = new Set(['IMG', 'VIDEO', 'IFRAME', 'CANVAS', 'SVG', 'PICTURE', 'OBJECT', 'EMBED']);
 const HCLIP_INTERACTIVE_SELECTOR = 'a[href],button,input,select,textarea,label,details,summary,[role="button"],[role="link"],[role="checkbox"],[role="radio"],[role="tab"],[tabindex]:not([tabindex="-1"])';
 
+// 1.3.92: 跟随主 API 的横向裁切只在真实展开后测量。WeakMap 只记录当前 live DOM，
+// clone/重挂载后的新 <details> 会自然重新绑定，不写入任何可持久化 data-* 标记。
+const maintenanceHorizontalClipOpenStates = new WeakMap();
+
 // 诊断用的可读定位串，只取标签、id、前两个 class 与在父层中的序号。
 function hclipElementPath(element) {
     if (!element?.tagName) return '(unknown)';
@@ -18287,6 +18402,57 @@ export function installMaintenanceHorizontalClipRescue(root) {
     }
     root.setAttribute(HCLIP_REPORT_ATTR, JSON.stringify(report));
     return report.repaired;
+}
+
+
+function scheduleMaintenanceHorizontalClipOpenRescue(root, details) {
+    if (!isMaintenanceRabbitEnabled()) return false;
+    if (!root?.isConnected || !details?.isConnected || !details.open) return false;
+    const state = maintenanceHorizontalClipOpenStates.get(details);
+    if (!state || state.scheduled) return false;
+    state.scheduled = true;
+
+    const run = () => {
+        state.scheduled = false;
+        if (!isMaintenanceRabbitEnabled()) return;
+        if (!root?.isConnected || !details?.isConnected || !details.open) return;
+        try {
+            installMaintenanceHorizontalClipRescue(root);
+        } catch (error) {
+            console.debug('[RabbitMirror] deferred horizontal clip rescue skipped for one mirror:', error);
+        }
+    };
+
+    // 先让原生 <details> 完成本帧展开绘制，再做 scrollWidth/clientWidth/getComputedStyle。
+    // 这样点击本身不会被重布局扫描阻塞；后台/无 rAF 环境退回 setTimeout。
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(() => globalThis.setTimeout(run, 0));
+    } else {
+        globalThis.setTimeout(run, 0);
+    }
+    return true;
+}
+
+function installMaintenanceHorizontalClipOpenRescue(root) {
+    if (!root?.querySelector) return false;
+    // 独立 API 已在 ensureExternalTools() 的展开链做同一救援；这里仅补跟随主 API，避免双测。
+    if (root.closest?.('.rabbit-mirror-external-shell[data-rm-source="independent"]')) return false;
+    const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
+    if (!details?.addEventListener) return false;
+
+    let state = maintenanceHorizontalClipOpenStates.get(details);
+    if (!state) {
+        state = { scheduled: false };
+        const onToggle = () => {
+            if (isMaintenanceRabbitEnabled() && details.open) scheduleMaintenanceHorizontalClipOpenRescue(root, details);
+        };
+        details.addEventListener('toggle', onToggle, { passive: true });
+        state.onToggle = onToggle;
+        maintenanceHorizontalClipOpenStates.set(details, state);
+    }
+
+    if (details.open) scheduleMaintenanceHorizontalClipOpenRescue(root, details);
+    return true;
 }
 
 function installMaintenanceViewportLayoutRescue(root) {
@@ -19406,7 +19572,11 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } 
             console.debug('[RabbitMirror] legacy frame palette cleanup skipped for one mirror:', error);
         }
         try {
-            installNestedDetailsReplacementContainment(root);
+            // 1.3.93: CHAT_CHANGED/full-chat refresh only rehydrates cheap listeners and
+            // persisted repair markers. Fresh/scoped message installs keep the immediate
+            // candidate pass so newly rendered mirrors behave exactly as before.
+            armNestedDetailsReplacementContainment(root);
+            if (!allowGlobalRemoval) installNestedDetailsReplacementContainment(root);
         } catch (error) {
             console.debug('[RabbitMirror] nested details containment skipped for one mirror:', error);
         }
@@ -19414,11 +19584,23 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } 
             try {
                 installMaintenanceRabbitForRoot(root);
                 const maintenanceButton = root.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`);
-                if (maintenanceButton && rabbitMirrorExternalGenerationState(root) !== 'loading') {
+                if (!allowGlobalRemoval && maintenanceButton && rabbitMirrorExternalGenerationState(root) !== 'loading') {
+                    // Auto-safe is a new/scoped-message feature. CHAT_CHANGED history
+                    // restoration must not serialize every historical root for a signature
+                    // or enqueue automatic repairs merely because the user entered a chat.
                     scheduleMaintenanceAutoSafeForRoot(root, maintenanceButton);
                 }
             } catch (error) {
                 console.debug('[RabbitMirror] maintenance rabbit install recovered for one mirror:', error);
+            }
+        }
+        if (maintenanceEnabled) {
+            // 1.3.92: 这里只安装一个轻量 toggle 入口，不在全聊天工具刷新时读取布局。
+            // 真正的横向裁切检查只会在当前镜面已展开并完成一帧绘制后运行。
+            try {
+                installMaintenanceHorizontalClipOpenRescue(root);
+            } catch (error) {
+                console.debug('[RabbitMirror] horizontal clip open-rescue binding skipped for one mirror:', error);
             }
         }
         if (feedbackEnabled) {
@@ -20810,6 +20992,41 @@ function findCssMatchingBrace(sourceText, openIndex) {
     return -1;
 }
 
+function readCssAtRuleKeyword(statementText) {
+    const source = String(statementText || '').trimStart();
+    if (!source.startsWith('@')) return '';
+    let index = 1;
+    let keyword = '';
+    while (index < source.length) {
+        const char = source[index];
+        if (/[A-Za-z0-9_-]/.test(char)) {
+            keyword += char;
+            index += 1;
+            continue;
+        }
+        if (char === '\\') {
+            index += 1;
+            let hex = '';
+            while (index < source.length && hex.length < 6 && /[0-9A-Fa-f]/.test(source[index])) {
+                hex += source[index];
+                index += 1;
+            }
+            if (hex) {
+                try { keyword += String.fromCodePoint(parseInt(hex, 16)); } catch {}
+                if (/\s/.test(source[index] || '')) index += 1;
+                continue;
+            }
+            if (index < source.length) {
+                keyword += source[index];
+                index += 1;
+                continue;
+            }
+        }
+        break;
+    }
+    return keyword.toLowerCase();
+}
+
 function transformCssRuleList(cssText, selectorTransform) {
     const source = String(cssText || '');
     const recursiveAtRules = new Set(['media', 'supports', 'container', 'layer', 'document', 'starting-style', 'scope']);
@@ -20823,7 +21040,12 @@ function transformCssRuleList(cssText, selectorTransform) {
             break;
         }
         if (delimiter.char === ';') {
-            output += source.slice(cursor, delimiter.index + 1);
+            const statement = source.slice(cursor, delimiter.index + 1);
+            // @import 会引入完全未经过逐镜 selector scope 的外部样式；按 CSS 标识符规则读取
+            // at-keyword，连 @\69mport / @\000069 mport 这类转义写法也一并拦截。
+            // 只丢 import，本地 @layer/@namespace 等其他语句保持原行为。
+            if (readCssAtRuleKeyword(statement) !== 'import') output += statement;
+            else output += ' ';
             cursor = delimiter.index + 1;
             continue;
         }
@@ -20841,7 +21063,9 @@ function transformCssRuleList(cssText, selectorTransform) {
         const body = source.slice(delimiter.index + 1, closeIndex);
 
         if (prelude.startsWith('@')) {
-            const atName = /^@([\w-]+)/.exec(prelude)?.[1]?.toLowerCase() || '';
+            // CSS at-keyword 允许转义（例如 @\6d edia）。复用同一解析器，避免通过
+            // 转义 @media/@supports 绕过递归 selector scope。
+            const atName = readCssAtRuleKeyword(prelude);
             const isKeyframes = atName.endsWith('keyframes');
             const transformedBody = !isKeyframes && recursiveAtRules.has(atName)
                 ? transformCssRuleList(body, selectorTransform)
@@ -21092,6 +21316,23 @@ function rewriteRabbitMirrorInlineAnimationStyles(htmlText, keyframeMap) {
     });
 }
 
+function selectorStartsWithSafeRabbitMirrorScope(selectorText, scopeSelector) {
+    const match = /^\[data-rabbit-mirror-css-scope="([^"]+)"\]$/.exec(String(scopeSelector || '').trim());
+    const scopeValue = String(match?.[1] || '').trim();
+    if (!scopeValue) return false;
+    const pattern = new RegExp(
+        `^\\s*\\[\\s*data-rabbit-mirror-css-scope\\s*=\\s*["']${escapeRegExp(scopeValue)}["']\\s*\\]`,
+        'i',
+    );
+    const selector = String(selectorText || '');
+    const scoped = pattern.exec(selector);
+    if (!scoped) return false;
+    const remainder = selector.slice(scoped[0].length);
+    // 当前 scope 自身、其后代/子级或同元素 compound selector 都不会逃出镜面；
+    // 兄弟/column combinator 则能把目标指向 scope 外，必须继续在外层再套一次 scope。
+    return !/^\s*(?:[+~]|\|\|)/.test(remainder);
+}
+
 function scopeRabbitMirrorSelectorList(selectorText, scopeSelector, classMap, checkedStateIds) {
     return splitCssSelectorList(selectorText).map((rawSelector) => {
         // 高置信修复模型偶发的 `. className` 选择器笔误。点号后出现空白在 CSS 类选择器中本来就是无效语法，
@@ -21107,7 +21348,9 @@ function scopeRabbitMirrorSelectorList(selectorText, scopeSelector, classMap, ch
             .replace(/:host\b/gi, scopeSelector)
             .replace(/^html(?:\s+body)?(?=\s|[.#[:])/i, scopeSelector)
             .replace(/^body(?=\s|[.#[:])/i, scopeSelector);
-        if (!selector || selector.includes(RABBIT_MIRROR_CSS_SCOPE_ATTR)) return selector;
+        // 只有“当前这面镜子的精确 scope token”才能证明已经隔离。
+        // 泛化的 [data-rabbit-mirror-css-scope] 仍必须再套当前 scope，避免跨镜样式串染。
+        if (!selector || selectorStartsWithSafeRabbitMirrorScope(selector, scopeSelector)) return selector;
         return `${scopeSelector} ${selector}`;
     }).join(',');
 }
