@@ -1,14 +1,14 @@
-import { getSettings } from './settings.js?rmv=1.3.101';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.101';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.3.101';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.101';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.3.101';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.101';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.3.101';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.3.101';
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.3.101';
+import { getSettings } from './settings.js?rmv=1.4.0';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.0';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.4.0';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.0';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.4.0';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.0';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.0';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.0';
+import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.0';
 
-const RUNTIME_VERSION = '1.3.101';
+const RUNTIME_VERSION = '1.4.0';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -27,6 +27,17 @@ const API_PROFILE_ORDER = [
  'chat_user_only_no_temp_full',
  'chat_user_only_no_temp_completion',
  'chat_user_only_minimal',
+ 'chat_system_user_full_nostream',
+ 'chat_system_user_completion_nostream',
+ 'chat_system_user_no_temp_full_nostream',
+ 'chat_system_user_no_temp_completion_nostream',
+ 'chat_system_user_minimal_nostream',
+ 'chat_user_only_full_nostream',
+ 'chat_user_only_completion_nostream',
+ 'chat_user_only_no_temp_full_nostream',
+ 'chat_user_only_no_temp_completion_nostream',
+ 'chat_user_only_minimal_nostream',
+ // Legacy compatibility names retained for staged/remembered records from 1.3.101 and earlier.
  'chat_system_user_nostream',
  'chat_user_only_nostream',
 ];
@@ -98,13 +109,13 @@ const CONTEXT_TRANSCRIPT_BUDGET = 52000;
 const CONTEXT_TOTAL_BUDGET = 76000;
 const OWNER_REATTACH_WAIT_MS = 60000;
 const ACTIVE_GENERATION_WAIT_MS = 10 * 60 * 1000;
-const WEAK_GENERATION_FLAG_GRACE_MS = 8 * 1000;
-const WEAK_GENERATION_SOURCE_STABLE_WAIT_MS = 1500;
-const SOURCE_STABLE_WAIT_MS = 800;
+const WEAK_GENERATION_FLAG_GRACE_MS = 30 * 1000;
+const WEAK_GENERATION_SOURCE_STABLE_WAIT_MS = 4500;
+const SOURCE_STABLE_WAIT_MS = 1400;
 const INDEPENDENT_REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 const HOST_GENERATION_EVENT_HINT_MS = 15000;
 const GENERATION_PLACEHOLDER_POLL_LIMIT_MS = 12000;
-const GENERATION_PLACEHOLDER_POLL_INTERVAL_MS = 350;
+const GENERATION_PLACEHOLDER_POLL_INTERVAL_MS = 760;
 const generationPolls = new Map();
 let storageWarningShown = false;
 let lastIndependentRequestConfig = '';
@@ -388,13 +399,18 @@ function readApiProfileStore(){ try { const v=JSON.parse(localStorage.getItem(AP
 function writeApiProfileStore(v){ try { localStorage.setItem(API_PROFILE_STORE_KEY,JSON.stringify(v)); } catch {} }
 function apiProfileKey(st){ return `${normalizeBase(st?.independentApiBaseUrl||'')}|${String(st?.independentApiModel||'')}`; }
 function normalizedConfiguredTemperature(st){ const value=Number(st?.independentApiTemperature); return Number.isFinite(value)?Math.max(0,Math.min(2,value)):0.8; }
-function profileUsesTemperature(profile=''){ return !/no_temp|minimal|nostream/i.test(String(profile||'')); }
+function profileUsesTemperature(profile=''){ return !/no_temp|minimal/i.test(String(profile||'')); }
 function profileUsesSystemMessage(profile=''){ return !/user_only/i.test(String(profile||'')); }
 function profileUsesStreaming(profile=''){ return !/nostream/i.test(String(profile||'')); }
 function profileTokenField(profile=''){
  const value=String(profile||'');
- if(/completion/i.test(value) || /nostream/i.test(value)) return 'max_completion_tokens';
+ if(/completion/i.test(value)) return 'max_completion_tokens';
  if(/full/i.test(value)) return 'max_tokens';
+ if(/minimal/i.test(value)) return '未发送';
+ // 1.3.101 and earlier used two bare *_nostream profiles whose body carried
+ // max_completion_tokens. Keep their diagnostics truthful without coupling
+ // every new non-stream profile to that token field.
+ if(/nostream/i.test(value)) return 'max_completion_tokens';
  return '未发送';
 }
 function profileIsDegraded(profile=''){ return !profileUsesTemperature(profile) || !profileUsesSystemMessage(profile) || !profileUsesStreaming(profile); }
@@ -986,6 +1002,19 @@ function independentRequestProfiles(st,systemPrompt,userPrompt,options={}){
   chat_user_only_no_temp_full:{kind:'chat',body:{model,messages:userOnly,max_tokens:maxTokens,stream}},
   chat_user_only_no_temp_completion:{kind:'chat',body:{model,messages:userOnly,max_completion_tokens:maxTokens,stream}},
   chat_user_only_minimal:{kind:'chat',body:{model,messages:userOnly,stream}},
+  // Manual transport fallback must change only one variable: stream true -> false.
+  // Keep message shape, temperature and token field identical to the failed profile.
+  chat_system_user_full_nostream:{kind:'chat',body:{model,messages:systemUser,temperature,max_tokens:maxTokens,stream:false}},
+  chat_system_user_completion_nostream:{kind:'chat',body:{model,messages:systemUser,temperature,max_completion_tokens:maxTokens,stream:false}},
+  chat_system_user_no_temp_full_nostream:{kind:'chat',body:{model,messages:systemUser,max_tokens:maxTokens,stream:false}},
+  chat_system_user_no_temp_completion_nostream:{kind:'chat',body:{model,messages:systemUser,max_completion_tokens:maxTokens,stream:false}},
+  chat_system_user_minimal_nostream:{kind:'chat',body:{model,messages:systemUser,stream:false}},
+  chat_user_only_full_nostream:{kind:'chat',body:{model,messages:userOnly,temperature,max_tokens:maxTokens,stream:false}},
+  chat_user_only_completion_nostream:{kind:'chat',body:{model,messages:userOnly,temperature,max_completion_tokens:maxTokens,stream:false}},
+  chat_user_only_no_temp_full_nostream:{kind:'chat',body:{model,messages:userOnly,max_tokens:maxTokens,stream:false}},
+  chat_user_only_no_temp_completion_nostream:{kind:'chat',body:{model,messages:userOnly,max_completion_tokens:maxTokens,stream:false}},
+  chat_user_only_minimal_nostream:{kind:'chat',body:{model,messages:userOnly,stream:false}},
+  // Legacy names: preserved so an old staged/remembered profile never becomes unreadable.
   chat_system_user_nostream:{kind:'chat',body:{model,messages:systemUser,max_completion_tokens:maxTokens,stream:false}},
   chat_user_only_nostream:{kind:'chat',body:{model,messages:userOnly,max_completion_tokens:maxTokens,stream:false}},
  };
@@ -993,17 +1022,31 @@ function independentRequestProfiles(st,systemPrompt,userPrompt,options={}){
  const order=[remembered,...API_PROFILE_ORDER].filter(Boolean);
  return [...new Set(order)].map(name=>({name,...profiles[name]})).filter(x=>x.body&&x.kind);
 }
+const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
+ chat_system_user_full:'chat_system_user_full_nostream',
+ chat_system_user_completion:'chat_system_user_completion_nostream',
+ chat_system_user_no_temp_full:'chat_system_user_no_temp_full_nostream',
+ chat_system_user_no_temp_completion:'chat_system_user_no_temp_completion_nostream',
+ chat_system_user_minimal:'chat_system_user_minimal_nostream',
+ chat_user_only_full:'chat_user_only_full_nostream',
+ chat_user_only_completion:'chat_user_only_completion_nostream',
+ chat_user_only_no_temp_full:'chat_user_only_no_temp_full_nostream',
+ chat_user_only_no_temp_completion:'chat_user_only_no_temp_completion_nostream',
+ chat_user_only_minimal:'chat_user_only_minimal_nostream',
+};
 function nextCompatibilityProfileName(currentProfile='',preferNonStreaming=false){
  const current=String(currentProfile||'');
+ if(preferNonStreaming){
+  const exact=String(NON_STREAM_PROFILE_BY_STREAM_PROFILE[current]||'');
+  if(exact && API_PROFILE_ORDER.includes(exact)) return exact;
+  // Legacy/unknown profiles get a best-effort non-stream candidate with the
+  // same system-vs-user-only message shape; never auto-send it in this turn.
+  const wantsSystem=profileUsesSystemMessage(current);
+  const fallback=API_PROFILE_ORDER.find(name=>!profileUsesStreaming(name) && profileUsesSystemMessage(name)===wantsSystem);
+  if(fallback) return fallback;
+ }
  const start=Math.max(-1,API_PROFILE_ORDER.indexOf(current));
  const tail=API_PROFILE_ORDER.slice(start+1);
- if(preferNonStreaming){
-  const wantsUserOnly=/user_only/i.test(current);
-  const matched=tail.find(name=>!profileUsesStreaming(name) && profileUsesSystemMessage(name)!==wantsUserOnly);
-  if(matched) return matched;
-  const any=tail.find(name=>!profileUsesStreaming(name));
-  if(any) return any;
- }
  return tail[0]||'';
 }
 
@@ -1060,22 +1103,49 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
   return {response:{ok:false,status:0},result:{raw:'',payload:null,text:'',streamed:false},profile:'',attempts,requestDiagnostic:null,semanticError};
  }
  const url=endpoint(st.independentApiBaseUrl,profile.kind==='responses'?'/responses':'/chat/completions');
- let r=null; let result=null;
- try{
-  r=await fetchIndependentUrl(url,{method:'POST',headers:headers(st),body:JSON.stringify(profile.body),signal:options.signal});
-  result=await readApiResponse(r);
- }catch(error){
-  if(options.signal?.aborted || error?.name==='AbortError') throw error;
-  attempts.push({profile:profile.name,status:0,detail:String(error?.message||error||'').slice(0,280),kind:'transport'});
+ const stageCompatibility=(reason='',preferNonStreaming=false)=>{
+  const next=nextCompatibilityProfileName(profile.name,preferNonStreaming);
+  if(next){
+   stageNextApiProfile(st,next,reason);
+   forgetRememberedApiProfileIfMatches(st,profile.name);
+  }
+  return next;
+ };
+ const diagnosticContext=options.diagnosticContext && typeof options.diagnosticContext==='object' ? options.diagnosticContext : {};
+ const transportFailure=(error,kind='transport')=>{
+  const detail=String(error?.message||error||'网络连接失败').slice(0,280);
+  // Never retry automatically: the upstream may already have started billing.
+  // A streamed transport failure only stages an exact same-parameter non-stream
+  // profile for the player's explicit retry.
+  const next=profileUsesStreaming(profile.name) ? stageCompatibility(`${kind}-stream-failure`,true) : '';
+  attempts.push({profile:profile.name,status:0,detail,kind});
   const requestDiagnostic=publishIndependentApiRequestDiagnostic({
    ok:false,status:0,model:String(st.independentApiModel||''),baseUrl:normalizeBase(st.independentApiBaseUrl||''),
    configuredTemperature:normalizedConfiguredTemperature(st),profile:profile.name,temperatureSent:Object.prototype.hasOwnProperty.call(profile.body||{},'temperature'),
    systemMessageSent:profileUsesSystemMessage(profile.name),streamSent:profile.body?.stream!==false,tokenField:profileTokenField(profile.name),
-   rememberedProfile,stagedProfile,attempts:[{profile:profile.name,status:0,kind:'transport'}],requestCount:1,automaticProfileFallback:false,automaticRetry:false,
-   ...(options.diagnosticContext && typeof options.diagnosticContext==='object' ? options.diagnosticContext : {}),
+   rememberedProfile,stagedProfile,attempts:[{profile:profile.name,status:0,kind}],requestCount:1,automaticProfileFallback:false,automaticRetry:false,
+   semanticFailure:kind,nextProfile:next,...diagnosticContext,
   });
-  error.rabbitMirrorRequestDiagnostic=requestDiagnostic;
-  throw error;
+  const retryHint=next
+   ? `；本轮只发送了 1 次生成请求，不会自动重发。点击“重新生成兔子镜”时将只把 stream 改为 false，尝试：${next}`
+   : '；本轮只发送了 1 次生成请求，不会自动重发，请手动重试。';
+  const wrapped=new Error(`副 API 网络／响应流失败：${detail}${retryHint}`);
+  wrapped.rabbitMirrorRequestDiagnostic=requestDiagnostic;
+  try{ wrapped.cause=error; }catch{}
+  return wrapped;
+ };
+ let r=null; let result=null;
+ try{
+  r=await fetchIndependentUrl(url,{method:'POST',headers:headers(st),body:JSON.stringify(profile.body),signal:options.signal});
+ }catch(error){
+  if(options.signal?.aborted || error?.name==='AbortError') throw error;
+  throw transportFailure(error,'transport-fetch');
+ }
+ try{
+  result=await readApiResponse(r);
+ }catch(error){
+  if(options.signal?.aborted || error?.name==='AbortError') throw error;
+  throw transportFailure(error,'transport-body');
  }
  attempts.push({profile:profile.name,status:r.status,detail:String(result.raw||'').slice(0,280),kind:'response'});
  const diagnosticBase={
@@ -1095,15 +1165,7 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
   requestCount:1,
   automaticProfileFallback:false,
   automaticRetry:false,
-  ...(options.diagnosticContext && typeof options.diagnosticContext==='object' ? options.diagnosticContext : {}),
- };
- const stageCompatibility=(reason='',preferNonStreaming=false)=>{
-  const next=nextCompatibilityProfileName(profile.name,preferNonStreaming);
-  if(next){
-   stageNextApiProfile(st,next,reason);
-   forgetRememberedApiProfileIfMatches(st,profile.name);
-  }
-  return next;
+  ...diagnosticContext,
  };
  if(r.ok){
   const parsedText=String(result.text||'').trim();
@@ -1123,13 +1185,13 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
   if(!raw && profileUsesStreaming(profile.name)){
    const next=stageCompatibility('empty-stream',true);
    const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,semanticFailure:'empty-stream',nextProfile:next});
-   const suffix=next?`点击“重新生成兔子镜”时将尝试非流式兼容模式：${next}。`:'请手动重新生成兔子镜。';
+   const suffix=next?`点击“重新生成兔子镜”时将只关闭 stream 并尝试：${next}。`:'请手动重新生成兔子镜。';
    return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:`副 API 返回了空的流式响应。本轮只发送了 1 次生成请求，不会自动切换参数再次请求；${suffix}`};
   }
   if(result.streamed){
    const next=stageCompatibility('unparsed-stream',true);
    const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,semanticFailure:'unparsed-stream',nextProfile:next});
-   const suffix=next?`手动重新生成时将尝试：${next}`:'请手动重试';
+   const suffix=next?`手动重新生成时将只关闭 stream 并尝试：${next}`:'请手动重试';
    return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:`副 API 已返回流式数据，但兔子镜没有解析到正文。为避免重复计费，本轮不会自动再次请求；${suffix}。`};
   }
   const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,semanticFailure:'empty-content',nextProfile:''});
@@ -1140,7 +1202,6 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
  const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,nextProfile:next});
  return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:''};
 }
-
 
 function wrappedIndependentMirrorHtml(inner=''){
  return `<toto data-rabbit-mirror="true" style="display:block;">${String(inner||'')}</toto>`;

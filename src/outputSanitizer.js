@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.101';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.101';
+import { getSettings } from './settings.js?rmv=1.4.0';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.0';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.101';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.101';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.101';
-import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.101';
+} from './feedbackCat.js?rmv=1.4.0';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.0';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.0';
+import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.4.0';
 
 
-const RUNTIME_VERSION = '1.3.101';
+const RUNTIME_VERSION = '1.4.0';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -2945,9 +2945,9 @@ const NESTED_DETAILS_REPLACEMENT_HOST_ATTR = 'data-rm-nested-details-replacement
 const NESTED_DETAILS_REPLACEMENT_STYLE_ATTR = 'data-rabbit-mirror-nested-details-replacement-style';
 const NESTED_DETAILS_REPLACEMENT_BOUND_ATTR = 'data-rm-nested-details-replacement-bound';
 const NESTED_DETAILS_REPLACEMENT_BINDING_PROP = '__rabbitMirrorNestedDetailsReplacementBinding';
-const NESTED_DETAILS_REPLACEMENT_BINDING_VERSION = '1.3.101';
+const NESTED_DETAILS_REPLACEMENT_BINDING_VERSION = '1.4.0';
 const NESTED_DETAILS_DEFERRED_BINDING_PROP = '__rabbitMirrorNestedDetailsDeferredBinding';
-const NESTED_DETAILS_DEFERRED_BINDING_VERSION = '1.3.101';
+const NESTED_DETAILS_DEFERRED_BINDING_VERSION = '1.4.0';
 const nestedDetailsDeferredChecks = new WeakSet();
 const NESTED_DETAILS_POPUP_RESCUE_ATTR = 'data-rm-nested-details-popup-rescue';
 const NESTED_DETAILS_POPUP_HOST_ATTR = 'data-rm-nested-details-popup-host';
@@ -8571,7 +8571,7 @@ function refreshTargetRescue(root) {
 }
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
-const NESTED_DETAILS_FALLBACK_HANDLER_VERSION = '1.3.101';
+const NESTED_DETAILS_FALLBACK_HANDLER_VERSION = '1.4.0';
 
 function installNestedDetailsFallback(root) {
     if (!root?.querySelectorAll || !root?.addEventListener) return;
@@ -11748,7 +11748,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.101-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.4.0-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -12727,7 +12727,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
     const full = diagnosticFullChainSummary(root, code);
     const independentRequest = diagnosticIndependentApiRequestSnapshot();
     const lines = [
-        `兔子镜测试版 全链路诊断`,
+        `兔子镜小剧场 全链路诊断`,
         `运行版本: ${INTERACTION_DIAGNOSTIC_VERSION}`,
         `标题: ${title || '(未渲染 summary／可能仍是代码块或纯文字)'}`,
         `阶段: ${phase}`,
@@ -12776,7 +12776,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `当前镜面相关 TH-render=${full.relevantThRenderCount || 0} highlightedCode=${full.relevantHighlightedCount || 0} codeShells=${full.relevantCodeShellCount || 0}`,
         `源码恢复候选=${full.sourceCandidate} 源码被显示层遮蔽=${full.sourceObscured}`,
         '',
-        '[6. 兔子镜测试版急救安装层]',
+        '[6. 兔子镜小剧场急救安装层]',
         `interactionScoped=${full.scopedCount} interactionRescued=${full.rescuedCount}`,
         `maintenanceVersion=${full.maintenanceModuleVersion || '(无)'} mode=${full.maintenanceModuleMode || '(无)'}`,
         `findings=${full.maintenanceFindingCount || 0} repairOrder=${full.maintenanceRepairOrder || '(无)'}`,
@@ -13100,7 +13100,7 @@ function finalizeOneShotInteractionDiagnostic(root, state) {
     } catch (error) {
         const message = String(error?.stack || error?.message || error || 'unknown diagnostic error');
         state.report = [
-            '兔子镜测试版 全链路诊断',
+            '兔子镜小剧场 全链路诊断',
             `运行版本: ${INTERACTION_DIAGNOSTIC_VERSION}`,
             '阶段: diagnostic-error',
             '',
@@ -19077,7 +19077,7 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
         ['missing-checked-control-class', installMissingCheckedSubjectClassRescue],
         ['webkit-3d-flip-compat', installWebKit3DFlipRescue],
         ['visual-scenery-mobile-overflow', installVisualSceneryMobileNarrativeOverflowRescue],
-        // 1.3.101: 两类高置信排版修复进入自动安全层，但只在真实展开、可测布局下运行。
+        // 1.3.102: 两类高置信排版修复进入自动安全层，但只在真实展开、可测布局下运行。
         // 不提升 text/mobile-layout/annotation/完整交互/源码恢复，避免自动改变可见内容或消息源。
         ['viewport-layout-rescue', installMaintenanceAutoSafeViewportLayoutRescue],
         ['nested-details-popup-flow-repair', installMaintenanceAutoSafeNestedDetailsPopupRescue],

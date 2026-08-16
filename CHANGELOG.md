@@ -1,3 +1,18 @@
+# v1.4 / 正式版
+
+- 以 `1.3.102 TEST / RC` 的实际源码为唯一基线转为正式仓库版本；功能逻辑、Prompt、主题／展现形式母本、独立 API、Gemini／DeepSeek 请求链、维修兔、挨打猫、黑名单、配色与布局修复均不改。
+- 对外显示名称统一为“兔子镜小剧场”，发布版本为 `v1.4`（manifest 技术版号 `1.4.0`）；仅同步运行时／缓存／诊断版本标识。
+- 发布通道切换为正式仓库 `https://github.com/Zaiyebuzuoyouqingdetiangou/toto`，重新开启 `auto_update`。
+- 正式发布 ZIP 固定命名为 `兔子镜小剧场.zip`。
+
+# 1.3.102 TEST / RC
+
+- 撤回 1.3.101 的激进副 API 启动加速：弱生成 flag 宽限恢复 30s，普通正文稳定窗恢复 1400ms，弱证据稳定窗恢复 4500ms，前 12 秒轮询恢复 760ms。目的只是在正文确实结束后再启动付费副 API，降低主正文尚未完成时误启动、随后 sourceHash 变化导致旧请求已计费却被取消的风险。
+- DeepSeek / 中转流式传输出现 `Load failed`、响应体读取失败或其他 transport 错误时，本轮仍严格只发送 1 次生成 POST，绝不自动重试。若失败 profile 原本为 stream=true，仅暂存一个“所有其它参数完全相同、只把 stream 改为 false”的兼容 profile；只有玩家明确点击“重新生成兔子镜”才会发送下一次请求。
+- 新增同参数 non-stream profile 对：保留 system/user 消息结构、temperature、`max_tokens` / `max_completion_tokens` 字段，只切换 stream。修正旧 `*_nostream` 命名把 temperature 和 token field 一并改变的问题；旧 profile 名仍保留兼容读取。
+- 失败诊断新增 `transport-fetch` / `transport-body` 与 `nextProfile`，错误框会明确告知本轮 1 次请求、不会自动重发，以及手动重试将尝试的非流式模式。
+- 不修改 Prompt、成人内容规则、维修兔、宽度链、Gemini 请求策略、黑名单、配色、交互或缓存身份；不新增 Observer、轮询、网络请求或自动 retry。
+
 # 1.3.101 TEST / RC
 
 - 独立 API 单次请求契约：一次自动兔子镜最多只发送 1 次正文生成 POST。删除 1.3.100 的 transient 自动补救、同轮 profile fallback 与空流自动切非流式重发；HTTP/网络/解析失败均结束本轮并显示可手动重新生成的错误。
