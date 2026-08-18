@@ -41,6 +41,7 @@ export const defaultSettings = Object.freeze({
     independentApiTemperature: 0.8,
     independentApiMaxTokens: 12000,
     independentDisplayMode: 'external',
+    independentReadGlobalWorldInfo: false,
     samplingMode: 'classic',
     rawPolicy: 'balanced',
     showCot: false,
@@ -49,6 +50,11 @@ export const defaultSettings = Object.freeze({
     blacklistEnabled: true,
     blacklistedThemeIds: [],
     blacklistedFormatIds: [],
+    favoriteThemeIds: [],
+    favoriteFormatIds: [],
+    favoriteThemeMultipliers: {},
+    favoriteFormatMultipliers: {},
+    presentationWorldviewLock: false,
     richFormatBias: false,
     maintenanceRabbitEnabled: true,
     maintenanceRabbitAutoSafeEnabled: false,
@@ -93,6 +99,7 @@ export function getSettings() {
     if (!['follow', 'independent'].includes(settings.generationSource)) settings.generationSource = 'follow';
     if (!['inline', 'external'].includes(settings.followDisplayMode)) settings.followDisplayMode = 'inline';
     if (!['external', 'external_then_inline'].includes(settings.independentDisplayMode)) settings.independentDisplayMode = 'external';
+    settings.independentReadGlobalWorldInfo = settings.independentReadGlobalWorldInfo === true;
     settings.independentApiBaseUrl = String(settings.independentApiBaseUrl || '').trim();
     settings.independentApiKey = String(settings.independentApiKey || '').trim();
     settings.independentApiModel = String(settings.independentApiModel || '').trim();
@@ -120,9 +127,29 @@ export function getSettings() {
     settings.formatsMax = Number(settings.formatsMax) || defaultSettings.formatsMax;
     settings.cooldownRounds = Math.max(1, Number(settings.cooldownRounds) || defaultSettings.cooldownRounds);
     settings.blacklistEnabled = settings.blacklistEnabled !== false;
-    const normalizeBlacklistIds = value => [...new Set((Array.isArray(value) ? value : []).map(id => String(id || '').trim()).filter(Boolean))].slice(0, 512);
-    settings.blacklistedThemeIds = normalizeBlacklistIds(settings.blacklistedThemeIds);
-    settings.blacklistedFormatIds = normalizeBlacklistIds(settings.blacklistedFormatIds);
+    const normalizeSelectionIds = value => [...new Set((Array.isArray(value) ? value : []).map(id => String(id || '').trim()).filter(Boolean))].slice(0, 512);
+    settings.blacklistedThemeIds = normalizeSelectionIds(settings.blacklistedThemeIds);
+    settings.blacklistedFormatIds = normalizeSelectionIds(settings.blacklistedFormatIds);
+    settings.favoriteThemeIds = normalizeSelectionIds(settings.favoriteThemeIds);
+    settings.favoriteFormatIds = normalizeSelectionIds(settings.favoriteFormatIds);
+    const normalizeFavoriteMultipliers = (value, favoriteIds) => {
+        const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+        const allowed = new Set(favoriteIds || []);
+        const forbiddenKeys = new Set(['__proto__', 'prototype', 'constructor']);
+        const result = {};
+        for (const [rawId, rawMultiplier] of Object.entries(source)) {
+            const id = String(rawId || '').trim();
+            if (!id || forbiddenKeys.has(id) || !allowed.has(id) || Object.keys(result).length >= 512) continue;
+            const empty = rawMultiplier == null || (typeof rawMultiplier === 'string' && !rawMultiplier.trim());
+            const parsed = empty ? NaN : Number(rawMultiplier);
+            const bounded = Math.max(1, Math.min(50, Number.isFinite(parsed) ? parsed : 3));
+            result[id] = Math.round(bounded * 2) / 2;
+        }
+        return result;
+    };
+    settings.favoriteThemeMultipliers = normalizeFavoriteMultipliers(settings.favoriteThemeMultipliers, settings.favoriteThemeIds);
+    settings.favoriteFormatMultipliers = normalizeFavoriteMultipliers(settings.favoriteFormatMultipliers, settings.favoriteFormatIds);
+    settings.presentationWorldviewLock = settings.presentationWorldviewLock === true;
     if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
     if (settings.maintenanceRabbitEnabled === undefined) {
         settings.maintenanceRabbitEnabled = legacyRescueWasEnabled || defaultSettings.maintenanceRabbitEnabled;

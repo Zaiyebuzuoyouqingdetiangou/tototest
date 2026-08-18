@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.102';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.102';
+import { getSettings } from './settings.js?rmv=1.4.8';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.8';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.102';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.102';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.102';
-import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.3.102';
+} from './feedbackCat.js?rmv=1.4.8';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.8';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.8';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.8';
 
 
-const RUNTIME_VERSION = '1.3.102';
+const RUNTIME_VERSION = '1.4.8';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -2945,9 +2945,9 @@ const NESTED_DETAILS_REPLACEMENT_HOST_ATTR = 'data-rm-nested-details-replacement
 const NESTED_DETAILS_REPLACEMENT_STYLE_ATTR = 'data-rabbit-mirror-nested-details-replacement-style';
 const NESTED_DETAILS_REPLACEMENT_BOUND_ATTR = 'data-rm-nested-details-replacement-bound';
 const NESTED_DETAILS_REPLACEMENT_BINDING_PROP = '__rabbitMirrorNestedDetailsReplacementBinding';
-const NESTED_DETAILS_REPLACEMENT_BINDING_VERSION = '1.3.102';
+const NESTED_DETAILS_REPLACEMENT_BINDING_VERSION = '1.4.8';
 const NESTED_DETAILS_DEFERRED_BINDING_PROP = '__rabbitMirrorNestedDetailsDeferredBinding';
-const NESTED_DETAILS_DEFERRED_BINDING_VERSION = '1.3.102';
+const NESTED_DETAILS_DEFERRED_BINDING_VERSION = '1.4.8';
 const nestedDetailsDeferredChecks = new WeakSet();
 const NESTED_DETAILS_POPUP_RESCUE_ATTR = 'data-rm-nested-details-popup-rescue';
 const NESTED_DETAILS_POPUP_HOST_ATTR = 'data-rm-nested-details-popup-host';
@@ -8571,7 +8571,7 @@ function refreshTargetRescue(root) {
 }
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
-const NESTED_DETAILS_FALLBACK_HANDLER_VERSION = '1.3.102';
+const NESTED_DETAILS_FALLBACK_HANDLER_VERSION = '1.4.8';
 
 function installNestedDetailsFallback(root) {
     if (!root?.querySelectorAll || !root?.addEventListener) return;
@@ -11748,7 +11748,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.102-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.4.8-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -12727,7 +12727,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
     const full = diagnosticFullChainSummary(root, code);
     const independentRequest = diagnosticIndependentApiRequestSnapshot();
     const lines = [
-        `兔子镜测试版 全链路诊断`,
+        `兔子镜小剧场 全链路诊断`,
         `运行版本: ${INTERACTION_DIAGNOSTIC_VERSION}`,
         `标题: ${title || '(未渲染 summary／可能仍是代码块或纯文字)'}`,
         `阶段: ${phase}`,
@@ -12776,7 +12776,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `当前镜面相关 TH-render=${full.relevantThRenderCount || 0} highlightedCode=${full.relevantHighlightedCount || 0} codeShells=${full.relevantCodeShellCount || 0}`,
         `源码恢复候选=${full.sourceCandidate} 源码被显示层遮蔽=${full.sourceObscured}`,
         '',
-        '[6. 兔子镜测试版急救安装层]',
+        '[6. 兔子镜小剧场急救安装层]',
         `interactionScoped=${full.scopedCount} interactionRescued=${full.rescuedCount}`,
         `maintenanceVersion=${full.maintenanceModuleVersion || '(无)'} mode=${full.maintenanceModuleMode || '(无)'}`,
         `findings=${full.maintenanceFindingCount || 0} repairOrder=${full.maintenanceRepairOrder || '(无)'}`,
@@ -13100,7 +13100,7 @@ function finalizeOneShotInteractionDiagnostic(root, state) {
     } catch (error) {
         const message = String(error?.stack || error?.message || error || 'unknown diagnostic error');
         state.report = [
-            '兔子镜测试版 全链路诊断',
+            '兔子镜小剧场 全链路诊断',
             `运行版本: ${INTERACTION_DIAGNOSTIC_VERSION}`,
             '阶段: diagnostic-error',
             '',
@@ -15704,6 +15704,19 @@ function installMaintenanceStaticDecorationFallback(root, scriptText) {
     return created;
 }
 
+const MAINTENANCE_URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'formaction', 'action', 'poster']);
+
+function maintenanceUnsafeUrlValue(value = '') {
+    const compact = String(value || '')
+        .replace(/[\u0000-\u0020\u007f\u200b-\u200d\ufeff]+/gi, '')
+        .toLowerCase();
+    return /^(?:javascript|vbscript):/.test(compact) || /^data:text\/html(?:;|,)/.test(compact);
+}
+
+function maintenanceUnsafeStyleValue(value = '') {
+    return /(?:url\(\s*(['"]?)\s*(?:javascript|vbscript)\s*:|expression\s*\(|-moz-binding\s*:|behavior\s*:)/i.test(String(value || ''));
+}
+
 function sanitizeMaintenanceMirrorTemplate(template) {
     if (!template?.content?.querySelectorAll) return null;
     if (template.content.querySelector('iframe, object, embed, link, meta, base')) return null;
@@ -15722,12 +15735,12 @@ function sanitizeMaintenanceMirrorTemplate(template) {
         for (const attribute of [...element.attributes]) {
             const name = String(attribute.name || '').toLowerCase();
             const value = String(attribute.value || '');
-            if (/^on[a-z]+$/.test(name)) {
+            if (/^on[a-z]+$/.test(name) || name === 'srcdoc') {
                 element.removeAttribute(attribute.name);
                 continue;
             }
-            if (/^(?:href|src|xlink:href|formaction)$/i.test(name) && /^\s*javascript\s*:/i.test(value)) return null;
-            if (name === 'style' && /url\(\s*(['"]?)\s*javascript\s*:/i.test(value)) return null;
+            if (MAINTENANCE_URL_ATTRS.has(name) && maintenanceUnsafeUrlValue(value)) return null;
+            if (name === 'style' && maintenanceUnsafeStyleValue(value)) return null;
         }
     }
 
@@ -16564,16 +16577,22 @@ function rabbitMirrorRecipeForRoot(root) {
 function recipeButtonTitle(recipe) {
     if (!recipe) return '本轮抽签：暂无可读取的抽取记录';
     const count = (recipe.themes?.length || 0) + (recipe.formats?.length || 0);
-    const blocked = [...(recipe.themes || []), ...(recipe.formats || [])].filter(item => isBlacklisted(item.kind, item.id)).length;
-    return `本轮抽签：${count} 项${blocked ? `；其中 ${blocked} 项已加入黑名单` : ''}`;
+    const items = [...(recipe.themes || []), ...(recipe.formats || [])];
+    const blocked = items.filter(item => isBlacklisted(item.kind, item.id)).length;
+    const favored = items.filter(item => isFavorited(item.kind, item.id)).length;
+    return `本轮抽签：${count} 项${favored ? `；${favored} 项已收藏` : ''}${blocked ? `；${blocked} 项已加入黑名单` : ''}`;
 }
 
 function recipePanelRow(item) {
     const blocked = isBlacklisted(item.kind, item.id);
+    const favored = isFavorited(item.kind, item.id);
     const kindLabel = item.kind === 'format' ? '展现形式' : '主题 / 元素';
-    const action = item?.ambiguous
+    const blacklistAction = item?.ambiguous
         ? blocked ? '解除两项黑名单' : '同时拉黑两项'
         : blocked ? '解除黑名单' : '加入黑名单';
+    const favoriteAction = item?.ambiguous
+        ? favored ? '解除两项收藏' : '同时收藏两项'
+        : favored ? '取消收藏' : '加入收藏室';
     const ambiguityNote = item?.ambiguous
         ? '<div style="font-size:9px;opacity:.58;margin-top:3px;line-height:1.35;">旧版记录无法判断当时实际是哪一项；操作会同时作用于这两个旧同 ID 项目。</div>'
         : '';
@@ -16583,7 +16602,10 @@ function recipePanelRow(item) {
         <div style="font-size:12px;font-weight:700;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(item.id)} ${feedbackCatEscapeHtml(item.title)}</div>
         ${ambiguityNote}
       </div>
-      <button type="button" data-rm-recipe-blacklist-kind="${feedbackCatEscapeHtml(item.kind)}" data-rm-recipe-blacklist-id="${feedbackCatEscapeHtml(item.id)}" style="flex:0 0 auto;border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:5px 8px;background:${blocked ? 'rgba(127,127,127,.12)' : 'rgba(190,70,70,.08)'};color:inherit;cursor:pointer;font:inherit;font-size:11px;">${blocked ? '✓ ' : '🚫 '}${action}</button>
+      <div style="display:flex;flex:0 0 auto;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:190px;">
+        <button type="button" data-rm-recipe-favorite-kind="${feedbackCatEscapeHtml(item.kind)}" data-rm-recipe-favorite-id="${feedbackCatEscapeHtml(item.id)}" style="border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:5px 8px;background:${favored ? 'rgba(222,170,55,.16)' : 'rgba(222,170,55,.07)'};color:inherit;cursor:pointer;font:inherit;font-size:11px;">${favored ? '★ ' : '☆ '}${favoriteAction}</button>
+        <button type="button" data-rm-recipe-blacklist-kind="${feedbackCatEscapeHtml(item.kind)}" data-rm-recipe-blacklist-id="${feedbackCatEscapeHtml(item.id)}" style="border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:5px 8px;background:${blocked ? 'rgba(127,127,127,.12)' : 'rgba(190,70,70,.08)'};color:inherit;cursor:pointer;font:inherit;font-size:11px;">${blocked ? '✓ ' : '🚫 '}${blacklistAction}</button>
+      </div>
     </div>`;
 }
 
@@ -16679,6 +16701,292 @@ function showBlacklistManagerMenu(root, button) {
     return true;
 }
 
+function recipeFavoriteManagerRow(item) {
+    const multiplier = getFavoriteMultiplier(item.kind, item.id);
+    return `<div style="display:flex;gap:7px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(127,127,127,.18);">
+      <div style="min-width:0;flex:1;">
+        <div style="font-size:11px;font-weight:700;line-height:1.35;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(item.title || item.id)}</div>
+        <div style="font-size:9px;opacity:.55;margin-top:2px;">${feedbackCatEscapeHtml(item.id)} · ${item.kind === 'format' ? '展现形式' : '主题 / 元素'}</div>
+      </div>
+      <label style="display:inline-flex;align-items:center;gap:3px;flex:0 0 auto;font-size:10px;opacity:.9;">×<input type="number" inputmode="decimal" min="${FAVORITE_MULTIPLIER_MIN}" max="${FAVORITE_MULTIPLIER_MAX}" step="0.5" value="${feedbackCatEscapeHtml(String(multiplier))}" data-rm-favorite-multiplier-kind="${feedbackCatEscapeHtml(item.kind)}" data-rm-favorite-multiplier-id="${feedbackCatEscapeHtml(item.id)}" style="width:50px;box-sizing:border-box;border:1px solid rgba(222,170,55,.38);border-radius:6px;padding:4px 5px;background:rgba(127,127,127,.10);color:inherit;font:inherit;font-size:11px;"></label>
+      <button type="button" data-rm-favorite-manager-remove="true" data-rm-favorite-manager-kind="${feedbackCatEscapeHtml(item.kind)}" data-rm-favorite-manager-id="${feedbackCatEscapeHtml(item.id)}" style="flex:0 0 auto;border:1px solid rgba(222,170,55,.34);border-radius:7px;padding:5px 8px;background:rgba(222,170,55,.10);color:inherit;cursor:pointer;font:inherit;font-size:11px;">★ 取消收藏</button>
+    </div>`;
+}
+
+function showFavoriteManagerMenu(root, button) {
+    closeRecipeMenu();
+    closeFeedbackCatMenu();
+    closeMaintenanceRabbitMenu();
+    const themes = favoriteEntries('theme');
+    const formats = favoriteEntries('format');
+    const panel = document.createElement('div');
+    panel.setAttribute(RECIPE_MENU_ATTR, 'true');
+    panel.style.cssText = 'position:fixed;z-index:2147483646;box-sizing:border-box;padding:12px 13px;border:1px solid rgba(127,127,127,.35);border-radius:10px;background:var(--SmartThemeBlurTintColor,rgba(28,28,32,.97));color:var(--SmartThemeBodyColor,#eee);box-shadow:0 10px 32px rgba(0,0,0,.28);overflow:auto;font-family:inherit;';
+    const themeRows = themes.map(recipeFavoriteManagerRow).join('');
+    const formatRows = formats.map(recipeFavoriteManagerRow).join('');
+    panel.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+        <button type="button" data-rm-favorite-manager-action="back" style="border:0;background:transparent;color:inherit;cursor:pointer;font:inherit;font-size:12px;padding:2px 4px;">←</button>
+        <div style="font-weight:800;font-size:13px;">⭐ 收藏室</div>
+      </div>
+      <div style="font-size:10px;opacity:.62;line-height:1.45;margin-bottom:7px;">收藏只在本地提高随机抽取权重，不向 Prompt 追加偏好文字；不会越过黑名单或近期冷却。每项可单独设置 ×1～×50，旧收藏默认 ×3。×50 仍是相对随机权重，不代表 50% 或必出。</div>
+      <div style="font-size:10px;opacity:.58;margin-top:9px;">主题 / 元素（${themes.length}）</div>
+      ${themeRows || '<div style="padding:8px 0;opacity:.62;font-size:11px;">暂无。</div>'}
+      <div style="font-size:10px;opacity:.58;margin-top:9px;">展现形式（${formats.length}）</div>
+      ${formatRows || '<div style="padding:8px 0;opacity:.62;font-size:11px;">暂无。</div>'}
+      <div style="display:flex;gap:7px;margin-top:10px;">
+        <button type="button" data-rm-favorite-manager-action="back" style="flex:1;border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:6px 8px;background:rgba(127,127,127,.08);color:inherit;cursor:pointer;font:inherit;font-size:11px;">← 返回本轮抽签</button>
+        <button type="button" data-rm-favorite-manager-action="clear" ${themes.length || formats.length ? '' : 'disabled'} style="flex:1;border:1px solid rgba(222,170,55,.34);border-radius:7px;padding:6px 8px;background:rgba(222,170,55,.08);color:inherit;cursor:${themes.length || formats.length ? 'pointer' : 'default'};opacity:${themes.length || formats.length ? '1' : '.45'};font:inherit;font-size:11px;">清空收藏室</button>
+      </div>`;
+    document.body.appendChild(panel);
+    positionFeedbackCatPanel(panel, button, 400);
+    panel.addEventListener('change', event => {
+        const input = event.target?.closest?.('[data-rm-favorite-multiplier-kind][data-rm-favorite-multiplier-id]');
+        if (!input || !panel.contains(input)) return;
+        const kind = input.getAttribute('data-rm-favorite-multiplier-kind') === 'format' ? 'format' : 'theme';
+        const id = String(input.getAttribute('data-rm-favorite-multiplier-id') || '');
+        const raw = String(input.value ?? '').trim();
+        if (!raw || !Number.isFinite(Number(raw))) {
+            input.value = String(getFavoriteMultiplier(kind, id));
+            globalThis.toastr?.warning?.(`收藏倍率未修改：${id}。请输入 ${FAVORITE_MULTIPLIER_MIN}～${FAVORITE_MULTIPLIER_MAX} 之间的数字。`);
+            return;
+        }
+        const value = setFavoriteMultiplier(kind, id, raw);
+        if (value == null) {
+            globalThis.toastr?.warning?.(`收藏倍率没有修改：${id}。请确认该项目仍在收藏室。`);
+            closeRecipeMenu();
+            showFavoriteManagerMenu(root, button);
+            return;
+        }
+        input.value = String(value);
+        globalThis.toastr?.success?.(`收藏倍率已设为 ×${value}：${id}`);
+    });
+    panel.addEventListener('click', event => {
+        const remove = event.target?.closest?.('[data-rm-favorite-manager-remove="true"]');
+        if (remove && panel.contains(remove)) {
+            event.preventDefault();
+            event.stopPropagation();
+            const kind = remove.getAttribute('data-rm-favorite-manager-kind') === 'format' ? 'format' : 'theme';
+            const id = String(remove.getAttribute('data-rm-favorite-manager-id') || '');
+            if (removeFavoriteItem(kind, id)) globalThis.toastr?.success?.(`已取消收藏：${id}`);
+            const freshRecipe = rabbitMirrorRecipeForRoot(root);
+            button.title = recipeButtonTitle(freshRecipe);
+            button.setAttribute('aria-label', button.title);
+            closeRecipeMenu();
+            showFavoriteManagerMenu(root, button);
+            return;
+        }
+        const action = event.target?.closest?.('[data-rm-favorite-manager-action]');
+        if (!action || !panel.contains(action)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const value = action.getAttribute('data-rm-favorite-manager-action');
+        if (value === 'back') {
+            closeRecipeMenu();
+            showRecipeMenu(root, button);
+            return;
+        }
+        if (value === 'clear') {
+            if (themes.length || formats.length) {
+                clearFavorites('all');
+                globalThis.toastr?.success?.('已清空收藏室。');
+            }
+            const freshRecipe = rabbitMirrorRecipeForRoot(root);
+            button.title = recipeButtonTitle(freshRecipe);
+            button.setAttribute('aria-label', button.title);
+            closeRecipeMenu();
+            showFavoriteManagerMenu(root, button);
+        }
+    });
+    bindRecipeOutsideClose(panel, button);
+    return true;
+}
+
+
+function catalogParentId(item, idSet) {
+    const id = String(item?.id || '');
+    const parts = id.split('.').filter(Boolean);
+    for (let cut = parts.length - 1; cut >= 1; cut--) {
+        const candidate = parts.slice(0, cut).join('.');
+        if (idSet.has(candidate)) return candidate;
+    }
+    return '';
+}
+
+function buildSelectionCatalog(kind) {
+    const entries = selectionCatalogEntries(kind);
+    const idSet = new Set(entries.map(item => item.id));
+    const byId = new Map(entries.map(item => [item.id, item]));
+    const children = new Map();
+    const groups = new Map();
+    for (const item of entries) {
+        const parentId = catalogParentId(item, idSet);
+        if (parentId) {
+            if (!children.has(parentId)) children.set(parentId, []);
+            children.get(parentId).push(item);
+        } else {
+            const group = String(item.group || '其他');
+            if (!groups.has(group)) groups.set(group, []);
+            groups.get(group).push(item);
+        }
+    }
+    const sortItems = items => [...items].sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
+    for (const [key, items] of children) children.set(key, sortItems(items));
+    for (const [key, items] of groups) groups.set(key, sortItems(items));
+    return { kind, entries, idSet, byId, children, groups };
+}
+
+function catalogItemRow(item, tree) {
+    const favored = isFavorited(item.kind, item.id);
+    const blocked = isBlacklisted(item.kind, item.id);
+    const childCount = tree.children.get(item.id)?.length || 0;
+    const multiplier = favored ? getFavoriteMultiplier(item.kind, item.id) : 0;
+    return `<div style="display:flex;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(127,127,127,.16);">
+      <button type="button" ${childCount ? `data-rm-catalog-enter-id="${feedbackCatEscapeHtml(item.id)}"` : 'disabled'} style="flex:0 0 25px;width:25px;height:25px;border:1px solid rgba(127,127,127,.28);border-radius:6px;background:rgba(127,127,127,.08);color:inherit;cursor:${childCount ? 'pointer' : 'default'};opacity:${childCount ? '1' : '.28'};font:inherit;">${childCount ? '›' : '·'}</button>
+      <div style="min-width:0;flex:1;">
+        <div style="font-size:11px;font-weight:700;line-height:1.35;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(item.title || item.id)}</div>
+        <div style="font-size:9px;opacity:.54;margin-top:2px;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(item.id)}${childCount ? ` · 下级 ${childCount} 项` : ''}</div>
+      </div>
+      <button type="button" data-rm-catalog-favorite-kind="${feedbackCatEscapeHtml(item.kind)}" data-rm-catalog-favorite-id="${feedbackCatEscapeHtml(item.id)}" style="flex:0 0 auto;border:1px solid rgba(222,170,55,.34);border-radius:7px;padding:5px 7px;background:${favored ? 'rgba(222,170,55,.22)' : 'rgba(127,127,127,.08)'};color:inherit;cursor:pointer;font:inherit;font-size:10px;font-weight:700;">${favored ? `★ ×${feedbackCatEscapeHtml(String(multiplier))}` : '☆'}</button>
+      <button type="button" data-rm-catalog-blacklist-kind="${feedbackCatEscapeHtml(item.kind)}" data-rm-catalog-blacklist-id="${feedbackCatEscapeHtml(item.id)}" style="flex:0 0 auto;border:1px solid rgba(190,70,70,.34);border-radius:7px;padding:5px 7px;background:${blocked ? 'rgba(190,70,70,.22)' : 'rgba(127,127,127,.08)'};color:inherit;cursor:pointer;font:inherit;font-size:10px;font-weight:700;">${blocked ? '🚫' : '○'}</button>
+    </div>`;
+}
+
+function showSelectionCatalogMenu(root, button, navigation = {}) {
+    closeRecipeMenu();
+    closeFeedbackCatMenu();
+    closeMaintenanceRabbitMenu();
+    const kind = navigation.kind === 'format' ? 'format' : navigation.kind === 'theme' ? 'theme' : '';
+    const group = String(navigation.group || '');
+    const parentId = String(navigation.parentId || '');
+    const query = String(navigation.query || '').trim();
+    const panel = document.createElement('div');
+    panel.setAttribute(RECIPE_MENU_ATTR, 'true');
+    panel.style.cssText = 'position:fixed;z-index:2147483646;box-sizing:border-box;padding:12px 13px;border:1px solid rgba(127,127,127,.35);border-radius:10px;background:var(--SmartThemeBlurTintColor,rgba(28,28,32,.97));color:var(--SmartThemeBodyColor,#eee);box-shadow:0 10px 32px rgba(0,0,0,.28);overflow:auto;font-family:inherit;';
+
+    let body = '';
+    let tree = null;
+    if (!kind) {
+        const themeCount = selectionCatalogEntries('theme').length;
+        const formatCount = selectionCatalogEntries('format').length;
+        body = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px;">
+          <button type="button" data-rm-catalog-kind="theme" style="border:1px solid rgba(127,127,127,.34);border-radius:8px;padding:10px 8px;background:rgba(127,127,127,.09);color:inherit;cursor:pointer;font:inherit;font-size:11px;font-weight:700;">主题 / 元素<br><span style="font-size:9px;opacity:.6;font-weight:400;">${themeCount} 项</span></button>
+          <button type="button" data-rm-catalog-kind="format" style="border:1px solid rgba(127,127,127,.34);border-radius:8px;padding:10px 8px;background:rgba(127,127,127,.09);color:inherit;cursor:pointer;font:inherit;font-size:11px;font-weight:700;">展现形式<br><span style="font-size:9px;opacity:.6;font-weight:400;">${formatCount} 项</span></button>
+        </div>`;
+    } else {
+        tree = buildSelectionCatalog(kind);
+        const kindLabel = kind === 'format' ? '展现形式' : '主题 / 元素';
+        const searchResults = query ? tree.entries.filter(item => `${item.id} ${item.title} ${item.summary}`.toLowerCase().includes(query.toLowerCase())) : [];
+        const clippedResults = searchResults.slice(0, 80);
+        let rows = '';
+        let title = kindLabel;
+        if (query) {
+            title = `${kindLabel} · 搜索`;
+            rows = clippedResults.map(item => catalogItemRow(item, tree)).join('') || '<div style="padding:10px 0;opacity:.62;font-size:11px;">没有匹配项目。</div>';
+            if (searchResults.length > clippedResults.length) rows += `<div style="font-size:9px;opacity:.55;margin-top:6px;">匹配 ${searchResults.length} 项，仅显示前 ${clippedResults.length} 项；请继续缩小关键词。</div>`;
+        } else if (!group) {
+            title = `${kindLabel} · 大组`;
+            const groupKeys = [...tree.groups.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            rows = groupKeys.map(key => {
+                const roots = tree.groups.get(key) || [];
+                const descendantCount = tree.entries.filter(item => String(item.group || '其他') === key).length;
+                return `<button type="button" data-rm-catalog-group="${feedbackCatEscapeHtml(key)}" style="display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;border:0;border-bottom:1px solid rgba(127,127,127,.16);padding:9px 3px;background:transparent;color:inherit;cursor:pointer;font:inherit;text-align:left;"><span style="font-size:11px;font-weight:700;">组 ${feedbackCatEscapeHtml(key)}</span><span style="font-size:9px;opacity:.56;">${descendantCount} 项 · ${roots.length} 个顶层 ›</span></button>`;
+            }).join('');
+        } else {
+            const current = parentId ? tree.byId.get(parentId) : null;
+            title = current ? `${kindLabel} · ${current.title}` : `${kindLabel} · 组 ${group}`;
+            const items = parentId ? (tree.children.get(parentId) || []) : (tree.groups.get(group) || []);
+            rows = items.map(item => catalogItemRow(item, tree)).join('') || '<div style="padding:10px 0;opacity:.62;font-size:11px;">这一层没有项目。</div>';
+        }
+        body = `<div style="display:flex;gap:6px;margin:8px 0;">
+          <input type="search" value="${feedbackCatEscapeHtml(query)}" data-rm-catalog-search style="min-width:0;flex:1;box-sizing:border-box;border:1px solid rgba(127,127,127,.32);border-radius:7px;padding:6px 7px;background:rgba(127,127,127,.08);color:inherit;font:inherit;font-size:11px;" placeholder="搜索名称 / ID / 说明">
+          <button type="button" data-rm-catalog-search-action="run" style="border:1px solid rgba(127,127,127,.32);border-radius:7px;padding:6px 8px;background:rgba(127,127,127,.08);color:inherit;cursor:pointer;font:inherit;font-size:10px;">搜索</button>
+          ${query ? '<button type="button" data-rm-catalog-search-action="clear" style="border:1px solid rgba(127,127,127,.32);border-radius:7px;padding:6px 8px;background:rgba(127,127,127,.08);color:inherit;cursor:pointer;font:inherit;font-size:10px;">清除</button>' : ''}
+        </div><div style="font-size:10px;font-weight:700;opacity:.72;margin:3px 0 4px;">${feedbackCatEscapeHtml(title)}</div>${rows}`;
+    }
+
+    panel.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+        <button type="button" data-rm-catalog-action="back" style="border:0;background:transparent;color:inherit;cursor:pointer;font:inherit;font-size:12px;padding:2px 4px;">←</button>
+        <div style="font-weight:800;font-size:13px;">📚 全池一览</div>
+      </div>
+      <div style="font-size:10px;opacity:.62;line-height:1.45;">无需等项目被随机抽中。按层级浏览或搜索后，可直接收藏 / 拉黑；操作仍只影响本地随机池，不增加 Prompt。</div>
+      ${body}`;
+    document.body.appendChild(panel);
+    positionFeedbackCatPanel(panel, button, 420);
+
+    const reopen = next => { closeRecipeMenu(); showSelectionCatalogMenu(root, button, next); };
+    const parentOf = id => {
+        if (!tree || !id) return '';
+        const item = tree.byId.get(id);
+        return item ? catalogParentId(item, tree.idSet) : '';
+    };
+    panel.addEventListener('keydown', event => {
+        const input = event.target?.closest?.('[data-rm-catalog-search]');
+        if (!input || event.key !== 'Enter') return;
+        event.preventDefault();
+        reopen({ kind, query: input.value });
+    });
+    panel.addEventListener('click', event => {
+        const action = event.target?.closest?.('[data-rm-catalog-action]');
+        if (action && panel.contains(action)) {
+            event.preventDefault(); event.stopPropagation();
+            if (!kind) { closeRecipeMenu(); showRecipeMenu(root, button); return; }
+            if (query) { reopen({ kind }); return; }
+            if (parentId) {
+                const previousParent = parentOf(parentId);
+                reopen({ kind, group, parentId: previousParent });
+                return;
+            }
+            if (group) { reopen({ kind }); return; }
+            reopen({});
+            return;
+        }
+        const kindButton = event.target?.closest?.('[data-rm-catalog-kind]');
+        if (kindButton && panel.contains(kindButton)) { event.preventDefault(); event.stopPropagation(); reopen({ kind: kindButton.getAttribute('data-rm-catalog-kind') }); return; }
+        const groupButton = event.target?.closest?.('[data-rm-catalog-group]');
+        if (groupButton && panel.contains(groupButton)) { event.preventDefault(); event.stopPropagation(); reopen({ kind, group: String(groupButton.getAttribute('data-rm-catalog-group') || '') }); return; }
+        const enterButton = event.target?.closest?.('[data-rm-catalog-enter-id]');
+        if (enterButton && panel.contains(enterButton)) { event.preventDefault(); event.stopPropagation(); reopen({ kind, group, parentId: String(enterButton.getAttribute('data-rm-catalog-enter-id') || '') }); return; }
+        const searchAction = event.target?.closest?.('[data-rm-catalog-search-action]');
+        if (searchAction && panel.contains(searchAction)) {
+            event.preventDefault(); event.stopPropagation();
+            const mode = searchAction.getAttribute('data-rm-catalog-search-action');
+            const input = panel.querySelector('[data-rm-catalog-search]');
+            if (mode === 'clear') reopen({ kind });
+            else reopen({ kind, query: String(input?.value || '') });
+            return;
+        }
+        const favoriteAction = event.target?.closest?.('[data-rm-catalog-favorite-kind][data-rm-catalog-favorite-id]');
+        if (favoriteAction && panel.contains(favoriteAction)) {
+            event.preventDefault(); event.stopPropagation();
+            const actionKind = favoriteAction.getAttribute('data-rm-catalog-favorite-kind') === 'format' ? 'format' : 'theme';
+            const id = String(favoriteAction.getAttribute('data-rm-catalog-favorite-id') || '');
+            const before = isFavorited(actionKind, id);
+            const after = toggleFavoriteItem(actionKind, id);
+            if (after === before) globalThis.toastr?.warning?.(`收藏室没有修改：${id}。`);
+            else globalThis.toastr?.success?.(after ? `已加入收藏室：${id}（默认 ×3，可在收藏室修改倍率）` : `已取消收藏：${id}`);
+            const freshRecipe = rabbitMirrorRecipeForRoot(root);
+            button.title = recipeButtonTitle(freshRecipe); button.setAttribute('aria-label', button.title);
+            reopen({ kind, group, parentId, query });
+            return;
+        }
+        const blacklistAction = event.target?.closest?.('[data-rm-catalog-blacklist-kind][data-rm-catalog-blacklist-id]');
+        if (blacklistAction && panel.contains(blacklistAction)) {
+            event.preventDefault(); event.stopPropagation();
+            const actionKind = blacklistAction.getAttribute('data-rm-catalog-blacklist-kind') === 'format' ? 'format' : 'theme';
+            const id = String(blacklistAction.getAttribute('data-rm-catalog-blacklist-id') || '');
+            const before = isBlacklisted(actionKind, id);
+            const after = toggleBlacklistItem(actionKind, id);
+            if (after === before) globalThis.toastr?.warning?.(`黑名单没有修改：${id}。`);
+            else globalThis.toastr?.success?.(after ? `已加入黑名单：${id}` : `已解除黑名单：${id}`);
+            const freshRecipe = rabbitMirrorRecipeForRoot(root);
+            button.title = recipeButtonTitle(freshRecipe); button.setAttribute('aria-label', button.title);
+            reopen({ kind, group, parentId, query });
+        }
+    });
+    bindRecipeOutsideClose(panel, button);
+    return true;
+}
+
 function showRecipeMenu(root, button) {
     closeRecipeMenu();
     closeFeedbackCatMenu();
@@ -16689,6 +16997,7 @@ function showRecipeMenu(root, button) {
         return false;
     }
     const state = getBlacklistState();
+    const favoriteState = getFavoritesState();
     const items = [...(recipe.themes || []), ...(recipe.formats || [])];
     const panel = document.createElement('div');
     panel.setAttribute(RECIPE_MENU_ATTR, 'true');
@@ -16696,20 +17005,48 @@ function showRecipeMenu(root, button) {
     const directiveNote = recipe.userDirectiveApplied ? '本轮含用户明确点菜；黑名单只影响之后的随机抽取。' : '';
     const forcedNote = recipe.forcedVisualScenery ? '本轮含固定动态视觉场景；固定模式会优先于随机黑名单。' : '';
     const totalBlocked = state.themeIds.length + state.formatIds.length;
+    const totalFavorites = favoriteState.themeIds.length + favoriteState.formatIds.length;
     panel.innerHTML = `<div style="font-weight:800;font-size:13px;margin-bottom:3px;">🎲 本轮抽签</div>
-      <div style="font-size:10px;opacity:.62;line-height:1.45;margin-bottom:7px;">显示的是这一面兔子镜当时真实抽中的内部项目，不做 AI 事后分析。</div>
+      <div style="font-size:10px;opacity:.62;line-height:1.45;margin-bottom:7px;">显示的是这一面兔子镜当时真实抽中的内部项目，不做 AI 事后分析。⭐ 收藏提高本地随机权重；🚫 黑名单从随机池排除；两者互斥且都不加 Prompt。</div>
       ${items.map(recipePanelRow).join('') || '<div style="padding:8px 0;opacity:.68;font-size:11px;">本轮没有记录主题或展现形式。</div>'}
-      <button type="button" data-rm-recipe-action="blacklist-manager" style="width:100%;margin-top:9px;border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:6px 8px;background:rgba(127,127,127,.08);color:inherit;cursor:pointer;font:inherit;font-size:11px;font-weight:700;">🚫 查看黑名单${totalBlocked ? `（${totalBlocked}）` : ''}</button>
-      <div style="font-size:10px;opacity:.68;line-height:1.5;margin-top:9px;">${state.enabled ? '黑名单已启用：加入后从下一轮随机抽取开始排除。' : '黑名单目前暂时停用：名单会保留，但随机抽取暂不排除。'}${directiveNote ? `<br>${feedbackCatEscapeHtml(directiveNote)}` : ''}${forcedNote ? `<br>${feedbackCatEscapeHtml(forcedNote)}` : ''}</div>`;
+      <div style="display:flex;gap:7px;margin-top:9px;flex-wrap:wrap;">
+        <button type="button" data-rm-recipe-action="favorite-manager" style="flex:1 1 100px;border:1px solid rgba(222,170,55,.34);border-radius:7px;padding:6px 8px;background:rgba(222,170,55,.08);color:inherit;cursor:pointer;font:inherit;font-size:11px;font-weight:700;">⭐ 收藏室${totalFavorites ? `（${totalFavorites}）` : ''}</button>
+        <button type="button" data-rm-recipe-action="blacklist-manager" style="flex:1 1 100px;border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:6px 8px;background:rgba(127,127,127,.08);color:inherit;cursor:pointer;font:inherit;font-size:11px;font-weight:700;">🚫 黑名单${totalBlocked ? `（${totalBlocked}）` : ''}</button>
+        <button type="button" data-rm-recipe-action="catalog-manager" style="flex:1 1 100%;border:1px solid rgba(80,135,190,.34);border-radius:7px;padding:6px 8px;background:rgba(80,135,190,.08);color:inherit;cursor:pointer;font:inherit;font-size:11px;font-weight:700;">📚 全池一览</button>
+      </div>
+      <div style="font-size:10px;opacity:.68;line-height:1.5;margin-top:9px;">${state.enabled ? '黑名单已启用。' : '黑名单目前暂时停用；名单仍保留。'}${directiveNote ? `<br>${feedbackCatEscapeHtml(directiveNote)}` : ''}${forcedNote ? `<br>${feedbackCatEscapeHtml(forcedNote)}` : ''}</div>`;
     document.body.appendChild(panel);
     positionFeedbackCatPanel(panel, button, 360);
     panel.addEventListener('click', event => {
-        const managerAction = event.target?.closest?.('[data-rm-recipe-action="blacklist-manager"]');
+        const managerAction = event.target?.closest?.('[data-rm-recipe-action="blacklist-manager"], [data-rm-recipe-action="favorite-manager"], [data-rm-recipe-action="catalog-manager"]');
         if (managerAction && panel.contains(managerAction)) {
             event.preventDefault();
             event.stopPropagation();
+            const manager = managerAction.getAttribute('data-rm-recipe-action');
             closeRecipeMenu();
-            showBlacklistManagerMenu(root, button);
+            if (manager === 'favorite-manager') showFavoriteManagerMenu(root, button);
+            else if (manager === 'catalog-manager') showSelectionCatalogMenu(root, button);
+            else showBlacklistManagerMenu(root, button);
+            return;
+        }
+        const favoriteAction = event.target?.closest?.('[data-rm-recipe-favorite-kind][data-rm-recipe-favorite-id]');
+        if (favoriteAction && panel.contains(favoriteAction)) {
+            event.preventDefault();
+            event.stopPropagation();
+            const kind = favoriteAction.getAttribute('data-rm-recipe-favorite-kind') === 'format' ? 'format' : 'theme';
+            const id = String(favoriteAction.getAttribute('data-rm-recipe-favorite-id') || '');
+            const wasFavorited = isFavorited(kind, id);
+            const nowFavorited = toggleFavoriteItem(kind, id);
+            if (nowFavorited === wasFavorited) {
+                globalThis.toastr?.warning?.(`收藏室没有修改：${id}。项目可能已失效，或收藏已达到容量上限。`);
+            } else {
+                globalThis.toastr?.success?.(nowFavorited ? `已加入收藏室：${id}；之后随机抽中概率会提高。` : `已取消收藏：${id}`);
+            }
+            const freshRecipe = rabbitMirrorRecipeForRoot(root);
+            button.title = recipeButtonTitle(freshRecipe);
+            button.setAttribute('aria-label', button.title);
+            closeRecipeMenu();
+            showRecipeMenu(root, button);
             return;
         }
         const action = event.target?.closest?.('[data-rm-recipe-blacklist-kind][data-rm-recipe-blacklist-id]');

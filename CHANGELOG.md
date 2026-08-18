@@ -1,3 +1,74 @@
+# RabbitMirror 1.4.8 TEST
+
+- ⭐ 收藏室单项自定义倍率上限由 `×20` 提升到 `×50`（仍为 0.5 步进、默认 `×3`）。`×50` 只是相对 weighted-random 权重，不是 50% 命中率，也不形成硬保底。
+- 主题继续保持双层保护：单个收藏主题可以设到 `×50`，但家族层额外加权仍保持 `×6` 封顶，避免一个高倍率子项把整个家族一起抬到 50 倍。
+- 黑名单、hard exclusion、近期 exact-ID 冷却与 1.4.6 Eligible Misses fairness 优先级不变；收藏倍率仍只服务本地抽签，不进入 Prompt、API 或 World Info。
+- 反向审计修复一个确定的倍率输入边界：输入框清空／非法时不再因为 `Number('') === 0` 被静默夹成 `×1`，而是恢复当前已保存倍率并提示重新输入。
+- 本轮同步执行 1.4.7 功能反向审计，重点复查全池一览可达性、倍率生命周期、cache identity、fairness 组合、DOM 转义与 listener 清理。
+
+# RabbitMirror 1.4.7 TEST
+
+- 🎲 本轮抽签新增「📚 全池一览」：无需等待项目先被随机抽中，即可按“主题／元素 → 大组 → 父项 → 子项”逐层浏览全部当前索引，也可按名称／ID／说明搜索；任意项目可直接加入 ⭐ 收藏室或 🚫 黑名单。目录按需逐层渲染，不一次性铺满全部项目，不新增 Observer／poll／timer。
+- ⭐ 收藏室新增逐项倍率：每个收藏项目可独立设置 `×1～×20`（0.5 步进），旧收藏与新收藏在未设置时继续默认 `×3`。展现形式直接使用该单项倍率；主题保留“家族 + 子项”两级结构，默认 `×3` 仍精确对应既有家族 `×2.5`，高倍率时家族层额外权重最多 `×6`，避免收藏一个子项把整个大家族一起无限放大。
+- 收藏倍率与 1.4.6 的 Eligible Misses 公平性继续独立相乘；黑名单、hard exclusion、近期 exact-ID 冷却与明确点菜仍优先。倍率变化加入部分点菜随机缓存 identity，避免缓存继续沿用旧倍率。
+- 收藏／黑名单互斥继续保持：加入黑名单会移除对应收藏倍率；解除后重新收藏默认从 `×3` 开始。倍率设置持久化在现有 extension settings，不进入 Prompt，不增加 Token 或 API 请求。
+- 不修改独立 API、Gemini／DeepSeek、Global World Info、维修兔、挨打猫、Prompt 母本、主题／展现形式数据源或 1.4.6 soft-pity 状态机。
+
+# RabbitMirror 1.4.6 TEST
+
+- 展现形式随机抽签新增 Eligible Misses + bounded soft pity：只有“本轮真实通过 mode／黑名单／近期 exact-ID 资格过滤、实际进入随机候选池但最终未命中”的 format 才累计一次 miss；一轮抽 2 个时其它 eligible 候选仍只 +1。
+- 公平性倍率分档为 `0–39 ×1.00 / 40–79 ×1.10 / 80–139 ×1.25 / 140–219 ×1.45 / 220–319 ×1.70 / 320+ ×2.00`，320 封顶；不做硬保底或固定轮播。
+- 收藏室继续作为独立偏好权重与公平性相乘；黑名单与 hard exclusion 不会被 aging 复活。强制 Visual Scenery、明确展现形式点菜等没有普通 format 随机资格的轮次不累计 miss。
+- 公平性状态使用现有 `storage.js` 本地持久化风格保存稀疏 `formatId -> eligibleMisses`；非法值、过期 ID、负数与超 cap 数值在读取／下一次写入时清洗。解除展现形式黑名单（含收藏自动解除、清空黑名单）会把对应 miss 重置为 0。
+- 不增加 Prompt／Token、API 请求、Observer、poll 或 timer；独立 API、Gemini／DeepSeek、Global World Info、维修兔、Prompt 结构与主题抽签逻辑不改。
+
+# RabbitMirror 1.4.5 TEST
+
+- 修复 🎲 本轮抽签中的「⭐ 收藏室」总管理入口不可达：事件委托现在同时接收收藏室与黑名单管理按钮。
+- 加固维修兔 direct-DOM 恢复边界：危险 URL 属性覆盖 `href/src/xlink:href/formaction/action/poster`，同时拦截 JavaScript/VBScript、`data:text/html`、控制字符混淆、`srcdoc` 与危险内联 CSS。
+- 异常设置读时去冲突：若旧备份/外部写入让同一 ID 同时存在于收藏与黑名单，黑名单在有效状态中优先；不主动改写用户 settings。
+- 独立 API、Gemini／DeepSeek、Global World Info、付费 POST/single-flight、维修兔自动巡检与 Prompt 结构未改。
+
+# RabbitMirror 1.4.4 TEST
+
+- 同一个 🎲 本轮抽签载体新增 ⭐ 收藏室：可对本轮真实抽中的主题／元素与展现形式直接收藏、取消收藏、查看收藏室或清空收藏。收藏项只在本地提高后续随机候选权重（展现形式 ×3；主题家族 ×2.5、家族内收藏项 ×3），不向 Prompt 注入“喜欢”文字，也不会越过近期冷却或黑名单。
+- 收藏室与黑名单互斥：把同一项目加入收藏室会自动解除该项目黑名单；加入黑名单会自动移出收藏室。旧版 `1.3.3` 歧义展现形式沿用现有双目标兼容规则。
+- 新增布尔变量 / UI 开关 `presentationWorldviewLock`（“展现形式世界观锁”），默认关闭。开启且本轮抽中的主题没有 `if` 标签时，仅追加一条极简规则：`世界观载体锁：保留展现形式功能与结构；不合当前世界观的具体载体必须换成世界观内功能等价物。不得删形式、改剧情或套固定模板。`；抽中 `if` 主题时代码层自动不注入该规则。
+- 收藏室变化会进入部分点菜的随机缓存身份，避免已经缓存的“另一侧随机结果”忽略用户刚刚更新的收藏偏好。
+- 独立 API、Global WI capture / 12,000 字符预算、Gemini／DeepSeek profile、Load failed 手动降级、一轮失败不自动重复 POST、维修兔与宽度链不改。
+- 测试仓库：`https://github.com/Zaiyebuzuoyouqingdetiangou/tototest`。
+
+# RabbitMirror 1.4.3 TEST
+
+- 修复全局世界书 capture 的漏结束事件串轮边界：`GENERATION_STARTED` 不再仅凭 RabbitMirror 自己短期保留的 `hostGenerationInProgress` 事件提示判断“嵌套生成”。若上一轮 `GENERATION_ENDED` 偶发漏收、但 SillyTavern 已无 streaming DOM / isGenerating / is_send_press / group generating 等真实生成证据，则下一次正常生成会重建 capture，不继承上一轮已激活世界书。
+- 保留真实嵌套生成：SillyTavern 工具调用递归期间生成状态仍保持 active，因此递归 `Generate('normal')` 继续复用同一 capture；不使用 30s/60s 等固定超时，不会因为主模型生成较慢而强制切断 capture。
+- 其余 1.4.2 行为不变：Global WI 默认关闭；只复用当轮已激活 global 条目；独立 12,000 字符预算、参考资料边界与 `<toto>` 定界符中和不改；Gemini／DeepSeek profile、Load failed 手动降级、一轮失败不自动重复 POST、维修兔、Prompt、视觉与宽度链不改。
+- 测试仓库：`https://github.com/Zaiyebuzuoyouqingdetiangou/tototest`。
+
+# RabbitMirror 1.4.2 TEST
+
+- 修复全局世界书 capture 在主回复尚未完成时被嵌套／辅助 `GENERATION_STARTED` 无条件覆盖的问题：同一聊天、同一 assistant baseline 且宿主仍处于生成中的嵌套 start 不再夺走已有 capture；真正新的顶层生成仍可正常重建 capture。
+- World Info 事件入口增加保守形状校验：`GENERATION_STARTED` type 异常、options 非对象、显式 dry-run、quiet、impersonate 均不会开启世界书 capture；`WORLDINFO_ENTRIES_LOADED` 非 `globalLore[]` 结构时不标记已加载。
+- 已激活全局世界书改为“参考资料”块；明确不得覆盖 RabbitMirror 系统规则，并 neutralize 世界书中裸 `<toto>` / `</toto>` 起始标记，降低模型误模仿输出定界符的风险。
+- 全局世界书增加独立 12,000 字符预算；按条目优先完整保留，单条超长时才截断并注明，其余条目注明省略数量。开启该功能时先为固定上下文与世界书预留预算，再从最新聊天向前取正文，避免大世界书把刚完成的 assistant 正文从总上下文中挤掉。
+- 默认开关仍为关闭；关闭时不增加世界书上下文。Gemini／DeepSeek 请求 profile、Load failed 手动降级、维修兔、Prompt 母本、视觉与宽度链不改。
+- 测试仓库：`https://github.com/Zaiyebuzuoyouqingdetiangou/tototest`。
+
+# RabbitMirror 1.4.1 TEST
+
+- 独立 API 新增“读取本轮已激活的全局世界书”开关，默认关闭。
+- 开启后通过 SillyTavern 现有 World Info 生命周期事件复用主生成当轮实际激活的“全局选择器”条目；不额外调用 `getWorldInfoPrompt()`，因此不会为了兔子镜重新扫描、重新掷概率或再次加载整本世界书。
+- 只带入已激活的全局条目正文；角色绑定、聊天绑定、Persona 绑定世界书不因本开关额外加入。
+- 关闭时不增加该部分上下文；现有独立 API、Gemini/DeepSeek兼容、维修兔、宽度、Prompt、黑名单等逻辑不变。
+- 测试仓库：`https://github.com/Zaiyebuzuoyouqingdetiangou/tototest`。
+
+# v1.4 / 正式版
+
+- 以 `1.3.102 TEST / RC` 的实际源码为唯一基线转为正式仓库版本；功能逻辑、Prompt、主题／展现形式母本、独立 API、Gemini／DeepSeek 请求链、维修兔、挨打猫、黑名单、配色与布局修复均不改。
+- 对外显示名称统一为“兔子镜小剧场”，发布版本为 `v1.4`（manifest 技术版号 `1.4.0`）；仅同步运行时／缓存／诊断版本标识。
+- 发布通道切换为正式仓库 `https://github.com/Zaiyebuzuoyouqingdetiangou/toto`，重新开启 `auto_update`。
+- 正式发布 ZIP 固定命名为 `兔子镜小剧场.zip`。
+
 # 1.3.102 TEST / RC
 
 - 撤回 1.3.101 的激进副 API 启动加速：弱生成 flag 宽限恢复 30s，普通正文稳定窗恢复 1400ms，弱证据稳定窗恢复 4500ms，前 12 秒轮询恢复 760ms。目的只是在正文确实结束后再启动付费副 API，降低主正文尚未完成时误启动、随后 sourceHash 变化导致旧请求已计费却被取消的风险。

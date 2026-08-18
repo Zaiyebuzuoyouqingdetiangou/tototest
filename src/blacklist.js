@@ -1,13 +1,16 @@
-import { getSettings, updateSettings } from './settings.js?rmv=1.3.102';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.102';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.3.102';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.3.102';
+import { getSettings, updateSettings } from './settings.js?rmv=1.4.8';
+import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.4.8';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.4.8';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.4.8';
 
 export const BLACKLIST_CHANGED_EVENT = 'rabbitmirror:blacklist-changed';
 export const RECIPE_RECORDED_EVENT = 'rabbitmirror:recipe-recorded';
 const RECIPE_STORAGE_KEY = 'rabbit_mirror_theater:selection_recipes:v1';
 const MAX_RECIPE_RECORDS = 600;
 const MAX_BLACKLIST_IDS = 512;
+export const FAVORITE_MULTIPLIER_DEFAULT = 3;
+export const FAVORITE_MULTIPLIER_MIN = 1;
+export const FAVORITE_MULTIPLIER_MAX = 50;
 
 // 1.3.69: entering a long chat can ask for the recipe of many mirrors in one install pass.
 // Cache the raw localStorage payload so the same <=600 records are not JSON.parse'd once per mirror.
@@ -84,6 +87,28 @@ function settingKeyForKind(kind) {
     return normalizeKind(kind) === 'format' ? 'blacklistedFormatIds' : 'blacklistedThemeIds';
 }
 
+function favoriteSettingKeyForKind(kind) {
+    return normalizeKind(kind) === 'format' ? 'favoriteFormatIds' : 'favoriteThemeIds';
+}
+
+function favoriteMultiplierSettingKeyForKind(kind) {
+    return normalizeKind(kind) === 'format' ? 'favoriteFormatMultipliers' : 'favoriteThemeMultipliers';
+}
+
+function normalizeFavoriteMultiplier(value) {
+    const empty = value == null || (typeof value === 'string' && !value.trim());
+    const parsed = empty ? NaN : Number(value);
+    const bounded = Math.max(FAVORITE_MULTIPLIER_MIN, Math.min(FAVORITE_MULTIPLIER_MAX, Number.isFinite(parsed) ? parsed : FAVORITE_MULTIPLIER_DEFAULT));
+    return Math.round(bounded * 2) / 2;
+}
+
+function favoriteMultiplierMap(kind, settings = getSettings()) {
+    const normalized = normalizeKind(kind);
+    const key = favoriteMultiplierSettingKeyForKind(normalized);
+    const source = settings?.[key] && typeof settings[key] === 'object' && !Array.isArray(settings[key]) ? settings[key] : {};
+    return source;
+}
+
 function itemMapForKind(kind) {
     return normalizeKind(kind) === 'format' ? FORMAT_BY_ID : THEME_BY_ID;
 }
@@ -107,6 +132,91 @@ export function getBlacklistState() {
         themeSet: new Set(themeIds),
         formatSet: new Set(formatIds),
     };
+}
+
+export function getFavoritesState(settings = getSettings()) {
+    // 正常写入路径已经保证收藏 / 黑名单互斥。若旧备份或外部写入制造冲突，
+    // 读取时让黑名单优先，避免 UI 与随机权重同时把同一项视作“收藏 + 拉黑”。
+    // 这里只计算有效状态，不偷偷重写用户 settings；解除黑名单后原收藏仍可恢复。
+    const blockedThemes = new Set(canonicalBlacklistIds('theme', settings.blacklistedThemeIds));
+    const blockedFormats = new Set(canonicalBlacklistIds('format', settings.blacklistedFormatIds));
+    const themeIds = canonicalBlacklistIds('theme', settings.favoriteThemeIds).filter(id => !blockedThemes.has(id));
+    const formatIds = canonicalBlacklistIds('format', settings.favoriteFormatIds).filter(id => !blockedFormats.has(id));
+    const themeSource = favoriteMultiplierMap('theme', settings);
+    const formatSource = favoriteMultiplierMap('format', settings);
+    const themeMultipliers = Object.fromEntries(themeIds.map(id => [id, normalizeFavoriteMultiplier(themeSource[id])]));
+    const formatMultipliers = Object.fromEntries(formatIds.map(id => [id, normalizeFavoriteMultiplier(formatSource[id])]));
+    return {
+        themeIds,
+        formatIds,
+        themeSet: new Set(themeIds),
+        formatSet: new Set(formatIds),
+        themeMultipliers,
+        formatMultipliers,
+    };
+}
+
+export function getFavoriteMultiplier(kind, id, settings = getSettings()) {
+    const normalized = normalizeKind(kind);
+    const targets = blacklistTargetIds(normalized, id);
+    if (!targets.length) return FAVORITE_MULTIPLIER_DEFAULT;
+    const source = favoriteMultiplierMap(normalized, settings);
+    const values = targets.map(target => normalizeFavoriteMultiplier(source[target]));
+    return values.length ? Math.max(...values) : FAVORITE_MULTIPLIER_DEFAULT;
+}
+
+export function setFavoriteMultiplier(kind, id, value) {
+    const normalized = normalizeKind(kind);
+    const targets = blacklistTargetIds(normalized, id);
+    if (!targets.length || !targets.every(target => isFavorited(normalized, target))) return null;
+    const settings = getSettings();
+    const key = favoriteMultiplierSettingKeyForKind(normalized);
+    const current = { ...favoriteMultiplierMap(normalized, settings) };
+    const multiplier = normalizeFavoriteMultiplier(value);
+    for (const target of targets) current[target] = multiplier;
+    updateSettings({ [key]: current });
+    dispatchBlacklistChanged({ action: 'favorite-multiplier', kind: normalized, id: String(id || '').trim(), ids: targets, multiplier });
+    return multiplier;
+}
+
+export function favoriteEntries(kind) {
+    const normalized = normalizeKind(kind);
+    const state = getFavoritesState();
+    const ids = normalized === 'format' ? state.formatIds : state.themeIds;
+    const map = itemMapForKind(normalized);
+    return ids.map(id => {
+        const item = map.get(id);
+        return {
+            id,
+            kind: normalized,
+            title: String(item?.title || id),
+            group: String(item?.group || ''),
+            multiplier: getFavoriteMultiplier(normalized, id),
+        };
+    });
+}
+
+export function selectionCatalogEntries(kind) {
+    const normalized = normalizeKind(kind);
+    const source = normalized === 'format' ? PRESENTATION_FORMATS : THEMATIC_CATEGORIES;
+    return source.map(item => ({
+        id: String(item?.id || ''),
+        kind: normalized,
+        title: String(item?.title || item?.id || ''),
+        summary: String(item?.summary || ''),
+        group: String(item?.group || ''),
+    })).filter(item => item.id);
+}
+
+export function isFavorited(kind, id) {
+    const value = String(id || '').trim();
+    if (!value) return false;
+    const state = getFavoritesState();
+    const normalized = normalizeKind(kind);
+    if (normalized === 'format' && value === LEGACY_AMBIGUOUS_FORMAT_ID) {
+        return LEGACY_AMBIGUOUS_FORMAT_TARGET_IDS.every(targetId => state.formatSet.has(targetId));
+    }
+    return normalized === 'format' ? state.formatSet.has(value) : state.themeSet.has(value);
 }
 
 export function blacklistEntries(kind) {
@@ -149,12 +259,21 @@ export function addBlacklistItem(kind, id) {
     if (!targets.length || targets.some(value => !map.has(value))) return false;
     const settings = getSettings();
     const key = settingKeyForKind(normalized);
+    const favoriteKey = favoriteSettingKeyForKind(normalized);
+    const multiplierKey = favoriteMultiplierSettingKeyForKind(normalized);
     const before = canonicalBlacklistIds(normalized, settings[key]);
+    const beforeFavorites = canonicalBlacklistIds(normalized, settings[favoriteKey]);
+    const beforeMultipliers = { ...favoriteMultiplierMap(normalized, settings) };
     const next = canonicalBlacklistIds(normalized, [...before, ...targets]);
-    if (next.length === before.length) return false;
-    updateSettings({ [key]: next });
+    if (targets.some(value => !next.includes(value))) return false;
+    const targetSet = new Set(targets);
+    const nextFavorites = beforeFavorites.filter(value => !targetSet.has(value));
+    const nextMultipliers = { ...beforeMultipliers };
+    for (const target of targets) delete nextMultipliers[target];
+    if (next.length === before.length && nextFavorites.length === beforeFavorites.length) return false;
+    updateSettings({ [key]: next, [favoriteKey]: nextFavorites, [multiplierKey]: nextMultipliers });
     dispatchBlacklistChanged({ action: 'add', kind: normalized, id: String(id || '').trim(), ids: targets });
-    return true;
+    return next.length !== before.length;
 }
 
 export function removeBlacklistItem(kind, id) {
@@ -168,6 +287,7 @@ export function removeBlacklistItem(kind, id) {
     const next = before.filter(item => !blockedTargets.has(item));
     if (next.length === before.length) return false;
     updateSettings({ [key]: next });
+    if (normalized === 'format') resetFormatEligibleMisses(targets);
     dispatchBlacklistChanged({ action: 'remove', kind: normalized, id: String(id || '').trim(), ids: targets });
     return true;
 }
@@ -185,13 +305,81 @@ export function toggleBlacklistItem(kind, id) {
     return isBlacklisted(kind, id);
 }
 
+export function addFavoriteItem(kind, id) {
+    const normalized = normalizeKind(kind);
+    const targets = blacklistTargetIds(normalized, id);
+    const map = itemMapForKind(normalized);
+    if (!targets.length || targets.some(value => !map.has(value))) return false;
+    const settings = getSettings();
+    const favoriteKey = favoriteSettingKeyForKind(normalized);
+    const blacklistKey = settingKeyForKind(normalized);
+    const before = canonicalBlacklistIds(normalized, settings[favoriteKey]);
+    const beforeBlocked = canonicalBlacklistIds(normalized, settings[blacklistKey]);
+    const next = canonicalBlacklistIds(normalized, [...before, ...targets]);
+    if (targets.some(value => !next.includes(value))) return false;
+    const targetSet = new Set(targets);
+    const nextBlocked = beforeBlocked.filter(value => !targetSet.has(value));
+    if (next.length === before.length && nextBlocked.length === beforeBlocked.length) return false;
+    updateSettings({ [favoriteKey]: next, [blacklistKey]: nextBlocked });
+    if (normalized === 'format' && nextBlocked.length !== beforeBlocked.length) resetFormatEligibleMisses(targets);
+    if (nextBlocked.length !== beforeBlocked.length) dispatchBlacklistChanged({ action: 'remove-conflict', kind: normalized, id: String(id || '').trim(), ids: targets });
+    return next.length !== before.length;
+}
+
+export function removeFavoriteItem(kind, id) {
+    const normalized = normalizeKind(kind);
+    const targets = blacklistTargetIds(normalized, id);
+    if (!targets.length) return false;
+    const settings = getSettings();
+    const key = favoriteSettingKeyForKind(normalized);
+    const multiplierKey = favoriteMultiplierSettingKeyForKind(normalized);
+    const before = canonicalBlacklistIds(normalized, settings[key]);
+    const targetSet = new Set(targets);
+    const next = before.filter(value => !targetSet.has(value));
+    if (next.length === before.length) return false;
+    const nextMultipliers = { ...favoriteMultiplierMap(normalized, settings) };
+    for (const target of targets) delete nextMultipliers[target];
+    updateSettings({ [key]: next, [multiplierKey]: nextMultipliers });
+    return true;
+}
+
+export function toggleFavoriteItem(kind, id) {
+    if (isFavorited(kind, id)) {
+        removeFavoriteItem(kind, id);
+        return isFavorited(kind, id);
+    }
+    addFavoriteItem(kind, id);
+    return isFavorited(kind, id);
+}
+
+export function clearFavorites(kind = 'all') {
+    const normalized = String(kind || 'all');
+    const patch = {};
+    if (normalized === 'all' || normalized === 'theme') {
+        patch.favoriteThemeIds = [];
+        patch.favoriteThemeMultipliers = {};
+    }
+    if (normalized === 'all' || normalized === 'format') {
+        patch.favoriteFormatIds = [];
+        patch.favoriteFormatMultipliers = {};
+    }
+    if (!Object.keys(patch).length) return false;
+    updateSettings(patch);
+    return true;
+}
+
 export function clearBlacklist(kind = 'all') {
     const normalized = String(kind || 'all');
     const patch = {};
+    const settings = getSettings();
+    const clearedFormatIds = normalized === 'all' || normalized === 'format'
+        ? canonicalBlacklistIds('format', settings.blacklistedFormatIds)
+        : [];
     if (normalized === 'all' || normalized === 'theme') patch.blacklistedThemeIds = [];
     if (normalized === 'all' || normalized === 'format') patch.blacklistedFormatIds = [];
     if (!Object.keys(patch).length) return false;
     updateSettings(patch);
+    if (clearedFormatIds.length) resetFormatEligibleMisses(clearedFormatIds);
     dispatchBlacklistChanged({ action: 'clear', kind: normalized });
     return true;
 }

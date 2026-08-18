@@ -1,16 +1,18 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.3.102';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.3.102';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.4.8';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.4.8';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
+    getFormatEligibleMisses,
     getLastCombo,
     getRecentGenerationAttemptIds,
     getRecentIds,
     recordGenerationAttempt,
+    recordFormatEligibleMissRound,
     setDirectiveScopedPick,
     setLastCombo,
-} from './storage.js?rmv=1.3.102';
-import { filterRandomFormatPool, filterRandomThemePool } from './blacklist.js?rmv=1.3.102';
+} from './storage.js?rmv=1.4.8';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.4.8';
 
 function randomUnit() {
     try {
@@ -120,10 +122,42 @@ function allowByMode(_item, mode) {
     return true;
 }
 
-function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = []) {
+function fairnessFactor(eligibleMisses) {
+    const misses = Math.max(0, Math.floor(Number(eligibleMisses) || 0));
+    if (misses >= 320) return 2.00;
+    if (misses >= 220) return 1.70;
+    if (misses >= 140) return 1.45;
+    if (misses >= 80) return 1.25;
+    if (misses >= 40) return 1.10;
+    return 1.00;
+}
+
+function favoriteMultiplierFor(id, favoriteIds, multiplierMap = {}) {
+    if (!(favoriteIds instanceof Set ? favoriteIds : new Set(favoriteIds || [])).has(id)) return 1;
+    const raw = multiplierMap?.[id];
+    const empty = raw == null || (typeof raw === 'string' && !raw.trim());
+    const parsed = empty ? NaN : Number(raw);
+    if (!Number.isFinite(parsed)) return 3;
+    return Math.max(1, Math.min(50, parsed));
+}
+
+function favoriteThemeFamilyFactor(items, favorites, multiplierMap = {}) {
+    let maxMultiplier = 1;
+    for (const item of items || []) {
+        if (!favorites.has(item.id)) continue;
+        maxMultiplier = Math.max(maxMultiplier, favoriteMultiplierFor(item.id, favorites, multiplierMap));
+    }
+    if (maxMultiplier <= 1) return 1;
+    // 兼容旧默认：单项 ×3 时家族仍是既有 ×2.5。高倍率只温和抬升家族层，
+    // 并在 ×6 封顶，避免一个高倍率收藏把整个大家族一起成倍放大。
+    return Math.min(6, 1 + (maxMultiplier - 1) * 0.75);
+}
+
+function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], eligibleMisses = {}, favoriteMultipliers = {}) {
     const recent = new Set(recentIds || []);
     const groups = new Set(recentGroups || []);
     const hardExcluded = new Set(hardExcludedIds || []);
+    const favorites = new Set(favoriteIds || []);
     let candidates = [...pool];
 
     // 每次新的非点菜生成都先硬排除刚刚抽过的子项；候选不足时才安全回退。
@@ -147,7 +181,10 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
                 let weight = 1;
                 // 最近 10 轮同父类不绝对禁止，只降权，让随机更丰富但不容易疲劳。
                 if (avoidRepeat && groups.has(item.group)) weight *= 0.35;
-                // 很久没出现的项目保留基础权重，避免总是抽到熟悉格式。
+                // 收藏室只提高本地随机权重，不越过黑名单、硬排除或近期冷却。
+                if (favorites.has(item.id)) weight *= favoriteMultiplierFor(item.id, favorites, favoriteMultipliers);
+                // 公平性只作用于已经通过本轮资格过滤的候选；有上限，不形成固定轮播或硬保底。
+                weight *= fairnessFactor(eligibleMisses?.[item.id]);
                 return { item, weight };
             });
         const total = weighted.reduce((sum, x) => sum + x.weight, 0);
@@ -164,7 +201,13 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
         selected.push(chosen);
         used.add(chosen.id);
     }
-    return selected.length ? selected : shuffle(candidates).slice(0, Math.max(1, Math.min(count, candidates.length)));
+    const finalSelected = selected.length
+        ? selected
+        : shuffle(candidates).slice(0, Math.max(1, Math.min(count, candidates.length)));
+    return {
+        selected: finalSelected,
+        eligibleIds: candidates.map(item => String(item?.id || '')).filter(Boolean),
+    };
 }
 
 function themeFamilyKey(itemOrId) {
@@ -200,11 +243,12 @@ function themeFamilyBaseWeight(itemCount) {
  * 家族仍是去重/冷却单位，但基础权重随家族有效条目数按 0.9 次方增长。
  * 这样单条家族不会天然拿到完整家族票，同时也不会让大树家族完全按子项数量线性霸榜。
  */
-function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = []) {
+function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], favoriteMultipliers = {}) {
     const recent = new Set(recentIds || []);
     const recentGroupSet = new Set(recentGroups || []);
     const recentFamilySet = new Set((recentIds || []).map(themeFamilyKey));
     const hardExcluded = new Set(hardExcludedIds || []);
+    const favorites = new Set(favoriteIds || []);
     let workingPool = [...pool];
     if (hardExcluded.size) {
         const filtered = workingPool.filter(item => !hardExcluded.has(item.id));
@@ -231,6 +275,7 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
             let weight = themeFamilyBaseWeight(entry.items.length);
             if (avoidRepeat && recentGroupSet.has(entry.group)) weight *= 0.35;
             if (avoidRepeat && recentFamilySet.has(entry.key)) weight *= 0.25;
+            weight *= favoriteThemeFamilyFactor(entry.items, favorites, favoriteMultipliers);
             return weight;
         });
         if (!family) break;
@@ -243,8 +288,9 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
         }
 
         const chosen = pickWeightedEntry(itemCandidates, item => {
-            if (!avoidRepeat || !recent.has(item.id)) return 1;
-            return 0.12;
+            let weight = !avoidRepeat || !recent.has(item.id) ? 1 : 0.12;
+            if (favorites.has(item.id)) weight *= favoriteMultiplierFor(item.id, favorites, favoriteMultipliers);
+            return weight;
         });
         if (chosen) selected.push(chosen);
     }
@@ -534,7 +580,7 @@ function getVisualSceneryFormat() {
     return PRESENTATION_FORMATS.find(item => item.id === '10.2.2' || normalizeText(item.title) === normalizeText('Visual Scenery')) || null;
 }
 
-function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, themeCount, formatCount, recent, hardRecent }) {
+function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, themeCount, formatCount, recent, hardRecent, favoriteThemeIds, favoriteFormatIds, favoriteThemeMultipliers, favoriteFormatMultipliers, formatEligibleMisses }) {
     if (directive?.disabled) return { disabled: true, directive };
 
     const pickedThemes = directive?.hasThemeRequest
@@ -546,9 +592,11 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
             recent.themeGroups,
             settings.avoidRepeat,
             hardRecent.themeIds,
+            favoriteThemeIds,
+            favoriteThemeMultipliers,
         );
-    const pickedFormats = directive?.hasFormatRequest
-        ? []
+    const formatSample = directive?.hasFormatRequest
+        ? { selected: [], eligibleIds: [] }
         : weightedSample(
             formatPool,
             formatCount,
@@ -556,7 +604,11 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
             recent.formatGroups,
             settings.avoidRepeat,
             hardRecent.formatIds,
+            favoriteFormatIds,
+            formatEligibleMisses,
+            favoriteFormatMultipliers,
         );
+    const pickedFormats = formatSample.selected;
     const visualSceneryFormat = getVisualSceneryFormat();
     const forcedFormats = settings.forceVisualScenery && visualSceneryFormat ? [visualSceneryFormat] : [];
     const directiveFormats = directive?.formats || [];
@@ -576,7 +628,9 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
         formats = uniqueById([...directiveFormats, ...pickedFormats]).slice(0, Math.max(formatCount, directiveFormats.length));
     }
 
-    return { themes, formats, directive, forcedFormats };
+    const formatFairnessEligibleIds = settings.forceVisualScenery ? [] : formatSample.eligibleIds;
+    const formatFairnessSelectedIds = settings.forceVisualScenery ? [] : pickedFormats.map(item => item.id);
+    return { themes, formats, directive, forcedFormats, formatFairnessEligibleIds, formatFairnessSelectedIds };
 }
 
 function comboFromSelection(result, settings, recent, uiReviewFocus = null) {
@@ -609,15 +663,20 @@ function rehydrateDirectiveCombo(cached, settings, recent) {
     return comboFromSelection({ themes, formats }, settings, recent, cached.uiReviewFocus);
 }
 
-function directiveBlacklistScopeKey(settings) {
-    if (settings?.blacklistEnabled === false) return 'blacklist:off';
+function directiveRandomPreferenceScopeKey(settings) {
     // Partial point-order directives may leave one side random. Their 7-day directive cache must
-    // therefore change whenever the random blacklist changes; otherwise an old cached random
-    // format/theme can bypass a blacklist added after the first generation. Sort IDs so the same
-    // logical set keeps the same key regardless of settings-array order.
-    const themes = compactUnique(settings?.blacklistedThemeIds || []).sort().join(',');
-    const formats = compactUnique(settings?.blacklistedFormatIds || []).sort().join(',');
-    return `blacklist:on:t=${hashText(themes)}:f=${hashText(formats)}`;
+    // change when blacklist or 收藏室 changes, otherwise the cached random half can ignore the
+    // user's newest local candidate preference. Sort IDs so array order itself does not invalidate.
+    const blockedThemes = compactUnique(settings?.blacklistedThemeIds || []).sort().join(',');
+    const blockedFormats = compactUnique(settings?.blacklistedFormatIds || []).sort().join(',');
+    const favoriteThemeIds = compactUnique(settings?.favoriteThemeIds || []).sort();
+    const favoriteFormatIds = compactUnique(settings?.favoriteFormatIds || []).sort();
+    const themeMultiplierMap = settings?.favoriteThemeMultipliers && typeof settings.favoriteThemeMultipliers === 'object' ? settings.favoriteThemeMultipliers : {};
+    const formatMultiplierMap = settings?.favoriteFormatMultipliers && typeof settings.favoriteFormatMultipliers === 'object' ? settings.favoriteFormatMultipliers : {};
+    const favoriteThemes = favoriteThemeIds.map(id => `${id}:${Number(themeMultiplierMap[id]) || 3}`).join(',');
+    const favoriteFormats = favoriteFormatIds.map(id => `${id}:${Number(formatMultiplierMap[id]) || 3}`).join(',');
+    const blacklistState = settings?.blacklistEnabled === false ? 'off' : 'on';
+    return `random-pref:b=${blacklistState}:bt=${hashText(blockedThemes)}:bf=${hashText(blockedFormats)}:ft=${hashText(favoriteThemes)}:ff=${hashText(favoriteFormats)}`;
 }
 
 function directiveScopeKey(directive, settings) {
@@ -629,7 +688,7 @@ function directiveScopeKey(directive, settings) {
         settings.themesMax,
         settings.formatsMin,
         settings.formatsMax,
-        directiveBlacklistScopeKey(settings),
+        directiveRandomPreferenceScopeKey(settings),
     ].join('|');
     return hashText(`${directive.messageKey}|${directive.rawDirective}|${config}`);
 }
@@ -650,6 +709,9 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
         themeIds: attemptRecent.themeIds || [],
         formatIds: attemptRecent.formatIds || [],
     };
+    const favorites = getFavoritesState(settings);
+    const validFormatIds = PRESENTATION_FORMATS.map(item => String(item?.id || '')).filter(Boolean);
+    const formatEligibleMisses = getFormatEligibleMisses(validFormatIds);
     const themeCount = weightedThemeCount(settings);
     const formatCount = weightedFormatCount(settings);
 
@@ -685,8 +747,20 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
             formatCount,
             recent,
             hardRecent,
+            favoriteThemeIds: favorites.themeIds,
+            favoriteFormatIds: favorites.formatIds,
+            favoriteThemeMultipliers: favorites.themeMultipliers,
+            favoriteFormatMultipliers: favorites.formatMultipliers,
+            formatEligibleMisses,
         });
         combo = comboFromSelection(result, settings, recent);
+        if (result.formatFairnessEligibleIds?.length) {
+            recordFormatEligibleMissRound({
+                eligibleIds: result.formatFairnessEligibleIds,
+                selectedIds: result.formatFairnessSelectedIds,
+                validFormatIds,
+            });
+        }
         if (directive && directiveCacheKey) setDirectiveScopedPick(chatKey, directiveCacheKey, combo);
     }
 

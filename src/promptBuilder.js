@@ -1,10 +1,10 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.102';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.102';
-import { pickCombination } from './picker.js?rmv=1.3.102';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRepeatedPaletteFamily, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.3.102';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.102';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.102';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.3.102';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.8';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.8';
+import { pickCombination } from './picker.js?rmv=1.4.8';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRepeatedPaletteFamily, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.4.8';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.8';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.8';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.8';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -560,6 +560,17 @@ ${directiveList(knownFormats)}
   - 点菜内容只影响兔子镜内部，不得改变主回复正文、角色行动、既有剧情事实或其他固定模块。`;
 }
 
+function selectedThemeHasIf(combo) {
+    return Array.isArray(combo?.themes) && combo.themes.some(item =>
+        Array.isArray(item?.tags) && item.tags.some(tag => String(tag || '').trim().toLowerCase() === 'if')
+    );
+}
+
+function presentationWorldviewLockRule(combo, settings) {
+    if (settings?.presentationWorldviewLock !== true || selectedThemeHasIf(combo)) return '';
+    return '世界观载体锁：保留展现形式功能与结构；不合当前世界观的具体载体必须换成世界观内功能等价物。不得删形式、改剧情或套固定模板。';
+}
+
 function visualColorTruthRule() {
     return String.raw`
 视觉真实:
@@ -666,6 +677,7 @@ ${selectedFormats}`);
     chunks.push(paletteCooldownRule());
     chunks.push(visualColorTruthRule());
     chunks.push(stateBarIsolationRule());
+    chunks.push(presentationWorldviewLockRule(combo, settings));
 
     if (settings.avoidRepeat) {
         chunks.push(String.raw`
@@ -749,6 +761,9 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
             ...(directive?.customFormats || []),
             ...(directive?.customRequests || []),
         ].join('').length,
+        presentationWorldviewLockEnabled: settings?.presentationWorldviewLock === true,
+        presentationWorldviewLockApplied: settings?.presentationWorldviewLock === true && !selectedThemeHasIf(combo),
+        presentationWorldviewLockIfExempt: settings?.presentationWorldviewLock === true && selectedThemeHasIf(combo),
     });
 
     if (settings.debug) {

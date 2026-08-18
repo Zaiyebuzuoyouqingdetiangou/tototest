@@ -7,6 +7,83 @@ const MAX_ATTEMPTS_PER_CHAT = 20;
 const MAX_DIRECTIVE_PICKS_PER_CHAT = 24;
 const ATTEMPT_TTL_MS = 12 * 60 * 60 * 1000;
 const DIRECTIVE_PICK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const FORMAT_ELIGIBLE_MISS_STORAGE_KEY = 'rabbit_mirror_theater:format_eligible_misses:v1';
+const FORMAT_ELIGIBLE_MISS_CAP = 320;
+
+function normalizeFormatEligibleMisses(raw, validFormatIds = []) {
+    const valid = new Set((validFormatIds || []).map(id => String(id || '').trim()).filter(Boolean));
+    const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+    const normalized = {};
+    for (const [rawId, rawValue] of Object.entries(source)) {
+        const id = String(rawId || '').trim();
+        if (!id || (valid.size && !valid.has(id))) continue;
+        const value = Number(rawValue);
+        if (!Number.isFinite(value) || value < 0) continue;
+        const misses = Math.min(FORMAT_ELIGIBLE_MISS_CAP, Math.floor(value));
+        if (misses > 0) normalized[id] = misses;
+    }
+    return normalized;
+}
+
+function readFormatEligibleMissStore(validFormatIds = []) {
+    try {
+        return normalizeFormatEligibleMisses(
+            JSON.parse(localStorage.getItem(FORMAT_ELIGIBLE_MISS_STORAGE_KEY) || '{}'),
+            validFormatIds,
+        );
+    } catch {
+        return {};
+    }
+}
+
+function writeFormatEligibleMissStore(value) {
+    try {
+        localStorage.setItem(FORMAT_ELIGIBLE_MISS_STORAGE_KEY, JSON.stringify(value || {}));
+        return true;
+    } catch (error) {
+        console.warn('[RabbitMirror] Failed to store format fairness state:', error);
+        return false;
+    }
+}
+
+export function getFormatEligibleMisses(validFormatIds = []) {
+    return readFormatEligibleMissStore(validFormatIds);
+}
+
+export function recordFormatEligibleMissRound({ eligibleIds = [], selectedIds = [], validFormatIds = [] } = {}) {
+    const valid = new Set((validFormatIds || []).map(id => String(id || '').trim()).filter(Boolean));
+    const eligible = [...new Set((eligibleIds || []).map(id => String(id || '').trim()).filter(id => id && (!valid.size || valid.has(id))))];
+    if (!eligible.length) return false;
+
+    const selected = new Set((selectedIds || []).map(id => String(id || '').trim()).filter(Boolean));
+    const state = readFormatEligibleMissStore(validFormatIds);
+
+    for (const id of eligible) {
+        if (selected.has(id)) {
+            delete state[id];
+            continue;
+        }
+        const next = Math.min(FORMAT_ELIGIBLE_MISS_CAP, Number(state[id] || 0) + 1);
+        state[id] = next;
+    }
+
+    // 每次真实随机抽签本来就需要持久化 aging；即使所有计数都已到 cap，也写回一次
+    // 规范化后的稀疏 map，以便顺手清掉已经从当前 format 索引消失的旧 ID / 非法值。
+    return writeFormatEligibleMissStore(state);
+}
+
+export function resetFormatEligibleMisses(formatIds = []) {
+    const targets = [...new Set((formatIds || []).map(id => String(id || '').trim()).filter(Boolean))];
+    if (!targets.length) return false;
+    const state = readFormatEligibleMissStore();
+    let changed = false;
+    for (const id of targets) {
+        if (state[id] === undefined) continue;
+        delete state[id];
+        changed = true;
+    }
+    return changed ? writeFormatEligibleMissStore(state) : true;
+}
 
 // 抽签写入 pending 后，只有真正渲染出兔子镜才会提交。若生成被取消、请求失败或页面刷新，
 // pending 会一直留在 localStorage；之后任意一面兔子镜渲染完成都会把这个从未生成过的组合
@@ -575,6 +652,7 @@ export function clearLastCombo() {
         localStorage.removeItem(PENDING_KEY);
         localStorage.removeItem(ATTEMPT_STORAGE_KEY);
         localStorage.removeItem(DIRECTIVE_PICK_STORAGE_KEY);
+        localStorage.removeItem(FORMAT_ELIGIBLE_MISS_STORAGE_KEY);
         try {
             sessionStorage.removeItem('rabbit_mirror_theater:generation_snapshots:v1');
             sessionStorage.removeItem('rabbit_mirror_theater:active_generation_attempt:v1');
