@@ -1,15 +1,15 @@
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.8';
-import { clearLastCombo } from './storage.js?rmv=1.4.8';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.8';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.8';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.8';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.8';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.8';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.8';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.4.8';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.14';
+import { clearLastCombo } from './storage.js?rmv=1.4.14';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.14';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.14';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.14';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.14';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.14';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.14';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.4.14';
 
-const SETTINGS_UI_VERSION = '1.4.8-visual-maintenance';
-const RUNTIME_VERSION = '1.4.8';
+const SETTINGS_UI_VERSION = '1.4.14-visual-maintenance';
+const RUNTIME_VERSION = '1.4.14';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -112,8 +112,8 @@ function renderIndependentApiDiagnostic(diagnostic = getLastIndependentApiReques
     const formats = Array.isArray(diagnostic?.formatLabels) ? diagnostic.formatLabels.join('＋') : '';
     const selection = themes || formats ? `<br><b>本轮实际抽取：</b>${escapeHtml(themes || '仅当前语境')}｜${escapeHtml(formats || '未记录')}` : '';
     const worldInfo = diagnostic?.globalWorldInfoEnabled
-        ? `<br><b>全局世界书：</b>${diagnostic.globalWorldInfoCaptured ? `已带入 ${formatMeterNumber(diagnostic.globalWorldInfoEntries)}／${formatMeterNumber(diagnostic.globalWorldInfoTotalEntries || diagnostic.globalWorldInfoEntries)} 条，${formatMeterNumber(diagnostic.globalWorldInfoChars)} 字符${diagnostic.globalWorldInfoTruncated ? '（已按独立预算裁剪）' : ''}` : '已开启，但本轮没有可复用的已激活全局条目'}`
-        : '<br><b>全局世界书：</b>关闭';
+        ? `<br><b>已激活世界书：</b>${diagnostic.globalWorldInfoCaptured ? `已带入 ${formatMeterNumber(diagnostic.globalWorldInfoEntries)}／${formatMeterNumber(diagnostic.globalWorldInfoTotalEntries || diagnostic.globalWorldInfoEntries)} 条，${formatMeterNumber(diagnostic.globalWorldInfoChars)} 字符${diagnostic.globalWorldInfoTruncated ? '（已按独立预算裁剪）' : ''}` : '已开启，但本轮没有可复用的已激活条目'}`
+        : '<br><b>已激活世界书：</b>关闭';
     target.html(`<b>最近一次实际请求：</b>${escapeHtml(text)}${escapeHtml(attempts)}${selection}${worldInfo}`);
 }
 
@@ -157,7 +157,7 @@ function renderTokenMeter(record = getLastRabbitMirrorTokenRecord()) {
         const parts = [
             `基础约 ${formatMeterNumber(tokens.baseEstimated)}`,
             chars.feedback ? `挨打猫追加约 ${formatMeterNumber(tokens.feedbackEstimated)}` : '挨打猫追加 0',
-            chars.executionLock ? `最终执行锁约 ${formatMeterNumber(tokens.executionLockEstimated)}` : '',
+            chars.executionLock ? `近输出短锁约 ${formatMeterNumber(tokens.executionLockEstimated)}` : '',
             `其中母本补充 ${formatMeterNumber(chars.motherLibrary)} 字符`,
             chars.sharedMemory ? `共同回忆资料 ${formatMeterNumber(chars.sharedMemory)} 字符` : '',
             chars.editableVisual ? `可编辑视觉层 ${formatMeterNumber(chars.editableVisual)} 字符` : '',
@@ -293,7 +293,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.8</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.14</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -313,7 +313,7 @@ export function initRabbitMirrorUI() {
             <label style="margin-left:14px;"><input name="rh_follow_display" type="radio" value="external"> 外置弹窗</label>
           </div>
           <label class="checkbox_label" style="margin-top:12px;"><input name="rh_generation_source" id="rh_generation_independent" type="radio" value="independent"> 使用独立 API</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.72;font-size:12px;line-height:1.45;">当前 API 只生成正文，不注入兔子镜 Prompt。回复完成后，独立 API 读取当前聊天正文、可用推理、角色卡、Persona、作者注释与可用扩展提示，生成唯一的兔子镜；全局世界书可在下方单独选择是否读取。</div>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.72;font-size:12px;line-height:1.45;">当前 API 只生成正文，不注入兔子镜 Prompt。回复完成后，独立 API 读取当前聊天正文、可用推理、角色卡、Persona、作者注释与可用扩展提示，生成唯一的兔子镜；本轮主生成实际激活的世界书可在下方单独选择是否复用。</div>
           <div id="rh_independent_api_fields" style="margin-left:26px;display:grid;gap:7px;">
             <div id="rh_independent_display_row" class="flex-container" style="gap:14px;flex-wrap:wrap;align-items:center;">
               <label><input name="rh_independent_display" type="radio" value="external"> ① 轻壳外置（标题有壳）</label>
@@ -334,8 +334,8 @@ export function initRabbitMirrorUI() {
               <label>温度 <input id="rh_independent_temperature" class="text_pole" type="number" min="0" max="2" step="0.1" style="width:82px;"></label>
               <label>最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
             </div>
-            <label class="checkbox_label"><input id="rh_independent_read_global_world_info" type="checkbox"> 读取本轮已激活的全局世界书</label>
-            <div class="rabbit-mirror-subnote" style="margin:-4px 0 0 26px;opacity:.68;font-size:11px;line-height:1.45;">仅独立 API 生效，下一轮生成起生效。开启后复用 SillyTavern 主生成本轮实际激活的“全局选择器”世界书条目；不重新扫描、不读取未激活条目，也不额外读取角色／聊天／Persona 绑定世界书。世界书作为参考资料发送，并有独立 12,000 字符预算，优先保留刚完成的正文。关闭时不会为此增加上下文。</div>
+            <label class="checkbox_label"><input id="rh_independent_read_global_world_info" type="checkbox"> 读取本轮已激活的世界书</label>
+            <div class="rabbit-mirror-subnote" style="margin:-4px 0 0 26px;opacity:.68;font-size:11px;line-height:1.45;">仅独立 API 生效，下一轮生成起生效。开启后复用 SillyTavern 主生成本轮实际激活的全局／角色／聊天／Persona World Info 条目；不重新扫描、不重新掷 probability，也不读取未激活条目。四类来源共同使用同一份 12,000 字符预算；这些已激活条目会作为参考资料发送给你配置的独立 API，并优先保留刚完成的正文。关闭时不会为此增加上下文。</div>
             <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议从 <b>1.0</b> 开始：0.9～1.1 通常兼顾执行力与变化；高于 1.2 更容易出现结构、CSS 或内容失控。实际是否发送以生成后的请求状态为准。</div>
             <div id="rh_independent_api_diagnostic" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);opacity:.78;font-size:11px;line-height:1.5;word-break:break-word;">最近一次实际请求：尚无记录</div>
             <div style="opacity:.66;font-size:11px;line-height:1.45;">API Key 仅保存在当前 SillyTavern 浏览器设置中。模型列表、连接检测与生成会通过 SillyTavern 自带的“自定义 Chat Completions”后端通道请求，不需要另装服务端插件，也不受浏览器 CORS 限制。</div>
@@ -533,7 +533,7 @@ export function initRabbitMirrorUI() {
     $('input[name="rh_independent_display"]').on('change', e => { updateSettings({ independentDisplayMode: e.target.value === 'external_then_inline' ? 'external_then_inline' : 'external' }); refreshRabbitMirrorGenerationMode(); });
     $('#rh_independent_read_global_world_info').on('change', e => {
         updateSettings({ independentReadGlobalWorldInfo: e.target.checked === true });
-        toastr?.info?.(e.target.checked ? '独立 API 将从下一轮开始读取本轮已激活的全局世界书。' : '独立 API 已关闭全局世界书读取；下一轮起生效。');
+        toastr?.info?.(e.target.checked ? '独立 API 将从下一轮开始读取本轮已激活的世界书。' : '独立 API 已关闭已激活世界书读取；下一轮起生效。');
     });
     const saveIndependentFields = () => {
         const temperature = Number($('#rh_independent_temperature').val());

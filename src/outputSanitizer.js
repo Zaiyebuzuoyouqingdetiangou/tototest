@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.8';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.8';
+import { getSettings } from './settings.js?rmv=1.4.14';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.14';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.4.8';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.8';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.8';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.8';
+} from './feedbackCat.js?rmv=1.4.14';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.14';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.14';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.14';
 
 
-const RUNTIME_VERSION = '1.4.8';
+const RUNTIME_VERSION = '1.4.14';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -910,15 +910,152 @@ function applyExpandedOpacityResidualRescue(input, candidates, records) {
     return rescuedCount;
 }
 
-function scheduleExpandedOpacityResidualRescue(input, candidates, records) {
+function scheduleExpandedOpacityResidualRescue(root, input, candidates, records) {
     if (!input || !candidates?.size || !records) return;
     for (const delay of [0, 80, 260, 650]) {
         setTimeout(() => {
             if (!input.isConnected || !input.checked
                 || interactionInlineOverrideStates.get(input) !== records) return;
             applyExpandedOpacityResidualRescue(input, candidates, records);
+            applyNestedCheckedContentResidualRescue(root, input, candidates, records);
         }, delay);
     }
+}
+
+
+const NESTED_CHECKED_CONTENT_RESCUE_ATTR = 'data-rabbit-mirror-nested-checked-content-rescue';
+
+function checkedDescendantHasIndependentStateRule(root, element) {
+    if (!root?.querySelectorAll || !element) return true;
+    const id = String(element.id || '').trim();
+    const classes = getClassTokens(element).filter(Boolean);
+    if (!id && !classes.length) return false;
+    const needles = [];
+    if (id) needles.push(`#${id}`);
+    for (const className of classes) needles.push(`.${className}`);
+    if (!needles.length) return false;
+
+    const statePseudo = /:(?:checked|hover|active|focus|focus-within|target|has)\b/i;
+    const revealProperty = /(?:^|;)\s*(?:display|visibility|opacity|height|max-height|min-height|clip-path)\s*:/i;
+    const blockRe = /([^{}]+)\{([^{}]*)\}/g;
+    for (const style of getRabbitMirrorLocalStyleElements(root)) {
+        const cssText = String(style.textContent || '');
+        blockRe.lastIndex = 0;
+        let block;
+        while ((block = blockRe.exec(cssText))) {
+            const selectorText = String(block[1] || '');
+            if (!statePseudo.test(selectorText) || !revealProperty.test(String(block[2] || ''))) continue;
+            if (needles.some(needle => selectorText.includes(needle))) return true;
+        }
+    }
+    return false;
+}
+
+function checkedNestedContentDefaultDisplay(element) {
+    const tag = String(element?.tagName || '').toLowerCase();
+    if (['span', 'strong', 'em', 'i', 'b', 'small', 'mark', 'code', 'kbd', 'samp', 'q', 'cite', 'time'].includes(tag)) return 'inline';
+    if (tag === 'li') return 'list-item';
+    if (tag === 'table') return 'table';
+    if (tag === 'tbody') return 'table-row-group';
+    if (tag === 'thead') return 'table-header-group';
+    if (tag === 'tfoot') return 'table-footer-group';
+    if (tag === 'tr') return 'table-row';
+    if (tag === 'td' || tag === 'th') return 'table-cell';
+    return 'block';
+}
+
+function checkedNestedContentResidualEvidence(root, element) {
+    if (!element?.isConnected || !root?.contains?.(element) || element.hidden) return null;
+    if (element.matches?.('script,style,noscript,template,input,select,textarea,button,label,summary,details')) return null;
+    if (element.querySelector?.('input,select,textarea,button,label,summary,details,[role="button"],[contenteditable="true"]')) return null;
+    const text = normalizeInteractionMatchText(element.textContent);
+    const hasMedia = !!element.querySelector?.('img,svg,canvas,video,audio,figure,table,ul,ol,dl,blockquote');
+    if (text.length < 2 && !hasMedia) return null;
+    if (checkedDescendantHasIndependentStateRule(root, element)) return null;
+
+    const computed = diagnosticComputedStyle(element);
+    const display = String(computed?.display || '').toLowerCase();
+    const visibility = String(computed?.visibility || '').toLowerCase();
+    const opacity = Number.parseFloat(String(computed?.opacity || '1'));
+    const height = Number.parseFloat(String(computed?.height || ''));
+    const maxHeight = String(computed?.maxHeight || computed?.getPropertyValue?.('max-height') || '').toLowerCase();
+    const strong = display === 'none' || /^(?:hidden|collapse)$/.test(visibility);
+    const weak = (Number.isFinite(opacity) && opacity <= 0.05)
+        || (Number.isFinite(height) && height <= 1)
+        || isCollapsedDimensionValue(maxHeight);
+    if (!strong && !weak) return null;
+    return { computed, display, visibility, opacity, height, maxHeight, strong };
+}
+
+
+function checkedExpandedResultStillCollapsed(target) {
+    if (!target?.isConnected) return false;
+    const computed = diagnosticComputedStyle(target);
+    if (String(computed?.display || '').toLowerCase() === 'none') return false;
+    if (/^(?:hidden|collapse)$/.test(String(computed?.visibility || '').toLowerCase())) return false;
+    const opacity = Number.parseFloat(String(computed?.opacity || '1'));
+    if (Number.isFinite(opacity) && opacity <= 0.05) return false;
+    let height = 0;
+    try { height = Number(target.getBoundingClientRect?.().height || 0); } catch { height = 0; }
+    return height <= 1 && checkedTargetCarriesResultContent(target);
+}
+
+function applyNestedCheckedContentResidualRescue(root, input, candidates, records) {
+    if (!root || !input?.checked || !candidates?.size || !records) return 0;
+    const rescuedElements = new Set(records
+        .filter(record => record.rescueKind === 'nested-checked-content')
+        .map(record => record.element));
+
+    for (const candidate of candidates.values()) {
+        const target = candidate?.target;
+        if (!target?.isConnected || !candidate.expands || !checkedExpandedResultStillCollapsed(target)) continue;
+        // This route is intentionally shallow. It repairs only direct result-body children
+        // left hidden after the checked rule has already proved that their parent is the
+        // selected result. Nested interactive subpanels keep their own state machine.
+        // Strong hiding evidence (display:none / visibility:hidden) must win over weak
+        // geometry/opacity evidence so a zero-height wrapper cannot consume the one repair
+        // slot before the actually hidden body is reached.
+        const evidenceEntries = [...(target.children || [])]
+            .filter(child => !rescuedElements.has(child))
+            .map(child => ({ child, evidence: checkedNestedContentResidualEvidence(root, child) }))
+            .filter(entry => entry.evidence);
+        const strongEntries = evidenceEntries.filter(entry => entry.evidence.strong);
+        const repairEntries = strongEntries.length
+            ? strongEntries
+            : evidenceEntries.filter(entry => !entry.evidence.strong);
+
+        for (const { child, evidence } of repairEntries) {
+            const { display, visibility, opacity, height, maxHeight } = evidence;
+            const fixes = [];
+            if (display === 'none') fixes.push(['display', checkedNestedContentDefaultDisplay(child)]);
+            if (/^(?:hidden|collapse)$/.test(visibility)) fixes.push(['visibility', 'visible']);
+            if (Number.isFinite(opacity) && opacity <= 0.05) fixes.push(['opacity', '1']);
+            if (Number.isFinite(height) && height <= 1) fixes.push(['height', 'auto']);
+            if (isCollapsedDimensionValue(maxHeight)) fixes.push(['max-height', 'none']);
+            if (!fixes.length) continue;
+
+            for (const [property, value] of fixes) {
+                records.push({
+                    element: child,
+                    property,
+                    value: child.style.getPropertyValue(property),
+                    priority: child.style.getPropertyPriority(property),
+                    rescueKind: 'nested-checked-content',
+                });
+                child.style.setProperty(property, value, 'important');
+            }
+            rescuedElements.add(child);
+            // Stop as soon as the selected result has regained a real content box.
+            // This keeps secondary metadata or intentionally hidden tertiary details closed.
+            let targetHeight = 0;
+            try { targetHeight = Number(target.getBoundingClientRect?.().height || 0); } catch { targetHeight = 0; }
+            if (targetHeight > 4) break;
+        }
+    }
+
+    if (rescuedElements.size) input.setAttribute(NESTED_CHECKED_CONTENT_RESCUE_ATTR, String(rescuedElements.size));
+    else input.removeAttribute?.(NESTED_CHECKED_CONTENT_RESCUE_ATTR);
+    return rescuedElements.size;
 }
 
 
@@ -2844,7 +2981,8 @@ function applyCheckedRuleTextFallback(toto, input) {
     if (records.length) {
         interactionInlineOverrideStates.set(input, records);
         applyExpandedOpacityResidualRescue(input, revealCandidates, records);
-        scheduleExpandedOpacityResidualRescue(input, revealCandidates, records);
+        applyNestedCheckedContentResidualRescue(toto, input, revealCandidates, records);
+        scheduleExpandedOpacityResidualRescue(toto, input, revealCandidates, records);
     }
     if (records.length || pseudoDeclarationCount) {
         input.setAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR, [...routeKinds].join(','));
@@ -2867,6 +3005,7 @@ function restoreInteractionInlineOverrides(input) {
     }
     interactionInlineOverrideStates.delete(input);
     input?.removeAttribute?.(EXPANDED_OPACITY_RESCUE_ATTR);
+    input?.removeAttribute?.(NESTED_CHECKED_CONTENT_RESCUE_ATTR);
 }
 
 function applyCheckedRuleInlineFallback(toto, input) {
@@ -2926,7 +3065,8 @@ function applyCheckedRuleInlineFallback(toto, input) {
     if (records.length) {
         interactionInlineOverrideStates.set(input, records);
         applyExpandedOpacityResidualRescue(input, revealCandidates, records);
-        scheduleExpandedOpacityResidualRescue(input, revealCandidates, records);
+        applyNestedCheckedContentResidualRescue(toto, input, revealCandidates, records);
+        scheduleExpandedOpacityResidualRescue(toto, input, revealCandidates, records);
     }
 }
 
@@ -2945,9 +3085,9 @@ const NESTED_DETAILS_REPLACEMENT_HOST_ATTR = 'data-rm-nested-details-replacement
 const NESTED_DETAILS_REPLACEMENT_STYLE_ATTR = 'data-rabbit-mirror-nested-details-replacement-style';
 const NESTED_DETAILS_REPLACEMENT_BOUND_ATTR = 'data-rm-nested-details-replacement-bound';
 const NESTED_DETAILS_REPLACEMENT_BINDING_PROP = '__rabbitMirrorNestedDetailsReplacementBinding';
-const NESTED_DETAILS_REPLACEMENT_BINDING_VERSION = '1.4.8';
+const NESTED_DETAILS_REPLACEMENT_BINDING_VERSION = '1.4.12';
 const NESTED_DETAILS_DEFERRED_BINDING_PROP = '__rabbitMirrorNestedDetailsDeferredBinding';
-const NESTED_DETAILS_DEFERRED_BINDING_VERSION = '1.4.8';
+const NESTED_DETAILS_DEFERRED_BINDING_VERSION = '1.4.12';
 const nestedDetailsDeferredChecks = new WeakSet();
 const NESTED_DETAILS_POPUP_RESCUE_ATTR = 'data-rm-nested-details-popup-rescue';
 const NESTED_DETAILS_POPUP_HOST_ATTR = 'data-rm-nested-details-popup-host';
@@ -8571,7 +8711,7 @@ function refreshTargetRescue(root) {
 }
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
-const NESTED_DETAILS_FALLBACK_HANDLER_VERSION = '1.4.8';
+const NESTED_DETAILS_FALLBACK_HANDLER_VERSION = '1.4.12';
 
 function installNestedDetailsFallback(root) {
     if (!root?.querySelectorAll || !root?.addEventListener) return;
@@ -11748,7 +11888,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.4.8-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.4.14-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -11885,6 +12025,7 @@ function diagnosticRouteSummary(root) {
         reversibleRadio: Number.parseInt(root?.getAttribute?.(REVERSIBLE_RADIO_ROOT_ATTR) || '0', 10) || 0,
         radioReset: Number.parseInt(root?.getAttribute?.(RAW_RADIO_RESET_ROOT_ATTR) || '0', 10) || 0,
         expandedOpacity: root?.querySelectorAll?.(`[${EXPANDED_OPACITY_RESCUE_ATTR}]`)?.length || 0,
+        nestedCheckedContent: root?.querySelectorAll?.(`[${NESTED_CHECKED_CONTENT_RESCUE_ATTR}]`)?.length || 0,
         containerReveal: renderedContainerInternalRevealStates.get(root)?.entries?.size || 0,
         selfMutation: rawSelfMutationRescueStates.get(root)?.entries?.size || 0,
         classStateProgram: root?.querySelectorAll?.(`[${DIRECT_ID_CLASS_STATE_RESCUE_ATTR}]`)?.length || 0,
@@ -11911,7 +12052,7 @@ function diagnosticRouteSummary(root) {
 function diagnosticInferReason(root, inputs, targets, state = null) {
     const routes = diagnosticRouteSummary(root);
     const depth = maintenanceCheckedInteractionDepth(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.missingCheckedClass + routes.crossParentChecked + routes.checkedHasState + routes.detachedCheckedHas + routes.pairedCheckedState + routes.exclusiveStackedState + routes.channelDialCycle + routes.reversibleRadio + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.scriptTimeline + routes.cssCommentRepair + routes.changeProgram + routes.focusWithinPersistent + routes.unlabeledChecked + routes.labeledCheckedVerify + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.staticChoiceSelection + routes.structuredStaticDisclosure + routes.fillInChoice + routes.passportDocument + routes.decorativeOverlayPassThrough;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.missingCheckedClass + routes.crossParentChecked + routes.checkedHasState + routes.detachedCheckedHas + routes.pairedCheckedState + routes.exclusiveStackedState + routes.channelDialCycle + routes.reversibleRadio + routes.expandedOpacity + routes.nestedCheckedContent + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.scriptTimeline + routes.cssCommentRepair + routes.changeProgram + routes.focusWithinPersistent + routes.unlabeledChecked + routes.labeledCheckedVerify + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.staticChoiceSelection + routes.structuredStaticDisclosure + routes.fillInChoice + routes.passportDocument + routes.decorativeOverlayPassThrough;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -12826,6 +12967,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `radio可逆返回 groups=${routes.reversibleRadio} listener=${routes.reversibleRadio ? 'true' : 'false'} last=${root.getAttribute?.(REVERSIBLE_RADIO_LAST_ATTR) || '(尚未再次点按已选项)'}`,
         `radio取消程序恢复 entries=${routes.radioReset} listener=${routes.radioReset ? 'true' : 'false'} last=${root.getAttribute?.(RAW_RADIO_RESET_LAST_ATTR) || '(尚未点击验证)'}`,
         `checked交互深度 rules=${checkedDepth.checkedRuleCount} selectionOnly=${checkedDepth.selectionStyleRuleCount} secondLayer=${checkedDepth.meaningfulCheckedRuleCount} unresolved=${checkedDepth.unresolvedCheckedRuleCount || 0} fallback=${checkedDepth.selectionOnlyFallbackCount}`,
+        `checked内层正文残留兜底 entries=${routes.nestedCheckedContent || 0} listener=${routes.nestedCheckedContent ? 'true' : 'false'}`,
         `伪类交互深度 rules=${pseudoDepth.pseudoRuleCount} visualOnly=${pseudoDepth.visualOnlyPseudoRuleCount} secondLayer=${pseudoDepth.meaningfulPseudoRuleCount}`,
         `可达内容交互 elements=${reachability.contentInteractiveElementCount} routes=${reachability.installedInteractionRouteCount} missing=${reachability.noInteractionStructure}`,
         `内部details替换承载 patches=${root.dataset.rabbitMirrorNestedDetailsReplacement || '0'}`,
@@ -18928,6 +19070,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         const channelDialCycleCount = Number.parseInt(target.getAttribute?.(CHANNEL_DIAL_CYCLE_COUNT_ATTR) || '0', 10) || 0;
         const reversibleCheckedCount = Number.parseInt(target.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) || 0;
         const reversibleRadioCount = Number.parseInt(target.getAttribute?.(REVERSIBLE_RADIO_ROOT_ATTR) || '0', 10) || 0;
+        const nestedCheckedContentCount = target.querySelectorAll?.(`[${NESTED_CHECKED_CONTENT_RESCUE_ATTR}]`)?.length || 0;
         const focusWithinPersistentCount = Number.parseInt(target.getAttribute?.(FOCUS_WITHIN_PERSISTENT_ROOT_ATTR) || '0', 10) || 0;
         const selectionFallbackCount = installSelectionOnlyStateFallback(target);
         const inertActionRepairCount = installInertActionButtonFallback(target);
@@ -18970,6 +19113,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             || channelDialCycleCount > 0
             || reversibleCheckedCount > 0
             || reversibleRadioCount > 0
+            || nestedCheckedContentCount > 0
             || focusWithinPersistentCount > 0
             || meaningfulCheckedRoute;
         if (genuinelyRescued) target.dataset.rabbitMirrorInteractionRescued = 'true';
@@ -18979,7 +19123,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             .map(item => item.trim())
             .filter(item => item && item !== 'none');
         // 不再把“调用了总入口”冒充为“命中了一条急救路线”；选择样式专用结构只有在安全补出分支提示后才算修复。
-        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, staticChoiceRepairCount, structuredStaticDisclosureRepairCount, fillInChoiceRepairCount, disabledChoiceCount, inertActionCount, staticChoiceCount, structuredStaticDisclosureCount, fillInChoiceCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, rawScriptTimelineRepairCount, rawScriptTimelineCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, labeledCheckedVerifyCount, checkedHasStateCount, detachedCheckedHasCount, pairedCheckedStateCount, exclusiveStackedStateCount, channelDialCycleCount, reversibleCheckedCount, focusWithinPersistentCount) : 0;
+        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, staticChoiceRepairCount, structuredStaticDisclosureRepairCount, fillInChoiceRepairCount, disabledChoiceCount, inertActionCount, staticChoiceCount, structuredStaticDisclosureCount, fillInChoiceCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, rawScriptTimelineRepairCount, rawScriptTimelineCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, labeledCheckedVerifyCount, checkedHasStateCount, detachedCheckedHasCount, pairedCheckedStateCount, exclusiveStackedStateCount, channelDialCycleCount, reversibleCheckedCount, nestedCheckedContentCount, focusWithinPersistentCount) : 0;
     } },
 ]);
 

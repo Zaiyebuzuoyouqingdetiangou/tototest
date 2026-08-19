@@ -1,10 +1,10 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.8';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.8';
-import { pickCombination } from './picker.js?rmv=1.4.8';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRepeatedPaletteFamily, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.4.8';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.8';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.8';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.8';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.14';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.14';
+import { pickCombination } from './picker.js?rmv=1.4.14';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRepeatedPaletteFamily, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.4.14';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.14';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.14';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.14';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -587,57 +587,44 @@ function stateBarIsolationRule() {
 function compactLockItems(items, kind) {
     if (!Array.isArray(items) || !items.length) return kind === 'theme' ? '当前对话语境' : '未记录';
     return items.slice(0, 3).map(item => {
+        const id = asText(item?.id || '');
         const title = asText(item?.title || item?.id || '未命名');
-        const summary = truncate(item?.summary || item?.raw || '', 120);
-        return summary ? `${title}：${summary}` : title;
-    }).join('｜');
+        return id && title !== id ? `${id} ${title}` : title;
+    }).join(' + ');
 }
 
 function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
+    // The full base prompt already contains the selected-item summaries, presentation embodiment,
+    // visual floor, visual/palette/interaction cooldowns, risk correction and output protocol.
+    // This near-output lock deliberately repeats only identities + currently active hard reminders.
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
-    const themes = mode === 'format_only' ? '当前聊天与刚完成的助手正文' : compactLockItems(combo?.themes, 'theme');
+    const themes = mode === 'format_only' ? '当前助手正文' : compactLockItems(combo?.themes, 'theme');
     const formats = compactLockItems(combo?.formats, 'presentation');
-    const avoidance = settings?.avoidRepeat ? shortVisualAvoidance(combo, 3) : '未启用近期视觉避让。';
     const interaction = interactionFamilyCooldownSnapshot();
     const palette = getActivePaletteCooldown(5);
     const repeatedPalette = getRepeatedPaletteFamily(3, 2);
-    const recentFlags = getRecentRiskFlags(5);
-    const innerDetailsBlocked = recentFlags.includes('inner_details_used');
-    const riskCorrection = truncate(recentRiskCorrection().replace(/^\s*真实视觉纠偏[^:]*:\s*/u, ''), 620);
+    const innerDetailsBlocked = getRecentRiskFlags(5).includes('inner_details_used');
     const directiveText = settings?.userDirectivePriority && directive?.rawDirective
-        ? truncateDirectiveText(directive.rawDirective, 700)
+        ? truncateDirectiveText(directive.rawDirective, 240)
         : '';
     const visualPreferenceLock = compactVisualPreferenceExecutionLock(settings);
 
-    const avoidLines = [
-        interaction ? `交互冷却：${interaction.label}（近五轮 ${interaction.count} 次）；${interaction.exactBan}` : '',
-        palette?.active ? `配色冷却：剩余 ${palette.remaining} 轮；主要承载面改用中／高明度，不延续低明度底盘，也不得退回米黄／奶油底。` : '',
-        repeatedPalette ? `配色重复冷却：近 ${repeatedPalette.window} 轮有 ${repeatedPalette.count} 轮落在「${repeatedPalette.label}」；从本轮材质与光线重新推导配色，让色相落到不同家族${repeatedPalette.cream ? '，禁止继续使用米黄／奶油／米色底' : ''}。` : '',
-        innerDetailsBlocked ? '内部折叠冷却：本轮最外层兔子镜内部不得再使用 details/summary。' : '',
-        riskCorrection ? `近期真实输出纠偏：${riskCorrection}` : '',
+    const activeBans = [
+        interaction ? `交互避用「${interaction.label}」` : '',
+        palette?.active ? '避用低明度主承载面，也不得退回米黄／奶油底' : '',
+        repeatedPalette ? `避开配色家族「${repeatedPalette.label}」${repeatedPalette.cream ? '（尤其米黄／奶油／米色底）' : ''}` : '',
+        innerDetailsBlocked ? '兔子镜内部 details/summary 冷却' : '',
     ].filter(Boolean);
 
-    return String.raw`<兔子镜最终执行锁 data-source="independent-api-near-output">
-【本轮必须落实】
-- 抽取模式：${samplingModeLabel(combo, settings)}。
-- 内容构思锁：以“${themes}”作为观察角度、关系组织与细节取材；必须从当前助手正文提取具体动作、情绪、关系变化或物件痕迹，不得只把主题写进标题。
-- UI／媒介构思锁：以“${formats}”作为首个主要视觉本体；DOM/CSS 必须真实呈现其形态、材质、空间关系、阅读路径和操作方式，不得退化为通用卡片、信息面板或只换皮的标签页。
-- ${globalCompletionFloorRule(true)}
-${visualPreferenceLock ? `- ${visualPreferenceLock}` : ''}
-${directiveText ? `- 用户本轮点菜仍为最高优先，必须同时落实：${directiveText}` : ''}
-
-【近期必须避开】
-${avoidance}
-${avoidLines.length ? avoidLines.map(line => `- ${line}`).join('\n') : '- 当前没有额外冷却；仍不得复用近期相同的视觉骨架与操作路径。'}
-- 新交互必须从本轮媒介本体自行生长；不得从固定组件清单中挑选，也不得为躲避冷却机械轮换另一种常见模板。无法被现有识别器归类的全新交互完全允许。
-
-【输出前逐项自检】
-1. 第一眼能否看出本轮展现形式，而不是只看到标题、按钮组或普通面板；
-2. 本轮主题是否真正进入内容、关系和细节，而不是只成为标签；
-3. 是否复用了近期视觉骨架、阅读路径、配色底盘或交互家族；
-4. 交互是否作用于媒介内部真实对象，并产生可保持、可辨认的第二状态；
-5. 只输出一面完整兔子镜，直接以 <toto> 开始，以 </toto> 结束。
-</兔子镜最终执行锁>`;
+    return [
+        '<兔子镜近输出短锁 data-source="independent-api-near-output">',
+        `本轮锁定：${samplingModeLabel(combo, settings)}；主题：${themes}；展现形式：${formats}。`,
+        directiveText ? `点菜优先：${directiveText}` : '',
+        visualPreferenceLock || '',
+        activeBans.length ? `近因避让：${activeBans.join('；')}。` : '',
+        '执行：首个主要内容块必须是真实的本轮展现形式本体，主题进入内容／关系／细节；不得退化为通用卡片或信息面板，交互从媒介内部对象生长并产生可保持反馈。直接输出唯一完整 <toto>...</toto>，闭合 </toto> 后立即结束。',
+        '</兔子镜近输出短锁>',
+    ].filter(Boolean).join('\n');
 }
 
 function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback, generationType = 'normal' }) {
