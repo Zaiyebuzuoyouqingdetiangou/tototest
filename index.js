@@ -1,14 +1,15 @@
-import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=1.4.14';
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=1.4.14';
-import { clearLastCombo } from './src/storage.js?rmv=1.4.14';
-import { initVisualScanner, destroyVisualScanner } from './src/visualScanner.js?rmv=1.4.14';
-import { initOutputSanitizer, destroyOutputSanitizer } from './src/outputSanitizer.js?rmv=1.4.14';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.4.14';
-import { getSettings } from './src/settings.js?rmv=1.4.14';
-import { clearRabbitMirrorGenerationSnapshots } from './src/generationGuard.js?rmv=1.4.14';
-import { initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './src/independentApi.js?rmv=1.4.14';
+import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=1.4.18';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=1.4.18';
+import { clearLastCombo } from './src/storage.js?rmv=1.4.18';
+import { initVisualScanner, destroyVisualScanner } from './src/visualScanner.js?rmv=1.4.18';
+import { initOutputSanitizer, destroyOutputSanitizer } from './src/outputSanitizer.js?rmv=1.4.18';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.4.18';
+import { getSettings } from './src/settings.js?rmv=1.4.18';
+import { clearRabbitMirrorGenerationSnapshots } from './src/generationGuard.js?rmv=1.4.18';
+import { initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './src/independentApi.js?rmv=1.4.18';
+import { initTouchTheaterBridge, destroyTouchTheaterBridge } from './src/touchTheater.js?rmv=1.4.18';
 
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.14';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.18';
 
 // Claim the active runtime before UI/DOM initialization. Versioned module URLs ensure this file and its internal graph cannot be satisfied by a stale hot-reload cache.
 try { globalThis.__rabbitMirrorFeedbackCatSyncCleanup?.(); } catch {}
@@ -24,6 +25,7 @@ jQuery(async () => {
     initOutputSanitizer();
     initVisualScanner();
     initIndependentRabbitMirror();
+    initTouchTheaterBridge();
     console.log(`[RabbitMirror] runtime ${RABBIT_MIRROR_RUNTIME_VERSION} loaded`);
 });
 
@@ -34,6 +36,7 @@ export function onDisable() {
     destroyOutputSanitizer();
     destroyVisualScanner();
     destroyIndependentRabbitMirror();
+    destroyTouchTheaterBridge();
     clearRabbitMirrorGenerationSnapshots();
 }
 
@@ -43,6 +46,7 @@ export function onClean() {
     destroyOutputSanitizer();
     destroyVisualScanner();
     destroyIndependentRabbitMirror();
+    destroyTouchTheaterBridge();
     clearRabbitMirrorPrompt();
     clearLastCombo();
     clearAllFeedbackCatState();

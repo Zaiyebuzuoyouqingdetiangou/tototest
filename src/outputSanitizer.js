@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.14';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.14';
+import { getSettings } from './settings.js?rmv=1.4.18';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.18';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.4.14';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.14';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.14';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.14';
+} from './feedbackCat.js?rmv=1.4.18';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.18';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.18';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.18';
 
 
-const RUNTIME_VERSION = '1.4.14';
+const RUNTIME_VERSION = '1.4.18';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -11815,6 +11815,15 @@ const FILL_IN_CHOICE_USED_ATTR = 'data-rm-fill-in-choice-used';
 const FILL_IN_CHOICE_COUNT_ATTR = 'data-rabbit-mirror-fill-in-choice-count';
 const FILL_IN_CHOICE_STYLE_ATTR = 'data-rabbit-mirror-fill-in-choice-style';
 const fillInChoiceRescueStates = new WeakMap();
+const STYLELESS_STRUCTURED_RESCUE_ATTR = 'data-rabbit-mirror-styleless-structured-rescue';
+const STYLELESS_STRUCTURED_STYLE_ATTR = 'data-rabbit-mirror-styleless-structured-style';
+const STYLELESS_STRUCTURED_SHELL_ATTR = 'data-rm-styleless-shell';
+const STYLELESS_STRUCTURED_HEADER_ATTR = 'data-rm-styleless-header';
+const STYLELESS_STRUCTURED_TITLE_ATTR = 'data-rm-styleless-title';
+const STYLELESS_STRUCTURED_SUBTITLE_ATTR = 'data-rm-styleless-subtitle';
+const STYLELESS_STRUCTURED_SECTION_ATTR = 'data-rm-styleless-section';
+const STYLELESS_STRUCTURED_TEXT_ATTR = 'data-rm-styleless-text';
+const STYLELESS_STRUCTURED_COUNT_ATTR = 'data-rabbit-mirror-styleless-structured-count';
 const MOBILE_LAYOUT_RESCUE_STYLE_ATTR = 'data-rabbit-mirror-mobile-layout-rescue';
 const MOBILE_LAYOUT_SCOPE_ATTR = 'data-rabbit-mirror-mobile-layout-scope';
 const MOBILE_LAYOUT_RESCUE_COUNT_ATTR = 'data-rabbit-mirror-mobile-layout-count';
@@ -11835,6 +11844,7 @@ const MOBILE_LAYOUT_COMPACT_GAP_ATTR = 'data-rm-mobile-compact-gap';
 const MOBILE_LAYOUT_MEDIA_ATTR = 'data-rm-mobile-media';
 const MOBILE_LAYOUT_SCROLL_ATTR = 'data-rm-mobile-scroll';
 const MOBILE_LAYOUT_BREAK_TEXT_ATTR = 'data-rm-mobile-break-text';
+const MOBILE_LAYOUT_UNDERFILL_ATTR = 'data-rm-mobile-underfill';
 const MOBILE_LAYOUT_STATE_CONTENT_ATTR = 'data-rm-mobile-state-content';
 const MOBILE_LAYOUT_STATE_ACTIVE_ATTR = 'data-rm-mobile-state-active';
 const MOBILE_LAYOUT_SECTION_STACK_PRESERVE_ATTR = 'data-rm-mobile-section-stack-preserve';
@@ -11871,6 +11881,7 @@ const MOBILE_LAYOUT_TARGET_ATTRS = Object.freeze([
     MOBILE_LAYOUT_MEDIA_ATTR,
     MOBILE_LAYOUT_SCROLL_ATTR,
     MOBILE_LAYOUT_BREAK_TEXT_ATTR,
+    MOBILE_LAYOUT_UNDERFILL_ATTR,
     MOBILE_LAYOUT_STATE_CONTENT_ATTR,
     MOBILE_LAYOUT_STATE_ACTIVE_ATTR,
     MOBILE_LAYOUT_SECTION_STACK_PRESERVE_ATTR,
@@ -11888,7 +11899,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.4.14-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.4.18-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -12997,7 +13008,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         '[9. 手机端排版／内容承载]',
         `viewportWidth=${mobileLayout.viewportWidth || 0} narrow=${!!mobileLayout.narrowViewport} candidates=${mobileLayout.candidateCount || 0}`,
         `overflow=${mobileLayout.horizontalOverflowCount || 0} fixedWidth=${mobileLayout.fixedWidthCount || 0} grid=${mobileLayout.gridCount || 0} matrix=${mobileLayout.matrixCount || 0} flex=${mobileLayout.flexCount || 0}`,
-        `multiColumn=${mobileLayout.multiColumnCount || 0} media=${mobileLayout.mediaCount || 0} stateContent=${mobileLayout.stateContentCount || 0}`,
+        `multiColumn=${mobileLayout.multiColumnCount || 0} media=${mobileLayout.mediaCount || 0} stateContent=${mobileLayout.stateContentCount || 0} underfill=${mobileLayout.underfillCount || 0}`,
         `护照／证件内页=${mobileLayout.passportDocumentCount || 0} repaired=${root.getAttribute?.(PASSPORT_DOCUMENT_RESCUE_ATTR) || '0'}`,
         `剖面／分层保形=${mobileLayout.sectionStackCount || 0}`,
         `电视／终端屏幕保形=${mobileLayout.screenShellCount || 0}`,
@@ -14888,6 +14899,220 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     return { checkedControlsLost, stateControlsLost: !!full.stateControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, missingCheckedSubjectClassCandidateCount, missingCheckedSubjectClassRescueCount, missingCheckedSubjectClassMissingCount, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, staticChoiceSelectionCandidateCount, staticChoiceSelectionRescueCount, structuredStaticDisclosureCandidateCount, structuredStaticDisclosureRescueCount, fillInChoiceCandidateCount, fillInChoiceRescueCount, focusWithinPersistentCandidateCount, focusWithinPersistentRescueCount, focusWithinPersistentMissingCount, rawScriptTimelineCandidateCount, rawScriptTimelineRescueCount, rawScriptTimelineMissingCount, crossParentCheckedRuleCandidateCount, crossParentCheckedRuleVerifiedCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, detachedCheckedHasRuleCandidateCount, detachedCheckedHasRuleRescueCount, detachedCheckedHasRuleMissingCount, pairedCheckedStateCandidateCount, pairedCheckedStateRescueCount, pairedCheckedStateMissingCount, exclusiveStackedStateCandidateCount, exclusiveStackedStateRescueCount, exclusiveStackedStateMissingCount, channelDialCycleCandidateCount, channelDialCycleRescueCount, channelDialCycleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
 }
 
+
+function maintenanceStyleRuleCountFromText(cssText) {
+    return (String(cssText || '').match(/[^@{}][^{}]*\{[^{}]*\}/g) || []).length;
+}
+
+function maintenanceStylelessAuthoredRuleCount(root) {
+    let rendered = 0;
+    for (const style of root?.querySelectorAll?.('style') || []) {
+        if ([...(style.attributes || [])].some(attribute => /^data-rabbit-mirror-/i.test(attribute.name))) continue;
+        rendered += maintenanceStyleRuleCountFromText(style.textContent || '');
+    }
+    let raw = 0;
+    try {
+        const decodedRaw = decodeHtmlEntities(String(getRawAssistantMessageForRenderedRoot(root) || ''));
+        const isolated = extractMaintenanceMirrorSourceBySummary(decodedRaw, root) || decodedRaw;
+        const css = [...String(isolated || '').matchAll(/<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi)]
+            .map(match => String(match[1] || ''))
+            .join('\n');
+        raw = maintenanceStyleRuleCountFromText(css);
+    } catch {}
+    return { rendered, raw, total: Math.max(rendered, raw) };
+}
+
+function maintenanceStylelessComputedVisualMaturity(elements = []) {
+    let computedVisualCount = 0;
+    let computedVisualSignalCount = 0;
+    let inlineStructuralVisualCount = 0;
+    for (const element of elements || []) {
+        if (!element?.getAttribute || element.matches?.('input,button,select,textarea,label,img,svg,canvas,video,audio,iframe,object,embed')) continue;
+        const inline = String(element.getAttribute('style') || '').toLowerCase();
+        const strongInlineVisual = [
+            /(?:^|;)\s*background(?:-color|-image)?\s*:/,
+            /(?:^|;)\s*border(?:-[\w-]+)?\s*:/,
+            /(?:^|;)\s*box-shadow\s*:/,
+            /(?:^|;)\s*border-radius\s*:/,
+            /(?:^|;)\s*display\s*:\s*(?:flex|grid|inline-flex|inline-grid)\b/,
+        ].some(pattern => pattern.test(inline));
+        if (strongInlineVisual) inlineStructuralVisualCount += 1;
+
+        const style = maintenanceMobileLayoutComputedStyle(element);
+        if (!style) continue;
+        let signals = 0;
+        const background = String(style.backgroundColor || '').toLowerCase();
+        if (!/(?:^|;)\s*background(?:-color|-image)?\s*:/.test(inline)
+            && background && background !== 'transparent' && background !== 'rgba(0, 0, 0, 0)') signals += 1;
+        const borderWidth = Math.max(
+            Number.parseFloat(style.borderTopWidth || '0') || 0,
+            Number.parseFloat(style.borderRightWidth || '0') || 0,
+            Number.parseFloat(style.borderBottomWidth || '0') || 0,
+            Number.parseFloat(style.borderLeftWidth || '0') || 0,
+        );
+        if (!/(?:^|;)\s*border(?:-[\w-]+)?\s*:/.test(inline) && borderWidth >= 1) signals += 1;
+        if (!/(?:^|;)\s*box-shadow\s*:/.test(inline) && String(style.boxShadow || '').toLowerCase() !== 'none') signals += 1;
+        const radius = Math.max(
+            Number.parseFloat(style.borderTopLeftRadius || '0') || 0,
+            Number.parseFloat(style.borderTopRightRadius || '0') || 0,
+            Number.parseFloat(style.borderBottomLeftRadius || '0') || 0,
+            Number.parseFloat(style.borderBottomRightRadius || '0') || 0,
+        );
+        if (!/(?:^|;)\s*border-radius\s*:/.test(inline) && radius >= 4) signals += 1;
+        const display = String(style.display || '').toLowerCase();
+        if (!/(?:^|;)\s*display\s*:/.test(inline) && /^(?:flex|grid|inline-flex|inline-grid)$/.test(display)) signals += 1;
+        const padding = ['paddingTop','paddingRight','paddingBottom','paddingLeft']
+            .reduce((sum, key) => sum + (Number.parseFloat(style[key] || '0') || 0), 0);
+        if (!/(?:^|;)\s*padding(?:-[\w-]+)?\s*:/.test(inline) && padding >= 16) signals += 1;
+        if (signals >= 2) computedVisualCount += 1;
+        computedVisualSignalCount += signals;
+    }
+    return { computedVisualCount, computedVisualSignalCount, inlineStructuralVisualCount };
+}
+
+function maintenanceStylelessStructuredInfo(root, full = null) {
+    const empty = {
+        candidate: false,
+        authoredRuleCount: 0,
+        textLength: 0,
+        elementCount: 0,
+        classedCount: 0,
+        distinctClassCount: 0,
+        inlineStyledCount: 0,
+        inlineDeclarationCount: 0,
+        richInlineCount: 0,
+        inlineStructuralVisualCount: 0,
+        computedVisualCount: 0,
+        computedVisualSignalCount: 0,
+        formControlCount: 0,
+        meaningfulFormControlCount: 0,
+    };
+    if (!root?.querySelectorAll || root.hasAttribute?.(STYLELESS_STRUCTURED_RESCUE_ATTR)) return empty;
+    const details = root.matches?.('details') ? root : root.querySelector?.('details');
+    if (!details) return empty;
+    const authored = maintenanceStylelessAuthoredRuleCount(root);
+    if (authored.total > 0) return { ...empty, authoredRuleCount: authored.total };
+
+    const elements = [...details.querySelectorAll('*')].filter(element => {
+        const tag = String(element.tagName || '').toLowerCase();
+        if (!tag || ['summary', 'style', 'script', 'template', 'br'].includes(tag)) return false;
+        return !maintenanceMobileLayoutIsInternal(element);
+    });
+    const textLength = Number(full?.rawBodyTextLength || full?.renderedBodyTextLength || maintenanceMobileLayoutTextLength(details) || 0);
+    const elementCount = Number(full?.rawBodyElementCount || full?.renderedBodyElementCount || elements.length || 0);
+    const visualProgramCount = Math.max(Number(full?.rawBodyVisualProgramCount || 0), Number(full?.renderedBodyVisualProgramCount || 0));
+    const semanticElementCount = Math.max(Number(full?.rawBodySemanticElementCount || 0), Number(full?.renderedBodySemanticElementCount || 0));
+    const classed = elements.filter(element => String(element.getAttribute?.('class') || '').trim());
+    const distinctClasses = new Set(classed.flatMap(element => String(element.getAttribute('class') || '').split(/\s+/).filter(Boolean)));
+    let inlineStyledCount = 0;
+    let inlineDeclarationCount = 0;
+    const richInlineCount = elements.filter(element => {
+        const style = String(element.getAttribute?.('style') || '');
+        if (style.trim()) inlineStyledCount += 1;
+        const declarations = (style.match(/(?:^|;)\s*[-\w]+\s*:/g) || []).length;
+        inlineDeclarationCount += declarations;
+        return declarations >= 5 || /(?:background(?:-image)?\s*:[^;]*(?:url\(|gradient\()|mask(?:-image)?\s*:|clip-path\s*:|filter\s*:)/i.test(style);
+    }).length;
+    const maturity = maintenanceStylelessComputedVisualMaturity(elements);
+    const formControls = [...details.querySelectorAll('input,button,select,textarea')];
+    const formControlCount = formControls.length;
+    const meaningfulFormControlCount = formControls.filter(control => {
+        if (control.matches?.('button,select,textarea')) return maintenanceMobileLayoutTextLength(control) >= 1 || !!control.getAttribute?.('aria-label');
+        if (!control.id) return false;
+        let label = null;
+        try { label = details.querySelector(`label[for="${cssEscape(control.id)}"]`); } catch {}
+        return maintenanceMobileLayoutTextLength(label) >= 2 || !!control.getAttribute?.('aria-label');
+    }).length;
+
+    // This rescue is deliberately fail-closed. It only handles the narrow case where a
+    // structured mirror has essentially no visual program at all. External/theme CSS,
+    // a modest but coherent inline design, or a real form are author intent and must win.
+    const candidate = textLength >= 140
+        && elementCount >= 8
+        && semanticElementCount >= 1
+        && visualProgramCount === 0
+        && classed.length >= 5
+        && distinctClasses.size >= 5
+        && inlineStyledCount <= 2
+        && inlineDeclarationCount <= 9
+        && richInlineCount === 0
+        && maturity.inlineStructuralVisualCount === 0
+        && maturity.computedVisualSignalCount === 0
+        && formControlCount <= 1
+        && meaningfulFormControlCount === 0;
+    return {
+        candidate,
+        authoredRuleCount: authored.total,
+        textLength,
+        elementCount,
+        classedCount: classed.length,
+        distinctClassCount: distinctClasses.size,
+        inlineStyledCount,
+        inlineDeclarationCount,
+        richInlineCount,
+        inlineStructuralVisualCount: maturity.inlineStructuralVisualCount,
+        computedVisualCount: maturity.computedVisualCount,
+        computedVisualSignalCount: maturity.computedVisualSignalCount,
+        formControlCount,
+        meaningfulFormControlCount,
+    };
+}
+
+function maintenanceStylelessStructuredCss() {
+    return `
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_SHELL_ATTR}] { width:100% !important; max-width:760px !important; min-width:0 !important; margin:10px auto !important; padding:clamp(14px,4vw,24px) !important; box-sizing:border-box !important; border:1px solid rgba(127,127,127,.28) !important; border-radius:16px !important; background:rgba(127,127,127,.06) !important; overflow:visible !important; }
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_HEADER_ATTR}] { display:block !important; margin:0 0 14px !important; padding:0 0 10px !important; border-bottom:1px solid rgba(127,127,127,.24) !important; }
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_TITLE_ATTR}] { display:block !important; margin:0 0 6px !important; font-size:clamp(1.08rem,4.8vw,1.45rem) !important; line-height:1.3 !important; font-weight:800 !important; letter-spacing:.02em !important; overflow-wrap:anywhere !important; }
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_SUBTITLE_ATTR}] { display:block !important; margin:0 0 10px !important; font-size:.88em !important; line-height:1.55 !important; opacity:.76 !important; overflow-wrap:anywhere !important; }
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_SECTION_ATTR}] { display:block !important; width:100% !important; max-width:100% !important; min-width:0 !important; margin:12px 0 !important; padding:12px 14px !important; box-sizing:border-box !important; border:1px solid rgba(127,127,127,.2) !important; border-radius:12px !important; background:rgba(127,127,127,.045) !important; overflow:visible !important; }
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_TEXT_ATTR}] { max-width:100% !important; min-width:0 !important; line-height:1.75 !important; overflow-wrap:anywhere !important; word-break:break-word !important; }
+`;
+}
+
+function installMaintenanceStylelessStructuredRescue(root) {
+    if (!root?.querySelectorAll || !root?.isConnected) return 0;
+    const full = diagnosticFullChainSummary(root, diagnosticCodeRescueSummary(root));
+    const info = maintenanceStylelessStructuredInfo(root, full);
+    if (!info.candidate) return 0;
+
+    const details = root.matches?.('details') ? root : root.querySelector?.('details');
+    if (!details) return 0;
+    const direct = [...details.children].filter(child => {
+        const tag = String(child.tagName || '').toLowerCase();
+        return tag && !['summary', 'style', 'script', 'template'].includes(tag) && !maintenanceMobileLayoutIsInternal(child);
+    });
+    const shell = direct.find(child => maintenanceMobileLayoutTextLength(child) >= 80 && Number(child.childElementCount || 0) >= 2) || direct[0];
+    if (!shell) return 0;
+
+    const marked = new Set();
+    const mark = (element, attr) => {
+        if (!element?.setAttribute || element.hasAttribute(attr)) return;
+        element.setAttribute(attr, 'true');
+        marked.add(element);
+    };
+    mark(shell, STYLELESS_STRUCTURED_SHELL_ATTR);
+    for (const element of [shell, ...shell.querySelectorAll('*')]) {
+        if (maintenanceMobileLayoutIsInternal(element)) continue;
+        const signature = `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('role') || ''}`.toLowerCase();
+        if (/(?:^|[-_\s])(?:header|masthead|head)(?:$|[-_\s])/.test(signature)) mark(element, STYLELESS_STRUCTURED_HEADER_ATTR);
+        if (/(?:^|[-_\s])(?:title|heading|headline)(?:$|[-_\s])/.test(signature)) mark(element, STYLELESS_STRUCTURED_TITLE_ATTR);
+        if (/(?:^|[-_\s])(?:subtitle|sub-title|subhead|kicker|meta)(?:$|[-_\s])/.test(signature)) mark(element, STYLELESS_STRUCTURED_SUBTITLE_ATTR);
+        if (/(?:^|[-_\s])(?:box|panel|section|speech|confession|track|card|note)(?:$|[-_\s])/.test(signature)) mark(element, STYLELESS_STRUCTURED_SECTION_ATTR);
+        if (/(?:^|[-_\s])(?:text|content|speech|confession|rhyme|desc|description|body)(?:$|[-_\s])/.test(signature)
+            || element.matches?.('p,blockquote,li')) mark(element, STYLELESS_STRUCTURED_TEXT_ATTR);
+    }
+    let style = root.querySelector(`style[${STYLELESS_STRUCTURED_STYLE_ATTR}]`);
+    if (!style) {
+        style = document.createElement('style');
+        style.setAttribute(STYLELESS_STRUCTURED_STYLE_ATTR, 'true');
+        root.appendChild(style);
+    }
+    style.textContent = maintenanceStylelessStructuredCss();
+    root.setAttribute(STYLELESS_STRUCTURED_RESCUE_ATTR, 'true');
+    root.setAttribute(STYLELESS_STRUCTURED_COUNT_ATTR, String(marked.size));
+    return Math.max(1, marked.size);
+}
+
 function maintenanceFallbackFullSummary(root) {
     const body = diagnosticMessageBody(root) || root;
     const snapshot = diagnosticContentSnapshot(body);
@@ -15040,6 +15265,30 @@ function buildMaintenanceFindings(root, {
         });
     }
 
+    const stylelessStructured = maintenanceStylelessStructuredInfo(root, full);
+    if (stylelessStructured.candidate) {
+        add({
+            id: 'styleless-structured-mirror', stage: 'structure', mode: 'style',
+            label: '兔子镜正文结构完整，但原始与当前镜面都没有可用 CSS 规则；可用中性结构样式做本地降级救援',
+            evidence: [
+                `authoredRules=${stylelessStructured.authoredRuleCount}`,
+                `text=${stylelessStructured.textLength}`,
+                `elements=${stylelessStructured.elementCount}`,
+                `classed=${stylelessStructured.classedCount}`,
+                `distinctClasses=${stylelessStructured.distinctClassCount}`,
+                `inlineStyled=${stylelessStructured.inlineStyledCount}`,
+                `inlineDeclarations=${stylelessStructured.inlineDeclarationCount}`,
+                `richInline=${stylelessStructured.richInlineCount}`,
+                `inlineStructuralVisual=${stylelessStructured.inlineStructuralVisualCount}`,
+                `computedVisual=${stylelessStructured.computedVisualCount}`,
+                `computedVisualSignals=${stylelessStructured.computedVisualSignalCount}`,
+                `formControls=${stylelessStructured.formControlCount}`,
+                `meaningfulFormControls=${stylelessStructured.meaningfulFormControlCount}`,
+            ],
+            confidence: 0.99,
+        });
+    }
+
     if ((Number(nestedDetailsPopupCandidateCount) || 0) > 0) {
         add({
             id: 'nested-details-popup-clipped', stage: 'visibility', mode: 'text',
@@ -15072,6 +15321,7 @@ function buildMaintenanceFindings(root, {
                 `multiColumn=${Number(mobileLayout?.multiColumnCount) || 0}`,
                 `media=${Number(mobileLayout?.mediaCount) || 0}`,
                 `stateContent=${Number(mobileLayout?.stateContentCount) || 0}`,
+                `underfill=${Number(mobileLayout?.underfillCount) || 0}`,
             ],
             confidence: 0.93,
         });
@@ -17991,6 +18241,7 @@ ${scope} iframe[${MOBILE_LAYOUT_MEDIA_ATTR}] { width: 100% !important; }
 ${scope} [${MOBILE_LAYOUT_SCROLL_ATTR}] { max-width: 100% !important; overflow-x: auto !important; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
 ${scope} table[${MOBILE_LAYOUT_SCROLL_ATTR}], ${scope} pre[${MOBILE_LAYOUT_SCROLL_ATTR}] { display: block !important; }
 ${scope} [${MOBILE_LAYOUT_BREAK_TEXT_ATTR}] { overflow-wrap: anywhere !important; word-break: break-word !important; min-width: 0 !important; }
+${scope} [${MOBILE_LAYOUT_UNDERFILL_ATTR}] { width:min(100%, 420px) !important; min-width:min(100%, 420px) !important; max-width:100% !important; box-sizing:border-box !important; }
 ${scope} [${MOBILE_LAYOUT_STATE_CONTENT_ATTR}][${MOBILE_LAYOUT_STATE_ACTIVE_ATTR}] { height: auto !important; max-height: none !important; overflow: visible !important; }
 ${scope} [${MOBILE_LAYOUT_RELATION_BRANCH_ATTR}] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; gap: clamp(8px, 3vw, 16px) !important; overflow: visible !important; }
 ${scope} [${MOBILE_LAYOUT_RELATION_CELL_ATTR}] { min-width: 0 !important; max-width: none !important; overflow: visible !important; }
@@ -17998,6 +18249,64 @@ ${scope} [${MOBILE_LAYOUT_RELATION_DETAIL_ATTR}] { width: calc(200% + clamp(8px,
 ${scope} [${MOBILE_LAYOUT_RELATION_DETAIL_ATTR}][${MOBILE_LAYOUT_RELATION_SIDE_ATTR}="left"] { transform: none !important; }
 ${scope} [${MOBILE_LAYOUT_RELATION_DETAIL_ATTR}][${MOBILE_LAYOUT_RELATION_SIDE_ATTR}="right"] { transform: translateX(calc(-50% - clamp(4px, 1.5vw, 8px))) !important; }
 }`;
+}
+
+
+function maintenanceMobileLayoutUnderfillCandidate(element, style = null, referenceWidth = 0) {
+    if (!element?.parentElement || referenceWidth < 300) return false;
+    if (maintenanceMobileLayoutIsInternal(element) || maintenanceMobileLayoutIsPassportManaged(element)) return false;
+    if (maintenanceMobileLayoutHorizontalMediaHint(element)) return false;
+    const computed = style || maintenanceMobileLayoutComputedStyle(element);
+    const rect = maintenanceMobileLayoutRect(element);
+    const parent = element.parentElement;
+    const parentStyle = maintenanceMobileLayoutComputedStyle(parent);
+    const parentRect = maintenanceMobileLayoutRect(parent);
+    if (!computed || !rect || !parentStyle || !parentRect || rect.width < 170 || parentRect.width < 300) return false;
+    if (rect.width >= Math.min(referenceWidth, parentRect.width) * 0.78) return false;
+    if (parentRect.width - rect.width < 56) return false;
+    const position = String(computed.position || '').toLowerCase();
+    if (position === 'absolute' || position === 'fixed') return false;
+    const writingMode = String(computed.writingMode || '').trim().toLowerCase();
+    if (writingMode && writingMode !== 'horizontal-tb') return false;
+    const parentDisplay = String(parentStyle.display || '').toLowerCase();
+    const centeredFlex = parentDisplay.includes('flex') && /center/.test(String(parentStyle.justifyContent || '').toLowerCase());
+    const centeredGrid = parentDisplay.includes('grid') && /center/.test(`${parentStyle.justifyItems || ''} ${parentStyle.placeItems || ''}`.toLowerCase());
+    if (!centeredFlex && !centeredGrid) return false;
+
+    const signature = `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('role') || ''}`;
+    if (/(?:^|[-_\s])(?:sidebar|side-bar|rail|toc|menu|nav|toolbar|badge|tag|legend|avatar|icon|ticket|receipt|passport|document|tarot|playing-card|photo|polaroid|postcard|phone|mobile|device|stamp|qr|barcode|coupon|voucher|letter|invitation|envelope|book|page|poster|sheet|parchment|scroll|certificate|stationery)(?:$|[-_\s])/i.test(signature)) return false;
+    if (String(computed.aspectRatio || '').toLowerCase() !== 'auto' && String(computed.aspectRatio || '').trim()) return false;
+    const explicitMaxWidth = Math.max(
+        maintenanceMobileLayoutLengthPx(computed.maxWidth, parentRect.width),
+        maintenanceMobileLayoutLengthPx(computed.maxInlineSize, parentRect.width),
+    );
+    if (explicitMaxWidth > 0 && explicitMaxWidth <= 340) return false;
+    const explicitFlexBasis = maintenanceMobileLayoutLengthPx(computed.flexBasis, parentRect.width);
+    if (explicitFlexBasis > 0 && explicitFlexBasis <= 340) return false;
+    if (maintenanceMobileLayoutTextLength(element) < 110 || Number(element.childElementCount || 0) < 2) return false;
+
+    const meaningfulSiblings = [...parent.children].filter(child => {
+        if (child === element || maintenanceMobileLayoutIsInternal(child)) return false;
+        const childStyle = maintenanceMobileLayoutComputedStyle(child);
+        if (!childStyle || childStyle.display === 'none' || childStyle.visibility === 'hidden') return false;
+        const childRect = maintenanceMobileLayoutRect(child);
+        const childWidth = Number(childRect?.width || 0);
+        const childHeight = Number(childRect?.height || 0);
+        if (childWidth <= 8 && childHeight <= 8) return false;
+        const childText = maintenanceMobileLayoutTextLength(child);
+        if (childText >= 8) return true;
+        if (!child.matches?.('img,svg,canvas,video,figure')) return false;
+        const hint = `${child.id || ''} ${child.className || ''} ${child.getAttribute?.('role') || ''} ${child.getAttribute?.('aria-label') || ''}`;
+        const decorative = child.getAttribute?.('aria-hidden') === 'true'
+            || String(childStyle.pointerEvents || '').toLowerCase() === 'none'
+            || /(?:^|[-_\s])(?:icon|badge|ornament|decor|decoration|seal|stamp|mark|sparkle|flourish)(?:$|[-_\s])/i.test(hint);
+        if (decorative) return false;
+        return (childWidth >= 64 && childHeight >= 48) || childWidth * childHeight >= 4096;
+    });
+    if (meaningfulSiblings.length > 0) return false;
+
+    const fixedWidth = maintenanceMobileLayoutLengthPx(computed.width, parentRect.width);
+    return fixedWidth > 0 && fixedWidth <= 340;
 }
 
 function inspectMaintenanceMobileLayout(root) {
@@ -18013,6 +18322,7 @@ function inspectMaintenanceMobileLayout(root) {
         multiColumnCount: 0,
         mediaCount: 0,
         stateContentCount: 0,
+        underfillCount: 0,
         passportDocumentCount: 0,
         sectionStackCount: 0,
         screenShellCount: 0,
@@ -18039,6 +18349,7 @@ function inspectMaintenanceMobileLayout(root) {
         multiColumn: new Set(),
         media: new Set(),
         stateContent: new Set(),
+        underfill: new Set(),
         relationTree: new Set(),
     };
     const alreadyRepaired = root.hasAttribute(MOBILE_LAYOUT_SCOPE_ATTR)
@@ -18137,6 +18448,11 @@ function inspectMaintenanceMobileLayout(root) {
             }
         }
 
+        if (!element.hasAttribute(MOBILE_LAYOUT_UNDERFILL_ATTR)
+            && maintenanceMobileLayoutUnderfillCandidate(element, style, referenceWidth)) {
+            buckets.underfill.add(element);
+        }
+
         const columnCount = Number.parseInt(style.columnCount || '1', 10) || 1;
         if (columnCount > 1 && !element.hasAttribute(MOBILE_LAYOUT_SINGLE_COLUMN_ATTR)) buckets.multiColumn.add(element);
 
@@ -18180,6 +18496,7 @@ function inspectMaintenanceMobileLayout(root) {
         multiColumnCount: buckets.multiColumn.size,
         mediaCount: buckets.media.size,
         stateContentCount: buckets.stateContent.size,
+        underfillCount: buckets.underfill.size,
         passportDocumentCount: findRenderedPassportDocumentCandidates(root).length,
         sectionStackCount: sectionStackHosts.length,
         screenShellCount: screenShellHosts.length,
@@ -18322,6 +18639,10 @@ function installMaintenanceMobileLayoutRescue(root) {
                     }
                 }
             }
+        }
+
+        if (maintenanceMobileLayoutUnderfillCandidate(element, style, referenceWidth)) {
+            maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_UNDERFILL_ATTR, marked);
         }
 
         const columnCount = Number.parseInt(style.columnCount || '1', 10) || 1;
@@ -19012,7 +19333,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.19';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.21';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -19020,6 +19341,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
     { id: 'code-block-dom', modes: ['source', 'code', 'all'], bucket: 'code', run: ({ messageScope }) => sanitizeCodeBlocksInScope(messageScope, true) },
     { id: 'plain-text-dom', modes: ['source', 'plainText', 'code', 'all'], bucket: 'plainText', run: ({ messageScope }) => sanitizeWholePlainTextRabbitMirrorsInScope(messageScope, true) },
     { id: 'rendered-details-dom', modes: ['source', 'plainText', 'code', 'all'], bucket: 'plainText', run: ({ messageScope }) => sanitizeRenderedRabbitMirrorDetailsInScope(messageScope, true) },
+    { id: 'styleless-structured-rescue', modes: ['style', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root ? installMaintenanceStylelessStructuredRescue(target) : 0 },
     { id: 'css-comment-boundary', modes: ['source', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMarkdownCorruptedCssComments(target) },
     // “排版不适配／内容显示不全”共用同一条手动路线：先修窄屏容器关系，再复测叶级文字裁切。
     { id: 'mobile-inline-annotation-flow-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => installMobileInlineAnnotationRescue(target) },

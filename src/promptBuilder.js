@@ -1,10 +1,11 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.14';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.14';
-import { pickCombination } from './picker.js?rmv=1.4.14';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRepeatedPaletteFamily, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.4.14';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.14';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.14';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.14';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.18';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.18';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.18';
+import { pickCombination } from './picker.js?rmv=1.4.18';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRepeatedPaletteFamily, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.4.18';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.18';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.18';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.18';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -113,6 +114,15 @@ function isTarotRelated(combo) {
         ...(combo?.formats || []),
     ].map(item => `${item?.id || ''} ${item?.title || ''} ${item?.summary || ''} ${item?.raw || ''} ${(item?.tags || []).join(' ')}`).join('\n').toLowerCase();
     return keywords.some(keyword => text.includes(keyword.toLowerCase()));
+}
+
+function isTouchTheaterRelated(combo) {
+    return (combo?.formats || []).some(item => {
+        const id = String(item?.id || '');
+        if (id === '6.2.1.1.e' || id === '6.2.1.2') return true;
+        const text = `${item?.title || ''} ${item?.summary || ''} ${item?.raw || ''}`.toLowerCase();
+        return text.includes('大接近模式') || text.includes('大接近モード') || text.includes('触摸小剧场') || text.includes('touch theater');
+    });
 }
 
 function shortVisualAvoidance(combo, limit = 3) {
@@ -627,7 +637,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     ].filter(Boolean).join('\n');
 }
 
-function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback, generationType = 'normal' }) {
+function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, touchTheaterRulesText, directive, memoryMaterial, activeFeedback, generationType = 'normal' }) {
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
@@ -679,6 +689,7 @@ ${shortVisualAvoidance(combo, 3)}`);
     }
 
     if (tarotRulesText) chunks.push(tarotRulesText);
+    if (touchTheaterRulesText) chunks.push(touchTheaterRulesText);
     // When visual editing is enabled, keep the full user-editable layer near the final output
     // contract so later theme/cooldown rules cannot dilute it. The OFF path remains the legacy flow.
     if (settings?.visualPromptEditingEnabled) chunks.push(editableVisualPromptRule(settings));
@@ -714,10 +725,11 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
     const selectedFormats = selectedFormatResult.text;
     const visualSceneryMode = !!(settings.forceVisualScenery || hasVisualScenery(combo));
     const tarotRulesText = isTarotRelated(combo) ? TAROT_IMAGE_RULES : '';
+    const touchTheaterRulesText = isTouchTheaterRelated(combo) ? TOUCH_THEATER_RULES : '';
     const memoryMaterial = hasSharedMemoryTheme(combo)
         ? readSelectedMemoryForPrompt(settings, settings.memoryMaxChars || 2200)
         : null;
-    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback, generationType });
+    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, touchTheaterRulesText, directive, memoryMaterial, activeFeedback, generationType });
     const metadata = Object.freeze({
         generationType: String(generationType || 'normal'),
         rawPolicy,
@@ -738,6 +750,7 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
         visualSceneryMode,
         forcedVisualScenery: !!combo?.forcedVisualScenery,
         tarotRules: !!tarotRulesText,
+        touchTheaterRules: !!touchTheaterRulesText,
         userDirectiveApplied: !!directive,
         customThemeCount: Array.isArray(directive?.customThemes) ? directive.customThemes.length : 0,
         customFormatCount: Array.isArray(directive?.customFormats) ? directive.customFormats.length : 0,

@@ -1,6 +1,36 @@
-# RabbitMirror 1.4.14 TEST
+# 1.4.18 TEST — 2026-08-19
 
-## 1.4.14 TEST
+- 修复 1.4.17 styleless fallback 的三类反例：外部/美化 CSS 误覆盖、中等 inline 视觉误覆盖、无真实第二状态却伪造“触碰”按钮。
+- 修复 underfill 对显式 `max-width`、竖排和明确物理窄媒介的误拉宽；忽略小型装饰媒体 sibling，避免主正文因此漏救。
+- 只改 `src/outputSanitizer.js` 的功能逻辑；其余文件仅版本/cache-bust。
+
+# 1.4.17 TEST — 2026-08-19
+
+- 维修兔：新增“DOM 完整但 CSS 完全缺失”的中性结构降级救援。
+- 维修兔：新增手机端主正文 underfill rescue；严格排除常见有意窄媒介与侧栏/工具组件。
+- 回归样本：`全链路2.txt`（纯文字/无 CSS）与 `全链路.txt`（260px 符纸窄面）。
+- 不新增 API 请求、timer、Observer、轮询或全局 listener。
+
+# RabbitMirror 1.4.16 TEST
+
+## 1.4.16 TEST
+
+- 将 `6.2.1.2 触摸小剧场 (Touch Theater)` 重构为 `6.2.1.1.e 大接近模式 (大接近モード)`，真正归入「心跳回忆 GS 模式」子项。
+- 参考用户提供的纯角色卡母本统一新输出九区语义：head / face / shoulder / chest / arm / hand / waist / thigh / knee；不捆绑母本 Base64 立绘或 Regex 安装包。
+- 大接近模式新根标记为 `data-rm-dai-sekkin-mode="true"`；Live2D 桥保留 1.4.15 旧根标记与 left-hand/right-hand/hair 兼容。
+- 兼容迁移 1.4.15 的旧 `6.2.1.2` 收藏、黑名单、倍率与 Eligible Misses 到 `6.2.1.1.e`。
+- 触摸基础层仍为纯 HTML/CSS，Live2D 只允许 expression/motion，不发送 hit-area message、不触发 generate 或其它模型请求。
+
+
+## 1.4.15 TEST
+
+- 新增独立展现形式 `6.2.1.2 触摸小剧场 (Touch Theater)`：5～9 个移动端可触摸人物热区，每个热区在本轮预生成独立反应。
+- 新增条件式 `TOUCH_THEATER_RULES`，只有抽中／点名触摸小剧场时才进入 Prompt；普通兔子镜不承担这段专用规则。
+- 新增可选 Live2D 动作桥：若官方 Live2D 扩展已启用且当前角色 hit area 能高置信匹配，只复用其 expression / motion；不发送映射 message、不调用 generate。
+- 运行时仅增加一个全局委托 click listener，无 Observer、polling 或定时器；基础触摸交互在 Live2D 缺失时仍由 HTML/CSS 独立工作。
+- 保留 1.4.14 Android／小米外置宽度与 1.4.12 checked 正文优先级修复。
+
+## 1.4.15 TEST
 
 - 修复 Android／小米 external host 从 PC lane 切入 mobile lane 后遗留 `data-rm-independent-external-compact-shell` / `--rm-external-compact-width`，避免旧 320px 左右 compact 宽度继续压窄已经判定为手机布局的外置兔子镜。
 - viewport refresh signature 与 1.4.13 的多源宽度判断对齐，综合 `visualViewport.width`、`innerWidth`、`documentElement.clientWidth`、`screen.width`；resize 先共用原 160ms debounce，再比较复合 signature，避免在高频事件中反复读取布局。

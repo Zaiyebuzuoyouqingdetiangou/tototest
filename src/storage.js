@@ -15,12 +15,13 @@ function normalizeFormatEligibleMisses(raw, validFormatIds = []) {
     const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
     const normalized = {};
     for (const [rawId, rawValue] of Object.entries(source)) {
-        const id = String(rawId || '').trim();
+        const sourceId = String(rawId || '').trim();
+        const id = sourceId === '6.2.1.2' ? '6.2.1.1.e' : sourceId;
         if (!id || (valid.size && !valid.has(id))) continue;
         const value = Number(rawValue);
         if (!Number.isFinite(value) || value < 0) continue;
         const misses = Math.min(FORMAT_ELIGIBLE_MISS_CAP, Math.floor(value));
-        if (misses > 0) normalized[id] = misses;
+        if (misses > 0) normalized[id] = Math.max(Number(normalized[id] || 0), misses);
     }
     return normalized;
 }

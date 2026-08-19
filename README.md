@@ -1,6 +1,14 @@
-# RabbitMirror / 兔子镜 1.4.14 TEST
+# RabbitMirror / 兔子镜 1.4.18 TEST
 
-> 1.4.14：在 1.4.13 Android／小米外置宽度修复上补齐 mobile transition 与 viewport lifecycle：mobile 时清除旧 PC compact-shell，复合宽度 signature 与 visualViewport resize 共用现有 debounce；同时避免桌面仅因 visualViewport 缩放而进入手机 lane。1.4.12 的 checked 正文优先级修复与其它链路保持。
+## 1.4.18 TEST：收紧无样式降级救援 + 欠宽救援作者意图保护
+
+- `styleless-structured-mirror` 改为 fail-closed：外部/美化 CSS 已提供成体系的背景、边框、阴影、布局或 padding 时不接管；已有中等 inline 结构视觉、真实表单也不接管。
+- 无 CSS fallback 只恢复可读结构，不再隐藏 checkbox/radio、也不再给空 label 伪造“触碰”按钮；没有真实第二状态时不会制造假交互。
+- 手机 `underfill` 尊重显式小 `max-width`、非水平 writing-mode 与信函/书页/海报等明确窄媒介；小型装饰 SVG/图标不再阻断唯一主正文的欠宽救援。
+- 仍用 `全链路2.txt`（无 CSS）与 `全链路.txt`（260px 符纸）作为正向回归；同时加入外部 CSS、中等 inline、native form、profile max-width、竖排信函和小装饰 sibling 的反例。
+- 不增加 API 请求、timer、Observer、轮询或全局 listener；1.4.16 大接近、1.4.14 Android/Xiaomi 外置宽度、1.4.12 checked BUG-1 保持。
+
+> 1.4.15：在 1.4.13 Android／小米外置宽度修复上补齐 mobile transition 与 viewport lifecycle：mobile 时清除旧 PC compact-shell，复合宽度 signature 与 visualViewport resize 共用现有 debounce；同时避免桌面仅因 visualViewport 缩放而进入手机 lane。1.4.12 的 checked 正文优先级修复与其它链路保持。
 
 本测试版在 1.4.11 基础上修正 checked 内层正文兜底的候选优先级：优先处理明确的 `display:none` / `visibility:hidden` 正文，只有没有强隐藏候选时才使用零高度、低透明度、折叠 max-height 等弱证据，避免零高度包装节点抢先消耗修复机会；其它高风险链不变。
 
@@ -190,3 +198,21 @@
 
 ### 1.4.10 TEST：近输出短锁与重 roll 配色避重复
 独立 API 的近输出层只保留本轮 identity、当前真正生效的短避让和最终 `<toto>` 输出契约；基础 Prompt 已经包含的长规则不再整段重复。手动重新生成同一面兔子镜时，会把上一版真实配色家族作为本次避让对象（用户明确固定配色时除外）。这不是预设固定色盘，也不会额外发起 API 请求。
+
+
+## 1.4.16：大接近模式（大接近モード）
+
+- 将 1.4.15 的 `6.2.1.2 触摸小剧场` 改为 `6.2.1.1.e 大接近模式`，正式归入「心跳回忆 GS 模式」子项。
+- 参考用户提供的 `touch-theater-pure-card-v1.0.0.zip` 纯卡母本，默认语义热区改为 head / face / shoulder / chest / arm / hand / waist / thigh / knee；不把母本约 1.7MB 的 Base64 立绘或 Scoped Regex 打进 RabbitMirror。
+- 新舞台使用 `data-rm-dai-sekkin-mode="true"`；运行时继续兼容 1.4.15 的 `data-rm-touch-theater` 及 left-hand / right-hand / hair 历史语义。
+- 旧 `6.2.1.2` 的收藏、黑名单、收藏倍率和 Eligible Misses 读取时迁移到 `6.2.1.1.e`。
+- 基础触摸仍不调用模型；Live2D 仍只复用用户本地已经配置的 expression / motion，忽略 hit-area message。
+
+## 1.4.15：触摸小剧场 / Touch Theater
+
+- 新展现形式 ID：`6.2.1.2`。可随机抽中，也可直接点名「兔子镜展现形式：触摸小剧场」。
+- 模型只在本轮预生成触摸舞台、5～9 个热区和对应反应；点击不会再发一次 LLM 请求，也不伪造跨消息好感度。
+- 基础交互使用 `radio/checkbox + label + CSS`，Live2D 未安装时仍完整可用。
+- 可选 Live2D 增强：如果 SillyTavern 官方 Live2D 扩展已启用、当前角色已绑定模型且 hit area 有 expression / motion 映射，RabbitMirror 会在触摸对应区域时播放匹配动画。RabbitMirror 不执行 Live2D hit area 的 message 映射，也不会因此自动生成回复。
+- 首版 Live2D 桥只处理单角色聊天；群聊为避免驱动错误角色会自动跳过 Live2D 动画，但 HTML/CSS 触摸反馈照常工作。
+

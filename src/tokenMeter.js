@@ -216,6 +216,7 @@ export function recordRabbitMirrorInjection({
         formatIds: Array.isArray(metadata.formatIds) ? metadata.formatIds.slice(0, 8) : [],
         visualScenery: !!metadata.visualSceneryMode,
         tarotRules: !!metadata.tarotRules,
+        touchTheaterRules: !!metadata.touchTheaterRules,
     });
 }
 
@@ -268,6 +269,7 @@ export function recordRabbitMirrorIndependentPrompt({
         formatIds: Array.isArray(metadata.formatIds) ? metadata.formatIds.slice(0, 8) : [],
         visualScenery: !!metadata.visualSceneryMode,
         tarotRules: !!metadata.tarotRules,
+        touchTheaterRules: !!metadata.touchTheaterRules,
     });
 }
 
@@ -286,5 +288,6 @@ export function recordRabbitMirrorNoInjection(reason = 'cleared', generationType
         formatIds: [],
         visualScenery: false,
         tarotRules: false,
+        touchTheaterRules: false,
     });
 }
