@@ -1,4 +1,10 @@
-> **RabbitMirror 1.4.8 TEST / 兔子镜测试版**  
+# RabbitMirror / 兔子镜 1.4.14 TEST
+
+> 1.4.14：在 1.4.13 Android／小米外置宽度修复上补齐 mobile transition 与 viewport lifecycle：mobile 时清除旧 PC compact-shell，复合宽度 signature 与 visualViewport resize 共用现有 debounce；同时避免桌面仅因 visualViewport 缩放而进入手机 lane。1.4.12 的 checked 正文优先级修复与其它链路保持。
+
+本测试版在 1.4.11 基础上修正 checked 内层正文兜底的候选优先级：优先处理明确的 `display:none` / `visibility:hidden` 正文，只有没有强隐藏候选时才使用零高度、低透明度、折叠 max-height 等弱证据，避免零高度包装节点抢先消耗修复机会；其它高风险链不变。
+
+> **RabbitMirror 1.4.10 TEST / 兔子镜测试版**  
 > 测试仓库：`https://github.com/Zaiyebuzuoyouqingdetiangou/tototest`。本版在 1.4.6 Eligible Misses soft pity 基础上补齐随机偏好控制面：🎲 新增可逐层浏览／搜索全部主题与展现形式的「📚 全池一览」，无需先抽中即可收藏或拉黑；收藏室支持每项独立设置 ×1～×50 倍率。全部仍为本地随机状态，不增加 Prompt／Token、API 请求、Observer、poll 或 timer。
 
 # 兔子镜小剧场
@@ -104,6 +110,8 @@
 - **轻壳外置（标题有壳）**：等待、生成成功与失败都保留在消息后；标题保留兔子镜工具壳，生成本体不再被整层外壳强改宽高；
 - **外置后内嵌**：等待与失败时显示外置圆框，成功后将同一个宿主自然移入本条回复的正文内容区域，不复制第二份兔子镜，也不写入 `message.mes`、`display_text` 或 Swipe 正文。
 
+可选开启 **“读取本轮已激活的世界书”**：复用 SillyTavern 主生成本轮已经加载并最终激活的全局／角色／聊天／Persona World Info 条目，不重新调用 World Info 扫描、不重新掷 probability、不读取未激活条目。四类来源共用同一份 12,000 字符独立预算；开启后这些已激活条目会作为参考资料发送给用户配置的独立 API，开关关闭时不会因为这项功能增加上下文。
+
 切换生成来源只影响之后的新回复；已经生成的主 API／独立 API 兔子镜会尽量保留。
 
 ## 随机、冷却与交互多样性
@@ -178,3 +186,7 @@
 版本更新内容见 [CHANGELOG](./CHANGELOG.md)。
 
 请通过本仓库 Issues 反馈，并附：内部版本、SillyTavern 版本、设备、浏览器、生成方式、显示方式，以及已经检查隐私的诊断文本。
+
+
+### 1.4.10 TEST：近输出短锁与重 roll 配色避重复
+独立 API 的近输出层只保留本轮 identity、当前真正生效的短避让和最终 `<toto>` 输出契约；基础 Prompt 已经包含的长规则不再整段重复。手动重新生成同一面兔子镜时，会把上一版真实配色家族作为本次避让对象（用户明确固定配色时除外）。这不是预设固定色盘，也不会额外发起 API 请求。

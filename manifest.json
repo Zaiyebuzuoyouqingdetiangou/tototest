@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.8",
-  "css": "style.css?rmv=1.4.8",
+  "js": "index.js?rmv=1.4.14",
+  "css": "style.css?rmv=1.4.14",
   "author": "Toto",
-  "version": "1.4.8",
+  "version": "1.4.14",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.8：🎲 新增可逐层浏览／搜索全部主题与展现形式的「📚 全池一览」，未曾抽中的项目也能直接收藏或拉黑；⭐ 收藏室支持每项独立设置 ×1～×50 本地随机倍率（默认 ×3），并与 1.4.6 Eligible Misses soft pity 独立叠加。主题家族层高倍率 ×6 封顶。黑名单／hard exclusion／近期冷却仍优先；不增加 Prompt、Token、API、Observer、poll 或 timer。独立 API、Global World Info、维修兔与 Prompt 结构不改。"
+  "description": "兔子镜测试版 1.4.14：基于 1.4.13 修复 Android／小米外置宽度过渡残留：进入 mobile lane 时清除旧 PC compact-shell；viewport 刷新 identity 同步 visualViewport／innerWidth／clientWidth／screen.width，并复用单一 debounce 监听 visualViewport resize；桌面 visualViewport-only 缩放不再单独触发 mobile lane。保留 1.4.12 checked 正文优先级修复及独立 API、Prompt、维修兔等其它链路。"
 }

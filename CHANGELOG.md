@@ -1,3 +1,55 @@
+# RabbitMirror 1.4.14 TEST
+
+## 1.4.14 TEST
+
+- 修复 Android／小米 external host 从 PC lane 切入 mobile lane 后遗留 `data-rm-independent-external-compact-shell` / `--rm-external-compact-width`，避免旧 320px 左右 compact 宽度继续压窄已经判定为手机布局的外置兔子镜。
+- viewport refresh signature 与 1.4.13 的多源宽度判断对齐，综合 `visualViewport.width`、`innerWidth`、`documentElement.clientWidth`、`screen.width`；resize 先共用原 160ms debounce，再比较复合 signature，避免在高频事件中反复读取布局。
+- 新增 `visualViewport.resize` 到现有 geometry refresh 队列，并在 disable/cleanup 成对移除；宽度未变化时 settle 后直接 no-op，不新增 observer / polling / API generation。
+- 为避免桌面 pinch/browser zoom 的 `visualViewport.width` 单独变小就误入 mobile lane，visualViewport-only 的窄宽只在移动平台提示成立时作为 mobile 证据；手机 `screen/inner/clientWidth` 任一已窄时仍按手机 lane。
+- 1.4.12 checked 正文强／弱隐藏优先级、独立 API 请求闸门、Prompt、抽签、收藏、World Info、维修兔其它链保持不变。
+
+
+# RabbitMirror 1.4.13 TEST
+
+## 1.4.13 TEST
+
+- 基于 1.4.12，仅修复独立 API 纯外置在部分 Android／小米浏览器或 WebView 上的窄面误判。
+- 新增外置专用有效 viewport 宽度判定：综合 `visualViewport.width`、`innerWidth`、`document.documentElement.clientWidth`、`screen.width` 的有效 CSS 宽度，避免真实手机因 desktop-like `innerWidth` 被误送进 PC-only compact/wide-stage 路径。
+- 手机结构宽度计划、auto-root fill rescue、PC compact shell、PC wide-stage neutralization 使用同一有效宽度判定；原来的 resize signature 仍保持 DOM-read-free，不新增 observer、polling 或 timer。
+- 1.4.12 `src/outputSanitizer.js` 的 BUG-1 强／弱隐藏证据优先级修复保留；独立 API 请求次数、Prompt、维修兔、黑名单／收藏等其它逻辑不改。
+
+
+## 1.4.12 TEST
+
+- 修复 1.4.11「checked 内层正文残留兜底」的候选优先级：`display:none` / `visibility:hidden|collapse` 作为强隐藏证据优先处理；只有不存在强隐藏候选时，才允许 `height<=1` / `opacity<=0.05` / 折叠 `max-height` 作为弱证据进入兜底。
+- 防止正文之前的零高度包装层、占位行、绝对定位 wrapper 或动画初始 0 高度节点先被修复并把父容器撑高，从而触发提前 `break`、真正正文仍保持隐藏。
+- 保留 1.4.11 的浅层直接子节点范围、第三层交互/独立伪类跳过、inline override 可逆回滚与“恢复出真实内容盒后立即停止”保护。
+- 不修改独立 API、近输出短锁、重 Roll 配色、World Info、抽签、收藏倍率、Eligible Misses、维修兔其它模块或请求次数。
+
+# RabbitMirror 1.4.11 TEST
+
+## 1.4.11 TEST
+
+- 维修兔新增「checked 内层正文残留兜底」：当 checkbox/radio 的 checked 分支已经明确展开一个结果容器，但该容器的直接正文子节点仍被无条件 `display:none` / `visibility:hidden` / `opacity:0` / 零高度残留样式卡住时，只恢复这些无独立交互状态的正文/媒体子节点。
+- 该兜底只作用于已经由 checked 规则证明为当前选中结果的容器；带 input/button/label/details 等嵌套交互的子区，以及拥有自己 `:checked/:hover/:focus/:active/:target/:has()` 状态规则的子内容会跳过，避免把真正的第三层交互粗暴摊开。
+- 切换 radio/checkbox 时使用既有 inline override 回滚机制恢复原样，不让多个分支同时展开；全链路诊断新增「checked内层正文残留兜底」计数，便于确认是否命中。
+- 不修改独立 API、抽签、World Info、近输出短锁、重 Roll 配色、收藏/fairness、Prompt 或请求次数。
+
+# RabbitMirror 1.4.10 TEST
+
+## 1.4.10 TEST
+
+- 独立 API 的“最终执行锁”压缩为真正的近输出短锁：只重复本轮抽中 identity、实际生效的近因避让、可选点菜/视觉偏好与最短输出契约；不再重复基础 Prompt 已包含的展现形式母本、全局视觉地板、完整冷却段、风险纠偏和五项自检。
+- 手动“重新生成兔子镜”现在会读取同槽位上一版真实配色指纹；除非用户明确固定配色，否则本次重 roll 必须换配色家族。
+- 独立 API 的近期配色守卫改为优先读取真实历史版本，而不是只看每个消息槽位当前保留的一版，因此同一兔子镜连续重 roll 也会进入重复配色判断。
+
+
+- 独立 API 的“读取本轮已激活世界书”从仅 Global selector 扩展为复用 SillyTavern 主生成当轮已加载并最终激活的 全局／角色／聊天／Persona World Info。
+- 仍以 `WORLDINFO_ENTRIES_LOADED` 建立本轮合法条目集合、再以 `WORLD_INFO_ACTIVATED` 取真正激活项；不调用 `getWorldInfoPrompt()`，不重新扫描、不重新掷 probability，也不读取未激活条目。
+- 四类 World Info 共用原有单一 12,000 字符独立预算，不按来源各给 12,000；关闭开关时行为与 1.4.8 一致，不为此增加上下文。
+- 内部 settings 键 `independentReadGlobalWorldInfo` 暂保留用于旧设置兼容；用户界面与诊断文案改为“已激活世界书”。
+- 1.4.8 的全池一览、×1～×50 收藏倍率、Eligible Misses soft pity、独立 API 请求 profile、single-flight、维修兔与 Prompt 主结构不作其它功能修改。
+
 # RabbitMirror 1.4.8 TEST
 
 - ⭐ 收藏室单项自定义倍率上限由 `×20` 提升到 `×50`（仍为 0.5 步进、默认 `×3`）。`×50` 只是相对 weighted-random 权重，不是 50% 命中率，也不形成硬保底。
