@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.18';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.18';
+import { getSettings } from './settings.js?rmv=1.4.23';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.23';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.4.18';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.18';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.18';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.18';
+} from './feedbackCat.js?rmv=1.4.23';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.23';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.23';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.23';
 
 
-const RUNTIME_VERSION = '1.4.18';
+const RUNTIME_VERSION = '1.4.23';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -11773,6 +11773,9 @@ function releaseIndependentMaintenanceLiveRepair(root, delay = 700) {
     return true;
 }
 const maintenancePreRepairSnapshots = new Map();
+const rabbitMirrorInteractionResetSnapshots = new Map();
+const rabbitMirrorInteractionResetInstanceIds = new WeakMap();
+let rabbitMirrorInteractionResetInstanceCounter = 0;
 const MAINTENANCE_AUTO_SAFE_ATTR = 'data-rabbit-mirror-auto-safe-maintenance';
 const MAINTENANCE_AUTO_SAFE_RESULT_ATTR = 'data-rabbit-mirror-auto-safe-result';
 const MAINTENANCE_AUTO_SAFE_VERSION = 'safe-v3-live-patrol';
@@ -11844,6 +11847,7 @@ const MOBILE_LAYOUT_COMPACT_GAP_ATTR = 'data-rm-mobile-compact-gap';
 const MOBILE_LAYOUT_MEDIA_ATTR = 'data-rm-mobile-media';
 const MOBILE_LAYOUT_SCROLL_ATTR = 'data-rm-mobile-scroll';
 const MOBILE_LAYOUT_BREAK_TEXT_ATTR = 'data-rm-mobile-break-text';
+const MOBILE_LAYOUT_SQUEEZED_TEXT_ATTR = 'data-rm-mobile-squeezed-text';
 const MOBILE_LAYOUT_UNDERFILL_ATTR = 'data-rm-mobile-underfill';
 const MOBILE_LAYOUT_STATE_CONTENT_ATTR = 'data-rm-mobile-state-content';
 const MOBILE_LAYOUT_STATE_ACTIVE_ATTR = 'data-rm-mobile-state-active';
@@ -11881,6 +11885,7 @@ const MOBILE_LAYOUT_TARGET_ATTRS = Object.freeze([
     MOBILE_LAYOUT_MEDIA_ATTR,
     MOBILE_LAYOUT_SCROLL_ATTR,
     MOBILE_LAYOUT_BREAK_TEXT_ATTR,
+    MOBILE_LAYOUT_SQUEEZED_TEXT_ATTR,
     MOBILE_LAYOUT_UNDERFILL_ATTR,
     MOBILE_LAYOUT_STATE_CONTENT_ATTR,
     MOBILE_LAYOUT_STATE_ACTIVE_ATTR,
@@ -11899,7 +11904,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.4.18-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.4.23-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -13008,7 +13013,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         '[9. 手机端排版／内容承载]',
         `viewportWidth=${mobileLayout.viewportWidth || 0} narrow=${!!mobileLayout.narrowViewport} candidates=${mobileLayout.candidateCount || 0}`,
         `overflow=${mobileLayout.horizontalOverflowCount || 0} fixedWidth=${mobileLayout.fixedWidthCount || 0} grid=${mobileLayout.gridCount || 0} matrix=${mobileLayout.matrixCount || 0} flex=${mobileLayout.flexCount || 0}`,
-        `multiColumn=${mobileLayout.multiColumnCount || 0} media=${mobileLayout.mediaCount || 0} stateContent=${mobileLayout.stateContentCount || 0} underfill=${mobileLayout.underfillCount || 0}`,
+        `multiColumn=${mobileLayout.multiColumnCount || 0} media=${mobileLayout.mediaCount || 0} stateContent=${mobileLayout.stateContentCount || 0} squeezedText=${mobileLayout.squeezedTextCount || 0} underfill=${mobileLayout.underfillCount || 0}`,
         `护照／证件内页=${mobileLayout.passportDocumentCount || 0} repaired=${root.getAttribute?.(PASSPORT_DOCUMENT_RESCUE_ATTR) || '0'}`,
         `剖面／分层保形=${mobileLayout.sectionStackCount || 0}`,
         `电视／终端屏幕保形=${mobileLayout.screenShellCount || 0}`,
@@ -15321,6 +15326,7 @@ function buildMaintenanceFindings(root, {
                 `multiColumn=${Number(mobileLayout?.multiColumnCount) || 0}`,
                 `media=${Number(mobileLayout?.mediaCount) || 0}`,
                 `stateContent=${Number(mobileLayout?.stateContentCount) || 0}`,
+                `squeezedText=${Number(mobileLayout?.squeezedTextCount) || 0}`,
                 `underfill=${Number(mobileLayout?.underfillCount) || 0}`,
             ],
             confidence: 0.93,
@@ -16448,6 +16454,146 @@ function trimMaintenanceSnapshots(max = 24) {
         if (!oldest) break;
         maintenancePreRepairSnapshots.delete(oldest);
     }
+}
+
+function trimRabbitMirrorInteractionResetSnapshots(max = 24) {
+    while (rabbitMirrorInteractionResetSnapshots.size > max) {
+        const oldest = [...rabbitMirrorInteractionResetSnapshots.entries()].sort((a, b) => Number(a[1]?.ts || 0) - Number(b[1]?.ts || 0))[0]?.[0];
+        if (!oldest) break;
+        rabbitMirrorInteractionResetSnapshots.delete(oldest);
+    }
+}
+
+function rabbitMirrorInteractionResetIdentityNode(root) {
+    if (!root) return null;
+    if (root.matches?.('details')) return root;
+    return root.querySelector?.(':scope > details') || root.querySelector?.('details') || root;
+}
+
+function rabbitMirrorInteractionResetInstanceId(root, create = false) {
+    const node = rabbitMirrorInteractionResetIdentityNode(root);
+    if (!node) return '';
+    let id = rabbitMirrorInteractionResetInstanceIds.get(node) || '';
+    if (!id && create) {
+        rabbitMirrorInteractionResetInstanceCounter += 1;
+        id = `${Date.now().toString(36)}-${rabbitMirrorInteractionResetInstanceCounter.toString(36)}`;
+        rabbitMirrorInteractionResetInstanceIds.set(node, id);
+    }
+    return id;
+}
+
+function rabbitMirrorInteractionResetSourceSignature(root) {
+    const externalHost = root?.matches?.('[data-rabbit-mirror-external-source="true"]')
+        ? root
+        : root?.closest?.('[data-rabbit-mirror-external-source="true"]');
+    const externalSourceHash = String(
+        externalHost?.getAttribute?.('data-rabbit-mirror-owner-source-hash')
+        || externalHost?.getAttribute?.('data-rm-owner-source-hash')
+        || externalHost?.dataset?.rabbitMirrorOwnerSourceHash
+        || '',
+    ).trim();
+    const externalOwnerKey = String(externalHost?.dataset?.rmKey || externalHost?.dataset?.rabbitMirrorExternalOwner || '').trim();
+    if (externalSourceHash || externalOwnerKey) {
+        return hashInteractionSignature(`external|${externalOwnerKey}|${externalSourceHash}`);
+    }
+
+    const index = getMessageIndexFromMirrorNode(root);
+    const chat = getAvailableHostChat();
+    const message = index >= 0 ? chat[index] : null;
+    if (message && !message?.is_user) {
+        const swipe = Number.isInteger(message?.swipe_id) ? message.swipe_id : 0;
+        const source = getSelectedMessageSource(message, { preferDisplay: messageUsesDistinctDisplaySource(message) });
+        if (source) return hashInteractionSignature(`${index}|${swipe}|${source}`);
+    }
+    return 'fallback';
+}
+
+function rabbitMirrorInteractionResetSnapshotKey(root, createInstance = false) {
+    const base = maintenanceSnapshotKey(root);
+    const instance = rabbitMirrorInteractionResetInstanceId(root, createInstance);
+    const source = rabbitMirrorInteractionResetSourceSignature(root);
+    return base && instance && source ? `${base}|mirror:${instance}|src:${source}` : '';
+}
+
+function cleanRabbitMirrorInteractionResetClone(details) {
+    if (!details?.cloneNode) return null;
+    const clone = details.cloneNode(true);
+    clone.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}]`)?.forEach(node => node.remove());
+    clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
+    clone.querySelectorAll?.('[data-rabbit-mirror-maintenance-checked-sandbox]')?.forEach(node => node.remove());
+    return clone;
+}
+
+function invalidateRabbitMirrorInteractionResetSnapshot(root) {
+    const key = rabbitMirrorInteractionResetSnapshotKey(root, false);
+    if (key) rabbitMirrorInteractionResetSnapshots.delete(key);
+}
+
+function captureRabbitMirrorInteractionResetSnapshot(root) {
+    if (!root?.isConnected) return false;
+    const key = rabbitMirrorInteractionResetSnapshotKey(root, true);
+    if (!key || rabbitMirrorInteractionResetSnapshots.has(key)) return false;
+    const details = root.matches?.('details') ? root : root.querySelector?.(':scope > details') || root.querySelector?.('details');
+    if (!details?.parentNode) return false;
+    const node = cleanRabbitMirrorInteractionResetClone(details);
+    if (!node) return false;
+    const instanceId = rabbitMirrorInteractionResetInstanceId(root, false);
+    rabbitMirrorInteractionResetSnapshots.set(key, { node, instanceId, sourceSignature: rabbitMirrorInteractionResetSourceSignature(root), ts: Date.now() });
+    trimRabbitMirrorInteractionResetSnapshots();
+    return true;
+}
+
+function hasRabbitMirrorInteractionResetSnapshot(root) {
+    const key = rabbitMirrorInteractionResetSnapshotKey(root, false);
+    return !!key && rabbitMirrorInteractionResetSnapshots.has(key);
+}
+
+function rabbitMirrorInteractionRootFromTarget(target) {
+    if (!(target instanceof Element)) return null;
+    const directToto = target.closest?.(MIRROR_TOTO_SELECTOR);
+    if (directToto && isInsideChatMessage(directToto)) return directToto;
+    let details = target.closest?.('details');
+    while (details) {
+        if (isRabbitMirrorDetails(details) && isInsideChatMessage(details)) return details;
+        details = details.parentElement?.closest?.('details') || null;
+    }
+    const label = target.closest?.('label');
+    const forId = String(label?.getAttribute?.('for') || '').trim();
+    if (forId) {
+        const input = label.ownerDocument?.getElementById?.(forId);
+        if (input && input !== target) return rabbitMirrorInteractionRootFromTarget(input);
+    }
+    return null;
+}
+
+function captureRabbitMirrorInteractionResetFromEventTarget(target) {
+    if (!(target instanceof Element)) return false;
+    if (target.closest?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return false;
+    const root = rabbitMirrorInteractionRootFromTarget(target);
+    return root ? captureRabbitMirrorInteractionResetSnapshot(root) : false;
+}
+
+function restoreRabbitMirrorInteractionResetSnapshot(root, button) {
+    const key = rabbitMirrorInteractionResetSnapshotKey(root, false);
+    const snapshot = key ? rabbitMirrorInteractionResetSnapshots.get(key) : null;
+    if (!snapshot?.node) {
+        setMaintenanceRabbitState(button, MAINTENANCE_STATES.unknown, '当前兔子镜还没有可恢复的交互初始状态');
+        return false;
+    }
+    const details = root.matches?.('details') ? root : root.querySelector?.(':scope > details') || root.querySelector?.('details');
+    if (!details?.parentNode) return false;
+    const keepOpen = details.hasAttribute('open');
+    const restoredDetails = snapshot.node.cloneNode(true);
+    if (keepOpen) restoredDetails.setAttribute('open', ''); else restoredDetails.removeAttribute('open');
+    details.replaceWith(restoredDetails);
+    if (snapshot.instanceId) rabbitMirrorInteractionResetInstanceIds.set(restoredDetails, snapshot.instanceId);
+    const restoredRoot = root === details ? restoredDetails : root;
+    try { activateRabbitMirrorInteractionRescue(restoredRoot); } catch (error) { console.debug('[RabbitMirror] interaction reset rescue rebind skipped:', error); }
+    try { rehydrateRabbitMirrorMaintenanceRepairs(restoredRoot); } catch (error) { console.debug('[RabbitMirror] interaction reset maintenance rehydrate skipped:', error); }
+    try { refreshRabbitMirrorToolsInScope(restoredRoot); } catch (error) { console.debug('[RabbitMirror] interaction reset tool refresh skipped:', error); }
+    const restoredButton = restoredRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || restoredDetails.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
+    setMaintenanceRabbitState(restoredButton, MAINTENANCE_STATES.idle, '已恢复这面兔子镜的交互初始状态；外层展开状态保持不变');
+    return true;
 }
 
 function captureMaintenancePreRepairSnapshot(root) {
@@ -18241,6 +18387,7 @@ ${scope} iframe[${MOBILE_LAYOUT_MEDIA_ATTR}] { width: 100% !important; }
 ${scope} [${MOBILE_LAYOUT_SCROLL_ATTR}] { max-width: 100% !important; overflow-x: auto !important; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
 ${scope} table[${MOBILE_LAYOUT_SCROLL_ATTR}], ${scope} pre[${MOBILE_LAYOUT_SCROLL_ATTR}] { display: block !important; }
 ${scope} [${MOBILE_LAYOUT_BREAK_TEXT_ATTR}] { overflow-wrap: anywhere !important; word-break: break-word !important; min-width: 0 !important; }
+${scope} [${MOBILE_LAYOUT_SQUEEZED_TEXT_ATTR}] { min-width:min(72%, 280px) !important; max-width:calc(100% - 16px) !important; box-sizing:border-box !important; white-space:normal !important; overflow-wrap:break-word !important; word-break:normal !important; }
 ${scope} [${MOBILE_LAYOUT_UNDERFILL_ATTR}] { width:min(100%, 420px) !important; min-width:min(100%, 420px) !important; max-width:100% !important; box-sizing:border-box !important; }
 ${scope} [${MOBILE_LAYOUT_STATE_CONTENT_ATTR}][${MOBILE_LAYOUT_STATE_ACTIVE_ATTR}] { height: auto !important; max-height: none !important; overflow: visible !important; }
 ${scope} [${MOBILE_LAYOUT_RELATION_BRANCH_ATTR}] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; gap: clamp(8px, 3vw, 16px) !important; overflow: visible !important; }
@@ -18251,6 +18398,57 @@ ${scope} [${MOBILE_LAYOUT_RELATION_DETAIL_ATTR}][${MOBILE_LAYOUT_RELATION_SIDE_A
 }`;
 }
 
+
+
+function maintenanceMobileLayoutSqueezedTextCandidate(element, style = null, referenceWidth = 0) {
+    if (!element?.parentElement || referenceWidth < 280) return false;
+    if (maintenanceMobileLayoutIsInternal(element) || maintenanceMobileLayoutIsPassportManaged(element)) return false;
+    if (element.matches?.('input,select,textarea,button,label,a,pre,code,table,blockquote,figcaption,svg,canvas,img,video,iframe')) return false;
+    if (element.closest?.('[data-rm-touch-zone]')) return false;
+
+    const computed = style || maintenanceMobileLayoutComputedStyle(element);
+    const rect = maintenanceMobileLayoutRect(element);
+    const parentRect = maintenanceMobileLayoutRect(element.parentElement);
+    if (!computed || !rect || !parentRect || parentRect.width < 260 || rect.width <= 0 || rect.height <= 0) return false;
+    const textLength = maintenanceMobileLayoutTextLength(element);
+    if (textLength < 72) return false;
+
+    const writingMode = String(computed.writingMode || '').trim().toLowerCase();
+    if (writingMode && !writingMode.startsWith('horizontal')) return false;
+    const whiteSpace = String(computed.whiteSpace || '').trim().toLowerCase();
+    if (/(?:pre|nowrap)/.test(whiteSpace)) return false;
+    const signature = `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('role') || ''} ${element.getAttribute?.('aria-label') || ''}`;
+    if (/(?:^|[-_\s])(?:sidebar|side-bar|rail|toc|menu|nav|toolbar|badge|tag|legend|avatar|icon|ticker|caption|label|quote|blockquote|poem|verse|lyrics|lyric|haiku|couplet|vertical-text)(?:$|[-_\s])/i.test(signature)) return false;
+
+    const fontSize = maintenanceMobileLayoutLengthPx(computed.fontSize, parentRect.width) || Number.parseFloat(computed.fontSize || '0') || 0;
+    if (fontSize < 10 || fontSize > 42) return false;
+    const padding = maintenanceMobileLayoutLengthPx(computed.paddingLeft, parentRect.width)
+        + maintenanceMobileLayoutLengthPx(computed.paddingRight, parentRect.width);
+    const usableWidth = Math.max(1, rect.width - padding);
+    const approxCharsPerLine = usableWidth / Math.max(10, fontSize * 0.95);
+    const parentFraction = rect.width / Math.max(1, parentRect.width);
+    const extremeNarrow = rect.width <= 176 && parentFraction <= 0.5 && parentRect.width - rect.width >= 72;
+    const columnLike = rect.height / Math.max(1, rect.width) >= 2.2 && approxCharsPerLine <= 5.4;
+    if (!extremeNarrow || !columnLike) return false;
+
+    const transform = String(computed.transform || '').trim().toLowerCase();
+    const matrix = transform.match(/^matrix\(([^)]+)\)$/);
+    if (matrix) {
+        const parts = matrix[1].split(',').map(value => Number.parseFloat(value.trim()));
+        if (parts.length >= 4 && (Math.abs(parts[1] || 0) > 0.08 || Math.abs(parts[2] || 0) > 0.08)) return false;
+    }
+    const aspectRatio = String(computed.aspectRatio || '').trim().toLowerCase();
+    if (aspectRatio && aspectRatio !== 'auto') return false;
+
+    // On absolute Visual Scenery overlays, only rescue a block that is already geometrically
+    // centered. This avoids stretching intentionally narrow edge labels or side annotations.
+    const position = String(computed.position || '').trim().toLowerCase();
+    if (position === 'absolute' || position === 'fixed') {
+        const centerDelta = Math.abs((rect.left + rect.width / 2) - (parentRect.left + parentRect.width / 2));
+        if (centerDelta > parentRect.width * 0.2) return false;
+    }
+    return true;
+}
 
 function maintenanceMobileLayoutUnderfillCandidate(element, style = null, referenceWidth = 0) {
     if (!element?.parentElement || referenceWidth < 300) return false;
@@ -18322,6 +18520,7 @@ function inspectMaintenanceMobileLayout(root) {
         multiColumnCount: 0,
         mediaCount: 0,
         stateContentCount: 0,
+        squeezedTextCount: 0,
         underfillCount: 0,
         passportDocumentCount: 0,
         sectionStackCount: 0,
@@ -18349,6 +18548,7 @@ function inspectMaintenanceMobileLayout(root) {
         multiColumn: new Set(),
         media: new Set(),
         stateContent: new Set(),
+        squeezedText: new Set(),
         underfill: new Set(),
         relationTree: new Set(),
     };
@@ -18448,6 +18648,11 @@ function inspectMaintenanceMobileLayout(root) {
             }
         }
 
+        if (!element.hasAttribute(MOBILE_LAYOUT_SQUEEZED_TEXT_ATTR)
+            && maintenanceMobileLayoutSqueezedTextCandidate(element, style, referenceWidth)) {
+            buckets.squeezedText.add(element);
+        }
+
         if (!element.hasAttribute(MOBILE_LAYOUT_UNDERFILL_ATTR)
             && maintenanceMobileLayoutUnderfillCandidate(element, style, referenceWidth)) {
             buckets.underfill.add(element);
@@ -18496,6 +18701,7 @@ function inspectMaintenanceMobileLayout(root) {
         multiColumnCount: buckets.multiColumn.size,
         mediaCount: buckets.media.size,
         stateContentCount: buckets.stateContent.size,
+        squeezedTextCount: buckets.squeezedText.size,
         underfillCount: buckets.underfill.size,
         passportDocumentCount: findRenderedPassportDocumentCandidates(root).length,
         sectionStackCount: sectionStackHosts.length,
@@ -18639,6 +18845,10 @@ function installMaintenanceMobileLayoutRescue(root) {
                     }
                 }
             }
+        }
+
+        if (maintenanceMobileLayoutSqueezedTextCandidate(element, style, referenceWidth)) {
+            maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_SQUEEZED_TEXT_ATTR, marked);
         }
 
         if (maintenanceMobileLayoutUnderfillCandidate(element, style, referenceWidth)) {
@@ -19847,6 +20057,7 @@ function restoreMaintenanceAutoSafeUiState(snapshot) {
 
 function runMaintenanceSafeAutomaticRepairs(root, button) {
     if (!root?.isConnected || !button?.isConnected) return { repaired: 0, modules: [] };
+    invalidateRabbitMirrorInteractionResetSnapshot(root);
     const uiStateSnapshot = captureMaintenanceAutoSafeUiState(root);
     const modules = [];
     const add = (id, count) => {
@@ -19923,6 +20134,7 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
 
 function runMaintenanceUserRepair(root, button, mode) {
     if (!root?.isConnected || !button?.isConnected) return false;
+    invalidateRabbitMirrorInteractionResetSnapshot(root);
     if (mode === 'auto') return runMaintenanceAutomaticRepairPlan(root, button);
     markIndependentMaintenanceLiveRepair(root, 5200);
     const captured = captureMaintenancePreRepairSnapshot(root);
@@ -20087,6 +20299,7 @@ function showMaintenanceRabbitMenu(root, button) {
       <button type="button" data-rm-maintenance-action="source">📄 空白或显示代码、纯文字</button>
       <button type="button" data-rm-maintenance-action="style">🎨 样子不对</button>
       <button type="button" data-rm-maintenance-action="all">🔧 全部试试（仅当前兔子镜）</button>
+      <button type="button" data-rm-maintenance-action="reset-interaction" ${hasRabbitMirrorInteractionResetSnapshot(root) ? '' : 'disabled'}>⏪ 恢复交互初始状态</button>
       <button type="button" data-rm-maintenance-action="restore-before" ${maintenancePreRepairSnapshots.has(maintenanceSnapshotKey(root)) ? '' : 'disabled'}>↩️ 返回修复前</button>
       <button type="button" data-rm-maintenance-action="diagnostic">📋 生成全链路诊断</button>
       <button type="button" data-rm-maintenance-action="close">关闭</button>`;
@@ -20104,7 +20317,12 @@ function showMaintenanceRabbitMenu(root, button) {
         event.stopPropagation();
         closeMaintenanceRabbitMenu();
         if (action === 'close') return;
+        if (action === 'reset-interaction') {
+            restoreRabbitMirrorInteractionResetSnapshot(root, button);
+            return;
+        }
         if (action === 'restore-before') {
+            invalidateRabbitMirrorInteractionResetSnapshot(root);
             const restoreSummary = getRabbitMirrorSummaryText(root);
             const restoreIndex = getMessageIndexFromMirrorNode(root);
             if (restoreMaintenancePreRepairSnapshot(root, button)) {
@@ -22922,6 +23140,7 @@ function initializeMaintenanceAutoSafeStartupGuard() {
     maintenanceAutoSafeBaselineSignatures.clear();
     maintenanceAutoSafeAttemptedRoots = new WeakMap();
     maintenancePreRepairSnapshots.clear();
+    rabbitMirrorInteractionResetSnapshots.clear();
     maintenanceAutoSafeReady = false;
     if (!isMaintenanceAutoSafeEnabled()) return;
     captureMaintenanceAutoSafeBaseline();
@@ -23139,11 +23358,17 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
     removeToolEntryDelegation();
     toolEntryDelegationRoot = chatRoot;
     toolEntryDelegatedPointerHandler = event => {
+        // Capture the pristine per-mirror interaction baseline at the earliest existing delegated
+        // pointer boundary. This covers pointerdown-driven rescue/UI paths before their later click
+        // handlers mutate state; keyboard activation is still covered by the capture-phase click
+        // delegate below. Tool buttons are excluded by the capture helper itself.
+        captureRabbitMirrorInteractionResetFromEventTarget(event.target);
         const button = event.target?.closest?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`);
         if (!button || !chatRoot.contains(button)) return;
         event.stopPropagation();
     };
     toolEntryDelegatedClickHandler = event => {
+        captureRabbitMirrorInteractionResetFromEventTarget(event.target);
         const button = event.target?.closest?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`);
         if (!button || !chatRoot.contains(button)) return;
         const root = rabbitMirrorToolRootFromButton(button);
@@ -23348,6 +23573,7 @@ export function destroyOutputSanitizer() {
     maintenanceAutoSafeBaselineSignatures.clear();
     maintenanceAutoSafeAttemptedRoots = new WeakMap();
     maintenancePreRepairSnapshots.clear();
+    rabbitMirrorInteractionResetSnapshots.clear();
     maintenanceAutoSafeReady = false;
     removeMaintenanceRabbitsInChatDom();
     removeFeedbackCatsInChatDom();

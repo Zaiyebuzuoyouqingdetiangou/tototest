@@ -1,15 +1,15 @@
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.18';
-import { clearLastCombo } from './storage.js?rmv=1.4.18';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.18';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.18';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.18';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.18';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.18';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.18';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.4.18';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.23';
+import { clearLastCombo } from './storage.js?rmv=1.4.23';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.23';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.23';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.23';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.23';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.23';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, getObservedWorldInfoBooks, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.23';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.4.23';
 
-const SETTINGS_UI_VERSION = '1.4.18-visual-maintenance';
-const RUNTIME_VERSION = '1.4.18';
+const SETTINGS_UI_VERSION = '1.4.23-visual-maintenance';
+const RUNTIME_VERSION = '1.4.23';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -88,6 +88,33 @@ function renderBlacklistSettings() {
       ${warnings.length ? `<div style="margin-top:5px;color:#d97706;font-size:11px;line-height:1.45;">${warnings.map(escapeHtml).join('<br>')}</div>` : ''}
       ${section('主题 / 元素', themes)}
       ${section('展现形式', formats)}`);
+}
+
+function renderWorldInfoBookSettings() {
+    const target = $('#rh_world_info_book_filters');
+    if (!target.length) return;
+    const settings = getSettings();
+    const disabled = new Set(Array.isArray(settings.independentWorldInfoDisabledBooks) ? settings.independentWorldInfoDisabledBooks : []);
+    const liveBooks = getObservedWorldInfoBooks();
+    const byName = new Map(liveBooks.map(item => [item.name, item]));
+    for (const name of disabled) {
+        if (!byName.has(name)) byName.set(name, { name, sources: [], lastSeen: 0, stale: true });
+    }
+    const books = [...byName.values()].sort((a, b) => String(a.name).localeCompare(String(b.name), 'zh-Hans-CN'));
+    const sourceLabels = { globalLore: '全局', characterLore: '角色', chatLore: '聊天', personaLore: 'Persona' };
+    const rows = books.map((item, index) => {
+        const enabled = !disabled.has(item.name);
+        const sources = (item.sources || []).map(source => sourceLabels[source] || source).filter(Boolean).join(' / ');
+        const note = sources || (item.stale ? '此前已保存的逐本选择；本页尚未再次观察到' : '来源待观察');
+        return `<label class="checkbox_label" style="display:flex;align-items:flex-start;gap:7px;margin:4px 0;">
+          <input class="rh-world-info-book-toggle" type="checkbox" data-book-index="${index}" ${enabled ? 'checked' : ''}>
+          <span style="min-width:0;flex:1;overflow-wrap:anywhere;"><b>${escapeHtml(item.name)}</b><br><span style="opacity:.62;font-size:10px;">${escapeHtml(note)}</span></span>
+        </label>`;
+    }).join('');
+    target.data('rm-world-info-books', books.map(item => item.name));
+    target.html(books.length
+        ? `<div style="font-size:11px;line-height:1.45;opacity:.76;margin-bottom:5px;">逐本选择只筛选 SillyTavern 本轮已经加载并最终激活的条目，不会重新扫描世界书，也不会重新掷 probability。新观察到的世界书默认开启。</div>${rows}`
+        : '<div style="font-size:11px;line-height:1.45;opacity:.66;">尚未观察到世界书。在独立 API 模式下完成一轮主生成后，这里会按世界书名称逐本列出；本功能本身不会主动扫描。</div>');
 }
 
 function independentApiProfileLabel(diagnostic) {
@@ -293,7 +320,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.18</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.23</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -336,6 +363,7 @@ export function initRabbitMirrorUI() {
             </div>
             <label class="checkbox_label"><input id="rh_independent_read_global_world_info" type="checkbox"> 读取本轮已激活的世界书</label>
             <div class="rabbit-mirror-subnote" style="margin:-4px 0 0 26px;opacity:.68;font-size:11px;line-height:1.45;">仅独立 API 生效，下一轮生成起生效。开启后复用 SillyTavern 主生成本轮实际激活的全局／角色／聊天／Persona World Info 条目；不重新扫描、不重新掷 probability，也不读取未激活条目。四类来源共同使用同一份 12,000 字符预算；这些已激活条目会作为参考资料发送给你配置的独立 API，并优先保留刚完成的正文。关闭时不会为此增加上下文。</div>
+            <div id="rh_world_info_book_filters" style="margin:7px 0 8px 26px;padding:7px 9px;border-left:2px solid color-mix(in srgb, var(--SmartThemeBorderColor) 55%, transparent);"></div>
             <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议从 <b>1.0</b> 开始：0.9～1.1 通常兼顾执行力与变化；高于 1.2 更容易出现结构、CSS 或内容失控。实际是否发送以生成后的请求状态为准。</div>
             <div id="rh_independent_api_diagnostic" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);opacity:.78;font-size:11px;line-height:1.5;word-break:break-word;">最近一次实际请求：尚无记录</div>
             <div style="opacity:.66;font-size:11px;line-height:1.45;">API Key 仅保存在当前 SillyTavern 浏览器设置中。模型列表、连接检测与生成会通过 SillyTavern 自带的“自定义 Chat Completions”后端通道请求，不需要另装服务端插件，也不受浏览器 CORS 限制。</div>
@@ -491,11 +519,12 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_max_tokens').val(settings.independentApiMaxTokens ?? 12000);
     $('#rh_independent_model').val(settings.independentApiModel || '');
     checked('#rh_independent_read_global_world_info', settings.independentReadGlobalWorldInfo === true);
+    renderWorldInfoBookSettings();
     const syncGenerationModeFields = () => { const independent = getSettings().generationSource === 'independent'; $('#rh_independent_api_fields').toggle(independent); $('#rh_follow_display_row').toggle(!independent); };
     syncGenerationModeFields();
     renderIndependentApiDiagnostic();
     try { globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup?.(); } catch {}
-    const independentDiagnosticListener = event => renderIndependentApiDiagnostic(event?.detail || null);
+    const independentDiagnosticListener = event => { renderIndependentApiDiagnostic(event?.detail || null); renderWorldInfoBookSettings(); };
     globalThis.addEventListener?.(API_REQUEST_DIAGNOSTIC_EVENT, independentDiagnosticListener);
     globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup = () => globalThis.removeEventListener?.(API_REQUEST_DIAGNOSTIC_EVENT, independentDiagnosticListener);
     try { globalThis.__rabbitMirrorBlacklistUiCleanup?.(); } catch {}
@@ -534,6 +563,19 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_read_global_world_info').on('change', e => {
         updateSettings({ independentReadGlobalWorldInfo: e.target.checked === true });
         toastr?.info?.(e.target.checked ? '独立 API 将从下一轮开始读取本轮已激活的世界书。' : '独立 API 已关闭已激活世界书读取；下一轮起生效。');
+    });
+    $('#rh_world_info_book_filters').on('change', '.rh-world-info-book-toggle', function () {
+        const index = Number($(this).attr('data-book-index'));
+        const books = $('#rh_world_info_book_filters').data('rm-world-info-books') || [];
+        const name = String(books[index] || '').trim();
+        if (!name) return;
+        const nextDisabled = new Set(getSettings().independentWorldInfoDisabledBooks || []);
+        if (this.checked) nextDisabled.delete(name);
+        else nextDisabled.add(name);
+        updateSettings({ independentWorldInfoDisabledBooks: [...nextDisabled] });
+        renderWorldInfoBookSettings();
+        const safeName = escapeHtml(name);
+        toastr?.info?.(this.checked ? `世界书「${safeName}」已加入 RabbitMirror 逐本读取。` : `世界书「${safeName}」已从 RabbitMirror 逐本读取中关闭。`);
     });
     const saveIndependentFields = () => {
         const temperature = Number($('#rh_independent_temperature').val());

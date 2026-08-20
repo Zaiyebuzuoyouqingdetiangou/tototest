@@ -1,20 +1,22 @@
-import { getSettings } from './settings.js?rmv=1.4.18';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.18';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.4.18';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.18';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.4.18';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.18';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.18';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.18';
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.18';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings } from './settings.js?rmv=1.4.23';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.23';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.4.23';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.23';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.4.23';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.23';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.23';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.23';
+import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.23';
 
-const RUNTIME_VERSION = '1.4.18';
+const RUNTIME_VERSION = '1.4.23';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
 const OWNER_LOCK_STORE_KEY = 'rabbit_mirror_independent_owner_locks_v1';
 const API_REQUEST_DIAGNOSTIC_EVENT = 'rabbitmirror:independent-api-diagnostic';
+const WORLD_INFO_BOOK_CACHE_KEY = 'rabbit_mirror_world_info_books_v1';
+const WORLD_INFO_BOOK_CACHE_LIMIT = 512;
 const API_PROFILE_SCHEMA = 2;
 const API_PROFILE_ORDER = [
  'chat_system_user_full',
@@ -105,6 +107,8 @@ const messageSourceRevisions = new Map();
 // now reuses activated Global / Character / Chat / Persona World Info under one shared budget.
 const globalWorldInfoSnapshots = new Map();
 let activeGlobalWorldInfoCapture = null;
+const observedWorldInfoBooks = new Map();
+let observedWorldInfoBookCacheLoaded = false;
 const GLOBAL_FLIGHT_KEY = '__rabbitMirrorIndependentFlightsV3';
 const LEGACY_GLOBAL_FLIGHT_KEYS = ['__rabbitMirrorIndependentFlightsV2'];
 const OUTPUT_STORE_BUDGET_BYTES = 1600000;
@@ -643,6 +647,79 @@ function observeMessageSourceRevision(ctx,index,msg){
  }
  return value;
 }
+function normalizeWorldInfoBookName(value=''){
+ const name=String(value||'').trim();
+ return name && name.length<=WORLD_INFO_BOOK_NAME_MAX_CHARS ? name : '';
+}
+function trimObservedWorldInfoBookCache(){
+ if(observedWorldInfoBooks.size<=WORLD_INFO_BOOK_CACHE_LIMIT) return;
+ const stale=[...observedWorldInfoBooks.entries()]
+  .sort((a,b)=>Number(a[1]?.lastSeen||0)-Number(b[1]?.lastSeen||0))
+  .slice(0,observedWorldInfoBooks.size-WORLD_INFO_BOOK_CACHE_LIMIT);
+ for(const [name] of stale) observedWorldInfoBooks.delete(name);
+}
+function loadObservedWorldInfoBookCache(){
+ if(observedWorldInfoBookCacheLoaded) return;
+ observedWorldInfoBookCacheLoaded=true;
+ try{
+  const rows=JSON.parse(localStorage.getItem(WORLD_INFO_BOOK_CACHE_KEY)||'[]');
+  if(!Array.isArray(rows)) return;
+  for(const row of rows.slice(0,WORLD_INFO_BOOK_CACHE_LIMIT)){
+   const name=normalizeWorldInfoBookName(typeof row==='string'?row:row?.name); if(!name) continue;
+   const sources=new Set(Array.isArray(row?.sources)?row.sources.map(value=>String(value||'').trim()).filter(Boolean).slice(0,4):[]);
+   observedWorldInfoBooks.set(name,{name,sources,lastSeen:Number(row?.lastSeen)||0});
+  }
+ }catch{}
+}
+function persistObservedWorldInfoBookCache(){
+ try{
+  const rows=[...observedWorldInfoBooks.values()]
+   .sort((a,b)=>Number(b.lastSeen||0)-Number(a.lastSeen||0))
+   .slice(0,WORLD_INFO_BOOK_CACHE_LIMIT)
+   .map(item=>({name:item.name,sources:[...item.sources].slice(0,4),lastSeen:Number(item.lastSeen)||0}));
+  localStorage.setItem(WORLD_INFO_BOOK_CACHE_KEY,JSON.stringify(rows));
+ }catch{}
+}
+function rememberObservedWorldInfoBook(nameValue,sourceName=''){
+ loadObservedWorldInfoBookCache();
+ const name=normalizeWorldInfoBookName(nameValue); if(!name) return false;
+ const source=String(sourceName||'').trim();
+ const current=observedWorldInfoBooks.get(name)||{name,sources:new Set(),lastSeen:0};
+ const wasKnown=observedWorldInfoBooks.has(name);
+ const hadSource=source?current.sources.has(source):true;
+ if(source) current.sources.add(source);
+ current.lastSeen=Date.now();
+ observedWorldInfoBooks.set(name,current);
+ trimObservedWorldInfoBookCache();
+ return !wasKnown || !hadSource;
+}
+function observeWorldInfoBooksFromPayload(payload){
+ if(!payload || typeof payload!=='object') return 0;
+ const sourceNames=['globalLore','characterLore','chatLore','personaLore'];
+ let changed=0;
+ for(const sourceName of sourceNames){
+  const rows=payload[sourceName]; if(!Array.isArray(rows)) continue;
+  for(const entry of rows){ if(rememberObservedWorldInfoBook(entry?.world,sourceName)) changed+=1; }
+ }
+ if(changed){
+  persistObservedWorldInfoBookCache();
+ }
+ return changed;
+}
+export function getObservedWorldInfoBooks(){
+ loadObservedWorldInfoBookCache();
+ return [...observedWorldInfoBooks.values()]
+  .map(item=>({name:item.name,sources:[...item.sources],lastSeen:Number(item.lastSeen)||0}))
+  .sort((a,b)=>a.name.localeCompare(b.name,'zh-Hans-CN'));
+}
+function globalWorldInfoBookEnabledForCapture(capture,worldValue=''){
+ const world=normalizeWorldInfoBookName(worldValue);
+ // A book identity that cannot be represented by the per-book selector must never
+ // bypass that selector. Fail closed instead of silently forwarding it to the
+ // independent API context.
+ if(!world) return false;
+ return !capture?.disabledBooks?.has?.(world);
+}
 function globalWorldInfoEntryKey(entry){
  const world=String(entry?.world||'').trim();
  const uid=entry?.uid;
@@ -688,13 +765,18 @@ function beginGlobalWorldInfoCapture(ctx=getContext(),dryRun=false,generationTyp
  activeGlobalWorldInfoCapture={
   chat:owner, startedAt:Date.now(), loadedKeys:new Set(), activated:[], sawEntriesLoaded:false, sawActivated:false,
   baseline, nestedStartCount:0, lastNestedStartAt:0,
+  disabledBooks:new Set((getSettings().independentWorldInfoDisabledBooks||[]).map(value=>normalizeWorldInfoBookName(value)).filter(Boolean)),
+  skippedDisabledBooks:new Set(),
  };
 }
 function captureGlobalWorldInfoEntriesLoaded(payload){
+ // Learn only book names from the host's ordinary World Info load event. This never invokes a
+ // scanner itself; it merely lets the settings UI offer per-book filters for future captures.
+ if(!payload || typeof payload!=='object') return;
+ observeWorldInfoBooksFromPayload(payload);
  const capture=activeGlobalWorldInfoCapture; if(!capture || capture.chat!==chatKey(getContext())) return;
  // SillyTavern loads four ordinary World Info sources for the main generation. Reuse only
  // entries the host actually offered this round; do not call the World Info scanner again.
- if(!payload || typeof payload!=='object') return;
  const sourceNames=['globalLore','characterLore','chatLore','personaLore'];
  let sawRecognizedArray=false;
  for(const sourceName of sourceNames){
@@ -714,8 +796,12 @@ function captureActivatedGlobalWorldInfo(entries){
  const seen=new Set(capture.activated.map(item=>item.key));
  for(const entry of rows){
   const key=globalWorldInfoEntryKey(entry); if(!key || !capture.loadedKeys.has(key) || seen.has(key)) continue;
+  const world=String(entry?.world||'').trim(); if(!globalWorldInfoBookEnabledForCapture(capture,world)){
+   if(world) capture.skippedDisabledBooks?.add?.(world);
+   continue;
+  }
   const content=String(entry?.content||'').trim(); if(!content) continue;
-  capture.activated.push({key,content}); seen.add(key);
+  capture.activated.push({key,content,world}); seen.add(key);
  }
  capture.sawActivated=true;
 }
@@ -729,13 +815,14 @@ function finishGlobalWorldInfoCapture(ctx=getContext()){
  if(identity===capture.baseline) return null;
  activeGlobalWorldInfoCapture=null;
  const key=globalWorldInfoSnapshotKey(ctx,last.i,last.m); if(!key) return null;
- const contents=[]; const seen=new Set();
+ const contents=[]; const seen=new Set(); const books=new Set();
  for(const item of capture.activated){
   const text=String(item?.content||'').trim(); if(!text || seen.has(text)) continue;
   seen.add(text); contents.push(text);
+  const world=String(item?.world||'').trim(); if(world) books.add(world);
  }
  const text=contents.join('\n\n');
- const snapshot={text,entries:[...contents],entryCount:contents.length,chars:text.length,ts:Date.now(),source:'main-generation-activated-world-info'};
+ const snapshot={text,entries:[...contents],entryCount:contents.length,chars:text.length,books:[...books],skippedDisabledBooks:[...(capture.skippedDisabledBooks||[])],ts:Date.now(),source:'main-generation-activated-world-info'};
  pruneGlobalWorldInfoSnapshots(snapshot.ts); globalWorldInfoSnapshots.set(key,snapshot); pruneGlobalWorldInfoSnapshots(snapshot.ts);
  return snapshot;
 }

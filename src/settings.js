@@ -6,6 +6,7 @@ export const MODULE_NAME = 'rabbit_mirror_theater';
 export const VISUAL_PROMPT_MAX_CHARS = 5000;
 export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
 export const VISUAL_AVOID_PROMPT_MAX_CHARS = 1000;
+export const WORLD_INFO_BOOK_NAME_MAX_CHARS = 512;
 
 
 const LEGACY_FORMAT_ID_ALIASES = Object.freeze({
@@ -51,6 +52,7 @@ export const defaultSettings = Object.freeze({
     independentApiMaxTokens: 12000,
     independentDisplayMode: 'external',
     independentReadGlobalWorldInfo: false,
+    independentWorldInfoDisabledBooks: [],
     samplingMode: 'classic',
     rawPolicy: 'balanced',
     showCot: false,
@@ -109,6 +111,9 @@ export function getSettings() {
     if (!['inline', 'external'].includes(settings.followDisplayMode)) settings.followDisplayMode = 'inline';
     if (!['external', 'external_then_inline'].includes(settings.independentDisplayMode)) settings.independentDisplayMode = 'external';
     settings.independentReadGlobalWorldInfo = settings.independentReadGlobalWorldInfo === true;
+    settings.independentWorldInfoDisabledBooks = [...new Set((Array.isArray(settings.independentWorldInfoDisabledBooks) ? settings.independentWorldInfoDisabledBooks : [])
+        .map(value => String(value || '').trim())
+        .filter(value => value && value.length <= WORLD_INFO_BOOK_NAME_MAX_CHARS))];
     settings.independentApiBaseUrl = String(settings.independentApiBaseUrl || '').trim();
     settings.independentApiKey = String(settings.independentApiKey || '').trim();
     settings.independentApiModel = String(settings.independentApiModel || '').trim();
