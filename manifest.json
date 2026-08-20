@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.23",
-  "css": "style.css?rmv=1.4.23",
+  "js": "index.js?rmv=1.4.25",
+  "css": "style.css?rmv=1.4.25",
   "author": "Toto",
-  "version": "1.4.23",
+  "version": "1.4.25",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.23：修复交互复位按消息槽位串镜，改为绑定当前镜面实例与消息/外置源码指纹；世界书逐本筛选扩大合法书名范围、不可表示身份 fail-closed，并统一观察缓存上限，取消关闭列表 256 本静默截断。其它独立 API、World Info 原扫描/概率链、大接近与高风险旧链保持。"
+  "description": "兔子镜测试版 1.4.25：世界书“拉取列表”增加 15 秒本地超时，失败后按钮会恢复可用；说明改成简短准确的大白话。1.4.24 的主动拉取、逐本筛选和 1.4.23 的隐私/复位边界保持。"
 }

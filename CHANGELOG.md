@@ -1,3 +1,15 @@
+# RabbitMirror 1.4.25 TEST
+
+- 「拉取世界书」增加 15 秒本地超时；宿主卡住时会自动结束并恢复按钮。
+- 世界书说明改成更准确的大白话：只拿名单/元数据用于逐本选择，不会重新扫描或重掷激活概率。
+- 其余功能沿用 1.4.24。
+
+- 设置页说明文字全面压短，改成直接的大白话；独立 API、Token、生成设置、黑名单、自定义视觉等不再堆技术说明。
+- 世界书区域新增“拉取世界书”按钮与可滚动逐本勾选框，可主动读取当前 SillyTavern 的世界书名单。
+- 拉取只调用 SillyTavern 世界书列表接口，不读取条目内容、不运行 World Info scanner、不触发 probability；真正发送给独立 API 的仍只限主生成本轮已经激活、且逐本开关允许的条目。
+- 世界书列表使用 file_id 作为实际筛选身份，显示名仅用于 UI，避免显示名与实际 entry.world 不一致。
+- 保留 1.4.23 的 reset 指纹隔离、512 字符书名边界、fail-closed 与 512 本缓存修复。
+
 # RabbitMirror 1.4.23 TEST
 
 - 修复“恢复交互初始状态”按 chat/mesid/swipe 复用旧快照导致串镜：复位快照现在同时绑定当前渲染镜面实例和消息/外置源码指纹；同一消息重绘、编辑或同消息多镜面不会共用 baseline。
@@ -191,7 +203,7 @@
 
 # 1.3.102 TEST / RC
 
-- 撤回 1.3.101 的激进副 API 启动加速：弱生成 flag 宽限恢复 30s，普通正文稳定窗恢复 1400ms，弱证据稳定窗恢复 4500ms，前 12 秒轮询恢复 760ms。目的只是在正文确实结束后再启动付费副 API，降低主正文尚未完成时误启动、随后 sourceHash 变化导致旧请求已计费却被取消的风险。
+- 撤回 1.3.101 的激进副 API 启动加速：弱生成 flag 宽限恢复 30s，普通正文稳定窗恢复 1400ms，弱证据稳定窗恢复 4500ms，前 15 秒轮询恢复 760ms。目的只是在正文确实结束后再启动付费副 API，降低主正文尚未完成时误启动、随后 sourceHash 变化导致旧请求已计费却被取消的风险。
 - DeepSeek / 中转流式传输出现 `Load failed`、响应体读取失败或其他 transport 错误时，本轮仍严格只发送 1 次生成 POST，绝不自动重试。若失败 profile 原本为 stream=true，仅暂存一个“所有其它参数完全相同、只把 stream 改为 false”的兼容 profile；只有玩家明确点击“重新生成兔子镜”才会发送下一次请求。
 - 新增同参数 non-stream profile 对：保留 system/user 消息结构、temperature、`max_tokens` / `max_completion_tokens` 字段，只切换 stream。修正旧 `*_nostream` 命名把 temperature 和 token field 一并改变的问题；旧 profile 名仍保留兼容读取。
 - 失败诊断新增 `transport-fetch` / `transport-body` 与 `nextProfile`，错误框会明确告知本轮 1 次请求、不会自动重发，以及手动重试将尝试的非流式模式。
@@ -203,7 +215,7 @@
 - 保留历代 API 兼容成果：12 套 system/user、token 字段、temperature、stream/non-stream profile 不删除。参数/流式兼容失败时只把“下一候选 profile”暂存到本地；只有玩家明确点击“重新生成兔子镜”时，下一轮才使用该候选，因此每次点击仍只有 1 次 POST。语义完整成功后继续记忆已验证 profile，后续自动兔子镜直接复用成功组合。
 - 防旧版无限请求回归：新增 exact chat+mesid+swipe+sourceHash 失败闸门。某一轮失败后，即使 SillyTavern 再次触发 MESSAGE_UPDATED / CHARACTER_MESSAGE_RENDERED / GENERATION_ENDED 等事件，也不会为同一正文重新自动 POST；玩家手动重试会清除此闸门，若再次失败则重新锁住。
 - 防双击重复计费：同一 exact identity 已有 pending/global flight 时，即使再次点击手动重说也复用现有 task，不会 cancel 后另起第二个并发请求。
-- 启动速度：在保留 DOM streaming / 宿主生成事件强门控的前提下，将弱生成 flag 宽限从 30s 降至 8s、普通正文稳定窗从 1400ms 降至 800ms、弱证据稳定窗从 4500ms 降至 1500ms、前 12 秒轮询粒度从 760ms 降至 350ms；正常收到生成结束事件时，副 API 可更快启动。
+- 启动速度：在保留 DOM streaming / 宿主生成事件强门控的前提下，将弱生成 flag 宽限从 30s 降至 8s、普通正文稳定窗从 1400ms 降至 800ms、弱证据稳定窗从 4500ms 降至 1500ms、前 15 秒轮询粒度从 760ms 降至 350ms；正常收到生成结束事件时，副 API 可更快启动。
 - 等待失败不静默：消息身份连续无法重建到 60s 时也显示明确错误与“重新生成兔子镜”入口，并明确该轮 0 次副 API 请求。
 - 不修改 Prompt、维修兔、模型列表 UI、配色、黑名单、独立 API URL 归一化、SillyTavern 内置 custom generate 通道、5 分钟请求 timeout 或成品挂载结构。
 

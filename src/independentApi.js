@@ -1,14 +1,14 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings } from './settings.js?rmv=1.4.23';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.23';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.4.23';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.23';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.4.23';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.23';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.23';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.23';
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.23';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings } from './settings.js?rmv=1.4.25';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.25';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.4.25';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.25';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.4.25';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.25';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.25';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.25';
+import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.25';
 
-const RUNTIME_VERSION = '1.4.23';
+const RUNTIME_VERSION = '1.4.25';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -17,6 +17,7 @@ const OWNER_LOCK_STORE_KEY = 'rabbit_mirror_independent_owner_locks_v1';
 const API_REQUEST_DIAGNOSTIC_EVENT = 'rabbitmirror:independent-api-diagnostic';
 const WORLD_INFO_BOOK_CACHE_KEY = 'rabbit_mirror_world_info_books_v1';
 const WORLD_INFO_BOOK_CACHE_LIMIT = 512;
+const WORLD_INFO_BOOK_LIST_TIMEOUT_MS = 15000;
 const API_PROFILE_SCHEMA = 2;
 const API_PROFILE_ORDER = [
  'chat_system_user_full',
@@ -711,6 +712,36 @@ export function getObservedWorldInfoBooks(){
  return [...observedWorldInfoBooks.values()]
   .map(item=>({name:item.name,sources:[...item.sources],lastSeen:Number(item.lastSeen)||0}))
   .sort((a,b)=>a.name.localeCompare(b.name,'zh-Hans-CN'));
+}
+export async function fetchWorldInfoBooks(){
+ const controller=new AbortController();
+ const timeoutId=setTimeout(()=>controller.abort(),WORLD_INFO_BOOK_LIST_TIMEOUT_MS);
+ try{
+  const response=await fetch('/api/worldinfo/list',{
+   method:'POST',
+   credentials:'same-origin',
+   headers:await serverRequestHeaders(),
+   body:'{}',
+   signal:controller.signal,
+  });
+  let payload=null;
+  try{payload=await response.json();}catch{}
+  if(!response.ok) throw new Error(`世界书列表拉取失败：HTTP ${response.status||'?'}`);
+  if(!Array.isArray(payload)) throw new Error('世界书列表格式不正确');
+  const books=new Map();
+  for(const item of payload){
+   const id=normalizeWorldInfoBookName(item?.file_id ?? item?.name);
+   if(!id) continue;
+   const displayName=normalizeWorldInfoBookName(item?.name)||id;
+   if(!books.has(id)) books.set(id,{id,name:id,label:displayName});
+  }
+  return [...books.values()].sort((a,b)=>String(a.label||a.id).localeCompare(String(b.label||b.id),'zh-Hans-CN'));
+ }catch(error){
+  if(controller.signal.aborted) throw new Error('世界书列表拉取超时，请稍后重试');
+  throw error;
+ }finally{
+  clearTimeout(timeoutId);
+ }
 }
 function globalWorldInfoBookEnabledForCapture(capture,worldValue=''){
  const world=normalizeWorldInfoBookName(worldValue);
