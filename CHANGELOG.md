@@ -1,3 +1,41 @@
+# RabbitMirror 1.4.23 TEST
+
+- 修复“恢复交互初始状态”按 chat/mesid/swipe 复用旧快照导致串镜：复位快照现在同时绑定当前渲染镜面实例和消息/外置源码指纹；同一消息重绘、编辑或同消息多镜面不会共用 baseline。
+- 世界书逐本筛选：合法名称上限统一为 512 字符；无法安全表示的身份改为 fail-closed，不再默认放行到独立 API。
+- 世界书逐本关闭不再静默截断为 256 本；观察缓存内存与 localStorage 统一使用 512 本 LRU 上限。
+- 逐本切换 toast 对书名做 HTML 转义。
+- 不重扫世界书、不重掷 probability；独立 API 请求、12k World Info 预算、大接近与维修兔其它链保持。
+
+# 1.4.22 TEST — 2026-08-20
+
+- World Info：保留原有全局开关，并新增逐本启用/停用。逐本设置只过滤 SillyTavern 本轮已经加载且最终激活的条目，不主动调用 World Info scanner、不重掷 probability、不增加独立 API 请求；新观察到的世界书默认启用。
+- World Info：逐本禁用集合在主生成开始时冻结，生成途中修改只影响下一轮；继续复用原 12k chars 共享预算与 loaded-key → activated 双证明链。
+- 维修兔菜单新增「⏪ 恢复交互初始状态」：第一次真实交互发生前按需保存该镜面 DOM 基线，之后可重复恢复 checkbox/radio、内部 details、交互产生的 DOM 状态和大接近 reaction/approach，无需刷新整个页面。
+- 交互复位使用 clone + replace 生成新 DOM，避免旧 listener / WeakMap 状态继续污染；外层兔子镜当前展开状态保持不变。执行任何维修前会使旧交互基线失效，避免“恢复交互”反向撤销刚完成的维修。
+- 不为逐本世界书增加扫描器/Observer，不为交互复位新增全局 listener/Observer/polling/API；复位快照按实际首次交互懒创建并限量保存。
+
+# 1.4.21 TEST — 2026-08-20
+
+- 修复大接近 threshold 初始状态与运行时 WeakMap 脱节：加载／新插入舞台统一归一到 neutral，threshold reaction 由运行时强制隐藏，达到临界点后才解锁。
+- 私密 mystery 成人边界改为双门槛：模型的 adult/intimate 仅作为候选，首次实际触发还需用户在 DOM 外本地确认当前角色成年；确认按当前角色在本次扩展会话内复用。
+- 成人门槛收口到真实 radio/checkbox 状态源：直接 input、第二个普通 label、舞台外 label 指向私密 input 都 fail-closed；合法 canonical hotspot 通过一次性 input 激活令牌继续工作。
+- 无 for、无真实 input、disabled、共用/歧义 input 的坏热点不再写 last-zone、不推进 approach、不触发 Live2D。
+- 为防流式／动态插入时 threshold 短暂泄露，新增 1 个仅监听 #chat 子节点插入的窄 MutationObserver；不扫描文本、不轮询、不发 API。
+
+# 1.4.20 TEST — 2026-08-20
+
+- 大接近模式：新输出常规热点以 head / face / shoulder / chest / hand / waist / thigh / knee / calf 为候选，并允许明确成年角色在关系/情境适合时额外生成 0～2 个 mystery 私密随机隐藏触点。
+- 热恋／高亲密回合新增仅属于当前舞台的本地 approach state：默认 natural 不显示数字，少数 gs 回合可显示作者自定义 meter；达到 threshold 仅揭示本轮已经预生成的关系变化反应。
+- approach 使用 WeakMap 临时状态，不写聊天历史、不跨兔子镜继承；重复同区推进自动衰减，热点可用 1～3 的本轮剧情权重，但不建立固定部位分值表。
+- mystery Live2D 仅接受受控通用语义映射到本地既有 hit area；继续只执行本地 expression / motion，忽略 message，不新增模型请求、timer、Observer 或 listener。
+- 未同时满足 `data-rm-touch-adult=true` + `data-rm-touch-intimate=true` 的 mystery 点击运行时 fail-closed，并阻止 label 原生激活。
+
+# 1.4.19 TEST — 2026-08-19
+
+- 大接近模式：明确无固定图床套数；reaction 对话框新增强制 close/neutral DOM 契约，并由现有单一 click 委托提供关闭兜底，关闭不派发 input/change、不触发 Live2D message 或模型生成。
+- 维修兔：新增手机端极窄长正文救援，针对横排长文本被压成一两字宽的高瘦竖柱；排除作者有意竖排、侧栏/导航、诗歌/引文、旋转元素、触摸热点、短文本与正常宽度内容。
+- 不新增请求、timer、Observer、polling 或全局 listener；其它高风险链保持。
+
 # 1.4.18 TEST — 2026-08-19
 
 - 修复 1.4.17 styleless fallback 的三类反例：外部/美化 CSS 误覆盖、中等 inline 视觉误覆盖、无真实第二状态却伪造“触碰”按钮。

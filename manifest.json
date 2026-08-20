@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.18",
-  "css": "style.css?rmv=1.4.18",
+  "js": "index.js?rmv=1.4.23",
+  "css": "style.css?rmv=1.4.23",
   "author": "Toto",
-  "version": "1.4.18",
+  "version": "1.4.23",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.18：收紧 1.4.17 两条维修兔救援。无 CSS 结构救援现在尊重外部/美化 CSS、已有 inline 视觉成熟度与原生表单，不再伪造无真实第二状态的“触碰”交互；手机 underfill 现在尊重显式 max-width、竖排与明确物理媒介，并忽略不应阻断主正文救援的小型装饰媒体。其它生成、抽签、Live2D、大接近与 Android/Xiaomi 外置宽度链保持不变。"
+  "description": "兔子镜测试版 1.4.23：修复交互复位按消息槽位串镜，改为绑定当前镜面实例与消息/外置源码指纹；世界书逐本筛选扩大合法书名范围、不可表示身份 fail-closed，并统一观察缓存上限，取消关闭列表 256 本静默截断。其它独立 API、World Info 原扫描/概率链、大接近与高风险旧链保持。"
 }

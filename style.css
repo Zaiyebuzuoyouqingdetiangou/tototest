@@ -837,3 +837,14 @@ toto[data-rabbit-mirror="true"] summary {
   border-top-left-radius:0 !important;
   border-top-right-radius:0 !important;
 }
+
+/* RabbitMirror 大接近：临界反应由运行时解锁。生成 HTML 即使漏写 hidden，
+   或普通作者样式覆盖 [hidden]，也不能在 approach threshold 前提前显示。 */
+[data-rm-dai-sekkin-mode="true"] [data-rm-touch-threshold-reaction="true"],
+[data-rm-touch-theater="true"] [data-rm-touch-threshold-reaction="true"] {
+  display: none !important;
+}
+[data-rm-dai-sekkin-mode="true"] [data-rm-touch-threshold-reaction="true"][data-rm-touch-threshold-runtime-visible="true"],
+[data-rm-touch-theater="true"] [data-rm-touch-threshold-reaction="true"][data-rm-touch-threshold-runtime-visible="true"] {
+  display: block !important;
+}

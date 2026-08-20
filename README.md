@@ -1,4 +1,39 @@
-# RabbitMirror / 兔子镜 1.4.18 TEST
+# RabbitMirror / 兔子镜 1.4.23 TEST
+## 1.4.23 TEST：世界书逐本边界修复 + 单镜面交互复位防串镜
+
+- 1.4.23 修复同一消息重绘/编辑或同消息多镜面时 reset baseline 串镜；复位身份同时绑定当前渲染实例与消息/外置源码指纹。
+- 逐本世界书不再对 161+ 字符身份 fail-open；合法名称统一到 512 字符，超出范围 fail-closed。逐本关闭列表不再静默截断 256 本；观察缓存内存与持久化统一 512 本 LRU。
+
+- 原有「读取本轮已激活的世界书」总开关保留；设置页新增逐本世界书开关。列表来自 SillyTavern 自身 World Info load 事件，RabbitMirror 不主动再扫描世界书、不重掷 probability。
+- 逐本筛选只作用于本轮 host 已加载且最终 activated 的条目；禁用集合在主生成开始时冻结，途中改动下一轮生效；新世界书默认启用，原 12k 世界书预算不变。
+- 维修兔菜单新增「⏪ 恢复交互初始状态」。RabbitMirror 在该镜面第一次真实交互的 capture phase 懒保存基线；之后可以反复把 checkbox/radio、内部 details、交互产生的 DOM 状态和大接近 approach/reaction 恢复到首次交互前，无需刷新页面。
+- 复位通过替换为干净 clone 丢弃旧 DOM listener / WeakMap 状态，再按现有链重装交互救援和工具；外层兔子镜当前展开状态保持不变。维修发生前会使旧交互基线失效，避免复位把维修结果一起撤销。
+- 本版不新增世界书扫描调用，不为复位新增全局 listener/Observer/polling/API；交互快照限量保存。
+
+## 1.4.21 TEST：大接近反向审查修复
+
+- threshold reaction 不再相信模型初始 `hidden/stage`：运行时把现有和新插入舞台统一归一，达到 threshold 前强制锁闭；关闭反应仍保留本轮 approach。
+- `data-rm-touch-adult=true` 不再等于“运行时已确认成年”。私密 mystery 首次实际触发时需要用户本地确认一次；年龄候选标记缺失、用户拒绝或环境无法确认时均 fail-closed。
+- 成人确认不能被旁路：直接点私密 radio/checkbox、第二 label、舞台外 label 都不能揭示私密 reaction；只有唯一 canonical hotspot 能获得一次性状态源激活许可。
+- malformed hotspot 没有真实、唯一、非 disabled input 路线时，不推进 approach、不触发 Live2D。
+- 新增 1 个只观察 `#chat` 子节点插入的轻量 observer，用来在动态/流式大接近 DOM 进入页面时立即归一化；不增加 API、polling 或 timer。
+
+## 1.4.20 TEST：大接近自然接近 / GS 稀有演出 / 成人私密随机触点
+
+- 常规热点候选调整为头、脸、肩、胸、手、腰、大腿、膝盖、小腿；明确成年且情境适合时可额外出现 0～2 个 `mystery-1/2` 私密随机隐藏触点。
+- 普通关系仍只有本轮预生成触摸反应；热恋／高亲密才可启用本轮 approach。默认 `natural` 只暴露阶段，不显示数字；少数 `gs` 演出才允许 meter。
+- 达到 threshold 只解锁本轮已预生成的关系变化反应，不触发新 API；关闭 reaction 不清空 approach，本轮结束后 WeakMap 状态自然消失。
+- Live2D 常规热点继续按语义匹配本地 hit area；mystery 仅允许映射到受控的 chest/waist/thigh/knee/calf/hip/leg/body 通用区域，模型不能指定 motion/expression/command。
+- 规则文本相较 1.4.19 反而缩短，不写医院/雨天/冬天等“场景→固定 UI”模板。
+
+
+## 1.4.19 TEST：大接近 reaction 收起 + 手机极窄正文救援
+
+- 大接近模式专用规则明确：人物舞台不是固定“图床/皮肤套数”，CSS 剪影、线稿、局部近景、半身等只是模型本轮构图，不存在内置固定 3D 图床。
+- 每个大接近 reaction 对话框要求提供 `data-rm-touch-close="true"` 的明确关闭入口；radio 方案使用同组中立状态，运行时同一 click 委托提供无事件派发的关闭兜底，不触发 Live2D message 或模型生成。
+- 维修兔新增 `mobile squeezed text`：只在手机窄屏下，对横排、长正文、实际宽度极窄且呈“高瘦竖柱”的高置信候选提高最小可读宽度；排除竖排、sidebar/nav、诗歌/引文、旋转元素、触摸热点、短文本与已正常宽度内容。
+- 不新增 API 请求、timer、Observer、轮询或全局 listener；1.4.18 styleless/underfill、1.4.16 大接近 Live2D、1.4.14 Android/Xiaomi、1.4.12 checked BUG-1 继续保留。
+
 
 ## 1.4.18 TEST：收紧无样式降级救援 + 欠宽救援作者意图保护
 
