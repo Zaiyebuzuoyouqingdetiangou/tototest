@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.28';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.28';
+import { getSettings } from './settings.js?rmv=1.4.29';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.29';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.4.28';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.28';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.28';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.28';
+} from './feedbackCat.js?rmv=1.4.29';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.29';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.29';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.29';
 
 
-const RUNTIME_VERSION = '1.4.28';
+const RUNTIME_VERSION = '1.4.29';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -177,6 +177,7 @@ const SCOPED_INTERACTION_ID_RE = /^(rm-[a-z0-9]+-[a-z0-9]+-[a-z0-9]{5}-)(.+)$/i;
 const RADIO_GROUP_RESCUE_ATTR = 'data-rabbit-mirror-radio-group-rescue';
 const RADIO_GROUP_ROOT_ATTR = 'data-rabbit-mirror-radio-group-count';
 const INTERACTION_REFERENCE_ALIAS_REPAIR_ATTR = 'data-rabbit-mirror-interaction-reference-alias-count';
+const INTERACTION_REFERENCE_ALIAS_BASELINE_ATTR = 'data-rabbit-mirror-interaction-reference-alias-baseline';
 const RAW_RADIO_RESET_RESCUE_ATTR = 'data-rabbit-mirror-radio-reset-rescue';
 const RAW_RADIO_RESET_ROOT_ATTR = 'data-rabbit-mirror-radio-reset-count';
 const RAW_RADIO_RESET_LAST_ATTR = 'data-rabbit-mirror-radio-reset-last';
@@ -11390,40 +11391,75 @@ function collectBrokenInteractionReferenceIds(toto) {
     const references = new Set();
     if (!toto?.querySelectorAll) return references;
 
+    // A <label for> is direct evidence that the referenced id is meant to be a form
+    // control. It is therefore safe to consider a narrow checkbox/radio alias repair.
     toto.querySelectorAll('label[for]').forEach(label => {
         const value = String(label.getAttribute('for') || '').trim();
         if (value) references.add(value);
     });
-    for (const attr of ['aria-controls', 'aria-labelledby', 'aria-describedby']) {
-        toto.querySelectorAll(`[${attr}]`).forEach(el => {
-            String(el.getAttribute(attr) || '').split(/\s+/).filter(Boolean).forEach(value => references.add(value));
-        });
-    }
-    toto.querySelectorAll('[href^="#"], [xlink\\:href^="#"]').forEach(el => {
-        for (const attr of ['href', 'xlink:href']) {
-            const value = String(el.getAttribute(attr) || '').trim();
-            if (value.startsWith('#') && value.length > 1) references.add(value.slice(1));
-        }
-    });
 
+    // CSS ids are much more ambiguous: a plain #foo may identify a result panel, SVG
+    // node, decorative element, etc. 1.4.28 treated every broken #id as a possible
+    // control alias, which could redirect a panel's base hide/show rule to an input and
+    // leave the real gated content permanently visible. Only collect ids that are
+    // provably used as the subject of checkbox/radio state CSS.
+    const checkedIdSelector = /#([A-Za-z_-][\w-]*)(?=\s*(?::checked|:not\(\s*:checked\s*\)))/gi;
+    const checkedIdAttrSelector = /\[\s*id\s*=\s*["']([^"']+)["']\s*\](?=\s*(?::checked|:not\(\s*:checked\s*\)))/gi;
     getRabbitMirrorLocalStyleElements(toto).forEach(styleEl => {
         const css = String(styleEl.textContent || '');
-        for (const match of css.matchAll(/#([A-Za-z_-][\w-]*)/g)) references.add(match[1]);
-        for (const match of css.matchAll(/\[\s*(?:id|for|aria-controls|aria-labelledby|aria-describedby)\s*=\s*["']([^"']+)["']\s*\]/gi)) {
-            String(match[1] || '').split(/\s+/).filter(Boolean).forEach(value => references.add(value));
+        for (const match of css.matchAll(checkedIdSelector)) {
+            const value = String(match[1] || '').trim();
+            if (value) references.add(value);
+        }
+        for (const match of css.matchAll(checkedIdAttrSelector)) {
+            const value = String(match[1] || '').trim();
+            if (value) references.add(value);
         }
     });
     return references;
 }
 
+function interactionReferenceHasPositiveCheckedCssEvidence(toto, referenceId) {
+    const id = String(referenceId || '').trim();
+    if (!id) return false;
+    const escaped = escapeRegExp(id);
+    const subject = `(?:#${escaped}|\\[\\s*id\\s*=\\s*["']${escaped}["']\\s*\\])`;
+    const pattern = new RegExp(`${subject}\\s*:checked\\b`, 'i');
+    return getRabbitMirrorLocalStyleElements(toto).some(styleEl => pattern.test(String(styleEl.textContent || '')));
+}
+
+function preserveAliasRepairInitialCheckboxBaseline(toto, referenceId, currentId) {
+    if (!interactionReferenceHasPositiveCheckedCssEvidence(toto, referenceId)) return false;
+    const input = [...toto.querySelectorAll('input[type="checkbox"]')].find(item => String(item.id || '') === String(currentId || ''));
+    if (!input || !input.checked || input.hasAttribute(INTERACTION_REFERENCE_ALIAS_BASELINE_ATTR)) return false;
+    // If the real id already had a meaningful checked route before alias repair, its initial
+    // checked state was already visible and must remain untouched. Only neutralize a checked
+    // checkbox when the *newly repaired* broken selector would introduce a second-layer state
+    // that was not visible before the repair. This keeps repair state-preserving.
+    if (inputHasMeaningfulCheckedSiblingRule(toto, input)) return false;
+    input.checked = false;
+    input.removeAttribute('checked');
+    input.setAttribute(INTERACTION_REFERENCE_ALIAS_BASELINE_ATTR, 'unchecked');
+    input.setAttribute('aria-pressed', 'false');
+    restoreInteractionInlineOverrides(input);
+    return true;
+}
+
 function augmentInteractionReferenceAliases(toto, idMap) {
     if (!toto?.querySelectorAll || !idMap?.size) return 0;
     const liveIds = new Set([...toto.querySelectorAll('[id]')].map(el => String(el.id || '').trim()).filter(Boolean));
+    const liveControlIds = new Set(
+        [...toto.querySelectorAll('input[type="checkbox"], input[type="radio"]')]
+            .map(input => String(input.id || '').trim())
+            .filter(Boolean),
+    );
     const candidateByValue = new Map();
     for (const [sourceId, currentId] of idMap.entries()) {
         const source = String(sourceId || '').trim();
         const current = String(currentId || '').trim();
-        if (!source || !current || !liveIds.has(current)) continue;
+        // Alias repair exists only to reconnect checkbox/radio state references. Never
+        // redirect a broken panel/SVG/decorative id to another non-control element.
+        if (!source || !current || !liveIds.has(current) || !liveControlIds.has(current)) continue;
         const existing = candidateByValue.get(current);
         if (!existing || source.length > existing.sourceId.length) candidateByValue.set(current, { sourceId: source, currentId: current });
     }
@@ -11441,6 +11477,7 @@ function augmentInteractionReferenceAliases(toto, idMap) {
         const best = ranked[0];
         const competingValue = ranked.find(candidate => candidate.currentId !== best.currentId && candidate.score >= best.score);
         if (competingValue) continue;
+        preserveAliasRepairInitialCheckboxBaseline(toto, referenceId, best.currentId);
         idMap.set(referenceId, best.currentId);
         changed += 1;
     }
@@ -11921,7 +11958,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.4.28-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.4.29-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();

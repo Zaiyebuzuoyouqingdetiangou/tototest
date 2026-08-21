@@ -1,3 +1,11 @@
+# RabbitMirror 1.4.29 TEST
+
+- 修复 1.4.28 checked/radio ID 别名修复的范围过宽回归：不再把任意 CSS `#id`、`aria-controls`、锚点目标等都当作 checkbox/radio 控件引用，避免把结果面板/装饰节点的隐藏规则错误重定向到 input，导致“本应点击后出现的内容默认全展开”。
+- checked/radio 别名只在有明确控件证据时生效：`label[for]`，或 CSS 中作为 `:checked` / `:not(:checked)` 主体的 `#id` / `[id=...]`。候选目标也只允许真实 checkbox/radio input。
+- 修复必须保持初始可见状态：若某个 checkbox 原本因坏掉的 `:checked` 引用而“看起来未开启”，1.4.29 不会在修好引用的同一刻把第二层内容突然展开；仅对这种新修复且之前没有有效 checked 路线的 checkbox 清除错误的初始 checked，用户首次点击后再正常显示第二层。radio 默认分支不动。
+- 保留 1.4.28 对 `toggle/chk/check/checkbox/cb/switch` 与 `rad/radio/rb` 的高置信唯一别名能力，因此上一轮“按钮能点但 CSS 永远找不到真实 checked 控件”的修复不回滚。
+- 保留 1.4.27 的 sanitizer、WeakMap + DOM clone、CSS 声明级净化、popover/local route 与外部资源边界；不修改 Prompt、母本、抽签、独立 API 请求参数/stream/retry/single-flight。
+
 # RabbitMirror 1.4.28 TEST
 
 - 修复 checked/radio 交互引用的高置信别名漏判：模型把真实控件 ID 写成 `...-toggle-analysis`，却在 CSS/label 中引用 `...-chk-analysis`（或 checkbox/check/cb/switch、rad/radio/rb 同族命名）时，维修兔/独立 API 的 ID 隔离现在可在“唯一目标 + 语义尾部一致”前提下同步引用。

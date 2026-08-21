@@ -1,4 +1,12 @@
-# RabbitMirror / 兔子镜 1.4.28 TEST
+# RabbitMirror / 兔子镜 1.4.29 TEST
+
+## 1.4.29 TEST：checked 别名修复收窄，避免隐藏内容默认全展开
+
+- 1.4.28 的回归原因是把所有破损 CSS `#id` 都纳入控件别名候选，普通结果面板/装饰节点也可能被误认成 checkbox/radio 引用；随后 CSS 隐藏/显示规则被改写到 input，原本需点击后显示的内容可能直接露出。
+- 现在仅在 `label[for]` 或 `:checked` / `:not(:checked)` 明确证明“这个 id 是状态控件”时做 `toggle/chk`、`rad/radio` 别名同步；候选也只接受真实 checkbox/radio input。
+- 对“坏引用刚修好就把原本隐藏的第二层立刻打开”做状态保全：仅当 checkbox 的新 alias 是它第一次获得有效 checked 路线时，把错误的初始 checked 还原为未勾选；用户点击后仍能正常展开。radio 的默认选中分支不改。
+- 上一版针对 `toggle-analysis` vs `chk-analysis` 的真实交互断链仍能修复，不回退 sanitizer 与其它交互能力。
+
 
 ## 1.4.28 TEST：checked 控件引用别名修复
 
