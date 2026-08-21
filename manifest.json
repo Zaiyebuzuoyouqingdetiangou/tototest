@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.27",
-  "css": "style.css?rmv=1.4.27",
+  "js": "index.js?rmv=1.4.28",
+  "css": "style.css?rmv=1.4.28",
   "author": "Toto",
-  "version": "1.4.27",
+  "version": "1.4.28",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.27：保留 1.4.26 的未信任 HTML 安全边界，缩窄 CSS/弹层误杀；恢复安全的局部 fixed/sticky 与本镜 popover，危险资源改为声明级剔除。"
+  "description": "兔子镜测试版 1.4.28：修复 checkbox/radio 控件 ID 与 CSS/label 引用在 toggle/chk 等同族命名不一致时的高置信同步；保留 1.4.27 安全边界与其它功能。"
 }

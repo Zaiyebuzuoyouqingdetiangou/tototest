@@ -1,3 +1,10 @@
+# RabbitMirror 1.4.28 TEST
+
+- 修复 checked/radio 交互引用的高置信别名漏判：模型把真实控件 ID 写成 `...-toggle-analysis`，却在 CSS/label 中引用 `...-chk-analysis`（或 checkbox/check/cb/switch、rad/radio/rb 同族命名）时，维修兔/独立 API 的 ID 隔离现在可在“唯一目标 + 语义尾部一致”前提下同步引用。
+- 不放宽跨镜/歧义映射：若同一别名能命中多个不同控件，仍保持不修；不同语义尾部（如 analysis vs danmaku）不会互相串接。
+- 保留 1.4.27 的未信任 HTML sanitizer、WeakMap + DOM clone、CSS 声明级净化、popover/local route、外部资源阻断。
+- 不修改 Prompt、母本、抽签、独立 API 请求参数/stream/retry/single-flight、World Info 或其它维修兔模块。
+
 # RabbitMirror 1.4.27 TEST
 
 - 回修 1.4.26 strict sanitizer 的兼容性误杀，同时保留原安全边界。

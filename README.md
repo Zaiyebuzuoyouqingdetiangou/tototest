@@ -1,5 +1,10 @@
-# RabbitMirror / 兔子镜 1.4.27 TEST
+# RabbitMirror / 兔子镜 1.4.28 TEST
 
+## 1.4.28 TEST：checked 控件引用别名修复
+
+- 针对本轮全链路诊断暴露的真实失败：input 使用 `...-toggle-<语义>`，CSS/label 却引用 `...-chk-<语义>` 时，ID 隔离会在唯一且高置信的条件下把引用同步到真实控件。
+- checkbox 同族仅归一 `chk/check/checkbox/cb/toggle/switch`；radio 同族仅归一 `rad/radio/rb`。不同尾部语义或多目标歧义继续 fail-closed。
+- 1.4.27 的 sanitizer 安全边界、Prompt/母本、独立 API 请求链和其它维修兔能力不变。
 
 ## 1.4.27 TEST：1.4.26 安全收口的兼容性回修
 

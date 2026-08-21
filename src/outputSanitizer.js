@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.27';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.27';
+import { getSettings } from './settings.js?rmv=1.4.28';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.28';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.4.27';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.27';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.27';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.27';
+} from './feedbackCat.js?rmv=1.4.28';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.28';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.28';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.28';
 
 
-const RUNTIME_VERSION = '1.4.27';
+const RUNTIME_VERSION = '1.4.28';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -11324,12 +11324,25 @@ function collectCurrentIdsToScope(toto, elementsById, mappedValues = new Set()) 
     return { controls, idsToScope };
 }
 
+function normalizeInteractionReferenceAliasToken(token = '') {
+    const value = String(token || '').toLowerCase();
+    // Generated controls often use interchangeable checkbox-state words between the
+    // real input id and the CSS/label reference (for example toggle vs chk). Treat
+    // only these narrow control-kind aliases as equivalent; the semantic tail still
+    // has to match and augmentInteractionReferenceAliases() still requires a unique
+    // best target before any reference is rewritten.
+    if (['chk', 'check', 'checkbox', 'cb', 'toggle', 'switch'].includes(value)) return 'toggle';
+    if (['rad', 'radio', 'rb'].includes(value)) return 'radio';
+    return value;
+}
+
 function interactionReferenceAliasTokens(value = '') {
     return String(value || '')
         .toLowerCase()
         .split(/[-_:]+/)
         .filter(Boolean)
-        .filter((token, index) => !(index === 0 && token === 'rm'));
+        .filter((token, index) => !(index === 0 && token === 'rm'))
+        .map(normalizeInteractionReferenceAliasToken);
 }
 
 function interactionReferenceAliasScore(referenceId, sourceId) {
@@ -11908,7 +11921,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.4.27-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.4.28-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
