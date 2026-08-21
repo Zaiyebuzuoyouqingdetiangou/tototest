@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.25';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.25';
+import { getSettings } from './settings.js?rmv=1.4.27';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.27';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.4.25';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.25';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.25';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.25';
+} from './feedbackCat.js?rmv=1.4.27';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.27';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.27';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.27';
 
 
-const RUNTIME_VERSION = '1.4.25';
+const RUNTIME_VERSION = '1.4.27';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -6920,6 +6920,7 @@ const RAW_SELF_MUTATION_RESCUE_ATTR = 'data-rabbit-mirror-self-mutation-rescue';
 const RAW_SELF_MUTATION_HTML_BASELINE_ATTR = 'data-rm-self-mutation-html-baseline';
 const RAW_SELF_MUTATION_ACTIVE_ATTR = 'data-rm-self-mutation-active';
 const rawSelfMutationRescueStates = new WeakMap();
+const rawSelfMutationDomBaselines = new WeakMap();
 
 function parseSafeSelfMutationText(mode, rawValue) {
     const decoded = decodeSafeInlineString(rawValue);
@@ -7149,20 +7150,22 @@ function parseSelfMutationProgram(source, trigger, root, rawTrigger = null, rawR
     if (!activeAssignments.length && activeText == null && !relatedMutations.length) return null;
 
     const properties = new Set(activeAssignments.map(item => item.property));
-    let originalHtml = trigger.innerHTML;
-    const encodedBaseline = trigger.getAttribute?.(RAW_SELF_MUTATION_HTML_BASELINE_ATTR) || '';
-    if (encodedBaseline) {
-        try { originalHtml = decodeURIComponent(encodedBaseline); } catch { originalHtml = trigger.innerHTML; }
-    } else {
-        try { trigger.setAttribute(RAW_SELF_MUTATION_HTML_BASELINE_ATTR, encodeURIComponent(originalHtml)); } catch {}
+    // baseline / active are extension-owned runtime state. Never trust model-authored data-rm-* attributes.
+    // Store inert DOM clones in a WeakMap; restoring the inactive state never reparses a model-controlled HTML string.
+    let originalNodes = rawSelfMutationDomBaselines.get(trigger);
+    if (!Array.isArray(originalNodes)) {
+        originalNodes = [...trigger.childNodes].map(node => node.cloneNode(true));
+        rawSelfMutationDomBaselines.set(trigger, originalNodes);
     }
+    trigger.removeAttribute?.(RAW_SELF_MUTATION_HTML_BASELINE_ATTR);
+    trigger.removeAttribute?.(RAW_SELF_MUTATION_ACTIVE_ATTR);
     return {
         trigger,
-        active: trigger.getAttribute?.(RAW_SELF_MUTATION_ACTIVE_ATTR) === 'true',
+        active: false,
         activeAssignments,
         activeText,
         relatedMutations,
-        originalHtml,
+        originalNodes,
         originalStyles: capturePseudoStyleState(trigger, properties),
     };
 }
@@ -7209,7 +7212,8 @@ function applyRawSelfMutationEntry(entry, active) {
             applyPseudoStyleAssignments(mutation.target, mutation.assignments);
         }
     } else if (entry.activeText != null) {
-        entry.trigger.innerHTML = entry.originalHtml;
+        const restoredNodes = (entry.originalNodes || []).map(node => node.cloneNode(true));
+        entry.trigger.replaceChildren(...restoredNodes);
     }
     entry.trigger.setAttribute('aria-pressed', entry.active ? 'true' : 'false');
     entry.trigger.setAttribute(RAW_SELF_MUTATION_ACTIVE_ATTR, entry.active ? 'true' : 'false');
@@ -11904,7 +11908,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.4.25-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.4.27-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -16102,22 +16106,455 @@ function installMaintenanceStaticDecorationFallback(root, scriptText) {
     return created;
 }
 
-const MAINTENANCE_URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'formaction', 'action', 'poster']);
+const RABBIT_MIRROR_BLOCKED_RENDER_SELECTOR = 'script, iframe, object, embed, link, meta, base, frame';
+const RABBIT_MIRROR_NETWORK_URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'poster', 'background']);
+const RABBIT_MIRROR_INTERNAL_MODEL_ATTRS = new Set([
+    RAW_SELF_MUTATION_HTML_BASELINE_ATTR,
+    RAW_SELF_MUTATION_ACTIVE_ATTR,
+]);
+const RABBIT_MIRROR_TAROT_ORIGIN = 'https://gfx.tarot.com';
+const RABBIT_MIRROR_TAROT_PATH_RE = /^\/images\/site\/decks\/rider\/full_size\/(?:[0-9]|[1-6][0-9]|7[0-7])\.jpg$/;
+const RABBIT_MIRROR_MAX_DATA_IMAGE_CHARS = 2_000_000;
 
-function maintenanceUnsafeUrlValue(value = '') {
-    const compact = String(value || '')
-        .replace(/[\u0000-\u0020\u007f\u200b-\u200d\ufeff]+/gi, '')
-        .toLowerCase();
-    return /^(?:javascript|vbscript):/.test(compact) || /^data:text\/html(?:;|,)/.test(compact);
+function decodeCssEscapesForSecurity(value = '') {
+    return String(value || '')
+        .replace(/\\([0-9a-fA-F]{1,6})\s?/g, (_, hex) => {
+            const point = Number.parseInt(hex, 16);
+            if (!Number.isFinite(point) || point <= 0 || point > 0x10ffff) return '';
+            try { return String.fromCodePoint(point); } catch { return ''; }
+        })
+        .replace(/\\([^\r\n\f0-9a-fA-F])/g, '$1');
 }
 
-function maintenanceUnsafeStyleValue(value = '') {
-    return /(?:url\(\s*(['"]?)\s*(?:javascript|vbscript)\s*:|expression\s*\(|-moz-binding\s*:|behavior\s*:)/i.test(String(value || ''));
+function normalizeGeneratedResourceValue(value = '') {
+    return String(value || '')
+        .replace(/^[\u0000-\u0020\u007f\u200b-\u200d\ufeff]+|[\u0000-\u0020\u007f\u200b-\u200d\ufeff]+$/g, '')
+        .trim();
+}
+
+function isAllowedTarotImageUrl(value = '') {
+    const raw = normalizeGeneratedResourceValue(value);
+    if (!raw) return false;
+    try {
+        const parsed = new URL(raw);
+        return parsed.origin === RABBIT_MIRROR_TAROT_ORIGIN
+            && !parsed.username
+            && !parsed.password
+            && !parsed.search
+            && !parsed.hash
+            && RABBIT_MIRROR_TAROT_PATH_RE.test(parsed.pathname);
+    } catch {
+        return false;
+    }
+}
+
+function decodeSvgDataImagePayload(raw = '') {
+    const comma = String(raw || '').indexOf(',');
+    if (comma < 0) return '';
+    const header = String(raw).slice(0, comma).toLowerCase();
+    const payload = String(raw).slice(comma + 1);
+    try {
+        if (/;base64(?:;|$)/i.test(header)) {
+            if (typeof globalThis.atob !== 'function') return '';
+            return globalThis.atob(payload);
+        }
+        return decodeURIComponent(payload);
+    } catch {
+        return '';
+    }
+}
+
+function isSafeSvgDataImageValue(raw = '') {
+    if (String(raw || '').length > RABBIT_MIRROR_MAX_DATA_IMAGE_CHARS) return false;
+    const svg = decodeSvgDataImagePayload(raw);
+    if (!svg || svg.length > 300000) return false;
+    const normalized = decodeCssEscapesForSecurity(svg)
+        .replace(/&(?:#x?0*3a|colon);/gi, ':')
+        .replace(/&(?:#x?0*2f|sol);/gi, '/');
+    if (/<\s*(?:script|iframe|object|embed|foreignObject)\b/i.test(normalized)) return false;
+    if (/\@import\b/i.test(normalized)) return false;
+    if (/\b(?:href|xlink:href|src)\s*=\s*(['"])(?!\s*#)[\s\S]*?\1/i.test(normalized)) return false;
+    const urlRe = /url\(\s*(['"]?)([\s\S]*?)\1\s*\)/gi;
+    let match;
+    while ((match = urlRe.exec(normalized))) {
+        if (!String(match[2] || '').trim().startsWith('#')) return false;
+    }
+    return true;
+}
+
+function isAllowedGeneratedResourceValue(value = '') {
+    const raw = normalizeGeneratedResourceValue(value);
+    if (!raw) return true;
+    if (raw.startsWith('#')) return true;
+    if (/^data:image\/(?:png|gif|jpe?g|webp|avif)(?:;|,)/i.test(raw)) {
+        return raw.length <= RABBIT_MIRROR_MAX_DATA_IMAGE_CHARS;
+    }
+    if (/^data:image\/svg\+xml(?:;|,)/i.test(raw)) return isSafeSvgDataImageValue(raw);
+    return isAllowedTarotImageUrl(raw);
+}
+
+function cssContainsUnsafeGeneratedResource(value = '') {
+    const css = decodeCssEscapesForSecurity(value).replace(/\/\*[\s\S]*?\*\//g, '');
+    if (!css.trim()) return false;
+    if (/\@import\b/i.test(css)) return true;
+    if (/(?:expression\s*\(|-moz-binding\s*:|behavior\s*:)/i.test(css)) return true;
+
+    const urlRe = /url\(\s*(['"]?)([\s\S]*?)\1\s*\)/gi;
+    let match;
+    while ((match = urlRe.exec(css))) {
+        if (!isAllowedGeneratedResourceValue(match[2])) return true;
+    }
+
+    const imageSetRe = /(?:-webkit-)?image-set\s*\(([\s\S]*?)\)/gi;
+    while ((match = imageSetRe.exec(css))) {
+        const body = String(match[1] || '');
+        const quotedRe = /(['"])([\s\S]*?)\1/g;
+        let quoted;
+        while ((quoted = quotedRe.exec(body))) {
+            if (!isAllowedGeneratedResourceValue(quoted[2])) return true;
+        }
+    }
+    return false;
+}
+
+function splitCssDeclarationList(value = '') {
+    const source = String(value || '');
+    const parts = [];
+    let start = 0;
+    let quote = '';
+    let escaped = false;
+    let parenDepth = 0;
+    let bracketDepth = 0;
+    for (let index = 0; index < source.length; index += 1) {
+        const char = source[index];
+        if (quote) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            quote = char;
+            continue;
+        }
+        if (char === '(') parenDepth += 1;
+        else if (char === ')' && parenDepth > 0) parenDepth -= 1;
+        else if (char === '[') bracketDepth += 1;
+        else if (char === ']' && bracketDepth > 0) bracketDepth -= 1;
+        else if (char === ';' && parenDepth === 0 && bracketDepth === 0) {
+            parts.push(source.slice(start, index));
+            start = index + 1;
+        }
+    }
+    parts.push(source.slice(start));
+    return parts;
+}
+
+function cssDeclarationBodies(value = '') {
+    const source = String(value || '');
+    const bodies = [];
+    const stack = [];
+    let quote = '';
+    let escaped = false;
+    let comment = false;
+    for (let index = 0; index < source.length; index += 1) {
+        const char = source[index];
+        const next = source[index + 1] || '';
+        if (comment) {
+            if (char === '*' && next === '/') {
+                comment = false;
+                index += 1;
+            }
+            continue;
+        }
+        if (quote) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '/' && next === '*') {
+            comment = true;
+            index += 1;
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            quote = char;
+            continue;
+        }
+        if (char === '{') {
+            if (stack.length) stack[stack.length - 1].hasChild = true;
+            stack.push({ start: index + 1, hasChild: false });
+            continue;
+        }
+        if (char === '}' && stack.length) {
+            const frame = stack.pop();
+            if (!frame.hasChild) bodies.push(source.slice(frame.start, index));
+        }
+    }
+    return bodies.length ? bodies : [source];
+}
+
+function zeroEdgeDeclarationPresent(css = '', property = '') {
+    const unit = '(?:0(?:px|%|rem|em|vh|vw|dvh|dvw|svh|svw|lvh|lvw)?)';
+    return new RegExp(`\\b${property}\\s*:\\s*${unit}(?:\\s*!important)?(?:\\s*;|$)`, 'i').test(css);
+}
+
+function cssDeclarationBlockContainsUnsafeOverlayGeometry(value = '') {
+    const css = decodeCssEscapesForSecurity(value).replace(/\/\*[\s\S]*?\*\//g, '').toLowerCase();
+    if (!css.trim()) return false;
+    const positionMatch = /\bposition\s*:\s*(fixed|sticky|absolute)\b/.exec(css);
+    if (!positionMatch) return false;
+    const position = positionMatch[1];
+    const fullInset = /\binset\s*:\s*0(?:px|%|rem|em|vh|vw|dvh|dvw|svh|svw|lvh|lvw)?(?:\s+0(?:px|%|rem|em|vh|vw|dvh|dvw|svh|svw|lvh|lvw)?){0,3}(?:\s*!important)?(?:\s*;|$)/i.test(css)
+        || ['top', 'right', 'bottom', 'left'].every(edge => zeroEdgeDeclarationPresent(css, edge));
+    const viewportWidth = /\b(?:width|min-width)\s*:\s*(?:100(?:d|s|l)?vw|100%)(?:\s*!important)?(?:\s*;|$)/i.test(css);
+    const viewportHeight = /\b(?:height|min-height)\s*:\s*(?:100(?:d|s|l)?vh|100%)(?:\s*!important)?(?:\s*;|$)/i.test(css);
+    const zMatch = /\bz-index\s*:\s*(-?\d+)/.exec(css);
+    const highZ = !!zMatch && Number(zMatch[1]) >= 1000;
+
+    if (position === 'fixed') return fullInset || (viewportWidth && viewportHeight);
+    if (position === 'sticky') return viewportWidth && viewportHeight;
+    return (viewportWidth && viewportHeight) || (fullInset && highZ);
+}
+
+function cssContainsUnsafeOverlayGeometry(value = '') {
+    return cssDeclarationBodies(value).some(cssDeclarationBlockContainsUnsafeOverlayGeometry);
+}
+
+function sanitizeGeneratedCssDeclarationBlock(value = '') {
+    const declarations = splitCssDeclarationList(value);
+    const kept = [];
+    for (const declaration of declarations) {
+        const trimmed = String(declaration || '').trim();
+        if (!trimmed) continue;
+        if (/^\@import\b/i.test(trimmed)) continue;
+        if (cssContainsUnsafeGeneratedResource(trimmed)) continue;
+        kept.push(trimmed);
+    }
+    let cleaned = kept.join(';');
+    if (cleaned && !/;\s*$/.test(cleaned)) cleaned += ';';
+    if (cssDeclarationBlockContainsUnsafeOverlayGeometry(cleaned)) {
+        cleaned = splitCssDeclarationList(cleaned)
+            .filter(declaration => !/^\s*position\s*:\s*(?:fixed|sticky|absolute)\b/i.test(String(declaration || '')))
+            .map(declaration => String(declaration || '').trim())
+            .filter(Boolean)
+            .join(';');
+        if (cleaned && !/;\s*$/.test(cleaned)) cleaned += ';';
+    }
+    return cleaned;
+}
+
+function sanitizeGeneratedStyleSheet(value = '') {
+    const original = String(value || '');
+    if (!original.trim()) return original;
+    // @import is never needed for a generated mirror and can issue a network request before any element paints.
+    // Fail closed for the whole block rather than trying to parse every exotic import grammar.
+    if (/\@import\b/i.test(decodeCssEscapesForSecurity(original).replace(/\/\*[\s\S]*?\*\//g, ''))) return '';
+
+    const stack = [];
+    const spans = [];
+    let quote = '';
+    let escaped = false;
+    let comment = false;
+    for (let index = 0; index < original.length; index += 1) {
+        const char = original[index];
+        const next = original[index + 1] || '';
+        if (comment) {
+            if (char === '*' && next === '/') {
+                comment = false;
+                index += 1;
+            }
+            continue;
+        }
+        if (quote) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '/' && next === '*') {
+            comment = true;
+            index += 1;
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            quote = char;
+            continue;
+        }
+        if (char === '{') {
+            if (stack.length) stack[stack.length - 1].hasChild = true;
+            stack.push({ start: index + 1, hasChild: false });
+            continue;
+        }
+        if (char === '}' && stack.length) {
+            const frame = stack.pop();
+            if (!frame.hasChild) spans.push({ start: frame.start, end: index });
+        }
+    }
+
+    if (!spans.length) return sanitizeGeneratedCssDeclarationBlock(original);
+    let cleaned = original;
+    for (const span of spans.sort((a, b) => b.start - a.start)) {
+        const body = cleaned.slice(span.start, span.end);
+        const sanitized = sanitizeGeneratedCssDeclarationBlock(body);
+        cleaned = `${cleaned.slice(0, span.start)}${sanitized}${cleaned.slice(span.end)}`;
+    }
+    // CSS nesting/custom syntax not covered by the declaration pass stays fail-closed.
+    if (cssContainsUnsafeGeneratedResource(cleaned) || cssContainsUnsafeOverlayGeometry(cleaned)) return '';
+    return cleaned;
+}
+
+function unwrapGeneratedForms(template) {
+    for (const form of [...template.content.querySelectorAll('form')]) {
+        form.replaceWith(...form.childNodes);
+    }
+}
+
+function canonicalAllowedTarotImageUrl(value = '') {
+    const raw = normalizeGeneratedResourceValue(value);
+    if (!raw) return '';
+    try {
+        const parsed = new URL(raw);
+        if (parsed.origin !== RABBIT_MIRROR_TAROT_ORIGIN
+            || parsed.username
+            || parsed.password
+            || !RABBIT_MIRROR_TAROT_PATH_RE.test(parsed.pathname)) return '';
+        return `${RABBIT_MIRROR_TAROT_ORIGIN}${parsed.pathname}`;
+    } catch {
+        return '';
+    }
+}
+
+function buildUniqueGeneratedIdMap(template) {
+    const counts = new Map();
+    const nodes = new Map();
+    for (const element of [...template.content.querySelectorAll('[id]')]) {
+        const id = String(element.getAttribute('id') || '');
+        if (!id || id.length > 160 || /[\u0000-\u001f\u007f\s<>"'`=]/.test(id)) continue;
+        counts.set(id, (counts.get(id) || 0) + 1);
+        nodes.set(id, element);
+    }
+    const unique = new Map();
+    for (const [id, count] of counts) {
+        if (count === 1) unique.set(id, nodes.get(id));
+    }
+    return unique;
+}
+
+function sanitizeLocalGeneratedPopoverRoutes(template) {
+    const uniqueIds = buildUniqueGeneratedIdMap(template);
+    for (const target of [...template.content.querySelectorAll('[popover]')]) {
+        const mode = String(target.getAttribute('popover') || '').trim().toLowerCase();
+        if (mode && !['auto', 'manual', 'hint'].includes(mode)) target.removeAttribute('popover');
+    }
+
+    for (const control of [...template.content.querySelectorAll('[popovertarget], [commandfor], [popovertargetaction], [command]')]) {
+        const isButton = control.matches?.('button, input[type="button"], input[type="reset"]');
+        const popoverId = String(control.getAttribute('popovertarget') || '').trim();
+        if (control.hasAttribute('popovertarget')) {
+            const target = isButton ? uniqueIds.get(popoverId) : null;
+            if (!target?.hasAttribute?.('popover')) {
+                control.removeAttribute('popovertarget');
+                control.removeAttribute('popovertargetaction');
+            }
+        }
+        if (control.hasAttribute('popovertargetaction')) {
+            const action = String(control.getAttribute('popovertargetaction') || '').trim().toLowerCase();
+            if (!control.hasAttribute('popovertarget') || !['toggle', 'show', 'hide'].includes(action)) {
+                control.removeAttribute('popovertargetaction');
+            }
+        }
+
+        const commandId = String(control.getAttribute('commandfor') || '').trim();
+        if (control.hasAttribute('commandfor')) {
+            const target = isButton ? uniqueIds.get(commandId) : null;
+            const command = String(control.getAttribute('command') || '').trim().toLowerCase();
+            if (!target?.hasAttribute?.('popover') || !['show-popover', 'hide-popover', 'toggle-popover'].includes(command)) {
+                control.removeAttribute('commandfor');
+                control.removeAttribute('command');
+            }
+        } else if (control.hasAttribute('command')) {
+            control.removeAttribute('command');
+        }
+    }
+}
+
+export function sanitizeRabbitMirrorUntrustedTemplate(template) {
+    if (!template?.content?.querySelectorAll) return false;
+
+    template.content.querySelectorAll(RABBIT_MIRROR_BLOCKED_RENDER_SELECTOR).forEach(node => node.remove());
+    unwrapGeneratedForms(template);
+
+    for (const style of [...template.content.querySelectorAll('style')]) {
+        const css = String(style.textContent || '');
+        const cleanedCss = sanitizeGeneratedStyleSheet(css);
+        if (!cleanedCss.trim()) style.remove();
+        else if (cleanedCss !== css) style.textContent = cleanedCss;
+    }
+
+    for (const element of [...template.content.querySelectorAll('*')]) {
+        if (element.matches?.('input[type="password"], input[type="file"]')) {
+            element.remove();
+            continue;
+        }
+        for (const attribute of [...element.attributes]) {
+            const name = String(attribute.name || '').toLowerCase();
+            const value = String(attribute.value || '');
+            if (RABBIT_MIRROR_INTERNAL_MODEL_ATTRS.has(name)
+                || /^on[a-z]+$/.test(name)
+                || name === 'srcdoc'
+                || name === 'action'
+                || name === 'formaction'
+                || name === 'target'
+                || name === 'autofocus'
+                || name === 'autocomplete'
+                || name === 'form'
+                || name === 'formenctype'
+                || name === 'formmethod'
+                || name === 'formnovalidate'
+                || name === 'srcset'
+                || name === 'ping'
+                || (name === 'open' && element.tagName?.toLowerCase() === 'dialog')) {
+                element.removeAttribute(attribute.name);
+                continue;
+            }
+            // Local popover/command attributes are validated as a linked set after all generic attributes are stripped.
+            if (name === 'popover'
+                || name === 'popovertarget'
+                || name === 'popovertargetaction'
+                || name === 'command'
+                || name === 'commandfor') continue;
+            if (RABBIT_MIRROR_NETWORK_URL_ATTRS.has(name)) {
+                const normalizedResource = normalizeGeneratedResourceValue(value);
+                const canonicalTarot = canonicalAllowedTarotImageUrl(normalizedResource);
+                if (canonicalTarot) {
+                    element.setAttribute(attribute.name, canonicalTarot);
+                    if (element.tagName?.toLowerCase() === 'img') element.setAttribute('referrerpolicy', 'no-referrer');
+                    continue;
+                }
+                if (!isAllowedGeneratedResourceValue(normalizedResource)) {
+                    element.removeAttribute(attribute.name);
+                    continue;
+                }
+            }
+            if (name === 'style') {
+                const cleanedStyle = sanitizeGeneratedCssDeclarationBlock(value);
+                if (!cleanedStyle.trim()) element.removeAttribute(attribute.name);
+                else if (cleanedStyle !== value) element.setAttribute(attribute.name, cleanedStyle);
+                continue;
+            }
+            if (/url\s*\(/i.test(decodeCssEscapesForSecurity(value)) && cssContainsUnsafeGeneratedResource(value)) {
+                element.removeAttribute(attribute.name);
+            }
+        }
+    }
+    sanitizeLocalGeneratedPopoverRoutes(template);
+    return true;
 }
 
 function sanitizeMaintenanceMirrorTemplate(template) {
     if (!template?.content?.querySelectorAll) return null;
-    if (template.content.querySelector('iframe, object, embed, link, meta, base')) return null;
 
     const scriptSources = [];
     for (const placeholder of [...template.content.querySelectorAll(`template[${MAINTENANCE_QUARANTINED_SCRIPT_ATTR}]`)]) {
@@ -16129,18 +16566,7 @@ function sanitizeMaintenanceMirrorTemplate(template) {
         script.remove();
     }
 
-    for (const element of template.content.querySelectorAll('*')) {
-        for (const attribute of [...element.attributes]) {
-            const name = String(attribute.name || '').toLowerCase();
-            const value = String(attribute.value || '');
-            if (/^on[a-z]+$/.test(name) || name === 'srcdoc') {
-                element.removeAttribute(attribute.name);
-                continue;
-            }
-            if (MAINTENANCE_URL_ATTRS.has(name) && maintenanceUnsafeUrlValue(value)) return null;
-            if (name === 'style' && maintenanceUnsafeStyleValue(value)) return null;
-        }
-    }
+    if (!sanitizeRabbitMirrorUntrustedTemplate(template)) return null;
 
     let decorationCount = 0;
     for (const scriptSource of scriptSources) {
@@ -22710,6 +23136,7 @@ function parseHtmlFragment(html) {
     try {
         const template = document.createElement('template');
         template.innerHTML = html;
+        if (!sanitizeMaintenanceMirrorTemplate(template)) return null;
         return template.content.childNodes.length ? template.content.cloneNode(true) : null;
     } catch {
         return null;
@@ -22720,6 +23147,7 @@ function parseTotoFragment(html) {
     try {
         const template = document.createElement('template');
         template.innerHTML = html;
+        if (!sanitizeMaintenanceMirrorTemplate(template)) return null;
         const toto = template.content.querySelector('toto[data-rabbit-mirror="true"], toto');
         return toto ? toto.cloneNode(true) : null;
     } catch {

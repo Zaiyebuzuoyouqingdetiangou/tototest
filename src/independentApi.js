@@ -1,14 +1,14 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings } from './settings.js?rmv=1.4.25';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.25';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts } from './outputSanitizer.js?rmv=1.4.25';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.25';
-import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.4.25';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.25';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.25';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.25';
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.25';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings } from './settings.js?rmv=1.4.27';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.27';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.27';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.27';
+import { getCurrentChatKey, updateLatestVisualSignature, paletteFamilyKey, describePaletteFamily } from './storage.js?rmv=1.4.27';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.27';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.27';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.27';
+import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.27';
 
-const RUNTIME_VERSION = '1.4.25';
+const RUNTIME_VERSION = '1.4.27';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -2808,36 +2808,12 @@ function migratePersistedInteractionStateRecords(){
  try{ localStorage.setItem(INTERACTION_STATE_MIGRATION_KEY,'done'); }catch{}
  return changed;
 }
-const INDEPENDENT_BLOCKED_RENDER_SELECTOR = 'script,iframe,object,embed,link,meta,base';
-const INDEPENDENT_URL_ATTRS = new Set(['href','src','xlink:href','formaction','action','poster']);
-function independentUnsafeUrlValue(value=''){
- const compact=String(value||'').replace(/[\u0000-\u0020\u007f\u200b-\u200d\ufeff]+/gi,'').toLowerCase();
- return /^(?:javascript|vbscript):/.test(compact) || /^data:text\/html(?:;|,)/.test(compact);
-}
 function sanitizeIndependentReadyFragment(html=''){
  const template=document.createElement('template');
  template.innerHTML=String(html||'');
-
- // 独立 API 结果绕过 SillyTavern 的消息净化链，所以在真正挂载前主动建立同等边界。
- // 不删除 input/label/details/style/svg 等 CSS-only 交互与视觉元素，只移除可执行/主动嵌入表面。
- template.content.querySelectorAll(INDEPENDENT_BLOCKED_RENDER_SELECTOR).forEach(node=>node.remove());
- for(const element of template.content.querySelectorAll('*')){
-  for(const attribute of [...element.attributes]){
-   const name=String(attribute.name||'').toLowerCase();
-   const value=String(attribute.value||'');
-   if(/^on[a-z]+$/.test(name) || name==='srcdoc'){
-    element.removeAttribute(attribute.name);
-    continue;
-   }
-   if(INDEPENDENT_URL_ATTRS.has(name) && independentUnsafeUrlValue(value)){
-    element.removeAttribute(attribute.name);
-    continue;
-   }
-   if(name==='style' && /(?:url\(\s*(['"]?)\s*(?:javascript|vbscript)\s*:|expression\s*\(|-moz-binding\s*:|behavior\s*:)/i.test(value)){
-    element.removeAttribute(attribute.name);
-   }
-  }
- }
+ // 独立 API 结果绕过 SillyTavern 的消息净化链；真正挂载前与维修兔共用同一未信任 HTML 边界。
+ template.content.querySelectorAll('script').forEach(node=>node.remove());
+ if(!sanitizeRabbitMirrorUntrustedTemplate(template)) return '';
  return template.innerHTML;
 }
 

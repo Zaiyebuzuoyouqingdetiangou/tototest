@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.25",
-  "css": "style.css?rmv=1.4.25",
+  "js": "index.js?rmv=1.4.27",
+  "css": "style.css?rmv=1.4.27",
   "author": "Toto",
-  "version": "1.4.25",
+  "version": "1.4.27",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.25：世界书“拉取列表”增加 15 秒本地超时，失败后按钮会恢复可用；说明改成简短准确的大白话。1.4.24 的主动拉取、逐本筛选和 1.4.23 的隐私/复位边界保持。"
+  "description": "兔子镜测试版 1.4.27：保留 1.4.26 的未信任 HTML 安全边界，缩窄 CSS/弹层误杀；恢复安全的局部 fixed/sticky 与本镜 popover，危险资源改为声明级剔除。"
 }

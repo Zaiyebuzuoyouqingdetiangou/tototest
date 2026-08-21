@@ -1,4 +1,25 @@
-# RabbitMirror / 兔子镜 1.4.25 TEST
+# RabbitMirror / 兔子镜 1.4.27 TEST
+
+
+## 1.4.27 TEST：1.4.26 安全收口的兼容性回修
+
+- 保留 1.4.26 的 WeakMap + DOM clone 交互基线、独立 API 挂载 sanitizer、维修兔二次解析 sanitizer，以及 script/iframe/form/外部网络资源阻断。
+- `position: fixed/sticky` 不再一刀切：局部浮层、吸顶元素继续保留；只有真实全视口覆盖特征才会中和定位声明。普通 absolute 继续可用。
+- `<style>` / inline style 从“发现一个危险声明就整块删除”改为声明级剔除；外部 `url()` 等危险资源只删除对应声明，其余布局/配色继续保留。`@import` 仍 fail-closed。
+- 恢复同一兔子镜内部、唯一 ID 指向的原生 `popover/popoverTarget` 交互；无目标、重复 ID、跨目标或非 popover command 自动移除。
+- `<dialog>` 不再被无条件拆壳，但自动 `open` 仍被去除；form 继续拆壳，password/file input 继续删除。
+- 健康 data image 继续允许，并增加 2,000,000 字符上限；SVG 仍保留 300,000 解码字符与外链/脚本阻断。
+- Prompt、主题/展现形式母本、随机抽签、独立 API stream/non-stream/retry/single-flight、World Info、维修兔其它能力均未改。
+
+
+## 1.4.26 TEST：未信任 HTML 安全边界收口
+
+- 自修改交互 baseline/active 改为扩展运行时 WeakMap + DOM clone 管理，不再从模型 `data-rm-*` attribute 回读，也不再用 `innerHTML` 恢复 baseline。
+- 维修兔代码块/纯文字直插路线在最终 parse/insert 前统一经过同一 strict sanitizer。
+- 生成内容的网络资源默认拒绝；保留原有塔罗规则，并只允许既有 `gfx.tarot.com/.../0-77.jpg` 固定牌面路径（无 query/fragment）。安全的内联 data image / SVG fragment 继续可用。
+- renderer 移除 form 提交面、password/file 输入、外部跳转/自动资源属性及 fixed/sticky/明显全视口覆盖样式；checkbox/radio 与普通 absolute CSS 交互保留。
+- 删除误残留、无 import/call site 的 `data/safetyPatch.js`；不注入 Prompt。设置页按钮文案明确为“清除抽签历史与冷却记录”。
+- 本轮明确不处理 F6：独立 API 的 `response.text()` / stream / non-stream / retry / single-flight 请求链保持 1.4.25 行为。
 
 ## 1.4.25 TEST：世界书拉取超时保护
 

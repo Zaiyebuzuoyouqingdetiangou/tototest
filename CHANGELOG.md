@@ -1,3 +1,21 @@
+# RabbitMirror 1.4.27 TEST
+
+- 回修 1.4.26 strict sanitizer 的兼容性误杀，同时保留原安全边界。
+- CSS overlay 判定从“任何 fixed/sticky 都危险”缩窄为真实全视口覆盖；局部 fixed 浮层、sticky 吸顶、普通 absolute 不再导致整份样式被删除。
+- 外部 `url()` / legacy executable CSS 改为声明级剔除，安全布局/配色声明继续保留；`@import` 仍整块拒绝。
+- 恢复同镜、唯一 ID、合法动作的 popover/commandfor 路由；无效/歧义/跨目标路由继续删除。dialog 保留结构但移除自动 open。
+- data image 增加 2,000,000 字符上限；塔罗固定图源、SVG fragment 与既有严格 URL 规则保持。
+- 不修改 Prompt、抽签、独立 API 请求参数/stream/retry/single-flight、World Info 或维修兔其它功能。
+
+# RabbitMirror 1.4.26 TEST
+
+- F1：自修改交互 baseline/active 改为 runtime-only WeakMap + DOM clone；不再从模型 attribute 回读，不再通过 `innerHTML` 恢复 baseline。
+- F2/F3/F7：独立 API 首次挂载与维修兔 direct-DOM recovery 共用未信任 HTML sanitizer；默认拒绝任意外部资源、form 提交与越界覆盖层，同时保留 checkbox/radio、普通 absolute CSS、本地 SVG fragment、健康 data image。
+- 塔罗 Prompt/规则文件保持 1.4.25 原样；运行时仅放行既有 `gfx.tarot.com/images/site/decks/rider/full_size/0-77.jpg` 固定路径，query/fragment 不放行。
+- F4：删除误残留 dead file `data/safetyPatch.js`，不接入 Prompt。
+- F5：只把设置页文案改为“清除抽签历史与冷却记录”，不扩大 `onClean()` 的删除语义。
+- F6：本轮不处理；`response.text()`、stream/non-stream、retry/single-flight 等独立 API 高风险请求链保持原行为。
+
 # RabbitMirror 1.4.25 TEST
 
 - 「拉取世界书」增加 15 秒本地超时；宿主卡住时会自动结束并恢复按钮。
