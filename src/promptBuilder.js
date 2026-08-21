@@ -1,11 +1,11 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.29';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.29';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.29';
-import { pickCombination } from './picker.js?rmv=1.4.29';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRepeatedPaletteFamily, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.4.29';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.29';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.29';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.29';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.25.2';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.25.2';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.25.2';
+import { pickCombination } from './picker.js?rmv=1.4.25.2';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentPaletteCooldown, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.4.25.2';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.25.2';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.25.2';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.25.2';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -240,32 +240,21 @@ function interactionFamilyCooldownRule() {
 }
 
 function paletteCooldownRule() {
-    const blocks = [];
-    const cooldown = getActivePaletteCooldown(5);
-    if (cooldown?.active) {
-        blocks.push(String.raw`
-配色冷却【由近期实际输出触发，剩余 ${cooldown.remaining} 轮】:
-  - 本轮主要承载面的整体明度必须改为中明度或高明度，不得延续近期的低明度底盘。
-  - 色彩仍须从本轮展现形式的材质、环境、光线与空间关系中产生，不得只把旧方案机械反相或更换强调色。
-  - 局部低明度细节可以保留，但其面积与视觉权重不得主导整体；文字、边界、阴影与强调色须随新的承载关系重新组织。
-  - 提高明度不等于退回米黄、奶油、米色、羊皮纸这类高明度暖中性底；避暗不是换成另一种默认色。`);
-    }
+    const recent = getRecentPaletteCooldown(3);
+    if (!recent.length) return '';
 
-    // 1.3.52: 双向冷却。任何配色家族连续重复都要换，不只是暗色。
-    const repeated = getRepeatedPaletteFamily(3, 2);
-    if (repeated) {
-        const creamLine = repeated.cream
-            ? '\n  - 尤其禁止继续使用米黄、奶油、米色、羊皮纸、做旧纸张这一类高明度暖中性底；它不是"安全的浅色"，只是上一轮的重复。'
-            : '';
-        blocks.push(String.raw`
-配色重复冷却【由近期实际输出触发，近 ${repeated.window} 轮中有 ${repeated.count} 轮落在同一配色家族】:
-  - 近期主要承载面持续落在「${repeated.label}」。不要沿用这个配色家族。
-  - 但也不要为了制造差异而机械换色相：请重新从本轮展现形式的材质、环境与光线关系推导配色，让色相自然落到不同的家族上。${creamLine}
-  - 若重新推导后仍然落回同一家族，说明推导过度依赖默认审美而不是本轮媒介本身，须回到材质与光线重新判断。
-  - 换家族仍须保持明确的色彩主次、明度层级与光源一致性，不得为了避重复破坏本轮媒介自身的配色逻辑。`);
-    }
+    const recentLines = recent.map(item => {
+        const when = item.roundsAgo === 0 ? '上一面' : `前 ${item.roundsAgo + 1} 面`;
+        const decay = item.roundsAgo === 0 ? '最高' : item.roundsAgo === 1 ? '中' : '低';
+        return `  - ${when}：${item.label}（短期冷却权重：${decay}）`;
+    }).join('\n');
 
-    return blocks.join('\n');
+    return String.raw`
+配色短期冷却【每轮生成前主动执行；依据近期实际成品，越近权重越高】:
+${recentLines}
+  - 上一面刚使用过的整体配色路径不得在本轮继续作为默认方案；更早记录只作递减避让，超出短期窗口自然解除，不构成永久禁色。
+  - 判断“仍是同一路径”时看主色相、冷暖关系、中性色底盘与明度结构的整体组合；只改同一色相的色值、饱和度、明暗或强调色，不视为真正脱离近期路径。
+  - 本轮配色必须重新从本轮展现形式的材质、环境、光线与空间关系推导；不指定任何替代颜色，也不得为了避重强行套用与本轮媒介不协调的色系。`;
 }
 
 function hardStartupReserve() {
@@ -611,8 +600,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const themes = mode === 'format_only' ? '当前助手正文' : compactLockItems(combo?.themes, 'theme');
     const formats = compactLockItems(combo?.formats, 'presentation');
     const interaction = interactionFamilyCooldownSnapshot();
-    const palette = getActivePaletteCooldown(5);
-    const repeatedPalette = getRepeatedPaletteFamily(3, 2);
+    const recentPalette = getRecentPaletteCooldown(3);
     const innerDetailsBlocked = getRecentRiskFlags(5).includes('inner_details_used');
     const directiveText = settings?.userDirectivePriority && directive?.rawDirective
         ? truncateDirectiveText(directive.rawDirective, 240)
@@ -621,8 +609,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
 
     const activeBans = [
         interaction ? `交互避用「${interaction.label}」` : '',
-        palette?.active ? '避用低明度主承载面，也不得退回米黄／奶油底' : '',
-        repeatedPalette ? `避开配色家族「${repeatedPalette.label}」${repeatedPalette.cream ? '（尤其米黄／奶油／米色底）' : ''}` : '',
+        recentPalette.length ? `上一面配色路径「${recentPalette[0].label}」进入最高短期冷却；更早配色按时间递减避让，不得只改同色相明暗／饱和度／强调色` : '',
         innerDetailsBlocked ? '兔子镜内部 details/summary 冷却' : '',
     ].filter(Boolean);
 

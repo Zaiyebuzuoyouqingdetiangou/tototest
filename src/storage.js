@@ -475,12 +475,23 @@ function isCreamAttractor(fingerprint) {
     return lowSaturationWarmNeutral || paleWarmNeutral;
 }
 
+// 1.4.25.1: 米黄冷却长期生效后，模型容易把“高明度、非暖中性”的最省力答案收敛成蓝白/青蓝。
+// 旧 key 又把 cyan/blue、明度与饱和度拆得过细，肉眼连续蓝色却会被当成不同家族而漏掉重复冷却。
+function isCoolBlueAttractor(fingerprint) {
+    if (!fingerprint || typeof fingerprint !== 'object') return false;
+    if (Number(fingerprint.confidence || 0) < 0.35) return false;
+    const hueFamily = String(fingerprint.hueFamily || 'neutral');
+    const temperature = String(fingerprint.temperature || 'neutral');
+    return temperature === 'cool' && ['cyan', 'blue'].includes(hueFamily);
+}
+
 export function paletteFamilyKey(fingerprint) {
     if (!fingerprint || typeof fingerprint !== 'object') return '';
     if (Number(fingerprint.confidence || 0) < 0.35) return '';
     const brightness = String(fingerprint.brightness || '').trim();
     if (!brightness) return '';
     if (isCreamAttractor(fingerprint)) return 'cream-attractor';
+    if (isCoolBlueAttractor(fingerprint)) return 'cool-blue-attractor';
     const hueFamily = String(fingerprint.hueFamily || 'neutral').trim() || 'neutral';
     const temperature = String(fingerprint.temperature || 'neutral').trim() || 'neutral';
     const saturation = String(fingerprint.saturation || 'low').trim() || 'low';
@@ -497,7 +508,24 @@ export function describePaletteFamily(fingerprint) {
     if (!base) return '';
     // Do not echo HSL's misleading near-white saturation label back into the
     // prompt once this fingerprint has been recognized as the cream attractor.
-    return isCreamAttractor(fingerprint) ? '高明度暖中性（米黄／奶油／米色底盘）' : base;
+    if (isCreamAttractor(fingerprint)) return '高明度暖中性（米黄／奶油／米色底盘）';
+    if (isCoolBlueAttractor(fingerprint)) return '冷青蓝主色家族（蓝白／青蓝底盘）';
+    return base;
+}
+
+// 1.4.25.2: 配色冷却从“出现重复后再纠偏”改为每一面成品完成后立即进入短期冷却。
+// 这里不决定下一轮该用什么颜色，只把最近实际成品按时间距离交给 Prompt；越近权重越高，
+// 超出窗口自然解除。这样不会再形成“黑 -> 米黄 -> 蓝白 -> 再补一个禁色”的打地鼠链。
+export function getRecentPaletteCooldown(window = 3) {
+    const span = Math.max(1, Number(window) || 3);
+    const recent = getRecentPaletteFingerprints(span).slice().reverse();
+    return recent.map((fingerprint, roundsAgo) => ({
+        fingerprint,
+        key: paletteFamilyKey(fingerprint),
+        label: describePaletteFamily(fingerprint),
+        roundsAgo,
+        strength: Math.max(1, span - roundsAgo),
+    })).filter(item => item.label);
 }
 
 // 近 window 轮中，最新一轮所属的配色家族出现了 threshold 次及以上即视为重复。
@@ -519,6 +547,7 @@ export function getRepeatedPaletteFamily(window = 3, threshold = 2) {
         window: keyed.length,
         label: describePaletteFamily(latest.item) || latest.key,
         cream: isCreamAttractor(latest.item),
+        blue: isCoolBlueAttractor(latest.item),
         fingerprint: latest.item,
     };
 }

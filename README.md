@@ -1,45 +1,28 @@
-# RabbitMirror / 兔子镜 1.4.29 TEST
+# RabbitMirror / 兔子镜 1.4.25.2 TEST
 
-## 1.4.29 TEST：checked 别名修复收窄，避免隐藏内容默认全展开
+## 1.4.25.2 TEST：配色冷却前置 + 逐轮衰减
 
-- 1.4.28 的回归原因是把所有破损 CSS `#id` 都纳入控件别名候选，普通结果面板/装饰节点也可能被误认成 checkbox/radio 引用；随后 CSS 隐藏/显示规则被改写到 input，原本需点击后显示的内容可能直接露出。
-- 现在仅在 `label[for]` 或 `:checked` / `:not(:checked)` 明确证明“这个 id 是状态控件”时做 `toggle/chk`、`rad/radio` 别名同步；候选也只接受真实 checkbox/radio input。
-- 对“坏引用刚修好就把原本隐藏的第二层立刻打开”做状态保全：仅当 checkbox 的新 alias 是它第一次获得有效 checked 路线时，把错误的初始 checked 还原为未勾选；用户点击后仍能正常展开。radio 的默认选中分支不改。
-- 上一版针对 `toggle-analysis` vs `chk-analysis` 的真实交互断链仍能修复，不回退 sanitizer 与其它交互能力。
-
-
-## 1.4.28 TEST：checked 控件引用别名修复
-
-- 针对本轮全链路诊断暴露的真实失败：input 使用 `...-toggle-<语义>`，CSS/label 却引用 `...-chk-<语义>` 时，ID 隔离会在唯一且高置信的条件下把引用同步到真实控件。
-- checkbox 同族仅归一 `chk/check/checkbox/cb/toggle/switch`；radio 同族仅归一 `rad/radio/rb`。不同尾部语义或多目标歧义继续 fail-closed。
-- 1.4.27 的 sanitizer 安全边界、Prompt/母本、独立 API 请求链和其它维修兔能力不变。
-
-## 1.4.27 TEST：1.4.26 安全收口的兼容性回修
-
-- 保留 1.4.26 的 WeakMap + DOM clone 交互基线、独立 API 挂载 sanitizer、维修兔二次解析 sanitizer，以及 script/iframe/form/外部网络资源阻断。
-- `position: fixed/sticky` 不再一刀切：局部浮层、吸顶元素继续保留；只有真实全视口覆盖特征才会中和定位声明。普通 absolute 继续可用。
-- `<style>` / inline style 从“发现一个危险声明就整块删除”改为声明级剔除；外部 `url()` 等危险资源只删除对应声明，其余布局/配色继续保留。`@import` 仍 fail-closed。
-- 恢复同一兔子镜内部、唯一 ID 指向的原生 `popover/popoverTarget` 交互；无目标、重复 ID、跨目标或非 popover command 自动移除。
-- `<dialog>` 不再被无条件拆壳，但自动 `open` 仍被去除；form 继续拆壳，password/file input 继续删除。
-- 健康 data image 继续允许，并增加 2,000,000 字符上限；SVG 仍保留 300,000 解码字符与外链/脚本阻断。
-- Prompt、主题/展现形式母本、随机抽签、独立 API stream/non-stream/retry/single-flight、World Info、维修兔其它能力均未改。
+- 基于 1.4.25.1；1.4.25.1 的窄安全边界保持不变。
+- 每一面真实成品完成后，配色路径立即进入最近 3 轮的短期冷却；下一轮生成前主动读取，上一面权重最高，更早记录按轮次自然衰减。
+- 不再等“已经重复两次”才纠偏；只换同色相的色值、饱和度、明暗或强调色不算真正换路。
+- 不指定替代颜色，不在配色冷却里重复点菜优先规则，也不把某一种颜色长期写成固定安全色／禁色。
+- 独立 API 移除永久性的“黑色不能作为默认方案”提示，改由同一套真实近期短期冷却处理，减少向米黄、蓝白或其他单一浅色底盘收敛。
 
 
-## 1.4.26 TEST：未信任 HTML 安全边界收口
+## 1.4.25.1 TEST：稳定基线安全边界 + 蓝色收敛冷却
 
-- 自修改交互 baseline/active 改为扩展运行时 WeakMap + DOM clone 管理，不再从模型 `data-rm-*` attribute 回读，也不再用 `innerHTML` 恢复 baseline。
-- 维修兔代码块/纯文字直插路线在最终 parse/insert 前统一经过同一 strict sanitizer。
-- 生成内容的网络资源默认拒绝；保留原有塔罗规则，并只允许既有 `gfx.tarot.com/.../0-77.jpg` 固定牌面路径（无 query/fragment）。安全的内联 data image / SVG fragment 继续可用。
-- renderer 移除 form 提交面、password/file 输入、外部跳转/自动资源属性及 fixed/sticky/明显全视口覆盖样式；checkbox/radio 与普通 absolute CSS 交互保留。
-- 删除误残留、无 import/call site 的 `data/safetyPatch.js`；不注入 Prompt。设置页按钮文案明确为“清除抽签历史与冷却记录”。
-- 本轮明确不处理 F6：独立 API 的 `response.text()` / stream / non-stream / retry / single-flight 请求链保持 1.4.25 行为。
+- 基线仍是 1.4.25；不带入 1.4.26～1.4.30 的交互／布局改动。
+- 独立 API 与维修兔重建 HTML 增加窄安全净化，但不会整块删除正常 CSS；外框、隐藏态、`:checked`、fixed/sticky、popover/dialog 继续按 1.4.25 行为工作。
+- 自修改交互 baseline 改为仅存在于运行时 WeakMap，不再从模型 HTML 读取并 `innerHTML` 恢复。
+- 蓝白／青蓝现在作为同一个重复配色家族参与冷却；避黑规则也明确不得默认退到蓝白／青蓝。
 
-## 1.4.25 TEST：世界书拉取超时保护
+
+## 1.4.25.1 TEST：世界书拉取超时保护
 
 - 世界书列表 15 秒未返回会自动结束，不再一直卡在“正在拉取”。
 - 拉取只用于拿名单/元数据和逐本开关，不会重新扫描世界书。
 
-## 1.4.25 TEST：设置页大白话 + 主动拉取世界书列表
+## 1.4.25.1 TEST：设置页大白话 + 主动拉取世界书列表
 
 - 设置页长说明改成简短大白话。
 - 世界书新增“拉取世界书”按钮；拉取后可在列表里逐本勾选。

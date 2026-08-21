@@ -1,15 +1,15 @@
-import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=1.4.29';
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=1.4.29';
-import { clearLastCombo } from './src/storage.js?rmv=1.4.29';
-import { initVisualScanner, destroyVisualScanner } from './src/visualScanner.js?rmv=1.4.29';
-import { initOutputSanitizer, destroyOutputSanitizer } from './src/outputSanitizer.js?rmv=1.4.29';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.4.29';
-import { getSettings } from './src/settings.js?rmv=1.4.29';
-import { clearRabbitMirrorGenerationSnapshots } from './src/generationGuard.js?rmv=1.4.29';
-import { initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './src/independentApi.js?rmv=1.4.29';
-import { initTouchTheaterBridge, destroyTouchTheaterBridge } from './src/touchTheater.js?rmv=1.4.29';
+import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=1.4.25.2';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=1.4.25.2';
+import { clearLastCombo } from './src/storage.js?rmv=1.4.25.2';
+import { initVisualScanner, destroyVisualScanner } from './src/visualScanner.js?rmv=1.4.25.2';
+import { initOutputSanitizer, destroyOutputSanitizer } from './src/outputSanitizer.js?rmv=1.4.25.2';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.4.25.2';
+import { getSettings } from './src/settings.js?rmv=1.4.25.2';
+import { clearRabbitMirrorGenerationSnapshots } from './src/generationGuard.js?rmv=1.4.25.2';
+import { initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './src/independentApi.js?rmv=1.4.25.2';
+import { initTouchTheaterBridge, destroyTouchTheaterBridge } from './src/touchTheater.js?rmv=1.4.25.2';
 
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.29';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.25.2';
 
 // Claim the active runtime before UI/DOM initialization. Versioned module URLs ensure this file and its internal graph cannot be satisfied by a stale hot-reload cache.
 try { globalThis.__rabbitMirrorFeedbackCatSyncCleanup?.(); } catch {}
