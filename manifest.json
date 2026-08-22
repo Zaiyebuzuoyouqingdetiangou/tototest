@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.30.16",
-  "css": "style.css?rmv=1.4.30.16",
+  "js": "index.js?rmv=1.4.30.17",
+  "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.30.16",
+  "version": "1.4.30.17",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.30.16：仅重排设置 UI 与首次安装默认值：一级仅保留自动注入、生成方式、Token、工具维护、黑名单和收藏室；其余设置进入“高级”弹窗。首次安装默认开启发散孵化与自动巡检，独立 API 最大输出默认 30000；世界观锁启用时提示切换为仅展现形式。生成、Prompt、请求、世界书、性能修复与维修逻辑不改。"
+  "description": "兔子镜测试版 1.4.30.17：仅修设置 UI：高级设置改为可滚动模态弹窗，提供顶部返回与右上角关闭；“读取世界书”移入高级设置，并在用户切换到独立 API 时弹出世界书启用选择。生成、Prompt、请求、世界书捕获、性能修复、维修逻辑与默认设置不改。"
 }

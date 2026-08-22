@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.30.16';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.30.16';
+import { getSettings } from './settings.js?rmv=1.4.30.17';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.30.17';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.4.30.16';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.16';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.30.16';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.30.16';
+} from './feedbackCat.js?rmv=1.4.30.17';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.17';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.30.17';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.30.17';
 
 
-const RUNTIME_VERSION = '1.4.30.16';
+const RUNTIME_VERSION = '1.4.30.17';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -11977,7 +11977,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.4.30.16-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.4.30.17-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -21728,7 +21728,7 @@ export function rehydrateRabbitMirrorMaintenanceRepairs(root) {
 export function refreshRabbitMirrorToolsInScope(scope, { historyRestoreLight = false } = {}) {
     if (!scope?.querySelectorAll) return;
     repairRabbitMirrorScopedClassAliasesInScope(scope);
-    // 1.4.30.16: preserve the 1.3.57/1.3.93/1.3.94 history invariant. A full-chat
+    // 1.4.30.17: preserve the 1.3.57/1.3.93/1.3.94 history invariant. A full-chat
     // restore may reattach old collapsed mirrors, but it must not run the newer
     // computed-style mobile-row migration or immediate auto-safe/nested candidate
     // passes for every historical mirror. Those remain fresh/scoped-message work

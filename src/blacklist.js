@@ -1,7 +1,7 @@
-import { getSettings, updateSettings } from './settings.js?rmv=1.4.30.16';
-import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.4.30.16';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.4.30.16';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.4.30.16';
+import { getSettings, updateSettings } from './settings.js?rmv=1.4.30.17';
+import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.4.30.17';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.4.30.17';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.4.30.17';
 
 export const BLACKLIST_CHANGED_EVENT = 'rabbitmirror:blacklist-changed';
 export const RECIPE_RECORDED_EVENT = 'rabbitmirror:recipe-recorded';
