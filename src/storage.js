@@ -455,7 +455,7 @@ const PALETTE_HUE_LABELS = {
     cyan: '青', blue: '蓝', purple: '紫', pink: '粉', neutral: '中性色',
 };
 
-// 1.4.30.2: 配色冷却不再给任何具体颜色家族特殊待遇。
+// 1.4.30.3: 配色冷却不再给任何具体颜色家族特殊待遇。
 // 统一使用同一组结构维度描述近期成品，避免“禁蓝→全紫→再禁紫”式颜色打地鼠。
 export function paletteFamilyKey(fingerprint) {
     if (!fingerprint || typeof fingerprint !== 'object') return '';
@@ -477,7 +477,7 @@ export function describePaletteFamily(fingerprint) {
     return [brightness, temperature, hue, saturation].filter(Boolean).join('');
 }
 
-// 1.4.30.2: 不再等重复已经形成才纠偏。每一面真实成品完成后立即进入短期冷却；
+// 1.4.30.3: 不再等重复已经形成才纠偏。每一面真实成品完成后立即进入短期冷却；
 // 这里只按时间距离返回近期真实配色，不决定下一轮该用什么颜色。
 export function getRecentPaletteCooldown(window = 3) {
     const span = Math.max(1, Number(window) || 3);
@@ -489,6 +489,76 @@ export function getRecentPaletteCooldown(window = 3) {
         roundsAgo,
         strength: Math.max(1, span - roundsAgo),
     })).filter(item => item.label);
+}
+
+
+const VISUAL_FAMILY_DIMENSION_LABELS = Object.freeze({
+    surface_family: '主底盘／材质',
+    contrast_family: '明暗关系',
+    contour_family: '整体轮廓',
+    reading_family: '阅读路径',
+    unit_family: '信息单位',
+    space_family: '空间结构',
+});
+
+export function parseVisualFamilySkeleton(value = '') {
+    const text = String(value || '').trim();
+    if (!text) return {};
+    const parsed = {};
+    for (const part of text.split('；')) {
+        const match = part.match(/^\s*([a-z_]+)\s*:\s*(.+?)\s*$/i);
+        if (!match) continue;
+        const key = String(match[1] || '').trim();
+        if (!Object.prototype.hasOwnProperty.call(VISUAL_FAMILY_DIMENSION_LABELS, key)) continue;
+        const valueText = String(match[2] || '').trim();
+        if (valueText) parsed[key] = valueText.slice(0, 120);
+    }
+    return parsed;
+}
+
+export function describeVisualFamilyDimensions(family = {}) {
+    if (!family || typeof family !== 'object') return '';
+    return Object.entries(VISUAL_FAMILY_DIMENSION_LABELS)
+        .map(([key, label]) => family[key] ? `${label}=${family[key]}` : '')
+        .filter(Boolean)
+        .join('；');
+}
+
+export function getRecentVisualFamilyCooldown(window = 3) {
+    const span = Math.max(1, Number(window) || 3);
+    return getComboHistory(span)
+        .slice()
+        .reverse()
+        .map((item, roundsAgo) => ({
+            family: parseVisualFamilySkeleton(item?.visualSkeleton || ''),
+            roundsAgo,
+            strength: Math.max(1, span - roundsAgo),
+        }))
+        .filter(item => Object.keys(item.family).length);
+}
+
+export function getRepeatedVisualFamilyDimensions(window = 3, threshold = 2) {
+    const span = Math.max(2, Number(window) || 3);
+    const hits = Math.max(2, Number(threshold) || 2);
+    const chronological = getComboHistory(span)
+        .map(item => parseVisualFamilySkeleton(item?.visualSkeleton || ''))
+        .filter(family => Object.keys(family).length);
+    if (chronological.length < hits) return [];
+
+    const latest = chronological[chronological.length - 1];
+    const result = [];
+    for (const [key, label] of Object.entries(VISUAL_FAMILY_DIMENSION_LABELS)) {
+        const latestValue = latest[key];
+        if (!latestValue) continue;
+        let streak = 0;
+        for (let index = chronological.length - 1; index >= 0; index -= 1) {
+            if (chronological[index]?.[key] !== latestValue) break;
+            streak += 1;
+        }
+        if (streak < hits) continue;
+        result.push({ key, label, value: latestValue, streak, strength: Math.min(span, streak) });
+    }
+    return result;
 }
 
 // 近 window 轮中，最新一轮所属的配色家族出现了 threshold 次及以上即视为重复。
@@ -603,7 +673,7 @@ export function commitPendingCombo(visualSignature = '', visualSkeleton = '', ri
         const last = history[history.length - 1];
         if (last?.signature === sig && now - Number(last?.ts || 0) < 120000) {
             if (visualSignature) last.visualSignature = String(visualSignature).slice(0, 280);
-            if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 360);
+            if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 420);
             if (Array.isArray(riskFlags) && riskFlags.length) last.riskFlags = [...new Set(riskFlags)].slice(0, 8);
             if (paletteFingerprint && typeof paletteFingerprint === 'object') last.paletteFingerprint = paletteFingerprint;
             const normalizedFamily = normalizeInteractionFamily(interactionFamily);
@@ -619,7 +689,7 @@ export function commitPendingCombo(visualSignature = '', visualSkeleton = '', ri
             signature: sig,
             ts: now,
             visualSignature: visualSignature ? String(visualSignature).slice(0, 280) : pending.visualSignature,
-            visualSkeleton: visualSkeleton ? String(visualSkeleton).slice(0, 360) : pending.visualSkeleton,
+            visualSkeleton: visualSkeleton ? String(visualSkeleton).slice(0, 420) : pending.visualSkeleton,
             riskFlags: Array.isArray(riskFlags) ? [...new Set(riskFlags)].slice(0, 8) : [],
             paletteFingerprint: paletteFingerprint && typeof paletteFingerprint === 'object' ? paletteFingerprint : undefined,
             interactionFamily: normalizeInteractionFamily(interactionFamily),
@@ -673,7 +743,7 @@ export function updateLatestVisualSignature(visualSignature, visualSkeleton = ''
         if (!history.length) return;
         const last = history[history.length - 1];
         if (visualSignature) last.visualSignature = String(visualSignature).slice(0, 280);
-        if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 360);
+        if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 420);
         if (Array.isArray(riskFlags) && riskFlags.length) last.riskFlags = [...new Set(riskFlags)].slice(0, 8);
         if (paletteFingerprint && typeof paletteFingerprint === 'object') last.paletteFingerprint = paletteFingerprint;
         const normalizedFamily = normalizeInteractionFamily(interactionFamily);

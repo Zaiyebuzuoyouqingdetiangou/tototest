@@ -1,11 +1,12 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.2';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.2';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.30.2';
-import { pickCombination } from './picker.js?rmv=1.4.30.2';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentPaletteCooldown, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.4.30.2';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.2';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.30.2';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.30.2';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.3';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.3';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.30.3';
+import { VISUAL_FAMILY_COOLDOWN_RULES } from '../data/raw/visualFamilyCooldownRules.js?rmv=1.4.30.3';
+import { pickCombination } from './picker.js?rmv=1.4.30.3';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRecentVisualFamilyCooldown, getRepeatedVisualFamilyDimensions, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.3';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.3';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.30.3';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.30.3';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -138,10 +139,7 @@ function shortVisualAvoidance(combo, limit = 3) {
         const riskCount = Array.isArray(item.riskFlags) ? item.riskFlags.length : 0;
         const signature = item.visualSignature ? truncate(item.visualSignature, 110) : '已记录视觉骨架';
         const interaction = item?.interactionFamily?.label ? `；交互骨架：${truncate(item.interactionFamily.label, 42)}` : '';
-        // 1.3.52: 配色一直没有进入避让文本，模型因此看不见自己上几轮用过什么颜色。
-        const palette = describePaletteFamily(item?.paletteFingerprint);
-        const paletteNote = palette ? `；配色家族：${palette}` : '';
-        return `${index + 1}. 近期展现形式：${formats}；避让摘要：${signature}${interaction}${paletteNote}${riskCount ? `；结构风险 ${riskCount} 项` : ''}`;
+        return `${index + 1}. 近期展现形式：${formats}；避让摘要：${signature}${interaction}${riskCount ? `；结构风险 ${riskCount} 项` : ''}`;
     }).join('\n');
 }
 
@@ -239,22 +237,28 @@ function interactionFamilyCooldownRule() {
   - 只需一条完整链，不得为“看起来复杂”堆叠无关控件。radio、checkbox、details 本身没有被永久禁止；只有在它们不再构成上述重复骨架、且媒介本体确实需要时才可使用。`;
 }
 
-function paletteCooldownRule() {
-    const recent = getRecentPaletteCooldown(3);
+function visualFamilyCooldownRule() {
+    const recent = getRecentVisualFamilyCooldown(3);
     if (!recent.length) return '';
 
+    const repeated = getRepeatedVisualFamilyDimensions(3, 2);
     const recentLines = recent.map(item => {
         const when = item.roundsAgo === 0 ? '上一面' : `前 ${item.roundsAgo + 1} 面`;
         const decay = item.roundsAgo === 0 ? '最高' : item.roundsAgo === 1 ? '中' : '低';
-        return `  - ${when}：${item.label}（短期冷却权重：${decay}）`;
+        return `  - ${when}：${describeVisualFamilyDimensions(item.family)}（短期冷却权重：${decay}）`;
     }).join('\n');
+    const repeatLine = repeated.length
+        ? `  - 当前真正连续未变的维度：${repeated.map(item => `${item.label}「${item.value}」×${item.streak}`).join('；')}。这些维度优先脱离，不得只换主色或强调色来规避。`
+        : '  - 当前没有形成连续两面的单维度锁定；仍按最近视觉家族整体避让，不需要为了避重机械切换到另一种固定视觉底盘。';
 
     return String.raw`
-配色短期冷却【每轮生成前主动执行；依据近期实际成品，越近权重越高】:
+${VISUAL_FAMILY_COOLDOWN_RULES}
+近期实际视觉家族【由插件扫描真实 HTML/CSS；越近权重越高】:
 ${recentLines}
-  - 上一面刚使用过的整体配色路径不得在本轮继续作为默认方案；更早记录只作递减避让，超出短期窗口自然解除，不构成永久禁色。
-  - 判断“仍是同一路径”时看主色相、冷暖关系、中性色底盘、明度结构与对比组织的整体组合；不能只换一个主色相就沿用同一套白底／深底、冷暖、明暗和饱和关系，也不能只在同一色相内微调色值、饱和度、明暗或强调色。
-  - 本轮配色必须重新从本轮展现形式的材质、环境、光线与空间关系推导；不指定任何替代颜色，也不得为了避重强行套用与本轮媒介不协调的色系。`;
+${repeatLine}
+  - 连续两面相同的维度才进入强短期冷却；只冷却正在重复的维度，其他维度仍服从本轮展现形式，不构成永久禁用。
+  - 若同时有两个及以上维度连续重复，本轮至少改变其中两项；若只有一个维度重复，必须改变该项，并再改变至少一个其他视觉维度。
+  - 颜色只是视觉家族的一部分：仅更换主色相、强调色或局部色值，而主底盘／明暗／轮廓／阅读／信息单位／空间结构仍近似，不算新的整体视觉家族。`;
 }
 
 function hardStartupReserve() {
@@ -600,7 +604,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const themes = mode === 'format_only' ? '当前助手正文' : compactLockItems(combo?.themes, 'theme');
     const formats = compactLockItems(combo?.formats, 'presentation');
     const interaction = interactionFamilyCooldownSnapshot();
-    const recentPalette = getRecentPaletteCooldown(3);
+    const repeatedVisualDimensions = getRepeatedVisualFamilyDimensions(3, 2);
     const innerDetailsBlocked = getRecentRiskFlags(5).includes('inner_details_used');
     const directiveText = settings?.userDirectivePriority && directive?.rawDirective
         ? truncateDirectiveText(directive.rawDirective, 240)
@@ -609,7 +613,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
 
     const activeBans = [
         interaction ? `交互避用「${interaction.label}」` : '',
-        recentPalette.length ? `上一面配色路径「${recentPalette[0].label}」进入最高短期冷却；更早配色按时间递减避让；仅换主色相或只调明暗／饱和度／强调色都不算脱离近期配色结构` : '',
+        repeatedVisualDimensions.length ? `近期连续视觉维度优先避让：${repeatedVisualDimensions.map(item => `${item.label}「${item.value}」×${item.streak}`).join('；')}；不得只换颜色掩盖相同底盘／明暗／轮廓／阅读／信息单位／空间结构` : '',
         innerDetailsBlocked ? '兔子镜内部 details/summary 冷却' : '',
     ].filter(Boolean);
 
@@ -658,7 +662,7 @@ ${selectedFormats}`);
     chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
     chunks.push(interactionFamilyCooldownRule());
     chunks.push(innerDetailsCooldownRule());
-    chunks.push(paletteCooldownRule());
+    chunks.push(visualFamilyCooldownRule());
     chunks.push(visualColorTruthRule());
     chunks.push(stateBarIsolationRule());
     chunks.push(presentationWorldviewLockRule(combo, settings));
