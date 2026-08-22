@@ -1,21 +1,52 @@
-# RabbitMirror 1.4.25.2 TEST
+# RabbitMirror 1.4.30.2 TEST
 
-- 基于 1.4.25.1 实际源码继续修改；1.4.25.1 的未信任 HTML 边界修复保持不变，不带入 1.4.26～1.4.30 的交互／布局 sanitizer 试验。
-- 配色冷却不再等待“同一家族已经重复 2 次”才触发。每一面真实成品完成后，其配色路径立即进入短期冷却；下一轮生成前读取最近 3 面，上一面权重最高，更早记录按轮次递减，超出窗口自然解除。
-- 判断近期近似时不再靠“换一个色值”逃逸：同一色相只调整饱和度、明暗或强调色仍视为近似复用；同时不指定任何替代颜色，不把黑／米黄／蓝白或其他色系写成长期固定禁色／安全色。
-- 独立 API 与跟随主 API 使用同一方向：删除独立 API 中永久性的“黑色不能作为默认方案”提示，改由真实近期成品的短期冷却负责避让，避免反黑规则把默认方案长期推向某个浅色吸引子。
-- 手动重 roll 的上一版配色进入最高短期冷却，但不在配色规则中重复声明“明确点菜覆盖”；点菜优先级继续完全交给现有强规则。
-- 不修改主题／展现形式母本、黑名单、抽签、交互维修兔、外容器、独立 API stream／retry／single-flight。
+- 直接基于 1.4.30.1，小修两处；底座仍是 1.4.30，不合并 1.4.25.1/1.4.25.2。
+- 配色冷却取消“冷青蓝”及其它具体颜色家族的特殊待遇；所有颜色统一按主色相、冷暖、底盘、明度/饱和度/对比结构做近期 3 面短期避重。仅换主色相但继续沿用同一白底/深底、冷暖与明暗结构，也视为近似模板复用。
+- 跟随主 API 的兔子镜识别不再只靠 summary 中“兔子镜”三个字：优先兼容兔子镜/兔子鏡/Rabbit Mirror 标题，同时接受 RabbitMirror 自己生成的 `data-rabbit-mirror-css-scope=rmcss-*` 结构身份；标题被显示正则改名、且 `<toto>` 被宿主剥掉时，维修兔仍可找到外层 details。
+- 结构身份只认最外层受 scope 标记的 details，避免把镜内嵌套 details 当成独立兔子镜。
+- 不修改 1.4.30/1.4.30.1 的 sanitizer 主体、checked/radio 别名、外置 shell/外容器、Prompt 母本、抽签、独立 API stream/retry/single-flight。
 
-# RabbitMirror 1.4.25.1 TEST
+# RabbitMirror 1.4.30 TEST
 
-- 以 1.4.25 稳定版为唯一基线，未带入 1.4.26～1.4.30 的交互、布局与大范围净化器改动。
-- 安全边界：自修改交互初始 DOM 改为 WeakMap + clone 保存，不再信任模型可写的 baseline 属性，也不再用 `innerHTML` 恢复。
-- 安全边界：独立 API 首次挂载、维修兔代码块／纯文字 HTML 重建统一经过窄净化；删除脚本、嵌入页、事件属性和任意外部网络资源，但保留本地 CSS、`display:none`、`:checked`、外容器、fixed/sticky、dialog/popover 等正常表现。
-- 安全边界：CSS 只移除 `@import` 或危险网络 `url()` 声明，不因一个资源地址删除整份 `<style>`；保留本地 `url(#fragment)`、有限 data image 与原有塔罗牌图片白名单。
-- 配色：把肉眼同属蓝白／青蓝底盘的 cool cyan + blue 跨明度／饱和度合并为同一冷却家族；连续重复时明确禁止继续把蓝、青、冷灰蓝当默认“安全色”。
-- 暗色冷却同时补充“避黑不等于默认换蓝白／青蓝”，减少黑色与米黄被冷却后向蓝色收敛。
+- 修复 1.4.26 起 strict sanitizer 对 `@import` 的整份 `<style>` 删除：现在只移除 `@import` 语句，保留同一 stylesheet 中的本地外框、`display:none` 默认隐藏态、`:checked` 交互规则与布局。外部字体/样式仍不会发起网络请求。
+- 再收窄 1.4.28/1.4.29 的 checked/radio ID 别名：别名不再写入全局 ID 映射，不再重写普通 panel/SVG/base selector；只允许修 `label[for]` 与作为 `:checked` / `:not(:checked)` 主体的控件选择器。
+- sanitizer 若真的因剩余本地 CSS 仍不安全而不得不删除整份 style，会写入诊断标记；维修兔/全链路诊断不再沉默，会明确报告“外框/默认隐藏态/交互显示规则可能丢失”。
+- 保留 1.4.26+ 的 script/iframe/form/外部资源安全边界、WeakMap + DOM clone、popover/local route；不修改 Prompt、母本、抽签、独立 API stream/retry/single-flight。
 
+# RabbitMirror 1.4.29 TEST
+
+- 修复 1.4.28 checked/radio ID 别名修复的范围过宽回归：不再把任意 CSS `#id`、`aria-controls`、锚点目标等都当作 checkbox/radio 控件引用，避免把结果面板/装饰节点的隐藏规则错误重定向到 input，导致“本应点击后出现的内容默认全展开”。
+- checked/radio 别名只在有明确控件证据时生效：`label[for]`，或 CSS 中作为 `:checked` / `:not(:checked)` 主体的 `#id` / `[id=...]`。候选目标也只允许真实 checkbox/radio input。
+- 修复必须保持初始可见状态：若某个 checkbox 原本因坏掉的 `:checked` 引用而“看起来未开启”，1.4.29 不会在修好引用的同一刻把第二层内容突然展开；仅对这种新修复且之前没有有效 checked 路线的 checkbox 清除错误的初始 checked，用户首次点击后再正常显示第二层。radio 默认分支不动。
+- 保留 1.4.28 对 `toggle/chk/check/checkbox/cb/switch` 与 `rad/radio/rb` 的高置信唯一别名能力，因此上一轮“按钮能点但 CSS 永远找不到真实 checked 控件”的修复不回滚。
+- 保留 1.4.27 的 sanitizer、WeakMap + DOM clone、CSS 声明级净化、popover/local route 与外部资源边界；不修改 Prompt、母本、抽签、独立 API 请求参数/stream/retry/single-flight。
+
+# RabbitMirror 1.4.28 TEST
+
+- 修复 checked/radio 交互引用的高置信别名漏判：模型把真实控件 ID 写成 `...-toggle-analysis`，却在 CSS/label 中引用 `...-chk-analysis`（或 checkbox/check/cb/switch、rad/radio/rb 同族命名）时，维修兔/独立 API 的 ID 隔离现在可在“唯一目标 + 语义尾部一致”前提下同步引用。
+- 不放宽跨镜/歧义映射：若同一别名能命中多个不同控件，仍保持不修；不同语义尾部（如 analysis vs danmaku）不会互相串接。
+- 保留 1.4.27 的未信任 HTML sanitizer、WeakMap + DOM clone、CSS 声明级净化、popover/local route、外部资源阻断。
+- 不修改 Prompt、母本、抽签、独立 API 请求参数/stream/retry/single-flight、World Info 或其它维修兔模块。
+
+# RabbitMirror 1.4.27 TEST
+
+- 回修 1.4.26 strict sanitizer 的兼容性误杀，同时保留原安全边界。
+- CSS overlay 判定从“任何 fixed/sticky 都危险”缩窄为真实全视口覆盖；局部 fixed 浮层、sticky 吸顶、普通 absolute 不再导致整份样式被删除。
+- 外部 `url()` / legacy executable CSS 改为声明级剔除，安全布局/配色声明继续保留；`@import` 仍整块拒绝。
+- 恢复同镜、唯一 ID、合法动作的 popover/commandfor 路由；无效/歧义/跨目标路由继续删除。dialog 保留结构但移除自动 open。
+- data image 增加 2,000,000 字符上限；塔罗固定图源、SVG fragment 与既有严格 URL 规则保持。
+- 不修改 Prompt、抽签、独立 API 请求参数/stream/retry/single-flight、World Info 或维修兔其它功能。
+
+# RabbitMirror 1.4.26 TEST
+
+- F1：自修改交互 baseline/active 改为 runtime-only WeakMap + DOM clone；不再从模型 attribute 回读，不再通过 `innerHTML` 恢复 baseline。
+- F2/F3/F7：独立 API 首次挂载与维修兔 direct-DOM recovery 共用未信任 HTML sanitizer；默认拒绝任意外部资源、form 提交与越界覆盖层，同时保留 checkbox/radio、普通 absolute CSS、本地 SVG fragment、健康 data image。
+- 塔罗 Prompt/规则文件保持 1.4.25 原样；运行时仅放行既有 `gfx.tarot.com/images/site/decks/rider/full_size/0-77.jpg` 固定路径，query/fragment 不放行。
+- F4：删除误残留 dead file `data/safetyPatch.js`，不接入 Prompt。
+- F5：只把设置页文案改为“清除抽签历史与冷却记录”，不扩大 `onClean()` 的删除语义。
+- F6：本轮不处理；`response.text()`、stream/non-stream、retry/single-flight 等独立 API 高风险请求链保持原行为。
+
+# RabbitMirror 1.4.25 TEST
 
 - 「拉取世界书」增加 15 秒本地超时；宿主卡住时会自动结束并恢复按钮。
 - 世界书说明改成更准确的大白话：只拿名单/元数据用于逐本选择，不会重新扫描或重掷激活概率。
