@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.30.4",
-  "css": "style.css?rmv=1.4.30.4",
+  "js": "index.js?rmv=1.4.30.5",
+  "css": "style.css?rmv=1.4.30.5",
   "author": "Toto",
-  "version": "1.4.30.4",
+  "version": "1.4.30.5",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.30.4：保留 1.4.30.3 六维视觉家族冷却与主 API 维修兔身份识别；修复独立 API 手动“重说”被旧 pending/global single-flight 误复用而无法真正发起新请求的问题。"
+  "description": "兔子镜测试版 1.4.30.5：基于 1.4.30.4，小修独立 API 视觉优先级、严重低对比文字维修兔检测/修复，以及纯外置标题框与本体配色融合；保留重说 single-flight 修复与六维视觉家族冷却。"
 }

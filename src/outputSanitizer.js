@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.30.4';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.30.4';
+import { getSettings } from './settings.js?rmv=1.4.30.5';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.30.5';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.4.30.4';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.4';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.30.4';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.30.4';
+} from './feedbackCat.js?rmv=1.4.30.5';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.5';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.30.5';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.30.5';
 
 
-const RUNTIME_VERSION = '1.4.30.4';
+const RUNTIME_VERSION = '1.4.30.5';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -11977,7 +11977,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.4.30.4-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.4.30.5-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -12952,6 +12952,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
     const mobileLayout = inspectMaintenanceMobileLayout(root);
     const viewportLayout = inspectMaintenanceViewportLayout(root);
     const nestedDetailsPopupCandidateCount = findNestedDetailsPopupClippingCandidates(root).length;
+    const textContrastCandidateCount = findSevereTextContrastCandidates(root).length;
     const mobileInlineAnnotationCandidateCount = findMobileInlineAnnotationCandidates(root).length;
     const structuredStaticDisclosureCandidateCount = findStructuredStaticDisclosureCandidates(root).length;
     const fillInChoiceCandidateCount = findFillInChoiceCandidates(root)
@@ -13000,6 +13001,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `hover=${full.hoverCount} focus=${full.focusCount} active=${full.activeCount} checked=${full.checkedCount}`,
         `宿主CSS解析错误=${full.hostCssParserError} 原始未编码SVG=${full.rawUnencodedSvgDataUri} 原始CSS注释=${full.rawCssCommentCount} 原始#ID选择器=${full.rawCssIdSelectorCount}`,
         `宿主CSS错误摘要=${full.hostCssParserErrorText || '(无)'}`,
+        `严重低对比文字候选=${textContrastCandidateCount} 已维修=${root.getAttribute?.(TEXT_CONTRAST_RESCUE_ROOT_ATTR) || '0'}`,
         '',
         '[4. 净化器／属性保留层]',
         `原始内联事件=${full.rawInlineEvents} 渲染后内联事件=${full.renderedInlineEvents}`,
@@ -15255,6 +15257,171 @@ const MAINTENANCE_FINDING_STAGE_LABELS = Object.freeze({
 });
 
 
+
+const TEXT_CONTRAST_RESCUE_ATTR = 'data-rabbit-mirror-text-contrast-rescue';
+const TEXT_CONTRAST_RESCUE_ROOT_ATTR = 'data-rabbit-mirror-text-contrast-rescue-count';
+
+function parseComputedRgbColor(value) {
+    const text = String(value || '').trim().toLowerCase();
+    if (!text || text === 'transparent') return null;
+    const match = text.match(/^rgba?\(\s*([\d.]+)(?:\s*,\s*|\s+)([\d.]+)(?:\s*,\s*|\s+)([\d.]+)(?:\s*(?:,|\/)\s*([\d.]+%?))?\s*\)$/i);
+    if (!match) return null;
+    const alphaText = String(match[4] || '1');
+    const alpha = alphaText.endsWith('%') ? Number.parseFloat(alphaText) / 100 : Number.parseFloat(alphaText);
+    return {
+        r: Math.max(0, Math.min(255, Number.parseFloat(match[1]) || 0)),
+        g: Math.max(0, Math.min(255, Number.parseFloat(match[2]) || 0)),
+        b: Math.max(0, Math.min(255, Number.parseFloat(match[3]) || 0)),
+        a: Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 1,
+    };
+}
+
+function compositeReadableColor(foreground, background, alpha = 1) {
+    const a = Math.max(0, Math.min(1, Number(alpha) || 0));
+    return {
+        r: foreground.r * a + background.r * (1 - a),
+        g: foreground.g * a + background.g * (1 - a),
+        b: foreground.b * a + background.b * (1 - a),
+        a: 1,
+    };
+}
+
+function readableRelativeLuminance(color) {
+    if (!color) return 0;
+    const channel = value => {
+        const normalized = Math.max(0, Math.min(255, Number(value) || 0)) / 255;
+        return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b);
+}
+
+function readableContrastRatio(a, b) {
+    const l1 = readableRelativeLuminance(a);
+    const l2 = readableRelativeLuminance(b);
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+function directReadableTextLength(element) {
+    if (!element?.childNodes) return 0;
+    return [...element.childNodes]
+        .filter(node => node?.nodeType === 3)
+        .map(node => String(node.textContent || '').replace(/\s+/g, ' ').trim())
+        .join(' ')
+        .trim().length;
+}
+
+function effectiveReadableOpacity(element, root) {
+    let opacity = 1;
+    for (let current = element; current && current.nodeType === 1; current = current.parentElement) {
+        let style = null;
+        try { style = globalThis.getComputedStyle?.(current) || null; } catch {}
+        const local = Number.parseFloat(style?.opacity || '1');
+        if (Number.isFinite(local)) opacity *= Math.max(0, Math.min(1, local));
+        if (current === root) break;
+    }
+    return opacity;
+}
+
+function effectiveReadableBackground(element, root) {
+    const layers = [];
+    let foundOpaque = false;
+    for (let current = element; current && current.nodeType === 1; current = current.parentElement) {
+        let style = null;
+        try { style = globalThis.getComputedStyle?.(current) || null; } catch {}
+        const parsed = parseComputedRgbColor(style?.backgroundColor);
+        const backgroundImage = String(style?.backgroundImage || 'none').trim().toLowerCase();
+        // A transparent gradient/picture cannot be reduced to one safe comparison color.
+        // Skip it rather than repaint text against a guessed parent surface.
+        if (backgroundImage && backgroundImage !== 'none' && (!parsed || parsed.a < 0.82)) return null;
+        if (parsed && parsed.a > 0.02) {
+            layers.push(parsed);
+            if (parsed.a >= 0.96) { foundOpaque = true; break; }
+        }
+        if (current === root) break;
+    }
+    if (!layers.length || !foundOpaque) return null;
+    let background = { r: layers[layers.length - 1].r, g: layers[layers.length - 1].g, b: layers[layers.length - 1].b, a: 1 };
+    for (let index = layers.length - 2; index >= 0; index -= 1) {
+        background = compositeReadableColor(layers[index], background, layers[index].a);
+    }
+    return background;
+}
+
+function severeTextContrastCandidate(element, root) {
+    if (!element || element === root || element.closest?.(`[${TOOL_ENTRY_HOST_ATTR}]`)) return null;
+    if (element.closest?.('summary')) return null;
+    const tag = String(element.tagName || '').toUpperCase();
+    if (['STYLE', 'SCRIPT', 'TEMPLATE', 'NOSCRIPT', 'SVG', 'PATH', 'INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) return null;
+    const textLength = directReadableTextLength(element);
+    if (textLength < 8 && !['BUTTON', 'LABEL', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(tag)) return null;
+    let style = null;
+    try { style = globalThis.getComputedStyle?.(element) || null; } catch { return null; }
+    if (!style || style.display === 'none' || style.visibility === 'hidden') return null;
+    const effectiveOpacity = effectiveReadableOpacity(element, root);
+    // Opacity is frequently part of a legitimate hidden/reveal state. Only repair fully
+    // visible text here; low-opacity content stays under the interaction rescue system.
+    if (!Number.isFinite(effectiveOpacity) || effectiveOpacity < 0.6) return null;
+    const foreground = parseComputedRgbColor(style.color);
+    const background = effectiveReadableBackground(element, root);
+    if (!foreground || !background) return null;
+    const effectiveForeground = compositeReadableColor(foreground, background, Math.max(0, Math.min(1, foreground.a * effectiveOpacity)));
+    const ratio = readableContrastRatio(effectiveForeground, background);
+    // Only flag severe failures. Secondary/meta text is allowed to be softer; this threshold
+    // is intentionally below WCAG AA so the maintenance rabbit does not restyle normal design.
+    if (ratio >= 2.05) return null;
+    return { element, ratio, foreground, background, effectiveOpacity, textLength };
+}
+
+function findSevereTextContrastCandidates(root, limit = 80) {
+    if (!root?.querySelectorAll || typeof globalThis.getComputedStyle !== 'function') return [];
+    const selector = 'p,li,blockquote,h1,h2,h3,h4,h5,h6,span,strong,em,b,i,label,button,td,th,dt,dd,figcaption,small,div,section,article';
+    const result = [];
+    for (const element of root.querySelectorAll(selector)) {
+        const candidate = severeTextContrastCandidate(element, root);
+        if (!candidate) continue;
+        result.push(candidate);
+        if (result.length >= Math.max(1, Number(limit) || 80)) break;
+    }
+    return result;
+}
+
+function readableForegroundForBackground(original, background, targetRatio = 4.2) {
+    const dark = { r: 18, g: 18, b: 20, a: 1 };
+    const light = { r: 248, g: 248, b: 248, a: 1 };
+    const target = readableRelativeLuminance(background) > 0.42 ? dark : light;
+    let best = target;
+    for (let step = 1; step <= 20; step += 1) {
+        const t = step / 20;
+        const mixed = {
+            r: original.r * (1 - t) + target.r * t,
+            g: original.g * (1 - t) + target.g * t,
+            b: original.b * (1 - t) + target.b * t,
+            a: 1,
+        };
+        if (readableContrastRatio(mixed, background) >= targetRatio) { best = mixed; break; }
+    }
+    return best;
+}
+
+function repairSevereTextContrast(root) {
+    const candidates = findSevereTextContrastCandidates(root);
+    if (!candidates.length) {
+        root?.removeAttribute?.(TEXT_CONTRAST_RESCUE_ROOT_ATTR);
+        return 0;
+    }
+    let repaired = 0;
+    for (const candidate of candidates) {
+        const element = candidate.element;
+        if (!element?.isConnected || !root.contains?.(element)) continue;
+        const next = readableForegroundForBackground(candidate.foreground, candidate.background, 4.2);
+        element.style?.setProperty?.('color', `rgb(${Math.round(next.r)}, ${Math.round(next.g)}, ${Math.round(next.b)})`, 'important');
+        element.setAttribute?.(TEXT_CONTRAST_RESCUE_ATTR, 'true');
+        repaired += 1;
+    }
+    if (repaired) root.setAttribute?.(TEXT_CONTRAST_RESCUE_ROOT_ATTR, String(repaired));
+    return repaired;
+}
+
 function createMaintenanceFinding({ id, stage, label, evidence = [], mode, confidence = 1 }) {
     return {
         id: String(id || ''),
@@ -15286,6 +15453,7 @@ function buildMaintenanceFindings(root, {
     code = {},
     interaction = {},
     textClippingCandidateCount = 0,
+    textContrastCandidateCount = 0,
     nestedDetailsPopupCandidateCount = 0,
     mobileInlineAnnotationCandidateCount = 0,
     mobileLayout = null,
@@ -15434,6 +15602,14 @@ function buildMaintenanceFindings(root, {
                 `pointerBlocked=${Number(viewportLayout?.pointerBlockedCount) || 0}`,
             ],
             confidence: 0.97,
+        });
+    }
+
+    if ((Number(textContrastCandidateCount) || 0) > 0) {
+        add({
+            id: 'severe-text-contrast', stage: 'visibility', mode: 'text',
+            label: `检测到 ${Number(textContrastCandidateCount) || 0} 处正文与实际背景对比度过低，文字几乎不可读`,
+            evidence: [`textContrastCandidateCount=${Number(textContrastCandidateCount) || 0}`], confidence: 0.99,
         });
     }
 
@@ -15692,6 +15868,13 @@ function inspectMaintenanceRabbit(root) {
         console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
         interaction = { checkedControlsLost: false, stateControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, missingCheckedSubjectClassCandidateCount: 0, missingCheckedSubjectClassRescueCount: 0, missingCheckedSubjectClassMissingCount: 0, radioGroupLossCandidateCount: 0, radioGroupRescueCount: 0, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, staticChoiceSelectionCandidateCount: 0, staticChoiceSelectionRescueCount: 0, structuredStaticDisclosureCandidateCount: 0, structuredStaticDisclosureRescueCount: 0, fillInChoiceCandidateCount: 0, fillInChoiceRescueCount: 0, focusWithinPersistentCandidateCount: 0, focusWithinPersistentRescueCount: 0, focusWithinPersistentMissingCount: 0, rawScriptTimelineCandidateCount: 0, rawScriptTimelineRescueCount: 0, rawScriptTimelineMissingCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, detachedCheckedHasRuleCandidateCount: 0, detachedCheckedHasRuleRescueCount: 0, detachedCheckedHasRuleMissingCount: 0, pairedCheckedStateCandidateCount: 0, pairedCheckedStateRescueCount: 0, pairedCheckedStateMissingCount: 0, exclusiveStackedStateCandidateCount: 0, exclusiveStackedStateRescueCount: 0, exclusiveStackedStateMissingCount: 0, channelDialCycleCandidateCount: 0, channelDialCycleRescueCount: 0, channelDialCycleMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
     }
+    let textContrastCandidateCount = 0;
+    try {
+        textContrastCandidateCount = findSevereTextContrastCandidates(root).length;
+    } catch (error) {
+        partialInspection = true;
+        console.debug('[RabbitMirror] maintenance text contrast inspection skipped:', error);
+    }
     let textClippingCandidateCount = 0;
     try {
         textClippingCandidateCount = findMaintenanceTextClippingCandidates(root).length;
@@ -15740,6 +15923,7 @@ function inspectMaintenanceRabbit(root) {
         code,
         interaction,
         textClippingCandidateCount,
+        textContrastCandidateCount,
         nestedDetailsPopupCandidateCount,
         mobileInlineAnnotationCandidateCount,
         mobileLayout,
@@ -15756,6 +15940,7 @@ function inspectMaintenanceRabbit(root) {
             full,
             interaction,
             textClippingCandidateCount,
+            textContrastCandidateCount,
             nestedDetailsPopupCandidateCount,
             mobileInlineAnnotationCandidateCount,
             mobileLayout,
@@ -15774,6 +15959,7 @@ function inspectMaintenanceRabbit(root) {
             full,
             interaction,
             textClippingCandidateCount,
+            textContrastCandidateCount,
             nestedDetailsPopupCandidateCount,
             mobileInlineAnnotationCandidateCount,
             mobileLayout,
@@ -15800,6 +15986,7 @@ function inspectMaintenanceRabbit(root) {
             full,
             interaction,
             textClippingCandidateCount,
+            textContrastCandidateCount,
             nestedDetailsPopupCandidateCount,
             mobileInlineAnnotationCandidateCount,
             mobileLayout,
@@ -15819,6 +16006,7 @@ function inspectMaintenanceRabbit(root) {
         full,
         interaction,
         textClippingCandidateCount,
+        textContrastCandidateCount,
         nestedDetailsPopupCandidateCount,
         mobileInlineAnnotationCandidateCount,
         mobileLayout,
@@ -20073,7 +20261,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.21';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.22';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -20091,6 +20279,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
     { id: 'viewport-layout-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root ? installMaintenanceViewportLayoutRescue(target) : 0 },
     // 1.3.77: 仅处理「确有横向溢出且被最近祖先裁掉」这一种形态，产物全部为 transient。
     { id: 'horizontal-clip-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root ? installMaintenanceHorizontalClipRescue(target) : 0 },
+    { id: 'text-contrast-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairSevereTextContrast(target) },
     { id: 'text-clipping-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMaintenanceTextClipping(target) },
     { id: 'webkit-3d-flip-compat', modes: ['interaction', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => installWebKit3DFlipRescue(target) },
     { id: 'interaction-id-scope', modes: ['source', 'interaction', 'style', 'all'], bucket: 'scope', perTarget: true, run: ({ target }) => { scopeRabbitMirrorInteractionIds(target); return 1; } },

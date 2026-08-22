@@ -1,12 +1,12 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.4';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.4';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.30.4';
-import { VISUAL_FAMILY_COOLDOWN_RULES } from '../data/raw/visualFamilyCooldownRules.js?rmv=1.4.30.4';
-import { pickCombination } from './picker.js?rmv=1.4.30.4';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRecentVisualFamilyCooldown, getRepeatedVisualFamilyDimensions, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.4';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.4';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.30.4';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.30.4';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.5';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.5';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.30.5';
+import { VISUAL_FAMILY_COOLDOWN_RULES } from '../data/raw/visualFamilyCooldownRules.js?rmv=1.4.30.5';
+import { pickCombination } from './picker.js?rmv=1.4.30.5';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRecentVisualFamilyCooldown, getRepeatedVisualFamilyDimensions, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.5';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.5';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.30.5';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.30.5';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -621,8 +621,9 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
         '<兔子镜近输出短锁 data-source="independent-api-near-output">',
         `本轮锁定：${samplingModeLabel(combo, settings)}；主题：${themes}；展现形式：${formats}。`,
         directiveText ? `点菜优先：${directiveText}` : '',
-        visualPreferenceLock || '',
         activeBans.length ? `近因避让：${activeBans.join('；')}。` : '',
+        visualPreferenceLock ? `最终视觉偏好裁决：${visualPreferenceLock}；近期避让只负责脱离重复维度，不得覆盖这条视觉偏好。` : '',
+        '可读性底线：关键正文与实际承载背景必须保持清晰对比；不得为了明暗冷却把正文、按钮或标签做成接近背景色的低对比文字。',
         '执行：首个主要内容块必须是真实的本轮展现形式本体，主题进入内容／关系／细节；不得退化为通用卡片或信息面板，交互从媒介内部对象生长并产生可保持反馈。直接输出唯一完整 <toto>...</toto>，闭合 </toto> 后立即结束。',
         '</兔子镜近输出短锁>',
     ].filter(Boolean).join('\n');

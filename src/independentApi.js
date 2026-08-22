@@ -1,14 +1,14 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings } from './settings.js?rmv=1.4.30.4';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.4';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.4';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.4';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.4';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.4';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.4';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.4';
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.4';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings } from './settings.js?rmv=1.4.30.5';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.5';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.5';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.5';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.5';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.5';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.5';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.5';
+import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.5';
 
-const RUNTIME_VERSION = '1.4.30.4';
+const RUNTIME_VERSION = '1.4.30.5';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -3629,10 +3629,12 @@ function applyExternalShellTint(host,html=''){
  const source=externalShellSourcePalette(html);
  const palette=rendered||source;
  const tinted=applyExternalShellTintPalette(host,palette);
- // 1.3.20: tint variables may decorate the title shell, but the generated body
- // is never merged into an extension-owned visual frame.
- clearExternalShellIntegration(host);
- return tinted;
+ // 1.4.30.5: pure-external title shell follows the rendered RabbitMirror surface again.
+ // Reuse the existing integration path so header/border/radius are sampled from the
+ // actual body instead of keeping a detached neutral/dark title strip.
+ const integrated=applyExternalShellIntegration(host,palette);
+ if(!integrated) clearExternalShellIntegration(host);
+ return tinted||integrated;
 }
 function scheduleExternalShellTint(host,html=''){
  if(!host) return false;
