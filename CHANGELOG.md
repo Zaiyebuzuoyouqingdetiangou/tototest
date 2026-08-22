@@ -1,8 +1,9 @@
-# RabbitMirror 1.4.30.3 TEST
+# RabbitMirror 1.4.30.4 TEST
 
 
-## 1.4.30.3 - 2026-08-22
+## 1.4.30.4 - 2026-08-22
 
+- 修复独立 API 手动“重说”被 single-flight 去重误吞：force=true 时不再复用同 slot 的旧 pending/global flight，而是继续执行既有 cancelFlightsForSlot()，中止旧请求并启动一次新的人工请求。自动生成仍保留原 single-flight 去重。
 - 接通 `data/raw/visualFamilyCooldownRules.js`：真实视觉家族冷却现在进入生成 Prompt，不再作为未引用母本。
 - 配色避重升级为六维视觉家族避重：主底盘/材质、明暗关系、整体轮廓、阅读路径、信息单位、空间结构。连续两面相同的维度才进入强短期冷却；若同时重复两项以上，本轮至少改变其中两项。
 - 解决“深棕→深绿→深紫仍连续暗底”的缺口：换主色不再被视为脱离同一视觉家族。规则对亮/暗及所有颜色对称，不设置永久禁色。

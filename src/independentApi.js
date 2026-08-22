@@ -1,14 +1,14 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings } from './settings.js?rmv=1.4.30.3';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.3';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.3';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.3';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.3';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.3';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.3';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.3';
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.3';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings } from './settings.js?rmv=1.4.30.4';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.4';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.4';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.4';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.4';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.4';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.4';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.4';
+import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.4';
 
-const RUNTIME_VERSION = '1.4.30.3';
+const RUNTIME_VERSION = '1.4.30.4';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -4594,13 +4594,13 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   }
  }
  const existing=pending.get(slot);
- if(existing && existing.sourceHash===sourceHash && existing.revision===revision){
+ if(!force && existing && existing.sourceHash===sourceHash && existing.revision===revision){
   if(el) ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
   existing.task?.finally?.(()=>queueMessageSync([index]));
   return existing.task;
  }
  const flightKey=flightIdentity(slot,sourceHash); const shared=globalFlights().get(flightKey);
- if(shared?.task){
+ if(!force && shared?.task){
   if(el) ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
   shared.task.finally?.(()=>queueMessageSync([index]));
   return shared.task;

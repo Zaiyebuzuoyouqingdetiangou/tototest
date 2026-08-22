@@ -455,7 +455,7 @@ const PALETTE_HUE_LABELS = {
     cyan: '青', blue: '蓝', purple: '紫', pink: '粉', neutral: '中性色',
 };
 
-// 1.4.30.3: 配色冷却不再给任何具体颜色家族特殊待遇。
+// 1.4.30.4: 配色冷却不再给任何具体颜色家族特殊待遇。
 // 统一使用同一组结构维度描述近期成品，避免“禁蓝→全紫→再禁紫”式颜色打地鼠。
 export function paletteFamilyKey(fingerprint) {
     if (!fingerprint || typeof fingerprint !== 'object') return '';
@@ -477,7 +477,7 @@ export function describePaletteFamily(fingerprint) {
     return [brightness, temperature, hue, saturation].filter(Boolean).join('');
 }
 
-// 1.4.30.3: 不再等重复已经形成才纠偏。每一面真实成品完成后立即进入短期冷却；
+// 1.4.30.4: 不再等重复已经形成才纠偏。每一面真实成品完成后立即进入短期冷却；
 // 这里只按时间距离返回近期真实配色，不决定下一轮该用什么颜色。
 export function getRecentPaletteCooldown(window = 3) {
     const span = Math.max(1, Number(window) || 3);
