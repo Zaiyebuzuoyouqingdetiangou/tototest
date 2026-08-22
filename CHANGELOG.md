@@ -1,3 +1,15 @@
+# RabbitMirror 1.4.30.12 TEST
+
+## 1.4.30.12 - 2026-08-23
+
+- 修正长聊天性能修复方向：不再新增“历史 DOM 分批挂载”机制，而是回到正式版 1.3.57 / 1.3.93 / 1.3.94 的既有不变量——折叠历史镜在 CHAT_CHANGED/full-chat restore 期间只能做轻量恢复。
+- `ensureExternalTools()` 的 full-history 路径现在显式传入 `historyRestoreLight`：保留工具按钮、首次打开 patrol/toggle 与持久化结构标记，但跳过即时 nested-details candidate pass、自动维修签名/排队以及 layout-based legacy mobile row migration。
+- 后续版本新增的 external geometry / shell integration / ready postprocess 也纳入历史轻量边界：折叠历史镜不启动 geometry settle，不执行 rendered-body `getComputedStyle`/rect 外框采样，也不执行主视觉 wide-stage/compact 后处理。
+- 历史镜首次真正打开时，移除 runtime-only historical-light 标记，并只为该镜恢复 geometry、外框融合、ready 后处理、inline mobile spatial rescue 与原有交互/维修首开链。
+- 新消息、Swipe、MESSAGE_UPDATED 等 targeted 单条更新不进入 history-light scope；保持原本即时修复/后处理语义。
+- 基线为 GitHub 1.4.30.10；未合入此前 1.4.30.11 候选版的历史 DOM hydration batching。
+- 不修改独立 API Prompt、POST body、temperature/max tokens、stream/retry/single-flight、一键连接、模型拉取、世界书、视觉冷却或 1.4.30.9 成品完整性门。
+
 # RabbitMirror 1.4.30.10 TEST
 
 ## 1.4.30.10 - 2026-08-22

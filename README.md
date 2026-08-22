@@ -1,3 +1,11 @@
+## 1.4.30.12 TEST：恢复历史折叠镜“只做轻工作”的性能边界
+
+- 直接基于 GitHub 1.4.30.10；不采用 1.4.30.11 的“历史 DOM 分批挂载”方案，历史镜仍按原有方式挂载。
+- 延续 1.3.57 / 1.3.93 / 1.3.94 原则：CHAT_CHANGED / 全聊天恢复时，折叠历史镜只挂标题壳、工具按钮与首次打开监听；不做完整交互急救、即时维修候选巡检。
+- 将后来新增但绕开旧保护的重工作纳入同一边界：历史折叠镜不启动 geometry settle、不做渲染态外框 computed-style/rect 采样、不跑 ready 主视觉 compact/wide-stage 后处理、不跑 layout-based legacy mobile row migration。
+- 用户首次打开某一面历史镜时，只唤醒这一面的 geometry、外框融合、ready 后处理、移动端空间救援与既有维修兔/交互首开巡检。
+- 新生成、Swipe、MESSAGE_UPDATED 等单条 targeted 更新保持原行为；独立 API Prompt、POST body、stream/retry/single-flight、世界书、视觉冷却与成品完整性门不变。
+
 ## 1.4.30.10 TEST：长聊天进入性能修复
 
 - 聊天同步期间缓存外置兔子镜索引，避免每条历史消息反复全局扫描全部镜面。

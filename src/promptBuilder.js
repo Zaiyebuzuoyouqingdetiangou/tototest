@@ -1,12 +1,12 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.10';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.10';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.30.10';
-import { VISUAL_FAMILY_COOLDOWN_RULES } from '../data/raw/visualFamilyCooldownRules.js?rmv=1.4.30.10';
-import { pickCombination } from './picker.js?rmv=1.4.30.10';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRecentVisualFamilyCooldown, getRepeatedVisualFamilyDimensions, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.10';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.10';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.30.10';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.30.10';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.12';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.12';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.30.12';
+import { VISUAL_FAMILY_COOLDOWN_RULES } from '../data/raw/visualFamilyCooldownRules.js?rmv=1.4.30.12';
+import { pickCombination } from './picker.js?rmv=1.4.30.12';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRecentVisualFamilyCooldown, getRepeatedVisualFamilyDimensions, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.12';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.12';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.30.12';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.30.12';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();

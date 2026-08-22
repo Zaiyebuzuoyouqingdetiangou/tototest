@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.30.10';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.30.10';
+import { getSettings } from './settings.js?rmv=1.4.30.12';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.30.12';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.4.30.10';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.10';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.30.10';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.30.10';
+} from './feedbackCat.js?rmv=1.4.30.12';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.12';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.30.12';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.30.12';
 
 
-const RUNTIME_VERSION = '1.4.30.10';
+const RUNTIME_VERSION = '1.4.30.12';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -11977,7 +11977,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.4.30.10-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.4.30.12-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -21328,7 +21328,7 @@ function removeFeedbackCatsInChatDom() {
 
 
 const PALETTE_DEDUPE_CHECKED_ATTR = 'data-rabbit-mirror-palette-dedupe-checked';
-function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, autoSafeForceCurrent = false } = {}) {
+function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, autoSafeForceCurrent = false, historyRestoreLight = false } = {}) {
     if (!isCurrentRuntime() || !scope?.querySelectorAll) return;
     const maintenanceEnabled = isMaintenanceRabbitEnabled();
     const feedbackEnabled = isFeedbackCatEnabled();
@@ -21347,7 +21347,7 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, a
             // persisted repair markers. Fresh/scoped message installs keep the immediate
             // candidate pass so newly rendered mirrors behave exactly as before.
             armNestedDetailsReplacementContainment(root);
-            if (!allowGlobalRemoval) installNestedDetailsReplacementContainment(root);
+            if (!allowGlobalRemoval && !historyRestoreLight) installNestedDetailsReplacementContainment(root);
         } catch (error) {
             console.debug('[RabbitMirror] nested details containment skipped for one mirror:', error);
         }
@@ -21355,7 +21355,7 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, a
             try {
                 installMaintenanceRabbitForRoot(root);
                 const maintenanceButton = root.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`);
-                if (!allowGlobalRemoval && maintenanceButton && rabbitMirrorExternalGenerationState(root) !== 'loading') {
+                if (!allowGlobalRemoval && !historyRestoreLight && maintenanceButton && rabbitMirrorExternalGenerationState(root) !== 'loading') {
                     // Auto-safe is a new/scoped-message feature. CHAT_CHANGED history
                     // restoration must not serialize every historical root for a signature
                     // or enqueue automatic repairs merely because the user entered a chat.
@@ -21725,14 +21725,16 @@ export function rehydrateRabbitMirrorMaintenanceRepairs(root) {
     return rebound;
 }
 
-export function refreshRabbitMirrorToolsInScope(scope) {
+export function refreshRabbitMirrorToolsInScope(scope, { historyRestoreLight = false } = {}) {
     if (!scope?.querySelectorAll) return;
     repairRabbitMirrorScopedClassAliasesInScope(scope);
-    // Older “显示不全” repairs could wrap a radio/checkbox-driven horizontal
-    // state row and turn it into a very tall empty frame. Repair only that
-    // proven bad pattern before installing the tools; ordinary flex rows remain untouched.
-    repairLegacyMaintenanceMobileStateRows(scope);
-    installMaintenanceRabbitsInScope(scope);
+    // 1.4.30.12: preserve the 1.3.57/1.3.93/1.3.94 history invariant. A full-chat
+    // restore may reattach old collapsed mirrors, but it must not run the newer
+    // computed-style mobile-row migration or immediate auto-safe/nested candidate
+    // passes for every historical mirror. Those remain fresh/scoped-message work
+    // and the existing first-open patrol will handle the one mirror the user opens.
+    if (!historyRestoreLight) repairLegacyMaintenanceMobileStateRows(scope);
+    installMaintenanceRabbitsInScope(scope, { historyRestoreLight });
 }
 
 

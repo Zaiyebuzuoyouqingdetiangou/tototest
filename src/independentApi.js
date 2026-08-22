@@ -1,14 +1,14 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.30.10';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.10';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.10';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.10';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.10';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.10';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.10';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.10';
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.10';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.30.12';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.12';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.12';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.12';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.12';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.12';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.12';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.12';
+import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.12';
 
-const RUNTIME_VERSION = '1.4.30.10';
+const RUNTIME_VERSION = '1.4.30.12';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -78,6 +78,32 @@ let latestGenerationTimer = null;
 let generationSequence = 0;
 let observer = null;
 let syncRunning = false;
+// 1.4.30.12: full-chat restoration keeps historical collapsed mirrors in the
+// same light state promised by 1.3.57/1.3.93/1.3.94. New/current targeted
+// message updates never enter this scope.
+let historicalRestoreLightDepth = 0;
+const HISTORICAL_LIGHT_HOST_ATTR = 'data-rm-historical-light';
+function withHistoricalRestoreLightPass(fn){
+ historicalRestoreLightDepth += 1;
+ try { return fn(); } finally { historicalRestoreLightDepth = Math.max(0,historicalRestoreLightDepth-1); }
+}
+function historicalRestoreLightPassActive(){ return historicalRestoreLightDepth>0; }
+function historicalLightHost(host){
+ if(!host?.isConnected || host.dataset?.rmSource!=='independent' || host.dataset?.rmState!=='ready') return false;
+ const details=host.querySelector?.(':scope > details');
+ return host.hasAttribute?.(HISTORICAL_LIGHT_HOST_ATTR) && !!details && !details.open && !details.hasAttribute?.('open');
+}
+function markHistoricalLightHostForRestore(host){
+ if(!host?.setAttribute || host.dataset?.rmSource!=='independent' || host.dataset?.rmState!=='ready') return false;
+ const details=host.querySelector?.(':scope > details');
+ if(historicalRestoreLightPassActive() && details && !details.open && !details.hasAttribute?.('open')){
+  host.setAttribute(HISTORICAL_LIGHT_HOST_ATTR,'true');
+  host.dataset.rmGeometryMode='historical-collapsed-deferred';
+  return true;
+ }
+ if(details?.open || details?.hasAttribute?.('open')) host.removeAttribute?.(HISTORICAL_LIGHT_HOST_ATTR);
+ return false;
+}
 let externalGeometryFrame = 0;
 let externalGeometryTimer = 0;
 let externalGeometryLastSignature = '';
@@ -2610,8 +2636,13 @@ function placeExternalHost(el,host,key='',source='independent'){
  clearOrphanExternalHostTimer(externalOwnerMesid(el));
  registerExternalHostInSyncIndex(host);
  if(needsReanchor || placementChanged) host.__rabbitMirrorIndependentPlacementDirty=true;
- ensureExternalHostGeometryCycle(el,host,needsReanchor?'external-reanchor':'');
- scheduleExternalHostGeometry(el,host);
+ // Historical collapsed mirrors need only a stable title shell during full-chat
+ // restoration. Default CSS already gives that shell a safe width; defer all
+ // geometry reads/timers until this one mirror is actually opened.
+ if(!historicalLightHost(host)){
+  ensureExternalHostGeometryCycle(el,host,needsReanchor?'external-reanchor':'');
+  scheduleExternalHostGeometry(el,host);
+ }
  if(previousParent?.hasAttribute?.(INLINE_ANCHOR_ATTR) && !previousParent.querySelector?.(`[${SOURCE_ATTR}]`)) previousParent.remove();
  return true;
 }
@@ -2720,7 +2751,7 @@ function restoreExternalHostRendering(host){
  return changed;
 }
 function refreshExternalHostGeometry(){
- const hosts=allExternalHosts().filter(node=>node.dataset.rmSource==='independent' && String(node.dataset.rmPlacement||'external')==='external');
+ const hosts=allExternalHosts().filter(node=>node.dataset.rmSource==='independent' && String(node.dataset.rmPlacement||'external')==='external' && !historicalLightHost(node));
  if(!hosts.length) return;
  // Layout reads are allowed only after a *real browser-width change*. Never call
  // this path merely because a SillyTavern drawer/modal changed the app layout.
@@ -3239,6 +3270,22 @@ function scheduleExternalInteractionActivationAfterOpenPaint(host,details,onTogg
  else setTimeout(run,0);
  return true;
 }
+function activateHistoricalLightHostOnOpen(host,details){
+ if(!host?.hasAttribute?.(HISTORICAL_LIGHT_HOST_ATTR) || !details?.isConnected || !details.open) return false;
+ host.removeAttribute(HISTORICAL_LIGHT_HOST_ATTR);
+ delete host.dataset.rmGeometryMode;
+ const el=messageElementForExternalHost(host);
+ if(host.dataset.rmSource==='independent' && host.dataset.rmPlacement==='external' && el?.isConnected){
+  beginExternalHostGeometryCycle(host,'historical-first-open',el);
+  scheduleExternalHostGeometry(el,host);
+ }else if(host.dataset.rmSource==='independent' && host.dataset.rmPlacement!=='external'){
+  try{ activateRabbitMirrorIndependentMobileSpatialRescue(details); }catch(error){ console.debug('[RabbitMirror] deferred inline mobile spatial rescue skipped:',error); }
+ }
+ const source=String(host.__rabbitMirrorIndependentSource||'');
+ scheduleExternalShellTint(host,source);
+ scheduleIndependentReadyPostprocess(host,host.dataset.rmKey||'',source);
+ return true;
+}
 function armExternalInteractionTools(host,details){
  if(!details || externalInteractionActivatedDetails.has(details)) return;
  const ready=host?.dataset?.rmState==='ready';
@@ -3251,6 +3298,7 @@ function armExternalInteractionTools(host,details){
  // disclosure itself stays responsive on Safari/iOS.
  if(details.open || details.hasAttribute?.('open')){
   rescueIndependentExternalAutoRootWidth(host);
+  activateHistoricalLightHostOnOpen(host,details);
   scheduleExternalInteractionActivationAfterOpenPaint(host,details);
   return;
  }
@@ -3259,6 +3307,7 @@ function armExternalInteractionTools(host,details){
  const onToggle=()=>{
   if(!details?.isConnected || !details.open) return;
   rescueIndependentExternalAutoRootWidth(host);
+  activateHistoricalLightHostOnOpen(host,details);
   scheduleExternalInteractionActivationAfterOpenPaint(host,details,onToggle);
  };
  details.addEventListener?.('toggle',onToggle,false);
@@ -3267,8 +3316,12 @@ function armExternalInteractionTools(host,details){
 function ensureExternalTools(host){
  if(!host?.isConnected) return;
  stampExternalDetailsOwnership(host);
- // 当前 external geometry cycle 的有限定点复测；同一 cycle 幂等，新 cycle 可重新验证。
- try{ scheduleExternalHostGeometrySettleRecheck(host); }catch(error){ console.debug('[RabbitMirror] geometry settle schedule skipped:',error); }
+ const historyRestoreLight=historicalLightHost(host);
+ // Keep the original historical invariant: a collapsed restored mirror may bind
+ // cheap first-open listeners, but must not start geometry settle work now.
+ if(!historyRestoreLight){
+  try{ scheduleExternalHostGeometrySettleRecheck(host); }catch(error){ console.debug('[RabbitMirror] geometry settle schedule skipped:',error); }
+ }
  const details=host.querySelector?.(':scope > details');
  armExternalInteractionTools(host,details);
  // 1.3.62: old independent mirrors can already contain persisted exclusive-state
@@ -3277,10 +3330,10 @@ function ensureExternalTools(host){
  try{ if(details) repairRabbitMirrorPersistedExclusiveGridSpan(details); }catch(error){ console.debug('[RabbitMirror] persisted stacked-grid migration skipped:',error); }
  // 1.3.20 light external shell: pure external owns placement/title only. It must
  // not mutate the model's width/height/grid/absolute-position interaction stage.
- if(host.dataset.rmPlacement!=='external'){
+ if(host.dataset.rmPlacement!=='external' && !historyRestoreLight){
   try{ if(details) activateRabbitMirrorIndependentMobileSpatialRescue(details); }catch(error){ console.debug('[RabbitMirror] inline mobile spatial rescue skipped:',error); }
  }
- try{ refreshRabbitMirrorToolsInScope(host); }catch(error){ console.debug('[RabbitMirror] external tool preparation skipped:',error); }
+ try{ refreshRabbitMirrorToolsInScope(host,{historyRestoreLight}); }catch(error){ console.debug('[RabbitMirror] external tool preparation skipped:',error); }
  removeIndependentResayButtons(host);
 }
 function readyDetailsFromHost(host){
@@ -3930,6 +3983,15 @@ function scheduleExternalShellTint(host,html=''){
  if(!host) return false;
  const source=String(html||host.__rabbitMirrorIndependentSource||'');
  const tintKey=`${source.length}:${hashText(source)}`;
+ if(historicalLightHost(host)){
+  // Source-only palette extraction is layout-free and keeps the collapsed title
+  // recognizable. Rendered-body sampling (getComputedStyle/rect/tree scans) waits
+  // until first open together with the rest of the historical heavy work.
+  applyExternalShellTintPalette(host,externalShellSourcePalette(source));
+  host.dataset.rmShellTintDeferred='history-open';
+  return true;
+ }
+ delete host.dataset.rmShellTintDeferred;
  const scheduled=!!(host.__rabbitMirrorShellTintFrame || host.__rabbitMirrorShellTintTimer);
  if(host.dataset.rmShellTintKey===tintKey && host.hasAttribute('data-rm-shell-tinted') && !scheduled) return true;
  if(scheduled && host.__rabbitMirrorShellTintPendingKey===tintKey) return true;
@@ -4469,6 +4531,11 @@ function rescueIndependentExternalVisualShell(host){
 
 function scheduleIndependentReadyPostprocess(host,key='',html=''){
  if(!host || host.dataset.rmSource!=='independent' || host.dataset.rmState!=='ready') return false;
+ if(historicalLightHost(host)){
+  host.dataset.rmIndependentPostprocessDeferred='history-open';
+  return false;
+ }
+ delete host.dataset.rmIndependentPostprocessDeferred;
  const source=String(html||host.__rabbitMirrorIndependentSource||'');
  const signature=`${String(host.dataset.rmPlacement||'external')}|${String(key||host.dataset.rmKey||'')}|${source.length}:${hashText(source)}`;
  const placementDirty=host.__rabbitMirrorIndependentPlacementDirty===true;
@@ -4535,6 +4602,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
    host.__rabbitMirrorIndependentSource = state==='ready' ? String(html||'') : '';
    if(sourceHash) host.dataset.rmSourceHash=String(sourceHash);
    stampExternalDetailsOwnership(host);
+   markHistoricalLightHostForRestore(host);
    placeExternalHost(el,host,key,source);
    removeDuplicateExternalHosts(el,host,source);
    if(state==='ready') scheduleExternalShellTint(host,html);
@@ -4590,6 +4658,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
    if(current) transferExternalTools(current,nextDetails);
    if(current?.isConnected) current.replaceWith(nextDetails); else host.append(nextDetails);
    if(wasOpen) nextDetails.setAttribute('open','');
+   markHistoricalLightHostForRestore(host);
    scheduleExternalShellTint(host,html);
    ensureExternalTools(host);
    if(source==='independent') scheduleIndependentReadyPostprocess(host,key,html);
@@ -5727,11 +5796,11 @@ function reconcileVisibleMirrorDuplicates(indices=null){
  removeEmptyFollowExternalAnchors(document);
 }
 function syncAll(){
- return withExternalHostSyncIndex(()=>{
+ return withHistoricalRestoreLightPass(()=>withExternalHostSyncIndex(()=>{
   pruneForeignChatExternalHosts();
   syncMessages(null);
   reconcileVisibleMirrorDuplicates();
- });
+ }));
 }
 let queuedIndices=new Set();
 let syncTimer=null;
