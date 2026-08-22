@@ -455,43 +455,13 @@ const PALETTE_HUE_LABELS = {
     cyan: '青', blue: '蓝', purple: '紫', pink: '粉', neutral: '中性色',
 };
 
-// 米黄／奶油／米色／羊皮纸／做旧纸张实际上是同一个吸引子，只是 hueFamily 在
-// orange / yellow / neutral 之间漂移。若按四元组严格分家族，米黄→羊皮纸→米色
-// 会被算成三个不同家族而永远不触发重复冷却，正好放过最需要拦的那一种。
-function isCreamAttractor(fingerprint) {
-    if (!fingerprint) return false;
-    if (String(fingerprint.brightness || '') !== 'light' || String(fingerprint.temperature || '') !== 'warm') return false;
-    const hueFamily = String(fingerprint.hueFamily || 'neutral');
-    const saturation = String(fingerprint.saturation || '');
-    const averageLuminance = Number(fingerprint.averageLuminance);
-    // HSL saturation is misleading near white: literal beige/ivory/old-lace/cream
-    // often report medium/high saturation even though they are perceptually pale
-    // warm neutrals. Keep the original low-saturation path, and additionally
-    // collapse very bright orange/yellow/neutral families into the same attractor.
-    const lowSaturationWarmNeutral = saturation === 'low' && ['orange', 'yellow', 'neutral', 'red'].includes(hueFamily);
-    const paleWarmNeutral = ['orange', 'yellow', 'neutral'].includes(hueFamily)
-        && Number.isFinite(averageLuminance)
-        && averageLuminance >= 228;
-    return lowSaturationWarmNeutral || paleWarmNeutral;
-}
-
-// 1.4.25.1: 米黄冷却长期生效后，模型容易把“高明度、非暖中性”的最省力答案收敛成蓝白/青蓝。
-// 旧 key 又把 cyan/blue、明度与饱和度拆得过细，肉眼连续蓝色却会被当成不同家族而漏掉重复冷却。
-function isCoolBlueAttractor(fingerprint) {
-    if (!fingerprint || typeof fingerprint !== 'object') return false;
-    if (Number(fingerprint.confidence || 0) < 0.35) return false;
-    const hueFamily = String(fingerprint.hueFamily || 'neutral');
-    const temperature = String(fingerprint.temperature || 'neutral');
-    return temperature === 'cool' && ['cyan', 'blue'].includes(hueFamily);
-}
-
+// 1.4.30.2: 配色冷却不再给任何具体颜色家族特殊待遇。
+// 统一使用同一组结构维度描述近期成品，避免“禁蓝→全紫→再禁紫”式颜色打地鼠。
 export function paletteFamilyKey(fingerprint) {
     if (!fingerprint || typeof fingerprint !== 'object') return '';
     if (Number(fingerprint.confidence || 0) < 0.35) return '';
     const brightness = String(fingerprint.brightness || '').trim();
     if (!brightness) return '';
-    if (isCreamAttractor(fingerprint)) return 'cream-attractor';
-    if (isCoolBlueAttractor(fingerprint)) return 'cool-blue-attractor';
     const hueFamily = String(fingerprint.hueFamily || 'neutral').trim() || 'neutral';
     const temperature = String(fingerprint.temperature || 'neutral').trim() || 'neutral';
     const saturation = String(fingerprint.saturation || 'low').trim() || 'low';
@@ -504,18 +474,11 @@ export function describePaletteFamily(fingerprint) {
     const temperature = PALETTE_TEMPERATURE_LABELS[String(fingerprint.temperature || '')] || '';
     const saturation = PALETTE_SATURATION_LABELS[String(fingerprint.saturation || '')] || '';
     const hue = PALETTE_HUE_LABELS[String(fingerprint.hueFamily || 'neutral')] || '';
-    const base = [brightness, temperature, hue, saturation].filter(Boolean).join('');
-    if (!base) return '';
-    // Do not echo HSL's misleading near-white saturation label back into the
-    // prompt once this fingerprint has been recognized as the cream attractor.
-    if (isCreamAttractor(fingerprint)) return '高明度暖中性（米黄／奶油／米色底盘）';
-    if (isCoolBlueAttractor(fingerprint)) return '冷青蓝主色家族（蓝白／青蓝底盘）';
-    return base;
+    return [brightness, temperature, hue, saturation].filter(Boolean).join('');
 }
 
-// 1.4.25.2: 配色冷却从“出现重复后再纠偏”改为每一面成品完成后立即进入短期冷却。
-// 这里不决定下一轮该用什么颜色，只把最近实际成品按时间距离交给 Prompt；越近权重越高，
-// 超出窗口自然解除。这样不会再形成“黑 -> 米黄 -> 蓝白 -> 再补一个禁色”的打地鼠链。
+// 1.4.30.2: 不再等重复已经形成才纠偏。每一面真实成品完成后立即进入短期冷却；
+// 这里只按时间距离返回近期真实配色，不决定下一轮该用什么颜色。
 export function getRecentPaletteCooldown(window = 3) {
     const span = Math.max(1, Number(window) || 3);
     const recent = getRecentPaletteFingerprints(span).slice().reverse();
@@ -546,8 +509,6 @@ export function getRepeatedPaletteFamily(window = 3, threshold = 2) {
         count,
         window: keyed.length,
         label: describePaletteFamily(latest.item) || latest.key,
-        cream: isCreamAttractor(latest.item),
-        blue: isCoolBlueAttractor(latest.item),
         fingerprint: latest.item,
     };
 }

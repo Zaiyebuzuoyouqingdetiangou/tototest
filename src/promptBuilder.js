@@ -1,11 +1,11 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.25.2';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.25.2';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.25.2';
-import { pickCombination } from './picker.js?rmv=1.4.25.2';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentPaletteCooldown, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.4.25.2';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.25.2';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.25.2';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.25.2';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.2';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.2';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.30.2';
+import { pickCombination } from './picker.js?rmv=1.4.30.2';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentPaletteCooldown, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.4.30.2';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.2';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.30.2';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.30.2';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -253,7 +253,7 @@ function paletteCooldownRule() {
 配色短期冷却【每轮生成前主动执行；依据近期实际成品，越近权重越高】:
 ${recentLines}
   - 上一面刚使用过的整体配色路径不得在本轮继续作为默认方案；更早记录只作递减避让，超出短期窗口自然解除，不构成永久禁色。
-  - 判断“仍是同一路径”时看主色相、冷暖关系、中性色底盘与明度结构的整体组合；只改同一色相的色值、饱和度、明暗或强调色，不视为真正脱离近期路径。
+  - 判断“仍是同一路径”时看主色相、冷暖关系、中性色底盘、明度结构与对比组织的整体组合；不能只换一个主色相就沿用同一套白底／深底、冷暖、明暗和饱和关系，也不能只在同一色相内微调色值、饱和度、明暗或强调色。
   - 本轮配色必须重新从本轮展现形式的材质、环境、光线与空间关系推导；不指定任何替代颜色，也不得为了避重强行套用与本轮媒介不协调的色系。`;
 }
 
@@ -609,7 +609,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
 
     const activeBans = [
         interaction ? `交互避用「${interaction.label}」` : '',
-        recentPalette.length ? `上一面配色路径「${recentPalette[0].label}」进入最高短期冷却；更早配色按时间递减避让，不得只改同色相明暗／饱和度／强调色` : '',
+        recentPalette.length ? `上一面配色路径「${recentPalette[0].label}」进入最高短期冷却；更早配色按时间递减避让；仅换主色相或只调明暗／饱和度／强调色都不算脱离近期配色结构` : '',
         innerDetailsBlocked ? '兔子镜内部 details/summary 冷却' : '',
     ].filter(Boolean);
 

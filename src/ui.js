@@ -1,15 +1,15 @@
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.25.2';
-import { clearLastCombo } from './storage.js?rmv=1.4.25.2';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.25.2';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.25.2';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.25.2';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.25.2';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.25.2';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getLastIndependentApiRequestDiagnostic, getObservedWorldInfoBooks, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.25.2';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.4.25.2';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.30.2';
+import { clearLastCombo } from './storage.js?rmv=1.4.30.2';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.30.2';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.30.2';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.30.2';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.2';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.30.2';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getLastIndependentApiRequestDiagnostic, getObservedWorldInfoBooks, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.30.2';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.4.30.2';
 
-const SETTINGS_UI_VERSION = '1.4.25.2-visual-maintenance';
-const RUNTIME_VERSION = '1.4.25.2';
+const SETTINGS_UI_VERSION = '1.4.30.2-visual-maintenance';
+const RUNTIME_VERSION = '1.4.30.2';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -327,7 +327,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.25.2</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.2</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -505,7 +505,7 @@ export function initRabbitMirrorUI() {
           </div>
 
           <div class="rabbit-mirror-actions">
-            <button id="rh_clear_last" class="menu_button">清除历史与冷却记录</button>
+            <button id="rh_clear_last" class="menu_button">清除抽签历史与冷却记录</button>
             <button id="rh_clear_injection" class="menu_button">清空当前注入</button>
             <button id="rh_reset" class="menu_button">恢复默认设置</button>
           </div>
@@ -827,7 +827,7 @@ export function initRabbitMirrorUI() {
 
     $('#rh_clear_last').on('click', () => {
         clearLastCombo();
-        toastr?.success?.('已清除兔子镜上轮组合记录');
+        toastr?.success?.('已清除抽签历史与冷却记录');
     });
     $('#rh_clear_injection').on('click', () => {
         clearRabbitMirrorPrompt('manual');

@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.25.2';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.25.2';
+import { getSettings } from './settings.js?rmv=1.4.30.2';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.30.2';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.4.25.2';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.25.2';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.25.2';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.25.2';
+} from './feedbackCat.js?rmv=1.4.30.2';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.2';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.30.2';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.30.2';
 
 
-const RUNTIME_VERSION = '1.4.25.2';
+const RUNTIME_VERSION = '1.4.30.2';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -177,6 +177,7 @@ const SCOPED_INTERACTION_ID_RE = /^(rm-[a-z0-9]+-[a-z0-9]+-[a-z0-9]{5}-)(.+)$/i;
 const RADIO_GROUP_RESCUE_ATTR = 'data-rabbit-mirror-radio-group-rescue';
 const RADIO_GROUP_ROOT_ATTR = 'data-rabbit-mirror-radio-group-count';
 const INTERACTION_REFERENCE_ALIAS_REPAIR_ATTR = 'data-rabbit-mirror-interaction-reference-alias-count';
+const INTERACTION_REFERENCE_ALIAS_BASELINE_ATTR = 'data-rabbit-mirror-interaction-reference-alias-baseline';
 const RAW_RADIO_RESET_RESCUE_ATTR = 'data-rabbit-mirror-radio-reset-rescue';
 const RAW_RADIO_RESET_ROOT_ATTR = 'data-rabbit-mirror-radio-reset-count';
 const RAW_RADIO_RESET_LAST_ATTR = 'data-rabbit-mirror-radio-reset-last';
@@ -6293,10 +6294,8 @@ function readReversibleStyleBaseline(element) {
             const parsed = JSON.parse(decodeURIComponent(encoded));
             if (parsed && typeof parsed === 'object') {
                 for (const [property, state] of Object.entries(parsed)) {
-                    const value = String(state?.value || '');
-                    if (!boundaryStyleValueIsSafe(value)) continue;
                     baseline.set(property, {
-                        value,
+                        value: String(state?.value || ''),
                         priority: String(state?.priority || ''),
                     });
                 }
@@ -6922,8 +6921,6 @@ const RAW_SELF_MUTATION_RESCUE_ATTR = 'data-rabbit-mirror-self-mutation-rescue';
 const RAW_SELF_MUTATION_HTML_BASELINE_ATTR = 'data-rm-self-mutation-html-baseline';
 const RAW_SELF_MUTATION_ACTIVE_ATTR = 'data-rm-self-mutation-active';
 const rawSelfMutationRescueStates = new WeakMap();
-// Security boundary: self-mutation baselines are extension-owned runtime state.
-// Never trust model-authored data-rm-* HTML baseline/active attributes.
 const rawSelfMutationDomBaselines = new WeakMap();
 
 function parseSafeSelfMutationText(mode, rawValue) {
@@ -7154,12 +7151,13 @@ function parseSelfMutationProgram(source, trigger, root, rawTrigger = null, rawR
     if (!activeAssignments.length && activeText == null && !relatedMutations.length) return null;
 
     const properties = new Set(activeAssignments.map(item => item.property));
+    // baseline / active are extension-owned runtime state. Never trust model-authored data-rm-* attributes.
+    // Store inert DOM clones in a WeakMap; restoring the inactive state never reparses a model-controlled HTML string.
     let originalNodes = rawSelfMutationDomBaselines.get(trigger);
     if (!Array.isArray(originalNodes)) {
         originalNodes = [...trigger.childNodes].map(node => node.cloneNode(true));
         rawSelfMutationDomBaselines.set(trigger, originalNodes);
     }
-    // These attributes may be supplied by model HTML. Runtime state lives only in WeakMaps.
     trigger.removeAttribute?.(RAW_SELF_MUTATION_HTML_BASELINE_ATTR);
     trigger.removeAttribute?.(RAW_SELF_MUTATION_ACTIVE_ATTR);
     return {
@@ -11327,12 +11325,25 @@ function collectCurrentIdsToScope(toto, elementsById, mappedValues = new Set()) 
     return { controls, idsToScope };
 }
 
+function normalizeInteractionReferenceAliasToken(token = '') {
+    const value = String(token || '').toLowerCase();
+    // Generated controls often use interchangeable checkbox-state words between the
+    // real input id and the CSS/label reference (for example toggle vs chk). Treat
+    // only these narrow control-kind aliases as equivalent; the semantic tail still
+    // has to match and augmentInteractionReferenceAliases() still requires a unique
+    // best target before any reference is rewritten.
+    if (['chk', 'check', 'checkbox', 'cb', 'toggle', 'switch'].includes(value)) return 'toggle';
+    if (['rad', 'radio', 'rb'].includes(value)) return 'radio';
+    return value;
+}
+
 function interactionReferenceAliasTokens(value = '') {
     return String(value || '')
         .toLowerCase()
         .split(/[-_:]+/)
         .filter(Boolean)
-        .filter((token, index) => !(index === 0 && token === 'rm'));
+        .filter((token, index) => !(index === 0 && token === 'rm'))
+        .map(normalizeInteractionReferenceAliasToken);
 }
 
 function interactionReferenceAliasScore(referenceId, sourceId) {
@@ -11380,47 +11391,80 @@ function collectBrokenInteractionReferenceIds(toto) {
     const references = new Set();
     if (!toto?.querySelectorAll) return references;
 
+    // A <label for> is direct evidence that the referenced id is meant to be a form
+    // control. It is therefore safe to consider a narrow checkbox/radio alias repair.
     toto.querySelectorAll('label[for]').forEach(label => {
         const value = String(label.getAttribute('for') || '').trim();
         if (value) references.add(value);
     });
-    for (const attr of ['aria-controls', 'aria-labelledby', 'aria-describedby']) {
-        toto.querySelectorAll(`[${attr}]`).forEach(el => {
-            String(el.getAttribute(attr) || '').split(/\s+/).filter(Boolean).forEach(value => references.add(value));
-        });
-    }
-    toto.querySelectorAll('[href^="#"], [xlink\\:href^="#"]').forEach(el => {
-        for (const attr of ['href', 'xlink:href']) {
-            const value = String(el.getAttribute(attr) || '').trim();
-            if (value.startsWith('#') && value.length > 1) references.add(value.slice(1));
-        }
-    });
 
+    // CSS ids are much more ambiguous: a plain #foo may identify a result panel, SVG
+    // node, decorative element, etc. 1.4.28 treated every broken #id as a possible
+    // control alias, which could redirect a panel's base hide/show rule to an input and
+    // leave the real gated content permanently visible. Only collect ids that are
+    // provably used as the subject of checkbox/radio state CSS.
+    const checkedIdSelector = /#([A-Za-z_-][\w-]*)(?=\s*(?::checked|:not\(\s*:checked\s*\)))/gi;
+    const checkedIdAttrSelector = /\[\s*id\s*=\s*["']([^"']+)["']\s*\](?=\s*(?::checked|:not\(\s*:checked\s*\)))/gi;
     getRabbitMirrorLocalStyleElements(toto).forEach(styleEl => {
         const css = String(styleEl.textContent || '');
-        for (const match of css.matchAll(/#([A-Za-z_-][\w-]*)/g)) references.add(match[1]);
-        for (const match of css.matchAll(/\[\s*(?:id|for|aria-controls|aria-labelledby|aria-describedby)\s*=\s*["']([^"']+)["']\s*\]/gi)) {
-            String(match[1] || '').split(/\s+/).filter(Boolean).forEach(value => references.add(value));
+        for (const match of css.matchAll(checkedIdSelector)) {
+            const value = String(match[1] || '').trim();
+            if (value) references.add(value);
+        }
+        for (const match of css.matchAll(checkedIdAttrSelector)) {
+            const value = String(match[1] || '').trim();
+            if (value) references.add(value);
         }
     });
     return references;
 }
 
+function interactionReferenceHasPositiveCheckedCssEvidence(toto, referenceId) {
+    const id = String(referenceId || '').trim();
+    if (!id) return false;
+    const escaped = escapeRegExp(id);
+    const subject = `(?:#${escaped}|\\[\\s*id\\s*=\\s*["']${escaped}["']\\s*\\])`;
+    const pattern = new RegExp(`${subject}\\s*:checked\\b`, 'i');
+    return getRabbitMirrorLocalStyleElements(toto).some(styleEl => pattern.test(String(styleEl.textContent || '')));
+}
+
+function preserveAliasRepairInitialCheckboxBaseline(toto, referenceId, currentId) {
+    if (!interactionReferenceHasPositiveCheckedCssEvidence(toto, referenceId)) return false;
+    const input = [...toto.querySelectorAll('input[type="checkbox"]')].find(item => String(item.id || '') === String(currentId || ''));
+    if (!input || !input.checked || input.hasAttribute(INTERACTION_REFERENCE_ALIAS_BASELINE_ATTR)) return false;
+    // If the real id already had a meaningful checked route before alias repair, its initial
+    // checked state was already visible and must remain untouched. Only neutralize a checked
+    // checkbox when the *newly repaired* broken selector would introduce a second-layer state
+    // that was not visible before the repair. This keeps repair state-preserving.
+    if (inputHasMeaningfulCheckedSiblingRule(toto, input)) return false;
+    input.checked = false;
+    input.removeAttribute('checked');
+    input.setAttribute(INTERACTION_REFERENCE_ALIAS_BASELINE_ATTR, 'unchecked');
+    input.setAttribute('aria-pressed', 'false');
+    restoreInteractionInlineOverrides(input);
+    return true;
+}
+
 function augmentInteractionReferenceAliases(toto, idMap) {
-    if (!toto?.querySelectorAll || !idMap?.size) return 0;
+    const aliasMap = new Map();
+    if (!toto?.querySelectorAll || !idMap?.size) return aliasMap;
     const liveIds = new Set([...toto.querySelectorAll('[id]')].map(el => String(el.id || '').trim()).filter(Boolean));
+    const liveControlIds = new Set(
+        [...toto.querySelectorAll('input[type="checkbox"], input[type="radio"]')]
+            .map(input => String(input.id || '').trim())
+            .filter(Boolean),
+    );
     const candidateByValue = new Map();
     for (const [sourceId, currentId] of idMap.entries()) {
         const source = String(sourceId || '').trim();
         const current = String(currentId || '').trim();
-        if (!source || !current || !liveIds.has(current)) continue;
+        if (!source || !current || !liveIds.has(current) || !liveControlIds.has(current)) continue;
         const existing = candidateByValue.get(current);
         if (!existing || source.length > existing.sourceId.length) candidateByValue.set(current, { sourceId: source, currentId: current });
     }
     const candidates = [...candidateByValue.values()];
-    if (!candidates.length) return 0;
+    if (!candidates.length) return aliasMap;
 
-    let changed = 0;
     for (const referenceId of collectBrokenInteractionReferenceIds(toto)) {
         if (!referenceId || idMap.has(referenceId) || liveIds.has(referenceId)) continue;
         const ranked = candidates
@@ -11431,20 +11475,45 @@ function augmentInteractionReferenceAliases(toto, idMap) {
         const best = ranked[0];
         const competingValue = ranked.find(candidate => candidate.currentId !== best.currentId && candidate.score >= best.score);
         if (competingValue) continue;
-        idMap.set(referenceId, best.currentId);
-        changed += 1;
+        preserveAliasRepairInitialCheckboxBaseline(toto, referenceId, best.currentId);
+        // A guessed control alias is not a real DOM id. Never add it to the global idMap:
+        // doing so rewrites unrelated panel/base/SVG selectors and can expose content that
+        // was supposed to stay hidden until interaction.
+        aliasMap.set(referenceId, best.currentId);
     }
-    if (changed) toto.setAttribute?.(INTERACTION_REFERENCE_ALIAS_REPAIR_ATTR, String(changed));
+    if (aliasMap.size) toto.setAttribute?.(INTERACTION_REFERENCE_ALIAS_REPAIR_ATTR, String(aliasMap.size));
     else if (!toto.querySelector?.(`label[for]:not([for=""])`)) toto.removeAttribute?.(INTERACTION_REFERENCE_ALIAS_REPAIR_ATTR);
-    return changed;
+    return aliasMap;
 }
 
-function synchronizeInteractionReferences(toto, idMap) {
-    if (!idMap?.size) return;
+function rewriteCssCheckedControlAliasReferences(cssText, aliasMap) {
+    let output = String(cssText || '');
+    if (!aliasMap?.size || !output) return output;
+    for (const [referenceId, currentId] of aliasMap.entries()) {
+        const reference = String(referenceId || '').trim();
+        const current = String(currentId || '').trim();
+        if (!reference || !current) continue;
+        const escapedReference = escapeRegExp(reference);
+        const checkedLookahead = '(?=\\s*(?::checked\\b|:not\\(\\s*:checked\\s*\\)))';
+        output = output.replace(
+            new RegExp(`#${escapedReference}${checkedLookahead}`, 'g'),
+            `#${current}`,
+        );
+        output = output.replace(
+            new RegExp(`\\[\\s*id\\s*=\\s*(["'])${escapedReference}\\1\\s*\\]${checkedLookahead}`, 'g'),
+            (_match, quote) => `[id=${quote}${current}${quote}]`,
+        );
+    }
+    return output;
+}
+
+function synchronizeInteractionReferences(toto, idMap, aliasMap = new Map()) {
+    if (!idMap?.size && !aliasMap?.size) return;
 
     toto.querySelectorAll('label[for]').forEach(label => {
         const oldFor = label.getAttribute('for');
         if (idMap.has(oldFor)) label.setAttribute('for', idMap.get(oldFor));
+        else if (aliasMap.has(oldFor)) label.setAttribute('for', aliasMap.get(oldFor));
     });
 
     toto.querySelectorAll('[href^="#"], [xlink\\:href^="#"]').forEach(el => {
@@ -11462,16 +11531,13 @@ function synchronizeInteractionReferences(toto, idMap) {
         });
     }
 
-    // 流式生成时 <style> 往往最后才到达。每次扫描都重新同步，避免旧 ID 留在晚到的 CSS 中。
     getRabbitMirrorLocalStyleElements(toto).forEach(styleEl => {
         const currentText = String(styleEl.textContent || '');
-        const rewrittenText = rewriteCssIdReferences(currentText, idMap);
-        // 仅在内容确实变化时重建样式表。无条件写回会触发 MutationObserver，
-        // 让 @keyframes 动画不断从 0 秒重启，视觉上表现为完全静止。
+        const scopedText = rewriteCssIdReferences(currentText, idMap);
+        const rewrittenText = rewriteCssCheckedControlAliasReferences(scopedText, aliasMap);
         if (rewrittenText !== currentText) styleEl.textContent = rewrittenText;
     });
 
-    // 同步所有属性中的 url(#id)，覆盖 SVG 的 fill/stroke/filter/clip-path/mask/marker 等。
     toto.querySelectorAll('*').forEach(el => {
         for (const attr of [...(el.attributes || [])]) {
             if (!attr?.value) continue;
@@ -11648,8 +11714,8 @@ function scopeRabbitMirrorInteractionIds(toto, { installRescue = true } = {}) {
     // 模型偶尔让 input 的真实 id 比 label/CSS 引用多一个中间命名片段，
     // 例如 id="rm-ero-rad-1"，却写成 for="rm-rad-1" 与 [id="rm-rad-1"]。
     // 在正式同步前建立唯一、高置信别名；只改引用，不改控件本身。
-    augmentInteractionReferenceAliases(toto, state.idMap);
-    synchronizeInteractionReferences(toto, state.idMap);
+    const aliasMap = augmentInteractionReferenceAliases(toto, state.idMap);
+    synchronizeInteractionReferences(toto, state.idMap, aliasMap);
     if (installRescue) {
         installIntelligentInteractionRescue(toto);
         // Structural Grid result panels are safe to normalize once the scoped ids/labels
@@ -11911,7 +11977,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.4.25.2-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.4.30.2-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -12799,8 +12865,11 @@ ${styleTexts}`;
         || stateControlsLost
         || rawSourceBodyMissing
     );
+    const sanitizerStyleDropCount = Number.parseInt(root?.getAttribute?.(RABBIT_MIRROR_SANITIZER_STYLE_DROP_ATTR) || '0', 10) || 0;
+    const sanitizerImportStrippedCount = Number.parseInt(root?.getAttribute?.(RABBIT_MIRROR_SANITIZER_IMPORT_STRIPPED_ATTR) || '0', 10) || 0;
     let verdict = '当前链路未发现单一高置信故障点。';
-    if (sourceTruncationNoticeInstalled) verdict = '原始输出缺少正文，维修兔已显示截断说明；缺失内容无法从现有源码恢复，需要重新生成该条。';
+    if (sanitizerStyleDropCount > 0) verdict = `高置信：安全净化器删除了 ${sanitizerStyleDropCount} 份仍含本地规则的样式表；外框、默认隐藏态或交互显示规则可能同时丢失。`;
+    else if (sourceTruncationNoticeInstalled) verdict = '原始输出缺少正文，维修兔已显示截断说明；缺失内容无法从现有源码恢复，需要重新生成该条。';
     else if (rawCssTruncated) verdict = '高置信：原始兔子镜在 <style> 中途截断，正文未生成；现有源码无法恢复缺失内容，只能显示截断说明并重新生成该条。';
     else if (rawSourceBodyMissing) verdict = '高置信：原始兔子镜只包含样式或空壳，没有可显示的正文主体；现有源码无法补回不存在的内容。';
     else if (structureTruncated) verdict = '高置信：损坏的 SVG Data URI 破坏了 inline style 属性边界，导致后续 DOM 被截断；应移除该背景声明并用原始源码临时重绘显示层。';
@@ -12827,6 +12896,7 @@ ${styleTexts}`;
         rawInlineEvents, renderedInlineEvents, thRenderCount, highlightedCount,
         relevantThRenderCount, relevantHighlightedCount, relevantCodeShellCount: Number(code?.relevantCodeShells || 0),
         mirrorCount, scopedCount, rescuedCount, sourceCandidate, sourceObscured,
+        sanitizerStyleDropCount, sanitizerImportStrippedCount,
         maintenanceModuleVersion, maintenanceModuleMode, maintenanceSourceAttempted, maintenanceSourceChanged, maintenanceSourceReason,
         maintenanceFindingCount, maintenanceRepairOrder, maintenanceResolvedCount, maintenanceRemainingCount,
         hostCssParserError, hostCssParserErrorText, rawUnencodedSvgDataUri, rawCssCommentCount, rawCssIdSelectorCount,
@@ -12934,6 +13004,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         '[4. 净化器／属性保留层]',
         `原始内联事件=${full.rawInlineEvents} 渲染后内联事件=${full.renderedInlineEvents}`,
         `script保留=${full.scriptCount} iframe保留=${full.iframeCount}`,
+        `CSS import仅移除=${full.sanitizerImportStrippedCount || 0} 整份本地style被删=${full.sanitizerStyleDropCount || 0}`,
         '',
         '[5. 宿主／美化重绘层]',
         `TH-render=${full.thRenderCount} highlightedCode=${full.highlightedCount}`,
@@ -15223,6 +15294,15 @@ function buildMaintenanceFindings(root, {
     const findings = [];
     const add = finding => findings.push(createMaintenanceFinding(finding));
 
+    const sanitizerDroppedStyleCount = Number.parseInt(root?.getAttribute?.(RABBIT_MIRROR_SANITIZER_STYLE_DROP_ATTR) || '0', 10) || 0;
+    if (sanitizerDroppedStyleCount > 0) {
+        add({
+            id: 'sanitizer-local-style-dropped', stage: 'structure', mode: 'style',
+            label: `安全净化器删除了 ${sanitizerDroppedStyleCount} 份仍含本地规则的样式表；外框、默认隐藏态或交互显示规则可能因此丢失`,
+            evidence: [`sanitizerDroppedStyleCount=${sanitizerDroppedStyleCount}`], confidence: 1,
+        });
+    }
+
     if (full.rawSourceBodyMissing && !full.sourceTruncationNoticeInstalled) {
         add({
             id: full.rawCssTruncated ? 'raw-css-truncated' : 'raw-body-missing',
@@ -16109,63 +16189,75 @@ function installMaintenanceStaticDecorationFallback(root, scriptText) {
     return created;
 }
 
-const RABBIT_MIRROR_BOUNDARY_BLOCKED_SELECTOR = 'script,iframe,object,embed,link,meta,base';
-const RABBIT_MIRROR_BOUNDARY_URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'poster']);
-const RABBIT_MIRROR_BOUNDARY_DROP_ATTRS = new Set(['action', 'formaction', 'srcset', 'ping']);
-const RABBIT_MIRROR_BOUNDARY_INTERNAL_ATTRS = new Set([
+const RABBIT_MIRROR_BLOCKED_RENDER_SELECTOR = 'script, iframe, object, embed, link, meta, base, frame';
+const RABBIT_MIRROR_NETWORK_URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'poster', 'background']);
+const RABBIT_MIRROR_INTERNAL_MODEL_ATTRS = new Set([
     RAW_SELF_MUTATION_HTML_BASELINE_ATTR,
     RAW_SELF_MUTATION_ACTIVE_ATTR,
 ]);
 const RABBIT_MIRROR_TAROT_ORIGIN = 'https://gfx.tarot.com';
 const RABBIT_MIRROR_TAROT_PATH_RE = /^\/images\/site\/decks\/rider\/full_size\/(?:[0-9]|[1-6][0-9]|7[0-7])\.jpg$/;
-const RABBIT_MIRROR_MAX_RASTER_DATA_URI_CHARS = 2000000;
-const RABBIT_MIRROR_MAX_SVG_DATA_CHARS = 300000;
+const RABBIT_MIRROR_MAX_DATA_IMAGE_CHARS = 2_000_000;
+const RABBIT_MIRROR_SANITIZER_STYLE_DROP_ATTR = 'data-rabbit-mirror-sanitizer-style-dropped';
+const RABBIT_MIRROR_SANITIZER_IMPORT_STRIPPED_ATTR = 'data-rabbit-mirror-sanitizer-import-stripped';
 
-function decodeBoundaryCssEscapes(value = '') {
-    return String(value || '').replace(/\\([0-9a-fA-F]{1,6})(?:\s)?|\\([^\r\n0-9a-fA-F])/g, (_, hex, char) => {
-        if (hex) {
-            const code = Number.parseInt(hex, 16);
-            if (!Number.isFinite(code) || code <= 0 || code > 0x10FFFF) return '';
-            try { return String.fromCodePoint(code); } catch { return ''; }
-        }
-        return char || '';
-    });
+function decodeCssEscapesForSecurity(value = '') {
+    return String(value || '')
+        .replace(/\\([0-9a-fA-F]{1,6})\s?/g, (_, hex) => {
+            const point = Number.parseInt(hex, 16);
+            if (!Number.isFinite(point) || point <= 0 || point > 0x10ffff) return '';
+            try { return String.fromCodePoint(point); } catch { return ''; }
+        })
+        .replace(/\\([^\r\n\f0-9a-fA-F])/g, '$1');
 }
 
-function normalizeBoundaryResourceValue(value = '') {
-    return decodeHtmlEntities(String(value || ''))
-        .replace(/[\u0000-\u0020\u007f\u200b-\u200d\ufeff]+/g, '')
+function normalizeGeneratedResourceValue(value = '') {
+    return String(value || '')
+        .replace(/^[\u0000-\u0020\u007f\u200b-\u200d\ufeff]+|[\u0000-\u0020\u007f\u200b-\u200d\ufeff]+$/g, '')
         .trim();
 }
 
-function decodeBoundarySvgDataImage(raw = '') {
-    const value = String(raw || '');
-    const comma = value.indexOf(',');
-    if (comma < 0 || value.length > RABBIT_MIRROR_MAX_SVG_DATA_CHARS * 1.5) return '';
-    const header = value.slice(0, comma).toLowerCase();
-    const payload = value.slice(comma + 1);
+function isAllowedTarotImageUrl(value = '') {
+    const raw = normalizeGeneratedResourceValue(value);
+    if (!raw) return false;
+    try {
+        const parsed = new URL(raw);
+        return parsed.origin === RABBIT_MIRROR_TAROT_ORIGIN
+            && !parsed.username
+            && !parsed.password
+            && !parsed.search
+            && !parsed.hash
+            && RABBIT_MIRROR_TAROT_PATH_RE.test(parsed.pathname);
+    } catch {
+        return false;
+    }
+}
+
+function decodeSvgDataImagePayload(raw = '') {
+    const comma = String(raw || '').indexOf(',');
+    if (comma < 0) return '';
+    const header = String(raw).slice(0, comma).toLowerCase();
+    const payload = String(raw).slice(comma + 1);
     try {
         if (/;base64(?:;|$)/i.test(header)) {
             if (typeof globalThis.atob !== 'function') return '';
-            const decoded = globalThis.atob(payload);
-            return decoded.length <= RABBIT_MIRROR_MAX_SVG_DATA_CHARS ? decoded : '';
+            return globalThis.atob(payload);
         }
-        const decoded = decodeURIComponent(payload);
-        return decoded.length <= RABBIT_MIRROR_MAX_SVG_DATA_CHARS ? decoded : '';
+        return decodeURIComponent(payload);
     } catch {
         return '';
     }
 }
 
-function isSafeBoundarySvgDataImage(value = '') {
-    const svg = decodeBoundarySvgDataImage(value);
-    if (!svg) return false;
-    const normalized = decodeBoundaryCssEscapes(svg)
+function isSafeSvgDataImageValue(raw = '') {
+    if (String(raw || '').length > RABBIT_MIRROR_MAX_DATA_IMAGE_CHARS) return false;
+    const svg = decodeSvgDataImagePayload(raw);
+    if (!svg || svg.length > 300000) return false;
+    const normalized = decodeCssEscapesForSecurity(svg)
         .replace(/&(?:#x?0*3a|colon);/gi, ':')
         .replace(/&(?:#x?0*2f|sol);/gi, '/');
     if (/<\s*(?:script|iframe|object|embed|foreignObject)\b/i.test(normalized)) return false;
-    if (/\bon[a-z]+\s*=/i.test(normalized) || /\bsrcdoc\s*=/i.test(normalized)) return false;
-    if (/\@\s*import\b/i.test(normalized)) return false;
+    if (/\@import\b/i.test(normalized)) return false;
     if (/\b(?:href|xlink:href|src)\s*=\s*(['"])(?!\s*#)[\s\S]*?\1/i.test(normalized)) return false;
     const urlRe = /url\(\s*(['"]?)([\s\S]*?)\1\s*\)/gi;
     let match;
@@ -16175,110 +16267,393 @@ function isSafeBoundarySvgDataImage(value = '') {
     return true;
 }
 
-function canonicalBoundaryTarotUrl(value = '') {
-    const raw = normalizeBoundaryResourceValue(value);
+function isAllowedGeneratedResourceValue(value = '') {
+    const raw = normalizeGeneratedResourceValue(value);
+    if (!raw) return true;
+    if (raw.startsWith('#')) return true;
+    if (/^data:image\/(?:png|gif|jpe?g|webp|avif)(?:;|,)/i.test(raw)) {
+        return raw.length <= RABBIT_MIRROR_MAX_DATA_IMAGE_CHARS;
+    }
+    if (/^data:image\/svg\+xml(?:;|,)/i.test(raw)) return isSafeSvgDataImageValue(raw);
+    return isAllowedTarotImageUrl(raw);
+}
+
+function cssContainsUnsafeGeneratedResource(value = '') {
+    const css = decodeCssEscapesForSecurity(value).replace(/\/\*[\s\S]*?\*\//g, '');
+    if (!css.trim()) return false;
+    if (/\@import\b/i.test(css)) return true;
+    if (/(?:expression\s*\(|-moz-binding\s*:|behavior\s*:)/i.test(css)) return true;
+
+    const urlRe = /url\(\s*(['"]?)([\s\S]*?)\1\s*\)/gi;
+    let match;
+    while ((match = urlRe.exec(css))) {
+        if (!isAllowedGeneratedResourceValue(match[2])) return true;
+    }
+
+    const imageSetRe = /(?:-webkit-)?image-set\s*\(([\s\S]*?)\)/gi;
+    while ((match = imageSetRe.exec(css))) {
+        const body = String(match[1] || '');
+        const quotedRe = /(['"])([\s\S]*?)\1/g;
+        let quoted;
+        while ((quoted = quotedRe.exec(body))) {
+            if (!isAllowedGeneratedResourceValue(quoted[2])) return true;
+        }
+    }
+    return false;
+}
+
+function splitCssDeclarationList(value = '') {
+    const source = String(value || '');
+    const parts = [];
+    let start = 0;
+    let quote = '';
+    let escaped = false;
+    let parenDepth = 0;
+    let bracketDepth = 0;
+    for (let index = 0; index < source.length; index += 1) {
+        const char = source[index];
+        if (quote) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            quote = char;
+            continue;
+        }
+        if (char === '(') parenDepth += 1;
+        else if (char === ')' && parenDepth > 0) parenDepth -= 1;
+        else if (char === '[') bracketDepth += 1;
+        else if (char === ']' && bracketDepth > 0) bracketDepth -= 1;
+        else if (char === ';' && parenDepth === 0 && bracketDepth === 0) {
+            parts.push(source.slice(start, index));
+            start = index + 1;
+        }
+    }
+    parts.push(source.slice(start));
+    return parts;
+}
+
+function cssDeclarationBodies(value = '') {
+    const source = String(value || '');
+    const bodies = [];
+    const stack = [];
+    let quote = '';
+    let escaped = false;
+    let comment = false;
+    for (let index = 0; index < source.length; index += 1) {
+        const char = source[index];
+        const next = source[index + 1] || '';
+        if (comment) {
+            if (char === '*' && next === '/') {
+                comment = false;
+                index += 1;
+            }
+            continue;
+        }
+        if (quote) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '/' && next === '*') {
+            comment = true;
+            index += 1;
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            quote = char;
+            continue;
+        }
+        if (char === '{') {
+            if (stack.length) stack[stack.length - 1].hasChild = true;
+            stack.push({ start: index + 1, hasChild: false });
+            continue;
+        }
+        if (char === '}' && stack.length) {
+            const frame = stack.pop();
+            if (!frame.hasChild) bodies.push(source.slice(frame.start, index));
+        }
+    }
+    return bodies.length ? bodies : [source];
+}
+
+function zeroEdgeDeclarationPresent(css = '', property = '') {
+    const unit = '(?:0(?:px|%|rem|em|vh|vw|dvh|dvw|svh|svw|lvh|lvw)?)';
+    return new RegExp(`\\b${property}\\s*:\\s*${unit}(?:\\s*!important)?(?:\\s*;|$)`, 'i').test(css);
+}
+
+function cssDeclarationBlockContainsUnsafeOverlayGeometry(value = '') {
+    const css = decodeCssEscapesForSecurity(value).replace(/\/\*[\s\S]*?\*\//g, '').toLowerCase();
+    if (!css.trim()) return false;
+    const positionMatch = /\bposition\s*:\s*(fixed|sticky|absolute)\b/.exec(css);
+    if (!positionMatch) return false;
+    const position = positionMatch[1];
+    const fullInset = /\binset\s*:\s*0(?:px|%|rem|em|vh|vw|dvh|dvw|svh|svw|lvh|lvw)?(?:\s+0(?:px|%|rem|em|vh|vw|dvh|dvw|svh|svw|lvh|lvw)?){0,3}(?:\s*!important)?(?:\s*;|$)/i.test(css)
+        || ['top', 'right', 'bottom', 'left'].every(edge => zeroEdgeDeclarationPresent(css, edge));
+    const viewportWidth = /\b(?:width|min-width)\s*:\s*(?:100(?:d|s|l)?vw|100%)(?:\s*!important)?(?:\s*;|$)/i.test(css);
+    const viewportHeight = /\b(?:height|min-height)\s*:\s*(?:100(?:d|s|l)?vh|100%)(?:\s*!important)?(?:\s*;|$)/i.test(css);
+    const zMatch = /\bz-index\s*:\s*(-?\d+)/.exec(css);
+    const highZ = !!zMatch && Number(zMatch[1]) >= 1000;
+
+    if (position === 'fixed') return fullInset || (viewportWidth && viewportHeight);
+    if (position === 'sticky') return viewportWidth && viewportHeight;
+    return (viewportWidth && viewportHeight) || (fullInset && highZ);
+}
+
+function cssContainsUnsafeOverlayGeometry(value = '') {
+    return cssDeclarationBodies(value).some(cssDeclarationBlockContainsUnsafeOverlayGeometry);
+}
+
+function sanitizeGeneratedCssDeclarationBlock(value = '') {
+    const declarations = splitCssDeclarationList(value);
+    const kept = [];
+    for (const declaration of declarations) {
+        const trimmed = String(declaration || '').trim();
+        if (!trimmed) continue;
+        if (/^\@import\b/i.test(trimmed)) continue;
+        if (cssContainsUnsafeGeneratedResource(trimmed)) continue;
+        kept.push(trimmed);
+    }
+    let cleaned = kept.join(';');
+    if (cleaned && !/;\s*$/.test(cleaned)) cleaned += ';';
+    if (cssDeclarationBlockContainsUnsafeOverlayGeometry(cleaned)) {
+        cleaned = splitCssDeclarationList(cleaned)
+            .filter(declaration => !/^\s*position\s*:\s*(?:fixed|sticky|absolute)\b/i.test(String(declaration || '')))
+            .map(declaration => String(declaration || '').trim())
+            .filter(Boolean)
+            .join(';');
+        if (cleaned && !/;\s*$/.test(cleaned)) cleaned += ';';
+    }
+    return cleaned;
+}
+
+function stripGeneratedCssImportRules(value = '') {
+    const source = String(value || '');
+    if (!source.trim()) return source;
+    // Use the repository's CSS rule-list walker: strip only @import (including escaped
+    // spellings) while retaining local layout/borders/display:none/:checked rules.
+    return transformCssRuleList(source, selector => selector);
+}
+
+function sanitizeGeneratedStyleSheet(value = '') {
+    const original = String(value || '');
+    if (!original.trim()) return original;
+    const source = stripGeneratedCssImportRules(original);
+
+    const stack = [];
+    const spans = [];
+    let quote = '';
+    let escaped = false;
+    let comment = false;
+    for (let index = 0; index < source.length; index += 1) {
+        const char = source[index];
+        const next = source[index + 1] || '';
+        if (comment) {
+            if (char === '*' && next === '/') {
+                comment = false;
+                index += 1;
+            }
+            continue;
+        }
+        if (quote) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '/' && next === '*') {
+            comment = true;
+            index += 1;
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            quote = char;
+            continue;
+        }
+        if (char === '{') {
+            if (stack.length) stack[stack.length - 1].hasChild = true;
+            stack.push({ start: index + 1, hasChild: false });
+            continue;
+        }
+        if (char === '}' && stack.length) {
+            const frame = stack.pop();
+            if (!frame.hasChild) spans.push({ start: frame.start, end: index });
+        }
+    }
+
+    if (!spans.length) return sanitizeGeneratedCssDeclarationBlock(source);
+    let cleaned = source;
+    for (const span of spans.sort((a, b) => b.start - a.start)) {
+        const body = cleaned.slice(span.start, span.end);
+        const sanitized = sanitizeGeneratedCssDeclarationBlock(body);
+        cleaned = `${cleaned.slice(0, span.start)}${sanitized}${cleaned.slice(span.end)}`;
+    }
+    if (cssContainsUnsafeGeneratedResource(cleaned) || cssContainsUnsafeOverlayGeometry(cleaned)) return '';
+    return cleaned;
+}
+
+function unwrapGeneratedForms(template) {
+    for (const form of [...template.content.querySelectorAll('form')]) {
+        form.replaceWith(...form.childNodes);
+    }
+}
+
+function canonicalAllowedTarotImageUrl(value = '') {
+    const raw = normalizeGeneratedResourceValue(value);
     if (!raw) return '';
     try {
         const parsed = new URL(raw);
-        if (parsed.origin !== RABBIT_MIRROR_TAROT_ORIGIN || parsed.username || parsed.password) return '';
-        if (!RABBIT_MIRROR_TAROT_PATH_RE.test(parsed.pathname)) return '';
+        if (parsed.origin !== RABBIT_MIRROR_TAROT_ORIGIN
+            || parsed.username
+            || parsed.password
+            || !RABBIT_MIRROR_TAROT_PATH_RE.test(parsed.pathname)) return '';
         return `${RABBIT_MIRROR_TAROT_ORIGIN}${parsed.pathname}`;
     } catch {
         return '';
     }
 }
 
-function isAllowedBoundaryResourceValue(value = '') {
-    const raw = normalizeBoundaryResourceValue(value);
-    if (!raw) return true;
-    if (raw.startsWith('#')) return true;
-    if (/^data:image\/(?:png|gif|jpe?g|webp|avif)(?:;|,)/i.test(raw)) {
-        return raw.length <= RABBIT_MIRROR_MAX_RASTER_DATA_URI_CHARS;
+function buildUniqueGeneratedIdMap(template) {
+    const counts = new Map();
+    const nodes = new Map();
+    for (const element of [...template.content.querySelectorAll('[id]')]) {
+        const id = String(element.getAttribute('id') || '');
+        if (!id || id.length > 160 || /[\u0000-\u001f\u007f\s<>"'`=]/.test(id)) continue;
+        counts.set(id, (counts.get(id) || 0) + 1);
+        nodes.set(id, element);
     }
-    if (/^data:image\/svg\+xml(?:;|,)/i.test(raw)) return isSafeBoundarySvgDataImage(raw);
-    return !!canonicalBoundaryTarotUrl(raw);
-}
-
-function boundaryStyleValueIsSafe(value = '') {
-    const raw = String(value || '');
-    const decoded = decodeBoundaryCssEscapes(raw).replace(/\/\*[\s\S]*?\*\//g, '');
-    if (/(?:expression\s*\(|-moz-binding\s*:|behavior\s*:|\@\s*import\b)/i.test(decoded)) return false;
-    if (/url\s*\(/i.test(decoded) && !/url\s*\(/i.test(raw)) return false;
-    const urlRe = /url\(\s*(['"]?)([\s\S]*?)\1\s*\)/gi;
-    let match;
-    while ((match = urlRe.exec(raw))) {
-        if (!isAllowedBoundaryResourceValue(match[2])) return false;
+    const unique = new Map();
+    for (const [id, count] of counts) {
+        if (count === 1) unique.set(id, nodes.get(id));
     }
-    return true;
+    return unique;
 }
 
-function stripBoundaryCssImports(css = '') {
-    return String(css || '').replace(/@(?:\\[0-9a-fA-F]{1,6}\s?|\\.|[-_a-zA-Z0-9])+[\s\S]*?;/g, rule => {
-        return /^\s*@import\b/i.test(decodeBoundaryCssEscapes(rule)) ? '' : rule;
-    });
+function sanitizeLocalGeneratedPopoverRoutes(template) {
+    const uniqueIds = buildUniqueGeneratedIdMap(template);
+    for (const target of [...template.content.querySelectorAll('[popover]')]) {
+        const mode = String(target.getAttribute('popover') || '').trim().toLowerCase();
+        if (mode && !['auto', 'manual', 'hint'].includes(mode)) target.removeAttribute('popover');
+    }
+
+    for (const control of [...template.content.querySelectorAll('[popovertarget], [commandfor], [popovertargetaction], [command]')]) {
+        const isButton = control.matches?.('button, input[type="button"], input[type="reset"]');
+        const popoverId = String(control.getAttribute('popovertarget') || '').trim();
+        if (control.hasAttribute('popovertarget')) {
+            const target = isButton ? uniqueIds.get(popoverId) : null;
+            if (!target?.hasAttribute?.('popover')) {
+                control.removeAttribute('popovertarget');
+                control.removeAttribute('popovertargetaction');
+            }
+        }
+        if (control.hasAttribute('popovertargetaction')) {
+            const action = String(control.getAttribute('popovertargetaction') || '').trim().toLowerCase();
+            if (!control.hasAttribute('popovertarget') || !['toggle', 'show', 'hide'].includes(action)) {
+                control.removeAttribute('popovertargetaction');
+            }
+        }
+
+        const commandId = String(control.getAttribute('commandfor') || '').trim();
+        if (control.hasAttribute('commandfor')) {
+            const target = isButton ? uniqueIds.get(commandId) : null;
+            const command = String(control.getAttribute('command') || '').trim().toLowerCase();
+            if (!target?.hasAttribute?.('popover') || !['show-popover', 'hide-popover', 'toggle-popover'].includes(command)) {
+                control.removeAttribute('commandfor');
+                control.removeAttribute('command');
+            }
+        } else if (control.hasAttribute('command')) {
+            control.removeAttribute('command');
+        }
+    }
 }
 
-function sanitizeBoundaryCssText(value = '') {
-    const original = String(value || '');
-    if (!original.trim()) return original;
-    let css = stripBoundaryCssImports(original);
-
-    // Obfuscated escaped function names are not normal generated CSS. Fail closed only for that declaration/style,
-    // while ordinary url(...) declarations are sanitized in place below.
-    const decoded = decodeBoundaryCssEscapes(css).replace(/\/\*[\s\S]*?\*\//g, '');
-    if (/url\s*\(/i.test(decoded) && !/url\s*\(/i.test(css)) return '';
-    if (/\@\s*import\b/i.test(decoded)) return '';
-
-    css = css.replace(/url\(\s*(['"]?)([\s\S]*?)\1\s*\)/gi, (full, _quote, resource) => {
-        return isAllowedBoundaryResourceValue(resource) ? full : 'none';
-    });
-    css = css.replace(/(?:-webkit-)?image-set\s*\(([\s\S]*?)\)/gi, (full, body) => {
-        const decodedBody = decodeBoundaryCssEscapes(body);
-        const directStrings = [...decodedBody.matchAll(/(['"])([\s\S]*?)\1/g)].map(match => match[2]);
-        return directStrings.some(resource => !isAllowedBoundaryResourceValue(resource)) ? 'none' : full;
-    });
-    if (/(?:expression\s*\(|-moz-binding\s*:|behavior\s*:)/i.test(decodeBoundaryCssEscapes(css))) return '';
-    return css;
-}
-
-export function sanitizeRabbitMirrorBoundaryTemplate(template) {
+export function sanitizeRabbitMirrorUntrustedTemplate(template) {
     if (!template?.content?.querySelectorAll) return false;
-    template.content.querySelectorAll(RABBIT_MIRROR_BOUNDARY_BLOCKED_SELECTOR).forEach(node => node.remove());
 
+    template.content.querySelectorAll(RABBIT_MIRROR_BLOCKED_RENDER_SELECTOR).forEach(node => node.remove());
+    unwrapGeneratedForms(template);
+
+    let droppedLocalStyleCount = 0;
+    let importStrippedStyleCount = 0;
     for (const style of [...template.content.querySelectorAll('style')]) {
-        style.textContent = sanitizeBoundaryCssText(style.textContent || '');
+        const css = String(style.textContent || '');
+        const cssWithoutImports = stripGeneratedCssImportRules(css);
+        if (cssWithoutImports !== css) importStrippedStyleCount += 1;
+        const cleanedCss = sanitizeGeneratedStyleSheet(css);
+        if (!cleanedCss.trim()) {
+            if (cssWithoutImports.trim()) droppedLocalStyleCount += 1;
+            style.remove();
+        } else if (cleanedCss !== css) style.textContent = cleanedCss;
+    }
+
+    if (droppedLocalStyleCount || importStrippedStyleCount) {
+        const roots = [...template.content.querySelectorAll('toto, details')];
+        for (const root of roots) {
+            if (droppedLocalStyleCount) root.setAttribute(RABBIT_MIRROR_SANITIZER_STYLE_DROP_ATTR, String(droppedLocalStyleCount));
+            if (importStrippedStyleCount) root.setAttribute(RABBIT_MIRROR_SANITIZER_IMPORT_STRIPPED_ATTR, String(importStrippedStyleCount));
+        }
     }
 
     for (const element of [...template.content.querySelectorAll('*')]) {
+        if (element.matches?.('input[type="password"], input[type="file"]')) {
+            element.remove();
+            continue;
+        }
         for (const attribute of [...element.attributes]) {
             const name = String(attribute.name || '').toLowerCase();
             const value = String(attribute.value || '');
-            if (RABBIT_MIRROR_BOUNDARY_INTERNAL_ATTRS.has(name)
+            if (RABBIT_MIRROR_INTERNAL_MODEL_ATTRS.has(name)
                 || /^on[a-z]+$/.test(name)
                 || name === 'srcdoc'
-                || RABBIT_MIRROR_BOUNDARY_DROP_ATTRS.has(name)) {
+                || name === 'action'
+                || name === 'formaction'
+                || name === 'target'
+                || name === 'autofocus'
+                || name === 'autocomplete'
+                || name === 'form'
+                || name === 'formenctype'
+                || name === 'formmethod'
+                || name === 'formnovalidate'
+                || name === 'srcset'
+                || name === 'ping'
+                || (name === 'open' && element.tagName?.toLowerCase() === 'dialog')) {
                 element.removeAttribute(attribute.name);
                 continue;
             }
-            if (RABBIT_MIRROR_BOUNDARY_URL_ATTRS.has(name)) {
-                const canonicalTarot = canonicalBoundaryTarotUrl(value);
+            // Local popover/command attributes are validated as a linked set after all generic attributes are stripped.
+            if (name === 'popover'
+                || name === 'popovertarget'
+                || name === 'popovertargetaction'
+                || name === 'command'
+                || name === 'commandfor') continue;
+            if (RABBIT_MIRROR_NETWORK_URL_ATTRS.has(name)) {
+                const normalizedResource = normalizeGeneratedResourceValue(value);
+                const canonicalTarot = canonicalAllowedTarotImageUrl(normalizedResource);
                 if (canonicalTarot) {
                     element.setAttribute(attribute.name, canonicalTarot);
                     if (element.tagName?.toLowerCase() === 'img') element.setAttribute('referrerpolicy', 'no-referrer');
                     continue;
                 }
-                if (!isAllowedBoundaryResourceValue(value)) {
+                if (!isAllowedGeneratedResourceValue(normalizedResource)) {
                     element.removeAttribute(attribute.name);
                     continue;
                 }
             }
             if (name === 'style') {
-                const cleaned = sanitizeBoundaryCssText(value);
-                if (cleaned) element.setAttribute(attribute.name, cleaned);
-                else element.removeAttribute(attribute.name);
+                const cleanedStyle = sanitizeGeneratedCssDeclarationBlock(value);
+                if (!cleanedStyle.trim()) element.removeAttribute(attribute.name);
+                else if (cleanedStyle !== value) element.setAttribute(attribute.name, cleanedStyle);
+                continue;
+            }
+            if (/url\s*\(/i.test(decodeCssEscapesForSecurity(value)) && cssContainsUnsafeGeneratedResource(value)) {
+                element.removeAttribute(attribute.name);
             }
         }
     }
+    sanitizeLocalGeneratedPopoverRoutes(template);
     return true;
 }
 
@@ -16295,7 +16670,7 @@ function sanitizeMaintenanceMirrorTemplate(template) {
         script.remove();
     }
 
-    if (!sanitizeRabbitMirrorBoundaryTemplate(template)) return null;
+    if (!sanitizeRabbitMirrorUntrustedTemplate(template)) return null;
 
     let decorationCount = 0;
     for (const scriptSource of scriptSources) {
@@ -16372,7 +16747,7 @@ function findCleanMaintenanceMirrorNode(source, root) {
         template.innerHTML = cleaned;
 
         // 直接 DOM 恢复绕过宿主 DOMPurify，因此在离线 template 中主动执行同等安全边界：
-        // script 与主动嵌入节点只删除不执行；危险网络资源按声明/属性窄移除，保留本地 CSS 与真实交互结构。
+        // script 只删除不执行；其余主动嵌入内容仍整面拒绝。真实交互只允许后续安全解析器重建。
         if (!sanitizeMaintenanceMirrorTemplate(template)) return null;
 
         const candidates = [];
@@ -22955,8 +23330,26 @@ function extractLikelyHtmlFromText(text) {
 function isRabbitMirrorDetails(details) {
     if (!details?.querySelector) return false;
     const summary = details.querySelector(':scope > summary') || details.querySelector('summary');
-    const title = (summary?.textContent || '').replace(/\s+/g, ' ').trim();
-    return /^【兔子镜[:：]/.test(title) || /兔子镜/.test(title);
+    if (!summary) return false;
+
+    const title = (summary.textContent || '').replace(/\s+/g, ' ').trim();
+    // 标题只是兼容线索，不再是唯一身份。显示正则/翻译/模型改标题时，
+    // 跟随主 API 的 <toto> 外壳又可能被宿主剥掉，必须依赖插件自己的结构标记继续识别。
+    if (/兔子[镜鏡]/.test(title) || /rabbit\s*mirror/i.test(title)) return true;
+
+    const ownScope = String(details.getAttribute?.(RABBIT_MIRROR_CSS_SCOPE_ATTR) || '').trim();
+    if (/^rmcss-[a-z0-9-]+$/i.test(ownScope)) return true;
+
+    // 兼容少数“外层 div/section 被标记、details 位于其内”的合法结构；
+    // 只认该标记宿主下的最外层 details，避免把兔子镜内部的嵌套 details 都当成独立镜面。
+    const scopedHost = details.closest?.(`[${RABBIT_MIRROR_CSS_SCOPE_ATTR}]`);
+    const scopedValue = String(scopedHost?.getAttribute?.(RABBIT_MIRROR_CSS_SCOPE_ATTR) || '').trim();
+    if (scopedHost && scopedHost !== details && /^rmcss-[a-z0-9-]+$/i.test(scopedValue)) {
+        const parentDetails = details.parentElement?.closest?.('details');
+        if (!parentDetails || !scopedHost.contains?.(parentDetails)) return true;
+    }
+
+    return false;
 }
 
 function sanitizeRenderedRabbitMirrorDetailsInScope(root, force = false) {

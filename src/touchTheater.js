@@ -21,7 +21,7 @@ const TOUCH_ZONE_IDS = new Set([
     'calf',
     'mystery-1',
     'mystery-2',
-    // Compatibility with 1.4.15-1.4.25.2 mirrors.
+    // Compatibility with 1.4.15-1.4.25 mirrors.
     'arm',
     'left-hand',
     'right-hand',

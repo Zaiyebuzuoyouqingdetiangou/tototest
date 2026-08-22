@@ -1,14 +1,14 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings } from './settings.js?rmv=1.4.25.2';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.25.2';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorBoundaryTemplate } from './outputSanitizer.js?rmv=1.4.25.2';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.25.2';
-import { getCurrentChatKey, updateLatestVisualSignature, describePaletteFamily } from './storage.js?rmv=1.4.25.2';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.25.2';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.25.2';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.25.2';
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.25.2';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings } from './settings.js?rmv=1.4.30.2';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.2';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.2';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.2';
+import { getCurrentChatKey, updateLatestVisualSignature, describePaletteFamily } from './storage.js?rmv=1.4.30.2';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.2';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.2';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.2';
+import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.2';
 
-const RUNTIME_VERSION = '1.4.25.2';
+const RUNTIME_VERSION = '1.4.30.2';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -1539,8 +1539,9 @@ function recentIndependentPaletteGuard(){
   const decay=item.roundsAgo===0?'最高':item.roundsAgo===1?'中':'低';
   return `${when}「${item.label}」（冷却权重：${decay}）`;
  }).join('；');
- return `\n- 配色短期冷却（每轮生成前主动执行，越近权重越高）：${lines}。\n- 上一面刚使用过的整体配色路径不得继续作为本轮默认方案；更早记录按时间自然衰减，超出短期窗口自动解除，不构成永久禁色。\n- 只改同一色相的色值、饱和度、明暗或强调色仍视为近似复用；本轮须重新从展现形式的材质、环境、光线与空间关系推导配色，不指定替代颜色。`;
+ return `\n- 配色短期冷却（每轮生成前主动执行，越近权重越高）：${lines}。\n- 上一面刚使用过的整体配色路径不得继续作为本轮默认方案；更早记录按时间自然衰减，超出短期窗口自动解除，不构成永久禁色。\n- 不能只换一个主色相就沿用同一套白底／深底、冷暖、明暗、饱和度和对比关系；仅换主色相，或只在同一色相内调整色值、饱和度、明暗或强调色，都仍视为近似复用。本轮须从展现形式的材质、环境、光线与空间关系重新推导整体配色结构，不指定替代颜色。`;
 }
+
 function manualRetryPaletteGuard(slot=''){
  if(!slot) return '';
  const previous=historyEntriesForSlot(String(slot||''))[0];
@@ -1548,9 +1549,8 @@ function manualRetryPaletteGuard(slot=''){
  const fingerprint=previous.paletteFingerprint||independentPaletteFingerprintFromHtml(previous.html);
  if(!fingerprint||Number(fingerprint.confidence||0)<0.35) return '';
  const label=describePaletteFamily(fingerprint); if(!label) return '';
- return `\n- 本次是同一兔子镜的手动重 roll；上一版配色路径「${label}」进入最高短期冷却。不得只改同一色相的明暗、饱和度或强调色来伪装成新方案，应从本轮媒介材质、环境与光线重新推导。`;
+ return `\n- 本次是同一兔子镜的手动重 roll；上一版配色路径「${label}」进入最高短期冷却。不得只换主色相，或只调整明暗、饱和度、强调色来伪装成新方案；应从本轮媒介材质、环境与光线重新推导整体配色结构。`;
 }
-
 function commitIndependentVisualResult(inner=''){
  try{
   const scanned=scanRabbitMirrorHtml(wrappedIndependentMirrorHtml(inner),null)||{};
@@ -2790,9 +2790,9 @@ function migratePersistedInteractionStateRecords(){
 function sanitizeIndependentReadyFragment(html=''){
  const template=document.createElement('template');
  template.innerHTML=String(html||'');
- // Independent API output bypasses SillyTavern's normal message sanitizer.
- // Preserve local CSS/interaction while blocking executable content and network-fetch surfaces.
- if(!sanitizeRabbitMirrorBoundaryTemplate(template)) return '';
+ // 独立 API 结果绕过 SillyTavern 的消息净化链；真正挂载前与维修兔共用同一未信任 HTML 边界。
+ template.content.querySelectorAll('script').forEach(node=>node.remove());
+ if(!sanitizeRabbitMirrorUntrustedTemplate(template)) return '';
  return template.innerHTML;
 }
 
