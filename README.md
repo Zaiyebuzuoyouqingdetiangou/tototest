@@ -1,3 +1,10 @@
+## 1.4.30.14 TEST：大接近 Observer 流式热路径修复
+
+- 基于 GitHub `tototest/main` 1.4.30.13；真机隔离测试中，仅停用 `initTouchTheaterBridge()` 后，打开速度、流式结束释放和设置保存恢复正常。
+- 保留大接近/Touch Theater 本身，不再粗暴关闭模块；MutationObserver 仍监听 `#chat`，但普通 SillyTavern 流式正文新增的叶子/普通子节点会在任何 `querySelectorAll()` 前直接跳过。
+- 只有新消息根、RabbitMirror 子树、Touch Theater 或 threshold reaction 的真实插入才进入一次合并选择器扫描；点击时原有 `normalizeTouchTheaterRuntime()`、Live2D、GS meter、mystery/成人确认与关闭逻辑不变。
+- CSS 的 threshold fail-closed 规则继续保留；不改独立 API、Prompt、sanitizer、维修兔、世界书、视觉冷却、外置容器或生成内容。
+
 ## 1.4.30.13 TEST：长聊天同步 I/O / 解析风暴修复
 
 - 直接基于 GitHub 1.4.30.12；保留 1.4.30.12 的历史折叠镜轻量边界，不再新增历史 DOM batching。

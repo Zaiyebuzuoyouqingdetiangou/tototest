@@ -404,23 +404,35 @@ function normalizeExistingTouchTheaters() {
     }
 }
 
-function normalizeTouchTheaterMutationNode(node) {
-    if (!(node instanceof Element)) return;
-    const theaters = [];
-    if (node.matches?.(TOUCH_THEATER_SELECTOR)) theaters.push(node);
-    for (const theater of node.querySelectorAll?.(TOUCH_THEATER_SELECTOR) || []) theaters.push(theater);
-    for (const theater of theaters) {
-        if (!theater.closest?.(RABBIT_MIRROR_SELECTOR)) continue;
-        normalizeTouchTheaterRuntime(theater);
-    }
+const TOUCH_RUNTIME_MUTATION_SELECTOR = `${TOUCH_THEATER_SELECTOR}, ${TOUCH_THRESHOLD_REACTION_SELECTOR}`;
+const CHAT_MESSAGE_ROOT_SELECTOR = '.mes[mesid], [mesid].mes, .mes_text';
 
-    const reactions = [];
-    if (node.matches?.(TOUCH_THRESHOLD_REACTION_SELECTOR)) reactions.push(node);
-    for (const reaction of node.querySelectorAll?.(TOUCH_THRESHOLD_REACTION_SELECTOR) || []) reactions.push(reaction);
-    for (const reaction of reactions) {
-        const theater = reaction.closest?.(TOUCH_THEATER_SELECTOR);
-        if (!theater || !theater.closest?.(RABBIT_MIRROR_SELECTOR)) continue;
-        hideThresholdReaction(theater);
+function touchTheaterMutationNodeNeedsScan(node) {
+    if (!(node instanceof Element)) return false;
+    // Ordinary SillyTavern streaming inserts many small descendants under .mes_text.
+    // They cannot contain a RabbitMirror Touch Theater unless the inserted node is
+    // itself a theater/reaction, a RabbitMirror subtree, or a newly rendered message root.
+    // Reject those hot-path leaves before any descendant querySelectorAll() work.
+    if (node.matches?.(TOUCH_RUNTIME_MUTATION_SELECTOR)) return true;
+    if (node.matches?.(RABBIT_MIRROR_SELECTOR)) return true;
+    if (node.closest?.(RABBIT_MIRROR_SELECTOR)) return true;
+    return !!node.matches?.(CHAT_MESSAGE_ROOT_SELECTOR);
+}
+
+function normalizeTouchTheaterMutationNode(node) {
+    if (!touchTheaterMutationNodeNeedsScan(node)) return;
+    const candidates = new Set();
+    if (node.matches?.(TOUCH_RUNTIME_MUTATION_SELECTOR)) candidates.add(node);
+    for (const candidate of node.querySelectorAll?.(TOUCH_RUNTIME_MUTATION_SELECTOR) || []) candidates.add(candidate);
+
+    for (const candidate of candidates) {
+        if (candidate.matches?.(TOUCH_THEATER_SELECTOR)) {
+            if (candidate.closest?.(RABBIT_MIRROR_SELECTOR)) normalizeTouchTheaterRuntime(candidate);
+        }
+        if (candidate.matches?.(TOUCH_THRESHOLD_REACTION_SELECTOR)) {
+            const theater = candidate.closest?.(TOUCH_THEATER_SELECTOR);
+            if (theater?.closest?.(RABBIT_MIRROR_SELECTOR)) hideThresholdReaction(theater);
+        }
     }
 }
 

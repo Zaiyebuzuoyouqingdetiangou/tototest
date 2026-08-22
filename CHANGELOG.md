@@ -1,3 +1,13 @@
+# RabbitMirror 1.4.30.14 TEST
+
+## 1.4.30.14 - 2026-08-23
+
+- 根据 Safari/云酒馆真机隔离结果，锁定 `Touch Theater / 大接近` 的 `#chat` 全子树 MutationObserver 为流式主线程热路径：停用该 bridge 后，打开、流式结束释放与设置保存恢复正常。
+- 不删除大接近功能；新增 observer 前置结构门，普通 SillyTavern 流式正文子节点在任何后代扫描前直接跳过。
+- 真正的 RabbitMirror/Touch Theater/threshold reaction、新消息根仍会归一化；相关候选由两次后代扫描合并为一次 selector 扫描。
+- 点击时的 neutral 初始化、GS approach、Live2D、本地成人确认、mystery fail-closed、threshold CSS 安全边界保持原语义。
+- 不修改独立 API Prompt、POST body、stream/retry/single-flight、世界书、维修兔、视觉冷却、sanitizer 或生成内容。
+
 # RabbitMirror 1.4.30.13 TEST
 
 ## 1.4.30.13 - 2026-08-23

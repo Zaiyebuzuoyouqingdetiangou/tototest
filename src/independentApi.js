@@ -1,14 +1,14 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.30.13';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.13';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.13';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.13';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.13';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.13';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.13';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.13';
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.13';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.30.14';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.14';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.14';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.14';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.14';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.14';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.14';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.14';
+import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.14';
 
-const RUNTIME_VERSION = '1.4.30.13';
+const RUNTIME_VERSION = '1.4.30.14';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -78,7 +78,7 @@ let latestGenerationTimer = null;
 let generationSequence = 0;
 let observer = null;
 let syncRunning = false;
-// 1.4.30.13: full-chat restoration keeps historical collapsed mirrors in the
+// 1.4.30.14: full-chat restoration keeps historical collapsed mirrors in the
 // same light state promised by 1.3.57/1.3.93/1.3.94. New/current targeted
 // message updates never enter this scope.
 let historicalRestoreLightDepth = 0;

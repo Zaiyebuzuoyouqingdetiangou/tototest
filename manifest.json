@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.30.13",
-  "css": "style.css?rmv=1.4.30.13",
+  "js": "index.js?rmv=1.4.30.14",
+  "css": "style.css?rmv=1.4.30.14",
   "author": "Toto",
-  "version": "1.4.30.13",
+  "version": "1.4.30.14",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.30.13：修复长聊天进入的同步主线程 I/O/解析风暴：全聊天 owner-lock 改为一次批量读写，持久化 HTML 可恢复性结果复用，普通消息不再无谓进入跟随镜 sanitizer/DOM 解析，初始/同模式 reconfigure 不再追加两轮全聊天恢复；保留 1.4.30.12 历史折叠镜轻量边界，不改独立 API Prompt、请求 body、stream/retry/single-flight、世界书或生成内容。"
+  "description": "兔子镜测试版 1.4.30.14：修复已真机隔离确认的 Touch Theater / 大接近全聊天 MutationObserver 热路径；普通 SillyTavern 流式正文的子节点插入不再进入兔子镜后代扫描，真正的兔子镜/大接近/新消息根仍即时归一化。保留 1.4.30.13 的长聊天同步优化，不改独立 API Prompt、请求 body、stream/retry/single-flight、世界书、维修兔、视觉冷却或生成内容。"
 }
