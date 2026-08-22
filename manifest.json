@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.30.17",
+  "js": "index.js?rmv=1.4.30.18",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.30.17",
+  "version": "1.4.30.18",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.30.17：仅修设置 UI：高级设置改为可滚动模态弹窗，提供顶部返回与右上角关闭；“读取世界书”移入高级设置，并在用户切换到独立 API 时弹出世界书启用选择。生成、Prompt、请求、世界书捕获、性能修复、维修逻辑与默认设置不改。"
+  "description": "兔子镜测试版 1.4.30.18：修复 iPhone / iOS Safari 中高级设置弹窗被页面层裁切、菜单压成竖条及无法正常显示的问题；高级设置与独立 API 世界书选择改为浏览器 top-layer dialog，并单独补回手机横排按钮与主题色兼容。生成、Prompt、请求、世界书捕获、性能修复、维修逻辑与默认设置不改。"
 }

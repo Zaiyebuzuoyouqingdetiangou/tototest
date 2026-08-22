@@ -8,6 +8,7 @@ import { getSettings } from './src/settings.js?rmv=1.4.30.17';
 import { clearRabbitMirrorGenerationSnapshots } from './src/generationGuard.js?rmv=1.4.30.17';
 import { initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './src/independentApi.js?rmv=1.4.30.17';
 import { initTouchTheaterBridge, destroyTouchTheaterBridge } from './src/touchTheater.js?rmv=1.4.30.17';
+import { initRabbitMirrorMobileModalHotfix, destroyRabbitMirrorMobileModalHotfix } from './src/mobileModalHotfix.js?rmv=1.4.30.18';
 
 const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.30.17';
 
@@ -22,6 +23,7 @@ jQuery(async () => {
     initFeedbackCatPromptSync(() => getSettings().feedbackCatEnabled !== false);
     globalThis.__rabbitMirrorFeedbackCatSyncCleanup = destroyFeedbackCatPromptSync;
     initRabbitMirrorUI();
+    initRabbitMirrorMobileModalHotfix();
     initOutputSanitizer();
     initVisualScanner();
     initIndependentRabbitMirror();
@@ -38,6 +40,7 @@ export function onDisable() {
     destroyIndependentRabbitMirror();
     destroyTouchTheaterBridge();
     clearRabbitMirrorGenerationSnapshots();
+    destroyRabbitMirrorMobileModalHotfix();
 }
 
 export function onClean() {
@@ -51,4 +54,5 @@ export function onClean() {
     clearLastCombo();
     clearAllFeedbackCatState();
     clearRabbitMirrorGenerationSnapshots();
+    destroyRabbitMirrorMobileModalHotfix();
 }
