@@ -1,3 +1,12 @@
+# RabbitMirror 1.4.30.8 TEST
+
+## 1.4.30.8 - 2026-08-22
+
+- 修复 1.4.30.7 的聊天切换性能回归：`CHAT_CHANGED` / `WORLDINFO_ENTRIES_LOADED` 不再同步重建世界书设置 DOM，而是仅标记当前聊天列表待刷新，并在设置区域真正可见时延迟合并刷新。
+- “全部世界书”折叠区改为真正懒渲染：折叠时不创建完整 checkbox 列表，关闭折叠区会立即释放该大列表 DOM；只有用户展开时才按当前内存名单构建。
+- API 请求诊断更新不再顺带重绘世界书设置；世界书 UI listener 与延迟/可见性 observer 在销毁时完整清理。
+- 不修改世界书 loaded→activated 实际捕获语义、独立 API Prompt / POST body / stream / retry / single-flight、模型拉取逻辑、维修兔、sanitizer、外容器或六维视觉冷却。
+
 # 1.4.30.7 TEST
 
 - 世界书设置按当前聊天隔离：默认列表只显示 SillyTavern 在当前聊天 World Info 生命周期中加载过的书，不再把其他角色/聊天的历史观察缓存混进来。实际发送逻辑仍只复用本轮最终激活条目，不重扫、不重掷 probability。

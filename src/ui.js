@@ -1,15 +1,15 @@
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.30.7';
-import { clearLastCombo } from './storage.js?rmv=1.4.30.7';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.30.7';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.30.7';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.30.7';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.7';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.30.7';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.30.7';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.4.30.7';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.30.8';
+import { clearLastCombo } from './storage.js?rmv=1.4.30.8';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.30.8';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.30.8';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.30.8';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.8';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.30.8';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.30.8';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.4.30.8';
 
-const SETTINGS_UI_VERSION = '1.4.30.7-visual-maintenance';
-const RUNTIME_VERSION = '1.4.30.7';
+const SETTINGS_UI_VERSION = '1.4.30.8-visual-maintenance';
+const RUNTIME_VERSION = '1.4.30.8';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -17,6 +17,11 @@ function isCurrentRuntime() {
 let uiMountRetryTimer = 0;
 let uiMountRetryCount = 0;
 let pulledWorldInfoBooks = [];
+let worldInfoBookRenderTimer = 0;
+let worldInfoBookVisibilityObserver = null;
+let worldInfoBookCurrentVisible = false;
+let worldInfoBookCurrentDirty = true;
+const WORLD_INFO_BOOK_RENDER_DEBOUNCE_MS = 140;
 
 function scheduleUiMountRetry() {
     if (!isCurrentRuntime() || uiMountRetryTimer || uiMountRetryCount >= 20) return;
@@ -103,31 +108,42 @@ function renderWorldInfoRows(target, books, disabled, emptyText) {
             ? item.sources.map(worldInfoSourceLabel).filter(Boolean).join(' / ')
             : item.note || '';
         return `<label class="checkbox_label" style="display:flex;align-items:flex-start;gap:7px;margin:4px 0;">
-          <input class="rh-world-info-book-toggle" type="checkbox" data-book-index="${index}" ${enabled ? 'checked' : ''}>
+          <input class="rh-world-info-book-toggle" type="checkbox" data-book-index="${index}" data-book-id="${escapeHtml(item.id)}" ${enabled ? 'checked' : ''}>
           <span style="min-width:0;flex:1;overflow-wrap:anywhere;"><b>${escapeHtml(item.label)}</b>${identity}${sourceText ? `<br><span style="opacity:.6;font-size:10px;">${escapeHtml(sourceText)}</span>` : ''}</span>
         </label>`;
     }).join('');
     target.data('rm-world-info-books', books.map(item => item.id));
     target.html(books.length ? rows : `<div style="font-size:11px;line-height:1.4;opacity:.66;">${escapeHtml(emptyText)}</div>`);
 }
-function renderWorldInfoBookSettings() {
+function clearWorldInfoBookRenderTimer() {
+    if (!worldInfoBookRenderTimer) return;
+    clearTimeout(worldInfoBookRenderTimer);
+    worldInfoBookRenderTimer = 0;
+}
+function renderWorldInfoBookSettings({ current = true, all = false } = {}) {
     const currentTarget = $('#rh_world_info_book_filters');
     const allTarget = $('#rh_world_info_all_book_filters');
     if (!currentTarget.length && !allTarget.length) return;
     const settings = getSettings();
     const disabled = new Set(Array.isArray(settings.independentWorldInfoDisabledBooks) ? settings.independentWorldInfoDisabledBooks : []);
-    const currentBooks = getObservedWorldInfoBooks().map(item => ({
-        id: String(item?.name || '').trim(),
-        label: String(item?.name || '').trim(),
-        sources: item?.sources || [],
-    })).filter(item => item.id);
-    renderWorldInfoRows(
-        currentTarget,
-        currentBooks,
-        disabled,
-        '当前聊天还没有观察到酒馆加载的世界书。进入角色聊天并正常生成后会自动显示当前聊天相关世界书；不会为了列表重新扫描条目。',
-    );
 
+    if (current && currentTarget.length) {
+        const currentBooks = getObservedWorldInfoBooks().map(item => ({
+            id: String(item?.name || '').trim(),
+            label: String(item?.name || '').trim(),
+            sources: item?.sources || [],
+        })).filter(item => item.id);
+        renderWorldInfoRows(
+            currentTarget,
+            currentBooks,
+            disabled,
+            '当前聊天还没有观察到酒馆加载的世界书。进入角色聊天并正常生成后会自动显示当前聊天相关世界书；不会为了列表重新扫描条目。',
+        );
+        worldInfoBookCurrentDirty = false;
+    }
+
+    const allDetails = document.getElementById('rh_world_info_all_books');
+    if (!all || !allTarget.length || !allDetails?.open) return;
     const byId = new Map();
     for (const item of pulledWorldInfoBooks) {
         const id = String(item?.id || item?.name || '').trim(); if (!id) continue;
@@ -138,6 +154,47 @@ function renderWorldInfoBookSettings() {
     }
     const allBooks = [...byId.values()].sort((a, b) => String(a.label || a.id).localeCompare(String(b.label || b.id), 'zh-Hans-CN'));
     renderWorldInfoRows(allTarget, allBooks, disabled, '尚未拉取全部世界书。');
+}
+function scheduleWorldInfoBookSettingsRender(delay = WORLD_INFO_BOOK_RENDER_DEBOUNCE_MS) {
+    worldInfoBookCurrentDirty = true;
+    clearWorldInfoBookRenderTimer();
+    // When the extension drawer is closed, do not build even the current-chat checkbox DOM.
+    // IntersectionObserver will render it when the user actually exposes this settings area.
+    if (worldInfoBookVisibilityObserver && !worldInfoBookCurrentVisible) return;
+    worldInfoBookRenderTimer = setTimeout(() => {
+        worldInfoBookRenderTimer = 0;
+        if (!isCurrentRuntime() || !worldInfoBookCurrentDirty) return;
+        renderWorldInfoBookSettings({ current: true, all: false });
+    }, Math.max(0, Number(delay) || 0));
+}
+function disconnectWorldInfoBookVisibilityObserver() {
+    try { worldInfoBookVisibilityObserver?.disconnect?.(); } catch {}
+    worldInfoBookVisibilityObserver = null;
+    worldInfoBookCurrentVisible = false;
+}
+function installWorldInfoBookVisibilityObserver() {
+    disconnectWorldInfoBookVisibilityObserver();
+    const target = document.getElementById('rh_world_info_book_filters');
+    if (!target) return;
+    if (typeof IntersectionObserver !== 'function') {
+        worldInfoBookCurrentVisible = true;
+        scheduleWorldInfoBookSettingsRender(0);
+        return;
+    }
+    worldInfoBookVisibilityObserver = new IntersectionObserver(entries => {
+        for (const entry of entries) {
+            if (entry.target !== target) continue;
+            worldInfoBookCurrentVisible = entry.isIntersecting === true;
+            if (worldInfoBookCurrentVisible && worldInfoBookCurrentDirty) scheduleWorldInfoBookSettingsRender(0);
+        }
+    }, { root: null, threshold: 0 });
+    worldInfoBookVisibilityObserver.observe(target);
+}
+function clearCollapsedAllWorldInfoBookRows() {
+    const target = $('#rh_world_info_all_book_filters');
+    if (!target.length) return;
+    target.removeData('rm-world-info-books');
+    target.html('<div style="font-size:11px;line-height:1.4;opacity:.66;">折叠时不创建完整世界书列表；展开后按需渲染。</div>');
 }
 
 function independentApiProfileLabel(diagnostic) {
@@ -338,7 +395,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.7</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.8</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -395,14 +452,14 @@ export function initRabbitMirrorUI() {
             <label class="checkbox_label"><input id="rh_independent_read_global_world_info" type="checkbox"> 读取世界书</label>
             <div class="rabbit-mirror-subnote" style="margin:-4px 0 4px 26px;opacity:.68;font-size:11px;line-height:1.45;">进入当前角色聊天后，优先显示酒馆为当前聊天加载过的角色／聊天／Persona／当前全局世界书；真正发送时仍只复用主生成本轮实际激活的条目，不会重新扫描或重掷概率。</div>
             <div style="margin:7px 0 2px 26px;font-size:11px;font-weight:700;opacity:.8;">当前聊天相关世界书</div>
-            <div id="rh_world_info_book_filters" style="margin:4px 0 8px 26px;padding:7px 9px;border:1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 45%, transparent);border-radius:8px;max-height:180px;overflow:auto;"></div>
+            <div id="rh_world_info_book_filters" style="margin:4px 0 8px 26px;padding:7px 9px;border:1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 45%, transparent);border-radius:8px;max-height:180px;overflow:auto;"><div style="font-size:11px;line-height:1.4;opacity:.66;">打开此设置区域时自动显示当前聊天相关世界书。</div></div>
             <details id="rh_world_info_all_books" style="margin:4px 0 8px 26px;">
               <summary style="cursor:pointer;font-size:11px;opacity:.76;">更多：从全部世界书中选择（折叠）</summary>
               <div class="flex-container" style="gap:7px;flex-wrap:wrap;align-items:center;margin:7px 0 0;">
                 <button id="rh_world_info_books_fetch" class="menu_button" type="button">拉取全部世界书</button>
                 <span id="rh_world_info_books_fetch_status" style="opacity:.66;font-size:11px;">未拉取</span>
               </div>
-              <div id="rh_world_info_all_book_filters" style="margin-top:7px;padding:7px 9px;border:1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 45%, transparent);border-radius:8px;max-height:260px;overflow:auto;"></div>
+              <div id="rh_world_info_all_book_filters" style="margin-top:7px;padding:7px 9px;border:1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 45%, transparent);border-radius:8px;max-height:260px;overflow:auto;"><div style="font-size:11px;line-height:1.4;opacity:.66;">折叠时不创建完整世界书列表；展开后按需渲染。</div></div>
             </details>
             <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议 <b>1.0</b>；想更稳可用 0.9～1.1。</div>
             <div id="rh_independent_api_diagnostic" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);opacity:.78;font-size:11px;line-height:1.5;word-break:break-word;">最近请求：暂无记录</div>
@@ -568,16 +625,16 @@ export function initRabbitMirrorUI() {
     };
     renderIndependentConnectionStatus();
     checked('#rh_independent_read_global_world_info', settings.independentReadGlobalWorldInfo === true);
-    renderWorldInfoBookSettings();
+    installWorldInfoBookVisibilityObserver();
     const syncGenerationModeFields = () => { const independent = getSettings().generationSource === 'independent'; $('#rh_independent_api_fields').toggle(independent); $('#rh_follow_display_row').toggle(!independent); };
     syncGenerationModeFields();
     renderIndependentApiDiagnostic();
     try { globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup?.(); } catch {}
-    const independentDiagnosticListener = event => { renderIndependentApiDiagnostic(event?.detail || null); renderWorldInfoBookSettings(); };
+    const independentDiagnosticListener = event => { renderIndependentApiDiagnostic(event?.detail || null); };
     globalThis.addEventListener?.(API_REQUEST_DIAGNOSTIC_EVENT, independentDiagnosticListener);
     globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup = () => globalThis.removeEventListener?.(API_REQUEST_DIAGNOSTIC_EVENT, independentDiagnosticListener);
     try { globalThis.__rabbitMirrorWorldInfoBooksUiCleanup?.(); } catch {}
-    const worldInfoBooksListener = () => renderWorldInfoBookSettings();
+    const worldInfoBooksListener = () => scheduleWorldInfoBookSettingsRender();
     globalThis.addEventListener?.(WORLD_INFO_BOOKS_CHANGED_EVENT, worldInfoBooksListener);
     globalThis.__rabbitMirrorWorldInfoBooksUiCleanup = () => globalThis.removeEventListener?.(WORLD_INFO_BOOKS_CHANGED_EVENT, worldInfoBooksListener);
     try { globalThis.__rabbitMirrorBlacklistUiCleanup?.(); } catch {}
@@ -617,6 +674,10 @@ export function initRabbitMirrorUI() {
         updateSettings({ independentReadGlobalWorldInfo: e.target.checked === true });
         toastr?.info?.(e.target.checked ? '已开启世界书读取，从下一轮生效。' : '已关闭世界书读取，从下一轮生效。');
     });
+    $('#rh_world_info_all_books').on('toggle', function () {
+        if (this.open) renderWorldInfoBookSettings({ current: false, all: true });
+        else clearCollapsedAllWorldInfoBookRows();
+    });
     $('#rh_world_info_books_fetch').on('click', async function () {
         const button = $(this);
         const status = $('#rh_world_info_books_fetch_status');
@@ -624,12 +685,12 @@ export function initRabbitMirrorUI() {
         status.text('正在拉取…');
         try {
             pulledWorldInfoBooks = await fetchWorldInfoBooks();
-            renderWorldInfoBookSettings();
+            renderWorldInfoBookSettings({ current: false, all: true });
             status.text(`已拉取 ${pulledWorldInfoBooks.length} 本`);
             toastr?.success?.(`已拉取 ${pulledWorldInfoBooks.length} 本世界书；列表保留在折叠区内`);
         } catch (error) {
             pulledWorldInfoBooks = [];
-            renderWorldInfoBookSettings();
+            renderWorldInfoBookSettings({ current: false, all: true });
             const message = String(error?.message || error);
             status.text(message.includes('超时') ? '拉取超时' : '拉取失败');
             toastr?.warning?.(message);
@@ -647,7 +708,9 @@ export function initRabbitMirrorUI() {
         if (this.checked) nextDisabled.delete(name);
         else nextDisabled.add(name);
         updateSettings({ independentWorldInfoDisabledBooks: [...nextDisabled] });
-        renderWorldInfoBookSettings();
+        $('.rh-world-info-book-toggle').each(function () {
+            if (String($(this).attr('data-book-id') || '') === name) $(this).prop('checked', !nextDisabled.has(name));
+        });
         const safeName = escapeHtml(name);
         toastr?.info?.(this.checked ? `已开启「${safeName}」。` : `已关闭「${safeName}」。`);
     });
@@ -937,5 +1000,10 @@ export function destroyRabbitMirrorUI() {
     globalThis.__rabbitMirrorTokenMeterUiCleanup = null;
     try { globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup?.(); } catch {}
     globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup = null;
+    try { globalThis.__rabbitMirrorWorldInfoBooksUiCleanup?.(); } catch {}
+    globalThis.__rabbitMirrorWorldInfoBooksUiCleanup = null;
+    clearWorldInfoBookRenderTimer();
+    disconnectWorldInfoBookVisibilityObserver();
+    worldInfoBookCurrentDirty = true;
     $('#rabbit_mirror_theater_settings').remove();
 }

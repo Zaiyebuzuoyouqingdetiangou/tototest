@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.30.7",
-  "css": "style.css?rmv=1.4.30.7",
+  "js": "index.js?rmv=1.4.30.8",
+  "css": "style.css?rmv=1.4.30.8",
   "author": "Toto",
-  "version": "1.4.30.7",
+  "version": "1.4.30.8",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.30.7：基于 1.4.30.6，仅修世界书设置作用域/折叠展示与一键配置后的模型列表防卡；不改独立 API 生成 Prompt、POST body、stream/retry/single-flight 或其它运行链。"
+  "description": "兔子镜测试版 1.4.30.8：基于 1.4.30.7，仅修聊天切换时世界书设置 UI 同步重建造成的卡顿：当前聊天列表改为可见时延迟刷新，完整世界书列表仅展开时创建；不改世界书实际捕获、独立 API 生成、模型拉取、维修兔、外容器或视觉链。"
 }
