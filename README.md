@@ -1,3 +1,11 @@
+## 1.4.30.10 TEST：长聊天进入性能修复
+
+- 聊天同步期间缓存外置兔子镜索引，避免每条历史消息反复全局扫描全部镜面。
+- 稳定历史 ready 镜面不再重复 geometry / 主视觉 shell 后处理；桌面端不再跑移动端的多阶段 settle 定时器。
+- 同一已健康 details 不再反复做 summary computed-style/rect 探针；已有 owner lock 时不再每次同步 clone + 序列化整面历史镜。
+- 新镜面、owner DOM 替换、显示位置变化、真实 viewport resize 与移动端稳定校正仍按原逻辑处理。
+- 不改变独立 API 请求、Prompt、世界书、维修兔、sanitizer 或生成内容。
+
 ## 1.4.30.9 TEST：独立 API 视觉程序完整性门
 
 - 防止模型只返回大量 class / CSS 变量 / 状态控件，却漏掉整份样式程序时仍被当成成功成品保存。

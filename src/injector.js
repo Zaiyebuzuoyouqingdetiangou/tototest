@@ -1,15 +1,15 @@
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.4.30.9';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.9';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.4.30.10';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.10';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.4.30.9';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.4.30.9';
-import { attachRabbitMirrorGenerationSelection, beginRabbitMirrorGenerationAttempt } from './generationGuard.js?rmv=1.4.30.9';
+} from './feedbackCat.js?rmv=1.4.30.10';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.4.30.10';
+import { attachRabbitMirrorGenerationSelection, beginRabbitMirrorGenerationAttempt } from './generationGuard.js?rmv=1.4.30.10';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 

@@ -1,3 +1,14 @@
+# RabbitMirror 1.4.30.10 TEST
+
+## 1.4.30.10 - 2026-08-22
+
+- 修复长聊天进入时的 CPU/主线程高负载：一次同步周期只扫描一次全局外置兔子镜 DOM，并按 mesid / owner key 建索引，避免逐消息重复 `document.querySelectorAll()` 形成近平方级放大。
+- 已稳定且 owner DOM 未变化的历史独立镜面不再重复启动 geometry；同一 geometry cycle 只允许一个 scheduler。桌面端新 cycle 只做即时测量 + 双 rAF 确认，不再启动 120/420/1500ms 的移动端/WebView settle 链；移动端原 settle 语义保留。
+- 已完成且 HTML/placement 未变化的 ready 镜面跳过重复主视觉 shell / compact / wide-stage 后处理；真实重挂载、显示位置变化或新 HTML 仍会重新执行。
+- 历史 ready 镜面的“summary 是否视觉塌缩”改为同一 details DOM 只做一次布局探针；已有 owner lock 时也不再每轮 clone + 序列化整份 mounted HTML。
+- `CHAT_CHANGED` 不再无条件让所有已挂载镜面 geometry epoch 失效；owner DOM replacement 与真实 viewport resize 仍分别触发必要重算。
+- 不修改独立 API Prompt、POST body、stream/retry/single-flight、一键连接、模型拉取、世界书、visual cooldown、sanitizer、维修兔或生成结果内容。
+
 # RabbitMirror 1.4.30.9 TEST
 
 ## 1.4.30.9 - 2026-08-22

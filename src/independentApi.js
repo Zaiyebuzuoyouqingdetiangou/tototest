@@ -1,14 +1,14 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.30.9';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.9';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.9';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.9';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.9';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.9';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.9';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.9';
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.9';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.30.10';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.10';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.10';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.10';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.10';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.10';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.10';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.10';
+import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.10';
 
-const RUNTIME_VERSION = '1.4.30.9';
+const RUNTIME_VERSION = '1.4.30.10';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -1876,18 +1876,63 @@ ${independentUserTail}`;
 function externalOwnerMesid(el){
  return String(el?.getAttribute?.('mesid') ?? el?.dataset?.messageId ?? el?.dataset?.messageid ?? '').trim();
 }
+let externalHostSyncIndex=null;
+function addExternalHostToIndexMap(map,key,host){
+ if(!key || !host) return;
+ let bucket=map.get(key);
+ if(!bucket){ bucket=new Set(); map.set(key,bucket); }
+ bucket.add(host);
+}
+function buildExternalHostSyncIndex(){
+ const hosts=[...(document.querySelectorAll?.(`[${SOURCE_ATTR}]`)||[])];
+ const byMesid=new Map(); const byKey=new Map();
+ for(const host of hosts){
+  addExternalHostToIndexMap(byMesid,String(host?.dataset?.rmOwnerMesid||host?.dataset?.rmExternalOwnerMessage||''),host);
+  addExternalHostToIndexMap(byKey,String(host?.dataset?.rmKey||''),host);
+ }
+ return {hosts,hostSet:new Set(hosts),byMesid,byKey};
+}
+function registerExternalHostInSyncIndex(host){
+ const index=externalHostSyncIndex; if(!index || !host) return;
+ if(!index.hostSet.has(host)){ index.hostSet.add(host); index.hosts.push(host); }
+ addExternalHostToIndexMap(index.byMesid,String(host.dataset?.rmOwnerMesid||host.dataset?.rmExternalOwnerMessage||''),host);
+ addExternalHostToIndexMap(index.byKey,String(host.dataset?.rmKey||''),host);
+}
+function withExternalHostSyncIndex(run){
+ const owns=!externalHostSyncIndex;
+ if(owns) externalHostSyncIndex=buildExternalHostSyncIndex();
+ try{ return run(); }
+ finally{ if(owns) externalHostSyncIndex=null; }
+}
+function liveIndexedExternalHosts(bucket){
+ return [...(bucket||[])].filter(node=>node?.isConnected!==false && node?.hasAttribute?.(SOURCE_ATTR));
+}
 function allExternalHosts(){
+ if(externalHostSyncIndex) return externalHostSyncIndex.hosts.filter(node=>node?.isConnected!==false && node?.hasAttribute?.(SOURCE_ATTR));
  return [...(document.querySelectorAll?.(`[${SOURCE_ATTR}]`)||[])];
+}
+function indexedExternalHostsByMesid(mesid=''){
+ const id=String(mesid||'');
+ if(externalHostSyncIndex) return liveIndexedExternalHosts(externalHostSyncIndex.byMesid.get(id)).filter(node=>String(node.dataset?.rmOwnerMesid||node.dataset?.rmExternalOwnerMessage||'')===id);
+ return allExternalHosts().filter(node=>String(node.dataset?.rmOwnerMesid||node.dataset?.rmExternalOwnerMessage||'')===id);
+}
+function externalHostsByIdentityKey(key='',source='',currentChat=chatKey(getContext())){
+ const id=String(key||'');
+ const pool=externalHostSyncIndex && id ? liveIndexedExternalHosts(externalHostSyncIndex.byKey.get(id)) : allExternalHosts();
+ return pool.filter(node=>
+  String(node.dataset?.rmKey||'')===id
+  && (!source || node.dataset?.rmSource===source)
+  && (!node.dataset?.rmOwnerChat || node.dataset.rmOwnerChat===currentChat)
+ );
 }
 function externalHosts(el){
  if(!el) return [];
  const mesid=externalOwnerMesid(el);
  const currentChat=chatKey(getContext());
  const descendants=[...(el.querySelectorAll?.(`[${SOURCE_ATTR}]`)||[])];
- const owned=mesid ? allExternalHosts().filter(node=>{
-   const ownerMesid=String(node.dataset.rmOwnerMesid||node.dataset.rmExternalOwnerMessage||'');
+ const owned=mesid ? indexedExternalHostsByMesid(mesid).filter(node=>{
    const ownerChat=String(node.dataset.rmOwnerChat||'');
-   return ownerMesid===mesid && (!ownerChat || ownerChat===currentChat);
+   return !ownerChat || ownerChat===currentChat;
  }) : [];
  return [...new Set([...descendants,...owned])];
 }
@@ -2177,6 +2222,7 @@ function beginExternalHostGeometryCycle(host,reason='geometry-refresh',el=null){
  delete host.dataset.rmGeometrySettlePass;
  delete host.dataset.rmGeometrySettleCycle;
  delete host.dataset.rmGeometrySettleCorrected;
+ delete host.dataset.rmGeometryScheduleCycle;
  clearGeometryDataset(host,'rmGeometryCandidate');
  clearGeometryDataset(host,'rmGeometryLate');
  delete host.dataset.rmGeometryCandidateSource;
@@ -2399,6 +2445,7 @@ function finishExternalHostGeometrySettle(host,cycleId){
  host.dataset.rmGeometrySettlePass='done';
  host.dataset.rmGeometrySettleCycle=String(cycleId||'');
  host.dataset.rmGeometrySettleState=host.dataset.rmGeometrySettleState==='confirmed' ? 'done-confirmed' : 'done-provisional';
+ if(String(host.dataset.rmGeometryScheduleCycle||'')===String(cycleId||'')) delete host.dataset.rmGeometryScheduleCycle;
 }
 function scheduleExternalHostGeometryFinalConfirm(host,cycleId){
  const run=()=>{
@@ -2416,6 +2463,8 @@ function scheduleExternalHostGeometryFinalConfirm(host,cycleId){
 function scheduleExternalHostGeometrySettleRecheck(host,step=0,expectedCycle=''){
  if(!host?.isConnected || host.dataset.rmSource!=='independent') return;
  if(String(host.dataset.rmPlacement||'external')!=='external') return;
+ const viewportWidth=independentExternalEffectiveViewportWidth();
+ if(!(viewportWidth>0 && viewportWidth<900)) return;
  const el=messageElementForExternalHost(host);
  const cycleId=String(expectedCycle||ensureExternalHostGeometryCycle(el,host)||'');
  if(!cycleId || String(host.dataset.rmGeometryCycleId||'')!==cycleId) return;
@@ -2450,19 +2499,44 @@ function syncExternalHostGeometry(el,host,context={}){
  if(!host?.isConnected) return {changed:false};
  return applyExternalHostGeometryPlan(host,computeExternalHostGeometryPlan(el,host),context);
 }
+function externalHostGeometrySettledForOwner(el,host){
+ if(!host?.dataset || !el) return false;
+ const cycleId=String(host.dataset.rmGeometryCycleId||'');
+ if(!cycleId || String(host.dataset.rmGeometryLifecycleEpoch||'')!==String(externalGeometryLifecycleEpoch)) return false;
+ if(!externalGeometryOwnerNodes.has(host) || externalGeometryOwnerNodes.get(host)!==el) return false;
+ return host.dataset.rmGeometrySettlePass==='done' && String(host.dataset.rmGeometrySettleCycle||'')===cycleId;
+}
 function scheduleExternalHostGeometry(el,host){
+ if(!host?.isConnected) return false;
+ if(externalHostGeometrySettledForOwner(el,host)) return false;
  const cycleId=ensureExternalHostGeometryCycle(el,host);
+ if(!cycleId) return false;
+ // syncMessages() and the finite duplicate-reconciliation pass can touch the same
+ // ready host back-to-back. One geometry cycle owns at most one scheduler.
+ if(String(host.dataset.rmGeometryScheduleCycle||'')===cycleId) return false;
+ host.dataset.rmGeometryScheduleCycle=cycleId;
  syncExternalHostGeometry(el,host,{phase:'early',cycleId});
  const retry=()=>{
   if(host?.isConnected && String(host.dataset.rmGeometryCycleId||'')===String(cycleId||'')){
    syncExternalHostGeometry(el||messageElementForExternalHost(host),host,{phase:'early',cycleId});
   }
  };
- if(typeof requestAnimationFrame==='function'){
-  requestAnimationFrame(()=>requestAnimationFrame(retry));
+ const viewportWidth=independentExternalEffectiveViewportWidth();
+ const mobile=viewportWidth>0 && viewportWidth<900;
+ if(!mobile){
+  // Desktop content lanes are stable after the mount frame. Do one frame-confirmation
+  // only; the 120/420/1500ms mobile/WebView settle chain was needlessly reheating
+  // every restored historical mirror on chat entry. Real width changes still go
+  // through refreshExternalHostGeometry().
+  const finish=()=>{ retry(); finishExternalHostGeometrySettle(host,cycleId); };
+  if(typeof requestAnimationFrame==='function') requestAnimationFrame(()=>requestAnimationFrame(finish));
+  else globalThis.setTimeout?.(finish,0);
+  return true;
  }
+ if(typeof requestAnimationFrame==='function') requestAnimationFrame(()=>requestAnimationFrame(retry));
  setTimeout(retry,120);
  scheduleExternalHostGeometrySettleRecheck(host,0,cycleId);
+ return true;
 }
 function clearOrphanExternalHostTimer(mesid=''){
  const id=String(mesid||'');
@@ -2480,6 +2554,7 @@ function externalHostAppearsBeforeOwner(el,host){
 }
 function placeExternalHost(el,host,key='',source='independent'){
  if(!el||!host) return false;
+ const previousPlacement=String(host.dataset?.rmPlacement||'');
  stampExternalHostOwnership(el,host,key,source);
  const previousParent=host.parentElement;
  const desired=source==='independent' ? independentPlacementForState(host.dataset.rmState||'ready') : 'external';
@@ -2488,13 +2563,16 @@ function placeExternalHost(el,host,key='',source='independent'){
  if(source==='follow'){
   const anchor=followExternalAnchorForMessage(el,true);
   if(!anchor) return false;
-  if(host.parentElement!==anchor) anchor.append(host);
+  const moved=host.parentElement!==anchor;
+  if(moved) anchor.append(host);
   host.dataset.rmPlacement='external';
   host.dataset.rmExternalPlacementEstablished='true';
   host.hidden=false;
   delete host.dataset.rmAwaitingOwner;
   clearOrphanExternalHostTimer(externalOwnerMesid(el));
+  registerExternalHostInSyncIndex(host);
   syncExternalHostGeometry(el,host);
+  if(moved || previousPlacement!=='external') host.__rabbitMirrorIndependentPlacementDirty=true;
   if(previousParent?.hasAttribute?.(FOLLOW_EXTERNAL_ANCHOR_ATTR) && previousParent!==anchor && !previousParent.querySelector?.(`[${SOURCE_ATTR}][data-rm-source="follow"]`)) previousParent.remove();
   if(previousParent?.hasAttribute?.(INLINE_ANCHOR_ATTR) && !previousParent.querySelector?.(`[${SOURCE_ATTR}]`)) previousParent.remove();
   return true;
@@ -2502,35 +2580,42 @@ function placeExternalHost(el,host,key='',source='independent'){
  if(desired==='inline'){
   const anchor=inlineAnchorForMessage(el,true);
   if(!anchor) return false;
-  if(host.parentElement!==anchor) anchor.append(host);
+  const moved=host.parentElement!==anchor;
+  if(moved) anchor.append(host);
   host.dataset.rmPlacement='inline';
-  clearExternalShellIntegration(host);
+  if(moved || previousPlacement!=='inline') clearExternalShellIntegration(host);
   host.dataset.rmExternalPlacementEstablished='true';
   host.hidden=false;
   delete host.dataset.rmAwaitingOwner;
   clearOrphanExternalHostTimer(externalOwnerMesid(el));
+  registerExternalHostInSyncIndex(host);
   syncExternalHostGeometry(el,host);
+  if(moved || previousPlacement!=='inline') host.__rabbitMirrorIndependentPlacementDirty=true;
   if(previousParent?.hasAttribute?.(INLINE_ANCHOR_ATTR) && previousParent!==anchor && !previousParent.querySelector?.(`[${SOURCE_ATTR}]`)) previousParent.remove();
   return true;
  }
  const parent=el.parentElement;
  if(!parent) return false;
- host.dataset.rmPlacement='external';
- if(source==='independent') clearExternalShellIntegration(host);
  const needsReanchor = host.parentElement!==parent
    || el.contains(host)
    || externalHostAppearsBeforeOwner(el,host)
    || host.dataset.rmExternalPlacementEstablished!=='true';
+ const placementChanged=previousPlacement!=='external';
+ host.dataset.rmPlacement='external';
+ if(source==='independent' && (needsReanchor || placementChanged)) clearExternalShellIntegration(host);
  if(needsReanchor) parent.insertBefore(host,el.nextSibling);
  host.dataset.rmExternalPlacementEstablished='true';
  host.hidden=false;
  delete host.dataset.rmAwaitingOwner;
  clearOrphanExternalHostTimer(externalOwnerMesid(el));
+ registerExternalHostInSyncIndex(host);
+ if(needsReanchor || placementChanged) host.__rabbitMirrorIndependentPlacementDirty=true;
  ensureExternalHostGeometryCycle(el,host,needsReanchor?'external-reanchor':'');
  scheduleExternalHostGeometry(el,host);
  if(previousParent?.hasAttribute?.(INLINE_ANCHOR_ATTR) && !previousParent.querySelector?.(`[${SOURCE_ATTR}]`)) previousParent.remove();
  return true;
 }
+
 function messageElementForExternalHost(host){
  const owner=Number(host?.dataset?.rmOwnerMesid ?? host?.dataset?.rmExternalOwnerMessage);
  if(Number.isInteger(owner)&&owner>=0){
@@ -2542,10 +2627,9 @@ function messageElementForExternalHost(host){
 function externalHostsOwnedByMesid(mesid=''){
  const id=String(mesid||'');
  const currentChat=chatKey(getContext());
- return allExternalHosts().filter(host=>{
-   const owner=String(host.dataset.rmOwnerMesid||host.dataset.rmExternalOwnerMessage||'');
+ return indexedExternalHostsByMesid(id).filter(host=>{
    const ownerChat=String(host.dataset.rmOwnerChat||'');
-   return owner===id && (!ownerChat || ownerChat===currentChat);
+   return !ownerChat || ownerChat===currentChat;
  });
 }
 function markExternalHostsAwaitingOwner(mesid=''){
@@ -3491,6 +3575,7 @@ function recoverSavedRecord(store,slot,observed){
  // migration instead of turning an update into destructive data loss.
  return {saved:null,storeChanged:false,recoveredFromHistory:false};
 }
+const verifiedReadyDetailsVisualHealth=new WeakSet();
 function readyDetailsVisuallyCollapsed(details){
  if(!details?.isConnected) return false;
  const summary=details.querySelector?.(':scope > summary');
@@ -3522,14 +3607,19 @@ function rebuildCollapsedReadyHost(el,host,key,source,html,sourceHash=''){
   replaceReadyDetailsFromSaved(host,key,source,html,sourceHash,!!current?.hasAttribute?.('open'));
   return host;
  }
- if(!readyDetailsVisuallyCollapsed(current)) return host;
+ // This is a one-time mount-health probe. Re-reading computed style + layout for
+ // every historical ready mirror on every sync creates a forced-layout wall in
+ // long chats even when the exact same <details> DOM has already proved healthy.
+ if(verifiedReadyDetailsVisualHealth.has(current)) return host;
+ if(!readyDetailsVisuallyCollapsed(current)){ verifiedReadyDetailsVisualHealth.add(current); return host; }
  if(host.__rabbitMirrorCollapsedRecoveryTimer) clearTimeout(host.__rabbitMirrorCollapsedRecoveryTimer);
  const expected=current;
  host.__rabbitMirrorCollapsedRecoveryTimer=setTimeout(()=>{
   host.__rabbitMirrorCollapsedRecoveryTimer=0;
   if(!currentRuntime() || !host.isConnected) return;
   const live=host.querySelector?.(':scope > details');
-  if(live!==expected || !readyDetailsVisuallyCollapsed(live)) return;
+  if(live!==expected) return;
+  if(!readyDetailsVisuallyCollapsed(live)){ verifiedReadyDetailsVisualHealth.add(live); return; }
   replaceReadyDetailsFromSaved(host,key,source,html,sourceHash,!!live?.hasAttribute?.('open'));
  },120);
  return host;
@@ -3540,11 +3630,7 @@ function collapseDuplicateIdentityHosts(el,key,source='independent',sourceHash='
  // Display-mode changes used to leave the old pure-external host behind while
  // creating a second inline host. Include every same-key host from the current
  // chat, even when an older build failed to stamp the latest owner placement.
- const byIdentity=allExternalHosts().filter(node=>
-  node.dataset.rmSource===source
-  && String(node.dataset.rmKey||'')===String(key||'')
-  && (!node.dataset.rmOwnerChat || node.dataset.rmOwnerChat===currentChat)
- );
+ const byIdentity=externalHostsByIdentityKey(key,source,currentChat);
  const candidates=[...new Set([...local,...byIdentity])];
  if(candidates.length<2) return candidates[0]||null;
  const score=node=>{
@@ -4382,13 +4468,21 @@ function rescueIndependentExternalVisualShell(host){
 }
 
 function scheduleIndependentReadyPostprocess(host,key='',html=''){
- if(!host || host.dataset.rmSource!=='independent' || host.dataset.rmState!=='ready') return;
+ if(!host || host.dataset.rmSource!=='independent' || host.dataset.rmState!=='ready') return false;
+ const source=String(html||host.__rabbitMirrorIndependentSource||'');
+ const signature=`${String(host.dataset.rmPlacement||'external')}|${String(key||host.dataset.rmKey||'')}|${source.length}:${hashText(source)}`;
+ const placementDirty=host.__rabbitMirrorIndependentPlacementDirty===true;
+ const scheduled=!!(host.__rabbitMirrorIndependentPostFrame || host.__rabbitMirrorIndependentPostTimer);
+ if(!placementDirty && host.dataset.rmIndependentPostprocessSignature===signature && !scheduled) return false;
+ if(scheduled && host.__rabbitMirrorIndependentPostPendingSignature===signature) return false;
  if(host.__rabbitMirrorIndependentPostFrame) globalThis.cancelAnimationFrame?.(host.__rabbitMirrorIndependentPostFrame);
  if(host.__rabbitMirrorIndependentPostTimer) clearTimeout(host.__rabbitMirrorIndependentPostTimer);
+ host.__rabbitMirrorIndependentPostPendingSignature=signature;
  const run=()=>{
   host.__rabbitMirrorIndependentPostTimer=0;
   if(!host.isConnected || host.dataset.rmState!=='ready') return;
-  const details=host.querySelector?.(':scope > details[data-rabbit-mirror-external-details="true"], :scope > details');
+  if(host.__rabbitMirrorIndependentPostPendingSignature!==signature) return;
+  host.__rabbitMirrorIndependentPostPendingSignature='';
   if(host.dataset.rmPlacement==='external'){
    // Cached/runtime-only layout artifacts are cleaned before mount. Do not clean the
    // already-mounted ready DOM here: Maintenance Rabbit may have intentionally written
@@ -4401,7 +4495,9 @@ function scheduleIndependentReadyPostprocess(host,key='',html=''){
    neutralizeIndependentExternalWideStage(host);
    compactIndependentExternalShellToPrimaryVisual(host);
   }
-  scheduleExternalShellTint(host,html);
+  scheduleExternalShellTint(host,source);
+  host.dataset.rmIndependentPostprocessSignature=signature;
+  host.__rabbitMirrorIndependentPlacementDirty=false;
  };
  if(typeof requestAnimationFrame==='function'){
   host.__rabbitMirrorIndependentPostFrame=requestAnimationFrame(()=>{
@@ -4409,6 +4505,7 @@ function scheduleIndependentReadyPostprocess(host,key='',html=''){
    host.__rabbitMirrorIndependentPostTimer=setTimeout(run,80);
   });
  }else host.__rabbitMirrorIndependentPostTimer=setTimeout(run,80);
+ return true;
 }
 
 function ensureExternalUi(el,key,html,state='ready',source='independent',sourceHash=''){
@@ -5508,7 +5605,7 @@ function syncMessages(indices=null){
        // user's visible A, even when a status bar or another extension has since
        // rewritten the underlying mes fingerprint. Seed the stable owner lock
        // from that visible result instead of requesting/repainting a B.
-       const mountedReadyAtSync=!persistedSuppressed && keep?.dataset?.rmState==='ready' ? readyRecordFromHost(keep,observed,st.independentApiModel) : null;
+       const mountedReadyAtSync=!persistedSuppressed && !ownerLocked?.record && keep?.dataset?.rmState==='ready' ? readyRecordFromHost(keep,observed,st.independentApiModel) : null;
        if(mountedReadyAtSync?.html && !ownerLocked?.record){
          const mountedSlot=String(keep?.dataset?.rmKey||slot);
          const previous=store?.[mountedSlot];
@@ -5520,8 +5617,6 @@ function syncMessages(indices=null){
          writePersistedOwner(ctx,i,m,mountedReadyAtSync,{overwrite:false});
          ownerLocked={record:mountedReadyAtSync,lock:{slot:mountedSlot}};
          saved=mountedReadyAtSync;
-       } else if(mountedReadyAtSync?.html && ownerLocked?.record){
-         saved=ownerLocked.record;
        }
        if(displayModeChanged && keep){
          // Switching display mode only relocates the one existing mirror.
@@ -5632,9 +5727,11 @@ function reconcileVisibleMirrorDuplicates(indices=null){
  removeEmptyFollowExternalAnchors(document);
 }
 function syncAll(){
- pruneForeignChatExternalHosts();
- syncMessages(null);
- reconcileVisibleMirrorDuplicates();
+ return withExternalHostSyncIndex(()=>{
+  pruneForeignChatExternalHosts();
+  syncMessages(null);
+  reconcileVisibleMirrorDuplicates();
+ });
 }
 let queuedIndices=new Set();
 let syncTimer=null;
@@ -5645,8 +5742,10 @@ function queueMessageSync(indices=[]){
    syncTimer=null;
    const batch=queuedIndices; queuedIndices=new Set();
    if(batch.size){
-    syncMessages(batch);
-    reconcileVisibleMirrorDuplicates(batch);
+    withExternalHostSyncIndex(()=>{
+     syncMessages(batch);
+     reconcileVisibleMirrorDuplicates(batch);
+    });
    }
  },120);
 }
@@ -5836,7 +5935,9 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
        hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); cancelAllIndependentFlights('chat-changed'); messageSourceRevisions.clear(); activeGlobalWorldInfoCapture=null;
        dispatchWorldInfoBooksChanged(currentWorldInfoBookScope());
        if(runtimeMode()==='independent' && automaticGenerationCutovers.size) ensureAutomaticGenerationCutover(getContext());
-       markExternalGeometryLifecycle('chat-changed');
+       // Do not invalidate every mounted mirror's geometry merely because the chat
+       // changed. New/replaced message DOM is detected per host by owner-dom-replaced;
+       // real viewport changes have their own geometry refresh path.
        syncAll(); scheduleLatest(700);
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});

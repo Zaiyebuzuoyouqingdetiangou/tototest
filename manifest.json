@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.30.9",
-  "css": "style.css?rmv=1.4.30.9",
+  "js": "index.js?rmv=1.4.30.10",
+  "css": "style.css?rmv=1.4.30.10",
   "author": "Toto",
-  "version": "1.4.30.9",
+  "version": "1.4.30.10",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.30.9：基于 1.4.30.8，仅新增独立 API 成品视觉程序完整性门，拦截 HTML 主体存在但关键 CSS 程序缺失的半成品；不改 Prompt、请求 body、stream/retry/single-flight、世界书、外容器或其它生成链。"
+  "description": "兔子镜测试版 1.4.30.10：基于 1.4.30.9，仅优化聊天切换/历史镜面恢复性能：同步期建立一次外置镜面索引、稳定历史镜面跳过重复几何与重型视觉后处理，桌面端不再启动移动端 120/420/1500ms settle 链；不改独立 API Prompt、请求 body、stream/retry/single-flight、世界书、sanitizer、维修兔或视觉内容。"
 }
