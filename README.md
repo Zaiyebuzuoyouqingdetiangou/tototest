@@ -1,3 +1,12 @@
+## 1.4.30.13 TEST：长聊天同步 I/O / 解析风暴修复
+
+- 直接基于 GitHub 1.4.30.12；保留 1.4.30.12 的历史折叠镜轻量边界，不再新增历史 DOM batching。
+- 全聊天 `syncAll()` / targeted batch 期间，owner-lock localStorage 改为事务式批处理：一次同步只读取一次、内存中更新、结束最多写一次；不再为每条历史镜同步 `JSON.parse + JSON.stringify + localStorage.setItem`。
+- 持久化兔子镜 `independentStoredHtmlRestorable()` 增加有限精确字符串缓存，同一份历史 HTML 在一次/连续同步中不再反复创建 `<template>` 做完整 DOM parse。
+- 跟随镜从消息源码恢复前增加宽松 RabbitMirror 词法门；普通助手正文不含 `<toto>/<details>` + 兔子镜证据时直接跳过，不再每条都跑完整 sanitizer/DOM parser。
+- `reconfigureRuntime()` 初始安装或同模式刷新只做一次即时 `syncAll()`；120ms/850ms 两轮被动全聊天恢复只保留给真正的 generation-source/runtime mode 切换。
+- 新消息、Swipe、MESSAGE_UPDATED、手动重说、真实 source switch 的单条/切换恢复语义保持不变；不改 API 请求与生成内容。
+
 ## 1.4.30.12 TEST：恢复历史折叠镜“只做轻工作”的性能边界
 
 - 直接基于 GitHub 1.4.30.10；不采用 1.4.30.11 的“历史 DOM 分批挂载”方案，历史镜仍按原有方式挂载。

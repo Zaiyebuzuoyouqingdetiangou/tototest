@@ -1,14 +1,14 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.30.12';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.12';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.12';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.12';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.12';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.12';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.12';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.12';
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.12';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.30.13';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.13';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.13';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.13';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.13';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.13';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.13';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.13';
+import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.13';
 
-const RUNTIME_VERSION = '1.4.30.12';
+const RUNTIME_VERSION = '1.4.30.13';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -78,11 +78,12 @@ let latestGenerationTimer = null;
 let generationSequence = 0;
 let observer = null;
 let syncRunning = false;
-// 1.4.30.12: full-chat restoration keeps historical collapsed mirrors in the
+// 1.4.30.13: full-chat restoration keeps historical collapsed mirrors in the
 // same light state promised by 1.3.57/1.3.93/1.3.94. New/current targeted
 // message updates never enter this scope.
 let historicalRestoreLightDepth = 0;
 const HISTORICAL_LIGHT_HOST_ATTR = 'data-rm-historical-light';
+const HISTORICAL_COLD_DETAILS_ATTR = 'data-rm-historical-cold';
 function withHistoricalRestoreLightPass(fn){
  historicalRestoreLightDepth += 1;
  try { return fn(); } finally { historicalRestoreLightDepth = Math.max(0,historicalRestoreLightDepth-1); }
@@ -523,23 +524,50 @@ function writeOwnerLockStore(value){
   localStorage.setItem(OWNER_LOCK_STORE_KEY,JSON.stringify(Object.fromEntries(entries)));
  }catch{}
 }
-function ownerLockForBase(baseSlot=''){ const key=String(baseSlot||''); return key?readOwnerLockStore()[key]||null:null; }
+// Full-chat reconciliation can touch hundreds of persisted owners. localStorage is
+// synchronous (especially expensive in mobile WebViews), so reading + rewriting the
+// whole owner-lock JSON once per message creates an O(N^2)-like main-thread stall.
+// Keep ordinary single-message actions immediate, but batch a finite sync pass into
+// one read and at most one write. Nested sync helpers reuse the same transaction.
+let activeOwnerLockBatch=null;
+let activeOwnerLockBatchDirty=false;
+function ownerLockStoreForAccess(){ return activeOwnerLockBatch || readOwnerLockStore(); }
+function withOwnerLockStoreBatch(run){
+ if(typeof run!=='function') return undefined;
+ if(activeOwnerLockBatch) return run();
+ const store=readOwnerLockStore();
+ activeOwnerLockBatch=store; activeOwnerLockBatchDirty=false;
+ try{ return run(); }
+ finally{
+  const dirty=activeOwnerLockBatchDirty;
+  activeOwnerLockBatch=null; activeOwnerLockBatchDirty=false;
+  if(dirty) writeOwnerLockStore(store);
+ }
+}
+function ownerLockForBase(baseSlot=''){ const key=String(baseSlot||''); return key?ownerLockStoreForAccess()[key]||null:null; }
 function setOwnerLockForBase(baseSlot,slot,sourceHash=''){
  const base=String(baseSlot||''); const exact=String(slot||''); if(!base||!exact) return;
- const store=readOwnerLockStore(); store[base]={slot:exact,sourceHash:String(sourceHash||''),ts:Date.now(),runtime:RUNTIME_VERSION}; writeOwnerLockStore(store);
+ const store=ownerLockStoreForAccess();
+ store[base]={slot:exact,sourceHash:String(sourceHash||''),ts:Date.now(),runtime:RUNTIME_VERSION};
+ if(activeOwnerLockBatch) activeOwnerLockBatchDirty=true; else writeOwnerLockStore(store);
 }
 function clearOwnerLockForBase(baseSlot=''){
  const base=String(baseSlot||''); if(!base) return;
- const store=readOwnerLockStore(); if(!Object.prototype.hasOwnProperty.call(store,base)) return;
- delete store[base]; writeOwnerLockStore(store);
+ const store=ownerLockStoreForAccess(); if(!Object.prototype.hasOwnProperty.call(store,base)) return;
+ delete store[base];
+ if(activeOwnerLockBatch) activeOwnerLockBatchDirty=true; else writeOwnerLockStore(store);
 }
-function lockedIndependentRecordForBase(baseSlot,store=readStore()){
+function lockedIndependentRecordForBase(baseSlot,store=readStore(),{lightweight=false}={}){
  const lock=ownerLockForBase(baseSlot); if(!lock?.slot) return null;
+ const valid=html=>lightweight ? independentStoredHtmlLightRestorable(html) : independentStoredHtmlRestorable(html);
  const saved=store?.[String(lock.slot||'')];
- if(saved?.html && independentStoredHtmlRestorable(saved.html)) return {record:saved,lock};
- const history=historyEntriesForSlot(String(lock.slot||'')).find(entry=>entry?.html && independentStoredHtmlRestorable(entry.html));
+ if(saved?.html && valid(saved.html)) return {record:saved,lock};
+ const history=historyEntriesForSlot(String(lock.slot||'')).find(entry=>entry?.html && valid(entry.html));
  if(history?.html) return {record:history,lock};
- clearOwnerLockForBase(baseSlot); return null;
+ // A lightweight chat-entry probe is intentionally non-destructive: failing to
+ // prove an old record from strings alone is not permission to erase its lock.
+ if(!lightweight) clearOwnerLockForBase(baseSlot);
+ return null;
 }
 function readLastIndependentApiRequestDiagnostic(){
  try{ const value=JSON.parse(localStorage.getItem(API_REQUEST_DIAGNOSTIC_STORE_KEY)||'null'); return value&&typeof value==='object'?value:null; }catch{return null;}
@@ -3542,7 +3570,10 @@ function buildExternalHost(key,html,state,source){
  host.dataset.rmKey=key;
  host.dataset.rmSource=source;
  host.dataset.rmState=state;
- const details=state==='ready' ? extractReadyDetails(html) : fallbackExternalDetails(state,html);
+ const coldHistorical=state==='ready' && source==='independent' && historicalRestoreLightPassActive() && independentStoredHtmlLightRestorable(html);
+ const details=state==='ready'
+  ? (coldHistorical ? buildHistoricalColdDetails(html) : extractReadyDetails(html))
+  : fallbackExternalDetails(state,html);
  if(!details) return buildExternalHost(key,'独立 API 已返回内容，但没有找到完整的兔子镜 <details>。','error',source);
  details.removeAttribute('open');
  markExternalDetails(details,key,source);
@@ -3569,59 +3600,79 @@ function usableReadyDetails(details){
   return !!(String(node.textContent||'').trim() || node.children?.length || node.matches?.('img,svg,canvas,video,audio,iframe,input,button,select,textarea,table,ul,ol,section,article,main,figure,form'));
  });
 }
+let activeRestorableHtmlCache=null;
+function withRestorableHtmlCacheBatch(run){
+ if(typeof run!=='function') return undefined;
+ if(activeRestorableHtmlCache) return run();
+ activeRestorableHtmlCache=new Map();
+ try{ return run(); }
+ finally{ activeRestorableHtmlCache=null; }
+}
 function independentStoredHtmlRestorable(html=''){
  const source=String(html||'').trim();
  if(!source) return false;
+ if(activeRestorableHtmlCache?.has(source)) return activeRestorableHtmlCache.get(source)===true;
+ let result=false;
  try{
   const template=document.createElement('template');
   template.innerHTML=source;
   const details=template.content.querySelector('details');
-  if(!details || details.tagName!=='DETAILS') return false;
-  // Earlier builds could accidentally persist a loading placeholder as the
-  // final A product. Reject it during cache/history recovery so the exact
-  //正文 may make its one legitimate API request and overwrite the bad record.
-  if(details.classList?.contains('rabbit-mirror-external-placeholder')) return false;
-  if(details.hasAttribute?.('data-rabbit-mirror-placeholder')) return false;
-  const summary=details.querySelector?.(':scope > summary');
-  if(!summary || !String(summary.textContent||'').trim()) return false;
-  // Historical mirrors often keep their real body hidden until a checkbox,
-  // radio, tab or script reveals it. Persistence recovery must therefore be
-  // deliberately more permissive than validation of a brand-new API result.
-  // Any non-tool child besides pure style/script metadata is recoverable.
-  return [...details.childNodes].some(node=>{
-   if(node===summary) return false;
-   if(node.nodeType===Node.TEXT_NODE) return !!String(node.textContent||'').trim();
-   if(node.nodeType!==Node.ELEMENT_NODE) return false;
-   return !['STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node.tagName);
-  }) || String(details.innerHTML||'').length>120;
- }catch{return /<details\b[\s\S]*?<summary\b[\s\S]*?<\/summary>[\s\S]*?<\/details>/i.test(source);}
+  if(details && details.tagName==='DETAILS'
+   && !details.classList?.contains('rabbit-mirror-external-placeholder')
+   && !details.hasAttribute?.('data-rabbit-mirror-placeholder')){
+   const summary=details.querySelector?.(':scope > summary');
+   if(summary && String(summary.textContent||'').trim()){
+    // Historical mirrors often keep their real body hidden until a checkbox,
+    // radio, tab or script reveals it. Persistence recovery must therefore be
+    // deliberately more permissive than validation of a brand-new API result.
+    result=[...details.childNodes].some(node=>{
+     if(node===summary) return false;
+     if(node.nodeType===Node.TEXT_NODE) return !!String(node.textContent||'').trim();
+     if(node.nodeType!==Node.ELEMENT_NODE) return false;
+     return !['STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node.tagName);
+    }) || String(details.innerHTML||'').length>120;
+   }
+  }
+ }catch{ result=/<details\b[\s\S]*?<summary\b[\s\S]*?<\/summary>[\s\S]*?<\/details>/i.test(source); }
+ if(activeRestorableHtmlCache) activeRestorableHtmlCache.set(source,!!result);
+ return !!result;
 }
-function historyRecoveryForObserved(slot,observed){
+function historyRecoveryForObserved(slot,observed,{lightweight=false}={}){
+ const valid=html=>lightweight ? independentStoredHtmlLightRestorable(html) : independentStoredHtmlRestorable(html);
  for(const candidate of slotSearchKeys(slot,observed?.legacySlots||[])){
   const entries=historyEntriesForSlot(candidate);
-  const matched=entries.find(entry=>savedRecordMatchesObserved(entry,observed) && independentStoredHtmlRestorable(entry.html))
-   || entries.find(entry=>String(entry?.bodyHash||'') && String(entry.bodyHash)===String(observed?.bodyHash||'') && (!observed?.displayHash || String(entry?.displayHash||'')===String(observed.displayHash)) && independentStoredHtmlRestorable(entry.html));
-  if(matched) return interactionStatePollutionScore(matched.html)>0 ? normalizeSavedInteractionRecord(matched,candidate) : matched;
+  const matched=entries.find(entry=>savedRecordMatchesObserved(entry,observed) && valid(entry.html))
+   || entries.find(entry=>String(entry?.bodyHash||'') && String(entry.bodyHash)===String(observed?.bodyHash||'') && (!observed?.displayHash || String(entry?.displayHash||'')===String(observed.displayHash)) && valid(entry.html));
+  if(matched){
+   // Interaction-state normalization is a full HTML parse/serialization pass.
+   // Keep it out of CHAT_CHANGED; hydration of the one requested mirror still
+   // runs the ordinary full pipeline before it becomes interactive.
+   return lightweight ? matched : (interactionStatePollutionScore(matched.html)>0 ? normalizeSavedInteractionRecord(matched,candidate) : matched);
+  }
  }
  return null;
 }
-function recoverSavedRecord(store,slot,observed){
+function recoverSavedRecord(store,slot,observed,{lightweight=false}={}){
+ const valid=html=>lightweight ? independentStoredHtmlLightRestorable(html) : independentStoredHtmlRestorable(html);
  const exact=store?.[slot];
- if(exact?.html && independentStoredHtmlRestorable(exact.html)) return {saved:exact,storeChanged:false,recoveredFromHistory:false};
+ if(exact?.html && valid(exact.html)) return {saved:exact,storeChanged:false,recoveredFromHistory:false};
  const saved=findSavedRecord(store,slot,observed?.legacySlots||[]);
- if(saved?.html && independentStoredHtmlRestorable(saved.html) && savedRecordMatchesObserved(saved,observed)){
+ if(saved?.html && valid(saved.html) && savedRecordMatchesObserved(saved,observed)){
   if(exact!==saved){
    const recovered={...saved,ts:Number(saved.ts||Date.now()),runtime:String(saved.runtime||RUNTIME_VERSION),recoveredFromHistory:false};
-   saveRecordForSlot(store,slot,recovered);
-   return {saved:recovered,storeChanged:true,recoveredFromHistory:false};
+   // A cold historical entry is read-only. Copying every legacy alias into the
+   // local current-output store would stringify/write the whole store during
+   // chat entry and defeats the lightweight boundary.
+   if(!lightweight){ saveRecordForSlot(store,slot,recovered); return {saved:recovered,storeChanged:true,recoveredFromHistory:false}; }
+   return {saved:recovered,storeChanged:false,recoveredFromHistory:false};
   }
   return {saved,storeChanged:false,recoveredFromHistory:false};
  }
- const history=historyRecoveryForObserved(slot,observed);
+ const history=historyRecoveryForObserved(slot,observed,{lightweight});
  if(history?.html){
   const recovered={...history,ts:Number(history.ts||Date.now()),runtime:String(history.runtime||RUNTIME_VERSION),recoveredFromHistory:true};
-  saveRecordForSlot(store,slot,recovered);
-  return {saved:recovered,storeChanged:true,recoveredFromHistory:true};
+  if(!lightweight){ saveRecordForSlot(store,slot,recovered); return {saved:recovered,storeChanged:true,recoveredFromHistory:true}; }
+  return {saved:recovered,storeChanged:false,recoveredFromHistory:true};
  }
  // Never erase a persisted historical mirror merely because a newer runtime
  // cannot classify its old structure. Leave the record intact for a future
@@ -5400,7 +5451,14 @@ function restoreFollowInline(elOrHost){
  return true;
 }
 function followDetailsRootFromHtml(html=''){
- const cleaned=cleanRabbitMirrorOutput(String(html||'')); if(!cleaned) return null;
+ const raw=String(html||'');
+ // This function is reached for every assistant message during a full sync. In
+ // independent mode almost all messages contain no inline RabbitMirror at all;
+ // running the full sanitizer/DOM parser just to discover that fact dominates
+ // long-chat entry. A broad lexical gate is safe here because valid mirrors must
+ // contain RabbitMirror markup/title evidence before sanitization can recover one.
+ if(!raw || !/<(?:toto|details)\b/i.test(raw) || !/(?:data-rabbit-mirror|【兔子镜[：:])/i.test(raw)) return null;
+ const cleaned=cleanRabbitMirrorOutput(raw); if(!cleaned) return null;
  // 跟随模式在热更新/BFCache 恢复时会直接从 message source 重建 DOM，同样绕过宿主消息净化。
  // 复用副 API 的挂载前安全边界，避免旧消息里的可执行属性在恢复路径重新获得执行机会。
  const source=sanitizeIndependentReadyFragment(cleaned); if(!source) return null;
@@ -5796,11 +5854,11 @@ function reconcileVisibleMirrorDuplicates(indices=null){
  removeEmptyFollowExternalAnchors(document);
 }
 function syncAll(){
- return withHistoricalRestoreLightPass(()=>withExternalHostSyncIndex(()=>{
+ return withOwnerLockStoreBatch(()=>withRestorableHtmlCacheBatch(()=>withHistoricalRestoreLightPass(()=>withExternalHostSyncIndex(()=>{
   pruneForeignChatExternalHosts();
   syncMessages(null);
   reconcileVisibleMirrorDuplicates();
- }));
+ }))));
 }
 let queuedIndices=new Set();
 let syncTimer=null;
@@ -5811,10 +5869,10 @@ function queueMessageSync(indices=[]){
    syncTimer=null;
    const batch=queuedIndices; queuedIndices=new Set();
    if(batch.size){
-    withExternalHostSyncIndex(()=>{
+    withOwnerLockStoreBatch(()=>withRestorableHtmlCacheBatch(()=>withExternalHostSyncIndex(()=>{
      syncMessages(batch);
      reconcileVisibleMirrorDuplicates(batch);
-    });
+    })));
    }
  },120);
 }
@@ -6198,6 +6256,7 @@ async function reconfigureRuntime(){
  disconnectObserver(); unsubscribeHostEvents();
  const mode=runtimeMode();
  const previousMode=lastAppliedRuntimeMode;
+ const runtimeModeTransition=previousMode!==null && previousMode!==mode;
  const enteredIndependentFromAnotherSource=mode==='independent' && previousMode!=='independent';
  if(enteredIndependentFromAnotherSource){ clearAutomaticGenerationCutovers(); ensureAutomaticGenerationCutover(getContext()); }
  else if(mode!=='independent') clearAutomaticGenerationCutovers();
@@ -6221,13 +6280,13 @@ async function reconfigureRuntime(){
      syncAll();
      removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);
      installObserverIfNeeded();
-     schedulePassiveRecoveryAfterSourceSwitch(sequence);
+     if(runtimeModeTransition) schedulePassiveRecoveryAfterSourceSwitch(sequence);
    }
    if(mode==='off'){ document.querySelectorAll(`[${SOURCE_ATTR}]`).forEach(n=>n.remove()); removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document); }
    return;
  }
  syncAll(); installObserverIfNeeded();
- schedulePassiveRecoveryAfterSourceSwitch(sequence);
+ if(runtimeModeTransition) schedulePassiveRecoveryAfterSourceSwitch(sequence);
  await installHostEventsIfNeeded(sequence);
  if(sequence!==runtimeConfigSequence || !currentRuntime()) return;
  if(!enteredIndependentFromAnotherSource) scheduleLatest();
@@ -6263,7 +6322,7 @@ export function destroyIndependentRabbitMirror(){
  removeIndependentActionBridge();
  lastIndependentRequestConfig='';
  disconnectObserver(); unsubscribeHostEvents(); removeFeedbackMirrorActionListeners(); removeRepairPersistenceListener(); removeExternalGeometryListeners(); removeBackgroundLifecycleListeners();
- syncRunning=false; pending.clear(); clearAutomaticFailureStops(); messageSourceRevisions.clear(); activeGlobalWorldInfoCapture=null; globalWorldInfoSnapshots.clear(); preparedReadyHtmlCache.clear();
+ syncRunning=false; pending.clear(); clearAutomaticFailureStops(); messageSourceRevisions.clear(); activeGlobalWorldInfoCapture=null; globalWorldInfoSnapshots.clear(); preparedReadyHtmlCache.clear(); activeRestorableHtmlCache=null; activeOwnerLockBatch=null; activeOwnerLockBatchDirty=false;
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(host=>restoreFollowInline(host));
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());
  removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);

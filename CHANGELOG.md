@@ -1,3 +1,14 @@
+# RabbitMirror 1.4.30.13 TEST
+
+## 1.4.30.13 - 2026-08-23
+
+- 修复长聊天进入时真正的同步 I/O 热点：owner-lock 原实现会在持久化合并和消息同步中按消息反复读取、解析、重写整份 localStorage JSON；全聊天同步现在使用一次有限事务，最多一次读 + 一次写。
+- `independentStoredHtmlRestorable()` 对完全相同的历史 HTML 复用解析结果，避免 metadata/store/owner-lock 多条链对同一大块 `<details>` 反复建立 template DOM。
+- `followDetailsRootFromHtml()` 增加宽松前置证据门，普通正文在没有 RabbitMirror 标记/标题证据时不再进入完整 clean/sanitize/template 解析。
+- 初次 runtime 配置和同模式 reconfigure 不再无条件追加 120ms/850ms 两轮 `syncAll()`；仅真实 runtime mode/source transition 保留这两轮兼容恢复。
+- 保留 1.4.30.12 的历史折叠镜 light boundary；不采用 1.4.30.11 历史 DOM 分批挂载。
+- 不修改独立 API Prompt、POST body、temperature/max tokens、stream/retry/single-flight、一键连接、模型拉取、世界书、视觉冷却、成品完整性门或维修兔语义。
+
 # RabbitMirror 1.4.30.12 TEST
 
 ## 1.4.30.12 - 2026-08-23
