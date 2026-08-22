@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.30.8';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.30.8';
+import { getSettings } from './settings.js?rmv=1.4.30.9';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.30.9';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.4.30.8';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.8';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.30.8';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.30.8';
+} from './feedbackCat.js?rmv=1.4.30.9';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.9';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.30.9';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.30.9';
 
 
-const RUNTIME_VERSION = '1.4.30.8';
+const RUNTIME_VERSION = '1.4.30.9';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -11977,7 +11977,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.4.30.8-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.4.30.9-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();

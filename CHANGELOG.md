@@ -1,6 +1,15 @@
-# RabbitMirror 1.4.30.8 TEST
+# RabbitMirror 1.4.30.9 TEST
 
-## 1.4.30.8 - 2026-08-22
+## 1.4.30.9 - 2026-08-22
+
+- 独立 API 新增“视觉程序完整性门”：在已有正文/空壳检查之后，继续识别“HTML 主体存在但依赖的 CSS 程序整块缺失”的半成品。
+- 高置信命中包括：多处本地 CSS 变量被引用却没有定义、checkbox/radio 状态交互明显依赖 class 但没有有效样式表、或大量 class 几乎没有 inline 样式且没有有效样式表。命中后不保存、不进入历史、不让维修兔猜 CSS，直接提示重新生成。
+- 保留合法纯 inline-style、简单无样式 HTML、宿主/兔子镜已提供 CSS 变量，以及带有效 <style> 的正常兔子镜。
+- 不修改独立 API Prompt、请求 body、stream/retry/single-flight、一键连接、模型拉取、世界书、视觉冷却、外置框、sanitizer 或维修兔其它模块。
+
+# RabbitMirror 1.4.30.9 TEST
+
+## 1.4.30.9 - 2026-08-22
 
 - 修复 1.4.30.7 的聊天切换性能回归：`CHAT_CHANGED` / `WORLDINFO_ENTRIES_LOADED` 不再同步重建世界书设置 DOM，而是仅标记当前聊天列表待刷新，并在设置区域真正可见时延迟合并刷新。
 - “全部世界书”折叠区改为真正懒渲染：折叠时不创建完整 checkbox 列表，关闭折叠区会立即释放该大列表 DOM；只有用户展开时才按当前内存名单构建。

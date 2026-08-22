@@ -1,14 +1,14 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.30.8';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.8';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.8';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.8';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.8';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.8';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.8';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.8';
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.8';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.30.9';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.9';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.9';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.9';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.9';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.9';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.9';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.9';
+import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.9';
 
-const RUNTIME_VERSION = '1.4.30.8';
+const RUNTIME_VERSION = '1.4.30.9';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -1674,6 +1674,37 @@ function independentMirrorBodyEvidence(inner=''){
  }catch{}
  return false;
 }
+function independentVisualProgramIntegrity(inner=''){
+ const source=String(inner||'');
+ const styleBodies=[...source.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map(match=>String(match[1]||''));
+ const stylesheet=styleBodies.join('\n');
+ // A stylesheet counts only when it still contains an actual declaration block. Empty/comment-only
+ // <style> shells must not let a class-heavy half-output pass the independent acceptance boundary.
+ const meaningfulStylesheet=/\{[\s\S]{0,2400}:[\s\S]{0,2400}\}/.test(stylesheet.replace(/\/\*[\s\S]*?\*\//g,' '));
+ const classValues=[...source.matchAll(/\bclass\s*=\s*(["'])([\s\S]*?)\1/gi)].map(match=>String(match[2]||'').trim()).filter(Boolean);
+ const uniqueClasses=new Set();
+ for(const value of classValues) for(const token of value.split(/\s+/)) if(token) uniqueClasses.add(token);
+ const inlineStyles=[...source.matchAll(/\bstyle\s*=\s*(["'])([\s\S]*?)\1/gi)].map(match=>String(match[2]||''));
+ const variableRefs=new Set([...source.matchAll(/var\(\s*(--[A-Za-z0-9_-]+)/gi)].map(match=>String(match[1]||'')));
+ const variableDefs=new Set([...(`${stylesheet}\n${inlineStyles.join('\n')}`).matchAll(/(--[A-Za-z0-9_-]+)\s*:/gi)].map(match=>String(match[1]||'')));
+ const externallyProvidedVariable=/^--(?:SmartTheme|rm-|st-|mes-|mainFontSize|font-scale)/i;
+ const unresolvedVariables=[...variableRefs].filter(name=>!variableDefs.has(name) && !externallyProvidedVariable.test(name));
+ const hasStateControl=/<input\b[^>]*\btype\s*=\s*(["']?)(?:checkbox|radio)\1[^>]*>/i.test(source)
+  && /<label\b[^>]*\bfor\s*=/i.test(source);
+ const stateLikeClasses=[...uniqueClasses].filter(name=>/(?:toggle|trigger|secret|hidden|drawer|overlay|modal|panel|reveal|checked|selected|btn[-_]?text[-_]?(?:init|done|on|off)|state[-_]?(?:on|off|open|closed))/i.test(name));
+ const classHeavy=uniqueClasses.size>=12 && classValues.length>=10;
+ const almostNoInlineStyling=inlineStyles.length<=2;
+ const missingVariableProgram=unresolvedVariables.length>=2 && uniqueClasses.size>=4;
+ const missingStateProgram=hasStateControl && stateLikeClasses.length>=2;
+ const missingClassProgram=classHeavy && almostNoInlineStyling && !/<(?:svg|canvas)\b/i.test(source);
+ const missing=!meaningfulStylesheet && (missingVariableProgram || missingStateProgram || missingClassProgram);
+ return {
+  ok:!missing, missing, meaningfulStylesheet, styleBlocks:styleBodies.length, classAttributes:classValues.length,
+  uniqueClasses:uniqueClasses.size, inlineStyles:inlineStyles.length, unresolvedVariables,
+  hasStateControl, stateLikeClassCount:stateLikeClasses.length,
+  reason:missing ? (missingVariableProgram?'unresolved-css-variables':missingStateProgram?'state-css-missing':missingClassProgram?'class-stylesheet-missing':'') : '',
+ };
+}
 function independentPaletteFingerprintFromHtml(inner=''){
  try{return scanRabbitMirrorHtml(wrappedIndependentMirrorHtml(inner),null)?.paletteFingerprint||null;}catch{return null;}
 }
@@ -1826,6 +1857,15 @@ ${independentUserTail}`;
  }
  if(!independentMirrorBodyEvidence(inner)){
    throw new Error('独立 API 返回了只有标题或样式的空壳兔子镜；本次结果不会保存，也不会交给维修兔改写正文。请在挨打猫中使用“重说”。');
+ }
+ const visualProgram=independentVisualProgramIntegrity(inner);
+ if(!visualProgram.ok){
+   const detail=visualProgram.reason==='unresolved-css-variables'
+    ? `引用了未定义的 CSS 变量：${visualProgram.unresolvedVariables.slice(0,4).join('、')}`
+    : visualProgram.reason==='state-css-missing'
+      ? '存在 checkbox/radio 状态交互，但没有对应的有效样式程序'
+      : '大量自定义 class 依赖样式表，但没有有效样式定义';
+   throw new Error(`独立 API 返回了 HTML 主体，但视觉样式程序缺失（${detail}）。本次半成品不会保存，也不会让维修兔凭空猜测 CSS；请重新生成兔子镜。`);
  }
  // Capability memory is earned only after the response has passed the real
  // RabbitMirror semantic boundary. HTTP 200 alone is not proof of a usable
