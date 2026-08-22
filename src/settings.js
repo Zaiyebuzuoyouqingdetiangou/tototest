@@ -50,7 +50,7 @@ export const defaultSettings = Object.freeze({
     independentApiKey: '',
     independentApiModel: '',
     independentApiTemperature: 0.8,
-    independentApiMaxTokens: 12000,
+    independentApiMaxTokens: 30000,
     independentDisplayMode: 'external',
     independentReadGlobalWorldInfo: false,
     independentWorldInfoDisabledBooks: [],
@@ -69,7 +69,7 @@ export const defaultSettings = Object.freeze({
     presentationWorldviewLock: false,
     richFormatBias: false,
     maintenanceRabbitEnabled: true,
-    maintenanceRabbitAutoSafeEnabled: false,
+    maintenanceRabbitAutoSafeEnabled: true,
     feedbackCatEnabled: true,
     visualPromptEditingEnabled: false,
     visualPrompt: DEFAULT_VISUAL_PROMPT,
@@ -79,7 +79,7 @@ export const defaultSettings = Object.freeze({
     hardStartup: true,
     hardChineseLock: true,
     userDirectivePriority: true,
-    creativeExpansionMode: false,
+    creativeExpansionMode: true,
     forceVisualScenery: false,
     memoryScanEnabled: false,
     memoryProviderIds: [],
@@ -123,7 +123,7 @@ export function getSettings() {
         const temperature = Number(settings.independentApiTemperature);
         settings.independentApiTemperature = Math.max(0, Math.min(2, Number.isFinite(temperature) ? temperature : 0.8));
     }
-    settings.independentApiMaxTokens = Math.max(512, Math.min(32000, Number(settings.independentApiMaxTokens) || 12000));
+    settings.independentApiMaxTokens = Math.max(512, Math.min(32000, Number(settings.independentApiMaxTokens) || 30000));
 
     if (settings.showCot === undefined && settings.showWonderland !== undefined) {
         settings.showCot = !!settings.showWonderland;

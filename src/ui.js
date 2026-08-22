@@ -1,15 +1,15 @@
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.30.14';
-import { clearLastCombo } from './storage.js?rmv=1.4.30.14';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.30.14';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.30.14';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.30.14';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.14';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.30.14';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.30.14';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.4.30.14';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.30.16';
+import { clearLastCombo } from './storage.js?rmv=1.4.30.16';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.30.16';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.30.16';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.30.16';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.16';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.30.16';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.30.16';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.30.16';
 
-const SETTINGS_UI_VERSION = '1.4.30.14-visual-maintenance';
-const RUNTIME_VERSION = '1.4.30.14';
+const SETTINGS_UI_VERSION = '1.4.30.16-visual-maintenance';
+const RUNTIME_VERSION = '1.4.30.16';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -44,25 +44,25 @@ function renderVisualPromptStatus(settings = getSettings()) {
     const extra = String(settings?.visualExtraPrompt || '').trim();
     const avoid = String(settings?.visualAvoidPrompt || '').trim();
     const parts = [];
-    if (official !== DEFAULT_VISUAL_PROMPT) parts.push('默认规则已改');
-    if (extra) parts.push('想要的视觉已保存');
-    if (avoid) parts.push('不想要的视觉已保存');
+    if (official !== DEFAULT_VISUAL_PROMPT) parts.push('通用视觉规则已修改');
+    if (extra) parts.push('额外视觉偏好已保存');
+    if (avoid) parts.push('视觉避雷已保存');
     // 1.3.69: 开启编辑后，「通用视觉审美规则」这一栏就是整套配色组织与反通用面板规则的
     // 唯一来源（关闭时走 legacyPresentationEmbodimentRule 内置同样内容）。清空它不会报错，
     // 但下一面开始这些规则会整体消失，只有画面变差能看出来，因此这里明确提示。
     if (enabled && !official.trim()) {
-        target.text('已开启，但默认视觉规则是空的；建议恢复默认。');
+        target.text('当前：编辑注入已启用，但「通用视觉审美规则」为空。配色组织与反通用面板规则这一整层不会发送；如非刻意，请点「恢复默认通用视觉规则」。');
         return;
     }
     if (!enabled) {
         target.text(parts.length
-            ? `未开启；已保存内容不会发送（${parts.join(' / ')}）。`
-            : '未开启；使用默认视觉规则。');
+            ? `当前：编辑注入未启用，仍走 1.3.20 原版视觉流程；已保存内容不会发送（${parts.join(' / ')}）。`
+            : '当前：编辑注入未启用，下一面仍走 1.3.20 原版视觉流程。');
         return;
     }
     target.text(parts.length
-        ? `已开启（${parts.join(' / ')}）`
-        : '已开启；从下一面生效。');
+        ? `当前：编辑注入已启用（${parts.join(' / ')}）`
+        : '当前：编辑注入已启用；使用可编辑的通用视觉规则。');
 }
 
 function escapeHtml(value) {
@@ -90,10 +90,24 @@ function renderBlacklistSettings() {
     const warnings = [];
     if (stats.themePoolEmpty) warnings.push('主题 / 元素候选已全部加入黑名单，随机主题将没有候选。');
     if (stats.formatPoolEmpty) warnings.push('展现形式候选已全部加入黑名单，随机形式将没有候选。');
-    target.html(`<div style="font-size:11px;line-height:1.5;opacity:.78;">当前${settings.blacklistEnabled !== false ? '启用' : '暂停'}；主题 ${themes.length}/${stats.themeTotal}，形式 ${formats.length}/${stats.formatTotal}。只影响随机抽取。</div>
+    target.html(`<div style="font-size:11px;line-height:1.5;opacity:.78;">当前${settings.blacklistEnabled !== false ? '启用' : '暂停'}；主题 / 元素 ${themes.length}/${stats.themeTotal}，展现形式 ${formats.length}/${stats.formatTotal}。黑名单只过滤随机抽取，不向模型追加任何 Prompt。</div>
       ${warnings.length ? `<div style="margin-top:5px;color:#d97706;font-size:11px;line-height:1.45;">${warnings.map(escapeHtml).join('<br>')}</div>` : ''}
       ${section('主题 / 元素', themes)}
       ${section('展现形式', formats)}`);
+}
+
+function renderFavoriteSettings() {
+    const target = $('#rh_favorite_summary');
+    if (!target.length) return;
+    const themes = favoriteEntries('theme');
+    const formats = favoriteEntries('format');
+    const row = item => `<div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid color-mix(in srgb,currentColor 10%,transparent);">
+      <span style="min-width:0;overflow-wrap:anywhere;">${escapeHtml(item.id)} ${escapeHtml(item.title)}</span>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;">倍率 ×<input class="text_pole rh-favorite-multiplier" type="number" min="1" max="50" step="0.5" value="${escapeHtml(item.multiplier)}" data-kind="${escapeHtml(item.kind)}" data-id="${escapeHtml(item.id)}" style="width:66px;min-height:28px;padding:2px 5px;"></label>
+      <button type="button" class="menu_button rh-favorite-remove" data-kind="${escapeHtml(item.kind)}" data-id="${escapeHtml(item.id)}" style="padding:2px 7px;min-height:28px;">取消</button>
+    </div>`;
+    const section = (title, items) => `<div style="margin-top:7px;"><div style="font-weight:700;font-size:11px;opacity:.74;margin-bottom:2px;">${title}（${items.length}）</div>${items.length ? items.map(row).join('') : '<div style="opacity:.55;font-size:11px;padding:3px 0;">暂无收藏</div>'}</div>`;
+    target.html(`<div style="font-size:11px;line-height:1.5;opacity:.78;">收藏室只调整本地随机权重，不向模型追加 Prompt；每项倍率可设为 ×1～×50。</div>${section('主题 / 元素', themes)}${section('展现形式', formats)}`);
 }
 
 function worldInfoSourceLabel(value) {
@@ -309,7 +323,7 @@ function renderMemoryScanResults(results) {
 
     const contextBlock = `<div class="rh-memory-context" style="padding:8px 0 9px 0;">
       <div style="font-size:12px;"><b>当前模型上下文</b> <span style="font-size:11px;opacity:.82;">[已可用]</span></div>
-      <div style="margin-top:3px;opacity:.68;font-size:11px;line-height:1.45;">当前模型已经知道的近期内容，不会重复读取。</div>
+      <div style="margin-top:3px;opacity:.68;font-size:11px;line-height:1.45;">近期对话、已注入世界书，以及模型当前已经获得的摘要或总结；无需由兔子镜重复读取。</div>
     </div>`;
 
     const readableRows = readable.map(item => {
@@ -371,17 +385,23 @@ export function initRabbitMirrorUI() {
         const currentPanels = existing.filter(`[data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}"][data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}"]`)
             .filter((_, panel) => {
                 const $panel = $(panel);
-                return $panel.find('#rh_feedback_cat').length
-                    && $panel.find('#rh_maintenance_rabbit').length
-                    && $panel.find('#rh_visual_extra_prompt').length
-                    && $panel.find('#rh_visual_avoid_prompt').length
-                    && $panel.find('#rh_visual_prompt_save').length
-                    && $panel.find('#rh_visual_prompt_enabled').length;
+                const $advanced = $('body > #rh_advanced_modal');
+                return $panel.find('#rh_enabled').length
+                    && $panel.find('#rh_advanced_open').length
+                    && $panel.find('#rh_blacklist_enabled').length
+                    && $panel.find('#rh_favorite_summary').length
+                    && $advanced.find('#rh_feedback_cat').length
+                    && $advanced.find('#rh_maintenance_rabbit').length
+                    && $advanced.find('#rh_visual_extra_prompt').length
+                    && $advanced.find('#rh_visual_avoid_prompt').length
+                    && $advanced.find('#rh_visual_prompt_save').length
+                    && $advanced.find('#rh_worldview_lock').length;
             });
         if (existing.length === 1 && currentPanels.length === 1) return;
         // A hot reload may leave the old settings DOM alive even after manifest.json has updated.
         // Remove every stale/duplicate panel so the claimed runtime becomes the only UI owner.
         existing.remove();
+        $('body > #rh_advanced_modal').remove();
     }
 
     const settingsMount = $('#extensions_settings2');
@@ -395,13 +415,13 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.14</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.16</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
       <div class="rabbit-mirror-primary-toggle">
         <label class="checkbox_label"><input id="rh_enabled" type="checkbox"> 兔子镜自动注入</label>
-        <div class="rabbit-mirror-subnote" style="margin:-2px 0 0 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后每轮自动追加兔子镜规则。</div>
+        <div class="rabbit-mirror-subnote" style="margin:-2px 0 0 26px;opacity:.72;font-size:12px;line-height:1.45;">使用说明：勾选自动注入开关，添加不发送小剧场正则即可。</div>
       </div>
 
 
@@ -479,108 +499,6 @@ export function initRabbitMirrorUI() {
         <div class="rabbit-mirror-token-meter-note">Token 是估算值。</div>
       </div>
 
-      <details class="rabbit-mirror-section">
-        <summary><span>生成设置</span><span class="rabbit-mirror-section-note">抽取・视觉・冷却</span></summary>
-        <div class="rabbit-mirror-section-content">
-          <label for="rh_sampling_mode" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
-            <span>抽取模式</span>
-            <select id="rh_sampling_mode" class="text_pole" style="max-width:260px;">
-              <option value="classic">主题元素 + 展现形式（经典模式）</option>
-              <option value="format_only">仅展现形式</option>
-            </select>
-          </label>
-
-          <label for="rh_raw_policy" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
-            <span>参考内容</span>
-            <select id="rh_raw_policy" class="text_pole" style="max-width:300px;">
-              <option value="compact">精简：Prompt 较短，Token 较少</option>
-              <option value="balanced">均衡：Prompt 长度适中（默认）</option>
-              <option value="full">完整：Prompt 较长，参考内容更多</option>
-            </select>
-          </label>
-          <div class="rabbit-mirror-subnote" style="margin:-4px 0 8px 0;opacity:.72;font-size:12px;line-height:1.45;">越完整，参考越多，Token 也越高。</div>
-
-          <label class="checkbox_label"><input id="rh_creative_expansion" type="checkbox"> 更随机（测试版）</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">更随机，结果也更跳。</div>
-
-          <label class="checkbox_label"><input id="rh_force_visual_scenery" type="checkbox"> 动态视觉场景</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">每轮固定使用动态视觉场景。</div>
-
-          <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 允许点菜</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">允许你直接点菜。</div>
-
-          <label class="checkbox_label"><input id="rh_worldview_lock" type="checkbox"> 自动适配世界观</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">保留玩法，把不合世界观的载体换成合适版本。</div>
-
-          <label class="checkbox_label"><input id="rh_avoid_repeat" type="checkbox"> 避免最近 10 轮重复</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 2px 26px;opacity:.72;font-size:12px;line-height:1.45;">尽量避开最近 10 轮相似主题和画面。</div>
-
-          <div style="margin-top:12px;padding-top:10px;border-top:1px solid color-mix(in srgb,currentColor 12%,transparent);">
-            <label class="checkbox_label" style="font-weight:700;"><input id="rh_blacklist_enabled" type="checkbox"> 🚫 启用黑名单</label>
-            <div class="rabbit-mirror-subnote" style="margin:-2px 0 7px 26px;opacity:.76;font-size:12px;line-height:1.5;">黑名单排除随机项；收藏提高随机权重。都不增加 Prompt Token。</div>
-            <div id="rh_blacklist_summary" class="rabbit-mirror-blacklist-summary" style="padding:8px 9px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:8px;font-size:11px;line-height:1.45;"></div>
-            <button id="rh_blacklist_clear" class="menu_button" type="button" style="margin-top:7px;">清空全部黑名单</button>
-          </div>
-        </div>
-      </details>
-
-      <details class="rabbit-mirror-section rabbit-mirror-visual-prompt-test">
-        <summary><span>自定义视觉</span><span class="rabbit-mirror-section-note">TEST</span></summary>
-        <div class="rabbit-mirror-section-content">
-          <div style="opacity:.82;font-size:12px;line-height:1.55;margin-bottom:9px;">写你想要或不想要的画面。打开下面的开关后才会发给模型。</div>
-          <label class="checkbox_label" style="font-weight:700;"><input id="rh_visual_prompt_enabled" type="checkbox"> 启用自定义视觉</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.5;">关闭时只保存，不发送；打开后从下一面生效。</div>
-          <div id="rh_visual_prompt_status" style="padding:7px 9px;border:1px solid color-mix(in srgb, currentColor 18%, transparent);border-radius:8px;opacity:.82;font-size:11px;line-height:1.45;margin-bottom:10px;">正在读取…</div>
-
-          <label for="rh_visual_extra_prompt" style="display:block;font-weight:700;margin:8px 0 5px;">想要的视觉（可选）</label>
-          <textarea id="rh_visual_extra_prompt" class="text_pole" rows="5" maxlength="${VISUAL_EXTRA_PROMPT_MAX_CHARS}" spellcheck="false" placeholder="例如：真实纸张拼贴、暖光、杂志排版" style="width:100%;min-height:100px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
-          <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 10px;">写几个关键词或一句话即可。上限 ${VISUAL_EXTRA_PROMPT_MAX_CHARS} 字符。</div>
-
-          <label for="rh_visual_avoid_prompt" style="display:block;font-weight:700;margin:10px 0 5px;">不希望出现的视觉（可选）</label>
-          <textarea id="rh_visual_avoid_prompt" class="text_pole" rows="4" maxlength="${VISUAL_AVOID_PROMPT_MAX_CHARS}" spellcheck="false" placeholder="例如：不要荧光渐变、蓝白系统 UI、统一圆角卡片、廉价塑料感……" style="width:100%;min-height:88px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
-          <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 10px;">写不想看到的颜色、质感或排版。上限 ${VISUAL_AVOID_PROMPT_MAX_CHARS} 字符。</div>
-
-          <details style="margin-top:10px;">
-            <summary style="cursor:pointer;font-weight:700;">高级：修改默认视觉规则 <span style="font-weight:400;opacity:.62;font-size:11px;">通常无需修改</span></summary>
-            <div style="padding-top:9px;">
-              <div style="opacity:.72;font-size:11px;line-height:1.5;margin-bottom:7px;">想改默认视觉规则时再用这里。</div>
-              <label for="rh_visual_prompt" style="display:block;font-weight:700;margin:8px 0 5px;">默认视觉规则</label>
-              <textarea id="rh_visual_prompt" class="text_pole" rows="14" maxlength="${VISUAL_PROMPT_MAX_CHARS}" spellcheck="false" style="width:100%;min-height:230px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
-              <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 8px;">会替换默认视觉规则。上限 ${VISUAL_PROMPT_MAX_CHARS} 字符。</div>
-              <button id="rh_visual_prompt_reset" class="menu_button" type="button">恢复默认视觉规则</button>
-            </div>
-          </details>
-
-          <div class="flex-container" style="gap:8px;flex-wrap:wrap;margin-top:12px;">
-            <button id="rh_visual_prompt_save" class="menu_button" type="button">保存并从下一面生效</button>
-          </div>
-          <div style="opacity:.66;font-size:11px;line-height:1.45;margin-top:7px;">输入时不会自动保存，点上面的按钮才保存。</div>
-        </div>
-      </details>
-
-      <details class="rabbit-mirror-section rabbit-mirror-memory-test">
-        <summary><span>共同回忆资料来源</span><span class="rabbit-mirror-section-note">TEST</span></summary>
-        <div class="rabbit-mirror-section-content">
-          <label class="checkbox_label"><input id="rh_memory_scan_enabled" type="checkbox"> 启用额外资料来源（实验性）</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.45;">开启后可使用额外回忆资料；只有用到时才增加 Token。</div>
-          <button id="rh_memory_scan_now" class="menu_button" type="button">扫描可用资料来源</button>
-          <div style="margin-top:6px;opacity:.68;font-size:11px;line-height:1.45;">查找可用的记忆资料来源。</div>
-          <div id="rh_memory_scan_results" style="margin-top:8px;"></div>
-        </div>
-      </details>
-
-      <details class="rabbit-mirror-section rabbit-mirror-emergency rabbit-mirror-emergency-prominent">
-        <summary><span>反馈、急救与诊断</span><span class="rabbit-mirror-section-note">按需使用</span></summary>
-        <div class="rabbit-mirror-section-content">
-          <label class="checkbox_label" style="font-weight:700;"><input id="rh_feedback_cat" type="checkbox"> 🐈 启用挨打猫</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.5;">用于纠正兔子镜的美化效果；仅在实际提交美化反馈时增加额外 Token。</div>
-          <label class="checkbox_label" style="font-weight:700;"><input id="rh_maintenance_rabbit" type="checkbox"> 🐇 启用维修兔</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.78;font-size:12px;line-height:1.5;">兔子镜出问题时，可使用维修兔进行检查和修复；维修兔本身不会增加模型 Token。</div>
-          <label class="checkbox_label" style="font-weight:700;"><input id="rh_maintenance_auto_safe" type="checkbox"> 🧪 维修兔自动巡逻（实验性）</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.5;">新生成的兔子镜会自动修常见小问题；复杂问题仍需手动修。</div>
-        </div>
-      </details>
-
       <details class="rabbit-mirror-section rabbit-mirror-tools">
         <summary><span>工具与维护</span><span class="rabbit-mirror-section-note">正则・清理・重置</span></summary>
         <div class="rabbit-mirror-section-content">
@@ -589,7 +507,6 @@ export function initRabbitMirrorUI() {
             <div style="opacity:.82;font-size:12px;margin-bottom:8px;">设置：替换留空／勾选 AI输出／勾选 仅格式提示词</div>
             <button id="rh_copy_regex" class="menu_button" type="button">复制推荐正则</button>
           </div>
-
           <div class="rabbit-mirror-actions">
             <button id="rh_clear_last" class="menu_button">清除抽签历史与冷却记录</button>
             <button id="rh_clear_injection" class="menu_button">清空当前注入</button>
@@ -598,11 +515,128 @@ export function initRabbitMirrorUI() {
         </div>
       </details>
 
+      <details id="rh_random_preference_section" class="rabbit-mirror-section">
+        <summary><span>黑名单和收藏室</span><span class="rabbit-mirror-section-note">随机偏好</span></summary>
+        <div class="rabbit-mirror-section-content">
+          <div style="padding-bottom:10px;border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent);">
+            <label class="checkbox_label" style="font-weight:700;"><input id="rh_blacklist_enabled" type="checkbox"> 🚫 启用抽签黑名单</label>
+            <div class="rabbit-mirror-subnote" style="margin:-2px 0 7px 26px;opacity:.76;font-size:12px;line-height:1.5;">加入黑名单后，从下一轮随机抽取开始直接从候选池排除；不增加 Token。明确点菜和固定动态视觉场景仍可覆盖随机黑名单。</div>
+            <div id="rh_blacklist_summary" class="rabbit-mirror-blacklist-summary" style="padding:8px 9px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:8px;font-size:11px;line-height:1.45;"><div style="opacity:.6;">展开后显示黑名单。</div></div>
+            <button id="rh_blacklist_clear" class="menu_button" type="button" style="margin-top:7px;">清空全部黑名单</button>
+          </div>
+          <div style="margin-top:11px;">
+            <div style="font-weight:700;margin-bottom:6px;">⭐ 收藏室</div>
+            <div id="rh_favorite_summary" style="padding:8px 9px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:8px;font-size:11px;line-height:1.45;"><div style="opacity:.6;">展开后显示收藏室。</div></div>
+            <button id="rh_favorite_clear" class="menu_button" type="button" style="margin-top:7px;">清空全部收藏</button>
+          </div>
+        </div>
+      </details>
+
+      <div class="rabbit-mirror-section" style="padding:10px 12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <div><b>高级</b><div style="opacity:.68;font-size:11px;line-height:1.45;margin-top:2px;">抽取、参考内容、视觉、回忆资料、挨打猫与维修兔等集中在这里。</div></div>
+          <button id="rh_advanced_open" class="menu_button" type="button" style="font-weight:700;">打开高级设置</button>
+        </div>
+      </div>
+
+      <div id="rh_advanced_modal" class="rabbit-mirror-settings rabbit-mirror-advanced-modal" role="dialog" aria-modal="true" aria-label="兔子镜高级设置" style="display:none;position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);padding:clamp(12px,4vw,36px);box-sizing:border-box;align-items:center;justify-content:center;">
+        <div id="rh_advanced_modal_card" style="width:min(760px,100%);max-height:88vh;overflow:auto;background:var(--SmartThemeBlurTintColor, var(--SmartThemeBodyColor, #222));color:var(--SmartThemeBodyColorText, inherit);border:1px solid color-mix(in srgb,currentColor 20%,transparent);border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,.35);padding:14px;box-sizing:border-box;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:-14px;padding:10px 0 9px;background:inherit;z-index:2;border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent);">
+            <div><b id="rh_advanced_modal_title">高级设置</b><div id="rh_advanced_modal_hint" style="opacity:.65;font-size:11px;margin-top:2px;">选择要调整的项目</div></div>
+            <button id="rh_advanced_close" class="menu_button" type="button">关闭</button>
+          </div>
+
+          <div id="rh_advanced_menu" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px;padding-top:12px;">
+            <button class="menu_button rh-advanced-choice" type="button" data-page="generation" style="min-height:46px;font-weight:700;">生成与抽取</button>
+            <button class="menu_button rh-advanced-choice" type="button" data-page="visual" style="min-height:46px;font-weight:700;">个性化视觉提示词</button>
+            <button class="menu_button rh-advanced-choice" type="button" data-page="memory" style="min-height:46px;font-weight:700;">共同回忆资料来源</button>
+            <button class="menu_button rh-advanced-choice" type="button" data-page="repair" style="min-height:46px;font-weight:700;">挨打猫与维修兔</button>
+          </div>
+
+          <div id="rh_advanced_page_generation" class="rh-advanced-page" data-title="生成与抽取" style="display:none;padding-top:12px;">
+            <button class="menu_button rh-advanced-back" type="button" style="margin-bottom:10px;">← 返回高级选项</button>
+            <label for="rh_sampling_mode" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
+              <span>抽取模式</span>
+              <select id="rh_sampling_mode" class="text_pole" style="max-width:300px;">
+                <option value="classic">主题元素 + 展现形式（经典模式）</option>
+                <option value="format_only">仅展现形式</option>
+              </select>
+            </label>
+            <label for="rh_raw_policy" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
+              <span>参考内容</span>
+              <select id="rh_raw_policy" class="text_pole" style="max-width:320px;">
+                <option value="compact">精简：Prompt 较短，Token 较少</option>
+                <option value="balanced">均衡：Prompt 长度适中（默认）</option>
+                <option value="full">完整：Prompt 较长，参考内容更多</option>
+              </select>
+            </label>
+            <div class="rabbit-mirror-subnote" style="margin:-4px 0 8px 0;opacity:.72;font-size:12px;line-height:1.45;">控制随机生成时使用的参考内容多少。默认使用“均衡”。</div>
+            <label class="checkbox_label"><input id="rh_creative_expansion" type="checkbox"> 发散孵化模式</label>
+            <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后会探索更随机、更跳脱的内容组合。</div>
+            <label class="checkbox_label"><input id="rh_force_visual_scenery" type="checkbox"> 动态视觉场景</label>
+            <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，展现形式将固定为动态视觉场景图，每轮兔子镜都会按此形式生成。</div>
+            <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先</label>
+            <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，可以自由点菜自己喜欢的任意内容。</div>
+            <label class="checkbox_label"><input id="rh_worldview_lock" type="checkbox"> 展现形式世界观锁</label>
+            <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">保留展现形式功能与结构，只转换不合当前世界观的具体载体；开启时会提示把抽取模式切换为“仅展现形式”。</div>
+            <label class="checkbox_label"><input id="rh_avoid_repeat" type="checkbox"> 10轮冷却：避免重复主题/展现形式/整体观感</label>
+            <div class="rabbit-mirror-subnote" style="margin:-2px 0 2px 26px;opacity:.72;font-size:12px;line-height:1.45;">仅记录已经实际生成成功的兔子镜；用于避免连续复用相近的结构骨架与整体视觉家族。</div>
+          </div>
+
+          <div id="rh_advanced_page_visual" class="rh-advanced-page" data-title="个性化视觉提示词" style="display:none;padding-top:12px;">
+            <button class="menu_button rh-advanced-back" type="button" style="margin-bottom:10px;">← 返回高级选项</button>
+            <div style="opacity:.82;font-size:12px;line-height:1.55;margin-bottom:9px;">这里可以直接写你喜欢或不喜欢的画面感觉。只有勾选下面的“启用视觉提示词编辑注入”后，保存的内容才会随生成兔子镜的请求发送。</div>
+            <label class="checkbox_label" style="font-weight:700;"><input id="rh_visual_prompt_enabled" type="checkbox"> 启用视觉提示词编辑注入</label>
+            <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.5;">默认关闭。关闭时已编辑内容仍保存在本地，但不会注入模型；下一面继续使用 1.3.20 原版视觉规则。开启后才切换到可编辑视觉层。</div>
+            <div id="rh_visual_prompt_status" style="padding:7px 9px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:8px;opacity:.82;font-size:11px;line-height:1.45;margin-bottom:10px;">当前：正在读取视觉提示词状态……</div>
+            <label for="rh_visual_extra_prompt" style="display:block;font-weight:700;margin:8px 0 5px;">额外视觉偏好（可选）</label>
+            <textarea id="rh_visual_extra_prompt" class="text_pole" rows="5" maxlength="${VISUAL_EXTRA_PROMPT_MAX_CHARS}" spellcheck="false" placeholder="例如：像真实纸张拼贴的小剧场，左上方来光，标题压在图像边缘，正文像杂志内页，近看能看到印刷网点和轻微裁切毛边。" style="width:100%;min-height:100px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
+            <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 10px;">可以只写“毛玻璃”“粉嫩清新”这类简单偏好，系统会把它当作设计种子并自动补足构图、层级、光线、排版、材质细节与交互第二状态；想更可控时，也可以像占位示例那样写一条完整但不冗长的视觉句子。开启注入后会作为本轮明确视觉要求执行，未指定的部分仍由兔子镜原有视觉规则补足。上限 ${VISUAL_EXTRA_PROMPT_MAX_CHARS} 字符。</div>
+            <label for="rh_visual_avoid_prompt" style="display:block;font-weight:700;margin:10px 0 5px;">不希望出现的视觉（可选）</label>
+            <textarea id="rh_visual_avoid_prompt" class="text_pole" rows="4" maxlength="${VISUAL_AVOID_PROMPT_MAX_CHARS}" spellcheck="false" placeholder="例如：不要荧光渐变、蓝白系统 UI、统一圆角卡片、廉价塑料感……" style="width:100%;min-height:88px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
+            <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 10px;">可以直接写你不喜欢的颜色、质感、排版方式、光线感觉、UI 套路或整体风格。开启注入后会作为明确避用项处理。上限 ${VISUAL_AVOID_PROMPT_MAX_CHARS} 字符。</div>
+            <details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:700;">高级：修改通用视觉规则 <span style="font-weight:400;opacity:.62;font-size:11px;">通常无需修改</span></summary><div style="padding-top:9px;">
+              <div style="opacity:.72;font-size:11px;line-height:1.5;margin-bottom:7px;">只有想直接改兔子镜原本的通用画面规则时才需要这里。普通用户只填写上面的“额外视觉偏好 / 不希望出现”即可。</div>
+              <label for="rh_visual_prompt" style="display:block;font-weight:700;margin:8px 0 5px;">通用视觉审美规则（高级，可编辑）</label>
+              <textarea id="rh_visual_prompt" class="text_pole" rows="14" maxlength="${VISUAL_PROMPT_MAX_CHARS}" spellcheck="false" style="width:100%;min-height:230px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
+              <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 8px;">修改后会替换兔子镜原本的通用画面规则；上限 ${VISUAL_PROMPT_MAX_CHARS} 字符。核心结构与兼容规则仍不可覆盖。</div>
+              <button id="rh_visual_prompt_reset" class="menu_button" type="button">恢复默认通用视觉规则</button>
+            </div></details>
+            <div class="flex-container" style="gap:8px;flex-wrap:wrap;margin-top:12px;"><button id="rh_visual_prompt_save" class="menu_button" type="button">保存并从下一面生效</button></div>
+            <div style="opacity:.66;font-size:11px;line-height:1.45;margin-top:7px;">为避免重新引入移动端设置页卡顿，三个输入框都不会在键入时写设置；只有点击上面的保存按钮才会持久化。</div>
+          </div>
+
+          <div id="rh_advanced_page_memory" class="rh-advanced-page" data-title="共同回忆资料来源" style="display:none;padding-top:12px;">
+            <button class="menu_button rh-advanced-back" type="button" style="margin-bottom:10px;">← 返回高级选项</button>
+            <label class="checkbox_label"><input id="rh_memory_scan_enabled" type="checkbox"> 启用额外资料来源（实验性）</label>
+            <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.45;">开启后，兔子镜可能生成回忆杀；仅在实际出现回忆杀时增加额外 Token。</div>
+            <button id="rh_memory_scan_now" class="menu_button" type="button">扫描可用资料来源</button>
+            <div style="margin-top:6px;opacity:.68;font-size:11px;line-height:1.45;">扫描公开、正规的记忆插件接口 API。</div>
+            <div id="rh_memory_scan_results" style="margin-top:8px;"></div>
+          </div>
+
+          <div id="rh_advanced_page_repair" class="rh-advanced-page" data-title="挨打猫与维修兔" style="display:none;padding-top:12px;">
+            <button class="menu_button rh-advanced-back" type="button" style="margin-bottom:10px;">← 返回高级选项</button>
+            <label class="checkbox_label" style="font-weight:700;"><input id="rh_feedback_cat" type="checkbox"> 🐈 启用挨打猫</label>
+            <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.5;">用于纠正兔子镜的美化效果；仅在实际提交美化反馈时增加额外 Token。</div>
+            <label class="checkbox_label" style="font-weight:700;"><input id="rh_maintenance_rabbit" type="checkbox"> 🐇 启用维修兔</label>
+            <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.78;font-size:12px;line-height:1.5;">兔子镜出问题时，可使用维修兔进行检查和修复；维修兔本身不会增加模型 Token。</div>
+            <label class="checkbox_label" style="font-weight:700;"><input id="rh_maintenance_auto_safe" type="checkbox"> 🧪 维修兔自动巡逻（实验性）</label>
+            <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.5;">新生成的兔子镜会自动修常见小问题；复杂问题仍需手动修。</div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>`;
 
+    $('body > #rh_advanced_modal').remove();
     settingsMount.append(html);
+    // The settings root uses CSS layout containment and a scroll container. Move the
+    // advanced dialog to <body> so it is a real viewport modal instead of being clipped
+    // inside the extension drawer; all setting controls keep their existing IDs/events.
+    $('#rh_advanced_modal').appendTo(document.body);
     attachTokenMeterListener();
     renderTokenMeter();
 
@@ -613,7 +647,7 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_base').val(settings.independentApiBaseUrl || '');
     $('#rh_independent_key').val(settings.independentApiKey || '');
     $('#rh_independent_temperature').val(settings.independentApiTemperature ?? 0.8);
-    $('#rh_independent_max_tokens').val(settings.independentApiMaxTokens ?? 12000);
+    $('#rh_independent_max_tokens').val(settings.independentApiMaxTokens ?? 30000);
     $('#rh_independent_model').val(settings.independentApiModel || '');
     const renderIndependentConnectionStatus = () => {
         const currentId=String(getSettings().independentConnectionProfileId||'').trim();
@@ -638,7 +672,7 @@ export function initRabbitMirrorUI() {
     globalThis.addEventListener?.(WORLD_INFO_BOOKS_CHANGED_EVENT, worldInfoBooksListener);
     globalThis.__rabbitMirrorWorldInfoBooksUiCleanup = () => globalThis.removeEventListener?.(WORLD_INFO_BOOKS_CHANGED_EVENT, worldInfoBooksListener);
     try { globalThis.__rabbitMirrorBlacklistUiCleanup?.(); } catch {}
-    const blacklistListener = () => { checked('#rh_blacklist_enabled', getSettings().blacklistEnabled !== false); renderBlacklistSettings(); };
+    const blacklistListener = () => { checked('#rh_blacklist_enabled', getSettings().blacklistEnabled !== false); if (document.getElementById('rh_random_preference_section')?.open) { renderBlacklistSettings(); renderFavoriteSettings(); } };
     globalThis.addEventListener?.(BLACKLIST_CHANGED_EVENT, blacklistListener);
     globalThis.__rabbitMirrorBlacklistUiCleanup = () => globalThis.removeEventListener?.(BLACKLIST_CHANGED_EVENT, blacklistListener);
     checked('#rh_feedback_cat', settings.feedbackCatEnabled);
@@ -652,13 +686,42 @@ export function initRabbitMirrorUI() {
     checked('#rh_force_visual_scenery', settings.forceVisualScenery);
     checked('#rh_avoid_repeat', settings.avoidRepeat);
     checked('#rh_blacklist_enabled', settings.blacklistEnabled !== false);
-    renderBlacklistSettings();
     checked('#rh_memory_scan_enabled', settings.memoryScanEnabled);
     checked('#rh_visual_prompt_enabled', settings.visualPromptEditingEnabled);
     $('#rh_visual_prompt').val(settings.visualPrompt ?? DEFAULT_VISUAL_PROMPT);
     $('#rh_visual_extra_prompt').val(settings.visualExtraPrompt || '');
     $('#rh_visual_avoid_prompt').val(settings.visualAvoidPrompt || '');
     renderVisualPromptStatus(settings);
+
+    const showAdvancedMenu = () => {
+        $('.rh-advanced-page').hide();
+        $('#rh_advanced_menu').css('display', 'grid');
+        $('#rh_advanced_modal_title').text('高级设置');
+        $('#rh_advanced_modal_hint').text('选择要调整的项目');
+    };
+    const closeAdvancedModal = () => {
+        $('#rh_advanced_modal').hide();
+        showAdvancedMenu();
+    };
+    $('#rh_advanced_open').on('click', () => {
+        showAdvancedMenu();
+        $('#rh_advanced_modal').css('display', 'flex');
+    });
+    $('#rh_advanced_close').on('click', closeAdvancedModal);
+    $('#rh_advanced_modal').on('click', function (event) {
+        if (event.target === this) closeAdvancedModal();
+    });
+    $('.rh-advanced-choice').on('click', function () {
+        const page = String($(this).data('page') || '');
+        const target = $(`#rh_advanced_page_${page}`);
+        if (!target.length) return;
+        $('#rh_advanced_menu').hide();
+        $('.rh-advanced-page').hide();
+        target.show();
+        $('#rh_advanced_modal_title').text(String(target.data('title') || '高级设置'));
+        $('#rh_advanced_modal_hint').text('修改后按原有规则保存并从后续生成生效');
+    });
+    $('.rh-advanced-back').on('click', showAdvancedMenu);
 
     $('input[name="rh_generation_source"]').on('change', e => {
         const generationSource = e.target.value === 'independent' ? 'independent' : 'follow';
@@ -738,7 +801,7 @@ export function initRabbitMirrorUI() {
             independentApiKey:$('#rh_independent_key').val(),
             independentApiModel:$('#rh_independent_model').val(),
             independentApiTemperature:Number.isFinite(temperature)?temperature:0.8,
-            independentApiMaxTokens:Number.isFinite(maxTokens)&&maxTokens>0?maxTokens:12000,
+            independentApiMaxTokens:Number.isFinite(maxTokens)&&maxTokens>0?maxTokens:30000,
         });
         renderIndependentConnectionStatus();
         refreshRabbitMirrorGenerationMode();
@@ -752,7 +815,7 @@ export function initRabbitMirrorUI() {
             independentApiKey: $('#rh_independent_key').val(),
             independentApiModel: $('#rh_independent_model').val(),
             independentApiTemperature: Number.isFinite(temperature) ? temperature : 0.8,
-            independentApiMaxTokens: Number.isFinite(maxTokens) && maxTokens > 0 ? maxTokens : 12000,
+            independentApiMaxTokens: Number.isFinite(maxTokens) && maxTokens > 0 ? maxTokens : 30000,
         });
     };
     // Do not serialize the whole extension settings object on every mobile input event.
@@ -922,14 +985,35 @@ export function initRabbitMirrorUI() {
     $('#rh_raw_policy').on('change', e => updateSettings({ rawPolicy: e.target.value }));
     $('#rh_user_directive').on('change', e => updateSettings({ userDirectivePriority: e.target.checked }));
     $('#rh_worldview_lock').on('change', e => {
-        updateSettings({ presentationWorldviewLock: e.target.checked });
-        toastr?.info?.(e.target.checked
-            ? '自动适配世界观已开启：非 IF 主题会把不合世界观的具体载体转换为等价载体。'
-            : '自动适配世界观已关闭。');
+        const enabled = !!e.target.checked;
+        if (!enabled) {
+            updateSettings({ presentationWorldviewLock: false });
+            toastr?.info?.('展现形式世界观锁已关闭。');
+            return;
+        }
+        const currentMode = String(getSettings().samplingMode || 'classic');
+        if (currentMode !== 'format_only') {
+            const accepted = globalThis.confirm?.('开启“展现形式世界观锁”时，建议把抽取模式改为“仅展现形式”，这样不会再随机抽取主题元素。\n\n是否现在切换为“仅展现形式”？') !== false;
+            if (!accepted) {
+                e.target.checked = false;
+                return;
+            }
+            updateSettings({ presentationWorldviewLock: true, samplingMode: 'format_only' });
+            $('#rh_sampling_mode').val('format_only');
+            toastr?.info?.('展现形式世界观锁已开启，并已把抽取模式切换为“仅展现形式”。');
+            return;
+        }
+        updateSettings({ presentationWorldviewLock: true });
+        toastr?.info?.('展现形式世界观锁已开启。');
     });
     $('#rh_creative_expansion').on('change', e => updateSettings({ creativeExpansionMode: e.target.checked }));
     $('#rh_force_visual_scenery').on('change', e => updateSettings({ forceVisualScenery: e.target.checked }));
     $('#rh_avoid_repeat').on('change', e => updateSettings({ avoidRepeat: e.target.checked }));
+    $('#rh_random_preference_section').on('toggle', function () {
+        if (!this.open) return;
+        renderBlacklistSettings();
+        renderFavoriteSettings();
+    });
     $('#rh_blacklist_enabled').on('change', e => {
         setBlacklistEnabled(e.target.checked);
         renderBlacklistSettings();
@@ -948,6 +1032,28 @@ export function initRabbitMirrorUI() {
         renderBlacklistSettings();
         refreshRecipeButtons();
         toastr?.success?.('已清空全部抽签黑名单');
+    });
+    $('#rh_favorite_summary').on('change', '.rh-favorite-multiplier', function () {
+        const kind = String($(this).data('kind') || '') === 'format' ? 'format' : 'theme';
+        const id = String($(this).data('id') || '');
+        const multiplier = setFavoriteMultiplier(kind, id, $(this).val());
+        if (multiplier == null) toastr?.warning?.(`收藏倍率没有修改：${id}`);
+        else toastr?.success?.(`收藏倍率已更新：${id} ×${multiplier}`);
+        renderFavoriteSettings();
+        refreshRecipeButtons();
+    });
+    $('#rh_favorite_summary').on('click', '.rh-favorite-remove', function () {
+        const kind = String($(this).data('kind') || '') === 'format' ? 'format' : 'theme';
+        const id = String($(this).data('id') || '');
+        if (removeFavoriteItem(kind, id)) toastr?.success?.(`已取消收藏：${id}`);
+        renderFavoriteSettings();
+        refreshRecipeButtons();
+    });
+    $('#rh_favorite_clear').on('click', () => {
+        clearFavorites('all');
+        renderFavoriteSettings();
+        refreshRecipeButtons();
+        toastr?.success?.('已清空全部收藏');
     });
 
     $('#rh_copy_regex').on('click', async () => {
@@ -989,6 +1095,7 @@ export function initRabbitMirrorUI() {
 }
 
 export function destroyRabbitMirrorUI() {
+    $('#rh_advanced_modal').remove();
     if (uiMountRetryTimer) {
         clearTimeout(uiMountRetryTimer);
         uiMountRetryTimer = 0;

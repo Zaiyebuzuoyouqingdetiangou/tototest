@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.30.14",
-  "css": "style.css?rmv=1.4.30.14",
+  "js": "index.js?rmv=1.4.30.16",
+  "css": "style.css?rmv=1.4.30.16",
   "author": "Toto",
-  "version": "1.4.30.14",
+  "version": "1.4.30.16",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.30.14：修复已真机隔离确认的 Touch Theater / 大接近全聊天 MutationObserver 热路径；普通 SillyTavern 流式正文的子节点插入不再进入兔子镜后代扫描，真正的兔子镜/大接近/新消息根仍即时归一化。保留 1.4.30.13 的长聊天同步优化，不改独立 API Prompt、请求 body、stream/retry/single-flight、世界书、维修兔、视觉冷却或生成内容。"
+  "description": "兔子镜测试版 1.4.30.16：仅重排设置 UI 与首次安装默认值：一级仅保留自动注入、生成方式、Token、工具维护、黑名单和收藏室；其余设置进入“高级”弹窗。首次安装默认开启发散孵化与自动巡检，独立 API 最大输出默认 30000；世界观锁启用时提示切换为仅展现形式。生成、Prompt、请求、世界书、性能修复与维修逻辑不改。"
 }
