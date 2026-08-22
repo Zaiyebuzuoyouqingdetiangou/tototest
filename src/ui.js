@@ -1,15 +1,15 @@
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.30.5';
-import { clearLastCombo } from './storage.js?rmv=1.4.30.5';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.30.5';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.30.5';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.30.5';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.5';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.30.5';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getLastIndependentApiRequestDiagnostic, getObservedWorldInfoBooks, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.30.5';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.4.30.5';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.30.6';
+import { clearLastCombo } from './storage.js?rmv=1.4.30.6';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.30.6';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.30.6';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.30.6';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.6';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.30.6';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getLastIndependentApiRequestDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.30.6';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.4.30.6';
 
-const SETTINGS_UI_VERSION = '1.4.30.5-visual-maintenance';
-const RUNTIME_VERSION = '1.4.30.5';
+const SETTINGS_UI_VERSION = '1.4.30.6-visual-maintenance';
+const RUNTIME_VERSION = '1.4.30.6';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -327,7 +327,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.5</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.6</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -353,8 +353,13 @@ export function initRabbitMirrorUI() {
               <label><input name="rh_independent_display" type="radio" value="external"> ① 轻壳外置（标题有壳）</label>
               <label><input name="rh_independent_display" type="radio" value="external_then_inline"> ② 外置后内嵌</label>
             </div>
-            <input id="rh_independent_base" class="text_pole" type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="API 地址，例如 https://example.com/v1、.../v4 或 http://123.45.67.89:8000/v1">
-            <input id="rh_independent_key" class="text_pole" type="password" autocomplete="off" placeholder="API Key">
+            <div style="padding:9px 10px;border:1px solid color-mix(in srgb, currentColor 16%, transparent);border-radius:9px;">
+              <div class="flex-container" style="gap:7px;flex-wrap:wrap;align-items:center;">
+                <button id="rh_independent_import_current" class="menu_button" type="button" style="font-weight:700;">从酒馆当前连接一键配置</button>
+                <span id="rh_independent_connection_status" style="opacity:.72;font-size:11px;line-height:1.4;">尚未配置</span>
+              </div>
+              <div style="opacity:.66;font-size:11px;line-height:1.45;margin-top:5px;">直接复用 SillyTavern 当前 Chat Completion / Connection Manager 连接；API Key 继续由酒馆 Secrets 保管，不复制到兔子镜。</div>
+            </div>
             <div class="flex-container" style="gap:7px;flex-wrap:wrap;">
               <button id="rh_independent_models" class="menu_button" type="button">拉取模型</button>
               <button id="rh_independent_test" class="menu_button" type="button">测试连接</button>
@@ -364,6 +369,14 @@ export function initRabbitMirrorUI() {
             </select>
             <input id="rh_independent_model" class="text_pole" type="text" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="模型 ID；可从上方完整列表选择，也可直接手动填写">
             <div style="opacity:.66;font-size:11px;line-height:1.45;">拉取后可从列表选模型；拉取失败也可以直接手填模型 ID。</div>
+            <details id="rh_independent_manual_legacy" style="margin-top:2px;">
+              <summary style="cursor:pointer;font-size:11px;opacity:.7;">高级：手动 OpenAI 兼容接口（旧配置兼容）</summary>
+              <div style="display:grid;gap:6px;padding-top:7px;">
+                <input id="rh_independent_base" class="text_pole" type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="API 地址">
+                <input id="rh_independent_key" class="text_pole" type="password" autocomplete="off" placeholder="API Key">
+                <button id="rh_independent_use_manual" class="menu_button" type="button">改用这组手动接口</button>
+              </div>
+            </details>
             <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;">
               <label>温度 <input id="rh_independent_temperature" class="text_pole" type="number" min="0" max="2" step="0.1" style="width:82px;"></label>
               <label>最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
@@ -377,7 +390,7 @@ export function initRabbitMirrorUI() {
             <div id="rh_world_info_book_filters" style="margin:7px 0 8px 26px;padding:7px 9px;border:1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 45%, transparent);border-radius:8px;max-height:260px;overflow:auto;"></div>
             <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议 <b>1.0</b>；想更稳可用 0.9～1.1。</div>
             <div id="rh_independent_api_diagnostic" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);opacity:.78;font-size:11px;line-height:1.5;word-break:break-word;">最近请求：暂无记录</div>
-            <div style="opacity:.66;font-size:11px;line-height:1.45;">API Key 只保存在当前 SillyTavern 设置里。</div>
+            <div style="opacity:.66;font-size:11px;line-height:1.45;">一键配置时不保存 API Key；旧手动模式仍按原逻辑保存在当前 SillyTavern 扩展设置里。</div>
           </div>
         </div>
       </details>
@@ -529,6 +542,15 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_temperature').val(settings.independentApiTemperature ?? 0.8);
     $('#rh_independent_max_tokens').val(settings.independentApiMaxTokens ?? 12000);
     $('#rh_independent_model').val(settings.independentApiModel || '');
+    const renderIndependentConnectionStatus = () => {
+        const currentId=String(getSettings().independentConnectionProfileId||'').trim();
+        const profile=getIndependentConnectionProfiles().find(item=>item.id===currentId);
+        const target=$('#rh_independent_connection_status');
+        if(!currentId){ target.text('当前：手动接口 / 尚未一键配置'); return; }
+        if(!profile){ target.text('当前连接已失效，请重新一键配置'); return; }
+        target.text(`当前：${profile.name}${profile.model?` · ${profile.model}`:''}`);
+    };
+    renderIndependentConnectionStatus();
     checked('#rh_independent_read_global_world_info', settings.independentReadGlobalWorldInfo === true);
     renderWorldInfoBookSettings();
     const syncGenerationModeFields = () => { const independent = getSettings().generationSource === 'independent'; $('#rh_independent_api_fields').toggle(independent); $('#rh_follow_display_row').toggle(!independent); };
@@ -607,6 +629,38 @@ export function initRabbitMirrorUI() {
         renderWorldInfoBookSettings();
         const safeName = escapeHtml(name);
         toastr?.info?.(this.checked ? `已开启「${safeName}」。` : `已关闭「${safeName}」。`);
+    });
+    $('#rh_independent_import_current').on('click', async function () {
+        const button=$(this); button.prop('disabled',true);
+        try {
+            const imported=await importCurrentSillyTavernConnection();
+            const fresh=getSettings();
+            $('#rh_independent_model').val(fresh.independentApiModel||imported?.model||'');
+            renderIndependentConnectionStatus();
+            try {
+                const models=await fetchIndependentModels();
+                renderIndependentModelSelect(models,String($('#rh_independent_model').val()||''));
+            } catch {}
+            refreshRabbitMirrorGenerationMode();
+            toastr?.success?.(`已一键配置酒馆连接：${String(imported?.name||'当前连接')}`);
+        } catch(error) {
+            toastr?.error?.(`一键配置失败：${String(error?.message||error)}`);
+        } finally { button.prop('disabled',false); }
+    });
+    $('#rh_independent_use_manual').on('click', () => {
+        const temperature=Number($('#rh_independent_temperature').val());
+        const maxTokens=Number($('#rh_independent_max_tokens').val());
+        updateSettings({
+            independentConnectionProfileId:'',
+            independentApiBaseUrl:$('#rh_independent_base').val(),
+            independentApiKey:$('#rh_independent_key').val(),
+            independentApiModel:$('#rh_independent_model').val(),
+            independentApiTemperature:Number.isFinite(temperature)?temperature:0.8,
+            independentApiMaxTokens:Number.isFinite(maxTokens)&&maxTokens>0?maxTokens:12000,
+        });
+        renderIndependentConnectionStatus();
+        refreshRabbitMirrorGenerationMode();
+        toastr?.info?.('已切换为旧手动 OpenAI 兼容接口。');
     });
     const saveIndependentFields = () => {
         const temperature = Number($('#rh_independent_temperature').val());

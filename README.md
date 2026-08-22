@@ -1,4 +1,11 @@
-# RabbitMirror / 兔子镜 1.4.30.5 TEST
+# RabbitMirror / 兔子镜 1.4.30.6 TEST
+
+## 1.4.30.6 TEST：独立 API 一键复用酒馆连接
+
+- 独立 API 设置页新增“从酒馆当前连接一键配置”：优先直接引用 SillyTavern Connection Manager 当前选中的 Chat Completion 配置；如果当前连接尚未保存为 profile，则在可安全读取的 Chat Completion 场景下创建兔子镜专用 profile。
+- API Key 不复制进兔子镜设置，继续由 SillyTavern Secrets 管理；兔子镜只保存 Connection Manager profile ID 与模型选择。
+- 原 Base URL / API Key 手动输入仍完整保留，移动到“高级：手动 OpenAI 兼容接口（旧配置兼容）”，可一键切回旧模式。
+- 仅修改连接配置便利层；独立 API 原有 Prompt、messages、temperature、max_tokens、stream、兼容 profile、手动重试、single-flight、超时与错误语义保持不变。
 
 ## 1.4.30.5 TEST：视觉偏好末位裁决 + 可读性维修 + 外置框融合
 

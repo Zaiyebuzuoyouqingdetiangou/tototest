@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.30.5",
-  "css": "style.css?rmv=1.4.30.5",
+  "js": "index.js?rmv=1.4.30.6",
+  "css": "style.css?rmv=1.4.30.6",
   "author": "Toto",
-  "version": "1.4.30.5",
+  "version": "1.4.30.6",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.30.5：基于 1.4.30.4，小修独立 API 视觉优先级、严重低对比文字维修兔检测/修复，以及纯外置标题框与本体配色融合；保留重说 single-flight 修复与六维视觉家族冷却。"
+  "description": "兔子镜测试版 1.4.30.6：基于 1.4.30.5，仅提升独立 API 配置便利性：新增从 SillyTavern 当前 Chat Completion / Connection Manager 一键配置，密钥继续由酒馆 Secrets 保管；保留旧手动 OpenAI 兼容接口作为高级兼容，不改副 API Prompt、请求 body、stream/retry/single-flight、维修兔、外容器或视觉冷却。"
 }

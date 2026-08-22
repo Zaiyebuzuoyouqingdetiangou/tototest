@@ -1,14 +1,14 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings } from './settings.js?rmv=1.4.30.5';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.5';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.5';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.5';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.5';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.5';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.5';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.5';
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.5';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.30.6';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.6';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.6';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.6';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.6';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.6';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.6';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.6';
+import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.6';
 
-const RUNTIME_VERSION = '1.4.30.5';
+const RUNTIME_VERSION = '1.4.30.6';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -410,7 +410,7 @@ function migrateLegacyDeletedRecords(){
 }
 function readApiProfileStore(){ try { const v=JSON.parse(localStorage.getItem(API_PROFILE_STORE_KEY)||'{}'); return v&&typeof v==='object'?v:{}; } catch { return {}; } }
 function writeApiProfileStore(v){ try { localStorage.setItem(API_PROFILE_STORE_KEY,JSON.stringify(v)); } catch {} }
-function apiProfileKey(st){ return `${normalizeBase(st?.independentApiBaseUrl||'')}|${String(st?.independentApiModel||'')}`; }
+function apiProfileKey(st){ const connectionId=normalizeIndependentConnectionText(st?.independentConnectionProfileId,160); const transport=connectionId?`st:${connectionId}`:normalizeBase(st?.independentApiBaseUrl||''); return `${transport}|${String(st?.independentApiModel||'')}`; }
 function normalizedConfiguredTemperature(st){ const value=Number(st?.independentApiTemperature); return Number.isFinite(value)?Math.max(0,Math.min(2,value)):0.8; }
 function profileUsesTemperature(profile=''){ return !/no_temp|minimal/i.test(String(profile||'')); }
 function profileUsesSystemMessage(profile=''){ return !/user_only/i.test(String(profile||'')); }
@@ -526,6 +526,110 @@ export function getLastIndependentApiRequestDiagnostic(){ return readLastIndepen
 export { API_REQUEST_DIAGNOSTIC_EVENT };
 function hashText(text=''){ let h=2166136261; for(const ch of String(text)){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619);} return (h>>>0).toString(36); }
 function getContext(){ try { return globalThis.SillyTavern?.getContext?.() || {}; } catch { return {}; } }
+function normalizeIndependentConnectionText(value,max=1000){ return String(value??'').replace(/\r\n?/g,'\n').replace(/\u0000/g,'').trim().slice(0,max); }
+function independentConnectionManagerSettings(ctx=getContext()){
+ const manager=ctx?.extensionSettings?.connectionManager;
+ if(!manager || !Array.isArray(manager.profiles)) throw new Error('当前 SillyTavern 没有可用的 Connection Manager 配置，请先启用官方 Connection Manager。');
+ if(Array.isArray(ctx?.extensionSettings?.disabledExtensions) && ctx.extensionSettings.disabledExtensions.includes('connection-manager')) throw new Error('Connection Manager 当前已被禁用，请先在 SillyTavern 中启用它。');
+ return manager;
+}
+function rawIndependentConnectionProfile(profileId,ctx=getContext()){
+ const manager=independentConnectionManagerSettings(ctx);
+ return manager.profiles.find(item=>String(item?.id||'')===String(profileId||''))||null;
+}
+function validatedIndependentConnectionProfile(profileId,ctx=getContext()){
+ const id=normalizeIndependentConnectionText(profileId,160);
+ if(!id) return null;
+ const profile=rawIndependentConnectionProfile(id,ctx);
+ if(!profile) throw new Error('兔子镜引用的酒馆连接已不存在，请重新一键配置。');
+ const service=ctx?.ConnectionManagerRequestService;
+ if(!service?.validateProfile) throw new Error('当前 SillyTavern 没有 Connection Manager 校验接口。');
+ const apiMap=service.validateProfile(profile);
+ // RabbitMirror's existing independent request body is Chat Completions shaped.
+ // Do not silently convert it to Text Completion or another request family here.
+ if(apiMap?.selected!=='openai' || !apiMap?.source) throw new Error('当前酒馆连接不是兔子镜现有副 API 可复用的 Chat Completion 类型。请切换到 Chat Completion 连接后再一键配置。');
+ return {id,profile,apiMap,ctx};
+}
+function independentConnectionFingerprint(profile){
+ const keys=['mode','api','preset','api-url','model','proxy','prompt-post-processing','secret-id'];
+ return JSON.stringify(keys.map(key=>normalizeIndependentConnectionText(profile?.[key],1000)));
+}
+function uniqueIndependentImportedProfileName(manager,base){
+ const names=new Set((manager?.profiles||[]).map(item=>String(item?.name||'')));
+ if(!names.has(base)) return base;
+ let index=2; while(names.has(`${base} ${index}`)) index+=1;
+ return `${base} ${index}`;
+}
+async function readCurrentIndependentSlashSetting(command,ctx=getContext()){
+ const callback=ctx?.SlashCommandParser?.commands?.[command]?.callback;
+ if(typeof callback!=='function') return '';
+ try{return normalizeIndependentConnectionText(await callback({quiet:'true'},''),1000);}catch(error){ console.warn(`[RabbitMirror] failed to read current SillyTavern setting: ${command}`,error); return ''; }
+}
+export function getIndependentConnectionProfiles(){
+ try{
+  const ctx=getContext(); const service=ctx?.ConnectionManagerRequestService;
+  if(!service?.getSupportedProfiles) return [];
+  const manager=independentConnectionManagerSettings(ctx);
+  return service.getSupportedProfiles().map(item=>{
+   const id=normalizeIndependentConnectionText(item?.id,160); const raw=manager.profiles.find(profile=>String(profile?.id||'')===id);
+   if(!id||!raw) return null;
+   try{ const map=service.validateProfile(raw); if(map?.selected!=='openai'||!map?.source) return null; }catch{return null;}
+   return {id,name:normalizeIndependentConnectionText(item?.name,180)||'未命名连接',model:normalizeIndependentConnectionText(item?.model,240),api:normalizeIndependentConnectionText(item?.api,120)};
+  }).filter(Boolean);
+ }catch{return [];}
+}
+export async function importCurrentSillyTavernConnection(){
+ const ctx=getContext(); const manager=independentConnectionManagerSettings(ctx); const service=ctx?.ConnectionManagerRequestService;
+ if(!service?.validateProfile) throw new Error('当前 SillyTavern 未提供 Connection Manager Request Service。');
+ const selectedId=normalizeIndependentConnectionText(manager.selectedProfile,160);
+ if(selectedId){
+  try{
+   const selected=validatedIndependentConnectionProfile(selectedId,ctx);
+   const model=normalizeIndependentConnectionText(selected?.profile?.model,240);
+   updateSettings({independentConnectionProfileId:selectedId,...(model?{independentApiModel:model}:{})});
+   return {id:selectedId,name:normalizeIndependentConnectionText(selected?.profile?.name,180)||'当前连接',model,created:false};
+  }catch{}
+ }
+ if(ctx?.mainApi!=='openai') throw new Error('当前酒馆主连接不是 Chat Completion，无法在不改变兔子镜副 API 请求格式的前提下一键复用。');
+ const commands=['api','preset','api-url','model','proxy','prompt-post-processing','secret-id'];
+ const profile={id:typeof ctx?.uuidv4==='function'?ctx.uuidv4():`rabbitmirror-${Date.now()}-${Math.random().toString(16).slice(2)}`,mode:'cc',exclude:[]};
+ for(const command of commands){ const value=await readCurrentIndependentSlashSetting(command,ctx); if(value||command==='api-url') profile[command]=value; }
+ if(!profile.api) throw new Error('没有读到当前酒馆 API 类型，请先确认主聊天 API 已连接。');
+ const apiMap=service.validateProfile(profile);
+ if(apiMap?.selected!=='openai'||!apiMap?.source) throw new Error('当前酒馆连接不是兔子镜现有副 API 可复用的 Chat Completion 类型。');
+ const fingerprint=independentConnectionFingerprint(profile);
+ const existing=manager.profiles.find(item=>independentConnectionFingerprint(item)===fingerprint);
+ let target=existing;
+ if(!target){
+  const displayApi=normalizeIndependentConnectionText(profile.api,80)||'API'; const displayModel=normalizeIndependentConnectionText(profile.model,100);
+  profile.name=uniqueIndependentImportedProfileName(manager,`兔子镜 · ${displayApi}${displayModel?` · ${displayModel}`:''}`);
+  manager.profiles.push(profile); target=profile; ctx?.saveSettingsDebounced?.();
+  try{ await ctx?.eventSource?.emit?.(ctx?.eventTypes?.CONNECTION_PROFILE_CREATED,profile); }catch(error){ console.warn('[RabbitMirror] connection profile created event failed',error); }
+ }
+ const id=normalizeIndependentConnectionText(target?.id,160); const model=normalizeIndependentConnectionText(target?.model,240);
+ updateSettings({independentConnectionProfileId:id,...(model?{independentApiModel:model}:{})});
+ return {id,name:normalizeIndependentConnectionText(target?.name,180)||'兔子镜专用连接',model,created:!existing};
+}
+function independentConnectionPayload(runtime){
+ if(!runtime) return null;
+ const {profile,apiMap,ctx}=runtime; const apiUrl=normalizeIndependentConnectionText(profile?.['api-url'],2000);
+ const reverseProxy=normalizeIndependentConnectionText(profile?.proxy,2000);
+ const payload={chat_completion_source:apiMap.source,secret_id:normalizeIndependentConnectionText(profile?.['secret-id'],240)||undefined};
+ if(apiUrl){
+  payload.custom_url=apiUrl; payload.vertexai_region=apiUrl; payload.zai_endpoint=apiUrl; payload.siliconflow_endpoint=apiUrl; payload.minimax_endpoint=apiUrl; payload.workers_ai_account_id=apiUrl;
+ }
+ if(reverseProxy) payload.reverse_proxy=reverseProxy;
+ if(apiMap.source==='custom'){
+  payload.custom_include_headers=normalizeIndependentConnectionText(ctx?.chatCompletionSettings?.custom_include_headers,8000)||undefined;
+  payload.custom_include_body=''; payload.custom_exclude_body='';
+ }
+ return payload;
+}
+function independentDiagnosticBase(st=getSettings()){
+ const id=normalizeIndependentConnectionText(st?.independentConnectionProfileId,160);
+ if(id){ const profile=getIndependentConnectionProfiles().find(item=>item.id===id); return `sillytavern:${profile?.name||id}`; }
+ return normalizeBase(st?.independentApiBaseUrl||'');
+}
 function hostGenerationActivity(){
  const ctx=getContext();
  const weakFlags=[
@@ -1003,7 +1107,7 @@ function endpoint(base,path){
   return `${pathPart.replace(/\/+$/,'')}${independentBaseHasExplicitVersion(b)?'':'/v1'}${suffix}${query}`;
  }
 }
-function headers(settings){ const h={'Content-Type':'application/json'}; if(settings.independentApiKey) h.Authorization=`Bearer ${settings.independentApiKey}`; return h; }
+function headers(settings){ const h={'Content-Type':'application/json'}; if(!settings?.independentConnectionProfileId && settings.independentApiKey) h.Authorization=`Bearer ${settings.independentApiKey}`; return h; }
 function isNumericHost(url=''){ try { const host=new URL(url).hostname; return /^(?:\d{1,3}\.){3}\d{1,3}$/.test(host) || /^\[[0-9a-f:]+\]$/i.test(host); } catch { return false; } }
 function directBlockedHint(url=''){
  try{
@@ -1041,11 +1145,25 @@ function customApiBaseFromUrl(url=''){
 }
 async function fetchIndependentUrl(url,options={}){
  const method=String(options.method||'GET').toUpperCase();
- const customUrl=customApiBaseFromUrl(url);
- if(!customUrl) throw new Error('独立 API 地址无效');
+ const st=getSettings();
+ const connectionId=normalizeIndependentConnectionText(st?.independentConnectionProfileId,160);
+ const connectionRuntime=connectionId?validatedIndependentConnectionProfile(connectionId):null;
+ const connectionPayload=connectionRuntime?independentConnectionPayload(connectionRuntime):null;
+ const customUrl=connectionRuntime?'':customApiBaseFromUrl(url);
+ if(!connectionRuntime && !customUrl) throw new Error('独立 API 地址无效');
  const requestHeaders=await serverRequestHeaders();
  const custom_include_headers=customHeaderYaml(options);
  try{
+  if(connectionRuntime && method==='GET' && /\/models(?:\?|$)/i.test(String(url))){
+   return await fetch(ST_CUSTOM_STATUS_ENDPOINT,{method:'POST',credentials:'same-origin',headers:requestHeaders,signal:options.signal,cache:'no-cache',body:JSON.stringify(connectionPayload)});
+  }
+  if(connectionRuntime && method==='POST' && /\/chat\/completions(?:\?|$)/i.test(String(url))){
+   let remoteBody={}; try{ remoteBody=typeof options.body==='string'?JSON.parse(options.body):({...options.body}); }catch{}
+   return await fetch(ST_CUSTOM_GENERATE_ENDPOINT,{
+    method:'POST',credentials:'same-origin',headers:requestHeaders,signal:options.signal,
+    body:JSON.stringify({...remoteBody,...connectionPayload,stream:remoteBody.stream!==false}),
+   });
+  }
   if(method==='GET' && /\/models(?:\?|$)/i.test(String(url))){
    return await fetch(ST_CUSTOM_STATUS_ENDPOINT,{
     method:'POST',
@@ -1160,8 +1278,9 @@ async function readIndependentResponsePayload(response){
 }
 export async function fetchIndependentModels(){
  const st=getSettings();
- const url=endpoint(st.independentApiBaseUrl,'/models');
- if(!url) throw independentModelListError('请先填写 API 地址','MODEL_LIST_CONFIG');
+ const connectionId=normalizeIndependentConnectionText(st.independentConnectionProfileId,160);
+ const url=connectionId?'/models':endpoint(st.independentApiBaseUrl,'/models');
+ if(!url) throw independentModelListError('请先一键配置酒馆 API，或在高级选项填写手动 API 地址','MODEL_LIST_CONFIG');
  const r=await fetchIndependentUrl(url,{method:'GET',headers:headers(st)});
  const payload=await readIndependentResponsePayload(r);
  if(!r.ok){
@@ -1379,7 +1498,8 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
   const semanticError='独立 API 没有可用的请求参数模式。请重新保存副 API 设置后再试。';
   return {response:{ok:false,status:0},result:{raw:'',payload:null,text:'',streamed:false},profile:'',attempts,requestDiagnostic:null,semanticError};
  }
- const url=endpoint(st.independentApiBaseUrl,profile.kind==='responses'?'/responses':'/chat/completions');
+ const connectionId=normalizeIndependentConnectionText(st.independentConnectionProfileId,160);
+ const url=connectionId?'/chat/completions':endpoint(st.independentApiBaseUrl,profile.kind==='responses'?'/responses':'/chat/completions');
  const stageCompatibility=(reason='',preferNonStreaming=false)=>{
   const next=nextCompatibilityProfileName(profile.name,preferNonStreaming);
   if(next){
@@ -1397,7 +1517,7 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
   const next=profileUsesStreaming(profile.name) ? stageCompatibility(`${kind}-stream-failure`,true) : '';
   attempts.push({profile:profile.name,status:0,detail,kind});
   const requestDiagnostic=publishIndependentApiRequestDiagnostic({
-   ok:false,status:0,model:String(st.independentApiModel||''),baseUrl:normalizeBase(st.independentApiBaseUrl||''),
+   ok:false,status:0,model:String(st.independentApiModel||''),baseUrl:independentDiagnosticBase(st),
    configuredTemperature:normalizedConfiguredTemperature(st),profile:profile.name,temperatureSent:Object.prototype.hasOwnProperty.call(profile.body||{},'temperature'),
    systemMessageSent:profileUsesSystemMessage(profile.name),streamSent:profile.body?.stream!==false,tokenField:profileTokenField(profile.name),
    rememberedProfile,stagedProfile,attempts:[{profile:profile.name,status:0,kind}],requestCount:1,automaticProfileFallback:false,automaticRetry:false,
@@ -1429,7 +1549,7 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
   ok:!!r.ok,
   status:Number(r.status||0),
   model:String(st.independentApiModel||''),
-  baseUrl:normalizeBase(st.independentApiBaseUrl||''),
+  baseUrl:independentDiagnosticBase(st),
   configuredTemperature:normalizedConfiguredTemperature(st),
   profile:profile.name,
   temperatureSent:Object.prototype.hasOwnProperty.call(profile.body||{},'temperature'),
@@ -1570,7 +1690,7 @@ function commitIndependentVisualResult(inner=''){
  }catch(error){ console.debug('[RabbitMirror] independent visual signature skipped:',error); return null; }
 }
 async function callIndependentApi(ctx,index,msg,signal=null,requestOptions={}){
- const st=getSettings(); if(!st.independentApiBaseUrl||!st.independentApiModel) throw new Error('独立 API 尚未完成地址与模型设置');
+ const st=getSettings(); if((!st.independentConnectionProfileId&&!st.independentApiBaseUrl)||!st.independentApiModel) throw new Error('独立 API 尚未完成酒馆连接与模型设置');
  const generationScopeKey=`independent:${Date.now().toString(36)}:${index}:${swipeId(msg)}`;
  const activeFeedback=st.feedbackCatEnabled!==false ? getActiveFeedbackForCurrentChat(ctx.chat) : null;
  const feedbackPrompt=activeFeedback ? buildFeedbackCatPrompt(activeFeedback) : '';
@@ -5753,7 +5873,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
  }catch(e){ console.warn('[RabbitMirror] independent host events unavailable',e); }
 }
 function independentRequestConfigSignature(st=getSettings()){
- return [st?.generationSource,normalizeBase(st?.independentApiBaseUrl||''),String(st?.independentApiModel||''),Number(st?.independentApiTemperature)||0,Number(st?.independentApiMaxTokens)||12000].join('|');
+ return [st?.generationSource,normalizeIndependentConnectionText(st?.independentConnectionProfileId,160)||normalizeBase(st?.independentApiBaseUrl||''),String(st?.independentApiModel||''),Number(st?.independentApiTemperature)||0,Number(st?.independentApiMaxTokens)||12000].join('|');
 }
 function captureMountedIndependentPlaceholderIndices(){
  const ctx=getContext(); const currentChat=chatKey(ctx); const indices=new Set();

@@ -45,6 +45,7 @@ export const defaultSettings = Object.freeze({
     mode: 'integrated',
     generationSource: 'follow',
     followDisplayMode: 'inline',
+    independentConnectionProfileId: '',
     independentApiBaseUrl: '',
     independentApiKey: '',
     independentApiModel: '',
@@ -111,6 +112,7 @@ export function getSettings() {
     if (!['inline', 'external'].includes(settings.followDisplayMode)) settings.followDisplayMode = 'inline';
     if (!['external', 'external_then_inline'].includes(settings.independentDisplayMode)) settings.independentDisplayMode = 'external';
     settings.independentReadGlobalWorldInfo = settings.independentReadGlobalWorldInfo === true;
+    settings.independentConnectionProfileId = String(settings.independentConnectionProfileId || '').trim().slice(0, 160);
     settings.independentWorldInfoDisabledBooks = [...new Set((Array.isArray(settings.independentWorldInfoDisabledBooks) ? settings.independentWorldInfoDisabledBooks : [])
         .map(value => String(value || '').trim())
         .filter(value => value && value.length <= WORLD_INFO_BOOK_NAME_MAX_CHARS))];

@@ -1,4 +1,12 @@
-# RabbitMirror 1.4.30.5 TEST
+# RabbitMirror 1.4.30.6 TEST
+
+## 1.4.30.6 - 2026-08-22
+
+- 独立 API 设置页新增“从酒馆当前连接一键配置”，参考 tokimemo 的 Connection Manager 导入方式：优先引用酒馆当前选中的 Chat Completion profile；没有可引用 profile 时，只在当前主 API 本身为 Chat Completion 时读取现有连接参数并创建兔子镜专用 Connection Manager profile。
+- 一键模式只保存 Connection Manager profile ID 与模型 ID；API Key 不复制到兔子镜设置，继续由 SillyTavern Secrets 保管。
+- 原 Base URL / API Key 手动输入移到“高级：手动 OpenAI 兼容接口（旧配置兼容）”，原有用户配置不删除，可显式切回。
+- 生成仍使用兔子镜原有 system/user Prompt、profile body、temperature/max_tokens、stream、手动兼容切换、single-flight、超时与失败语义；Connection Manager 只负责把既有请求交给酒馆已保存的 Chat Completion 连接与 Secrets。
+- 不修改维修兔、外容器、视觉家族冷却、sanitizer、随机/黑名单、世界书上下文或重说语义。
 
 
 ## 1.4.30.5 - 2026-08-22
