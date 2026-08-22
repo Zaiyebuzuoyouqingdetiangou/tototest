@@ -1,6 +1,12 @@
-# RabbitMirror / 兔子镜 1.4.30.6 TEST
+## 1.4.30.7 TEST：当前聊天世界书 + 模型拉取防卡
 
-## 1.4.30.6 TEST：独立 API 一键复用酒馆连接
+- 世界书默认列表只显示当前聊天宿主实际加载过的关联书；完整世界书名单放进折叠区按需拉取。
+- 一键配置不再等待远端模型列表；手动拉模型 12 秒超时并保留 Connection Manager 已保存模型。
+- 独立 API 生成请求、Prompt、stream/retry/single-flight 与其它功能不变。
+
+# RabbitMirror / 兔子镜 1.4.30.7 TEST
+
+## 1.4.30.7 TEST：独立 API 一键复用酒馆连接
 
 - 独立 API 设置页新增“从酒馆当前连接一键配置”：优先直接引用 SillyTavern Connection Manager 当前选中的 Chat Completion 配置；如果当前连接尚未保存为 profile，则在可安全读取的 Chat Completion 场景下创建兔子镜专用 profile。
 - API Key 不复制进兔子镜设置，继续由 SillyTavern Secrets 管理；兔子镜只保存 Connection Manager profile ID 与模型选择。

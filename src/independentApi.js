@@ -1,22 +1,24 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.30.6';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.6';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.6';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.6';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.6';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.6';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.6';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.6';
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.6';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.30.7';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.7';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.7';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.7';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.7';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.7';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.30.7';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.30.7';
+import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.7';
 
-const RUNTIME_VERSION = '1.4.30.6';
+const RUNTIME_VERSION = '1.4.30.7';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
 const OWNER_LOCK_STORE_KEY = 'rabbit_mirror_independent_owner_locks_v1';
 const API_REQUEST_DIAGNOSTIC_EVENT = 'rabbitmirror:independent-api-diagnostic';
-const WORLD_INFO_BOOK_CACHE_KEY = 'rabbit_mirror_world_info_books_v1';
+const WORLD_INFO_BOOK_CACHE_KEY = 'rabbit_mirror_world_info_books_v2';
 const WORLD_INFO_BOOK_CACHE_LIMIT = 512;
+export const WORLD_INFO_BOOKS_CHANGED_EVENT = 'rabbit-mirror-world-info-books-changed';
+const INDEPENDENT_MODEL_LIST_TIMEOUT_MS = 12000;
 const WORLD_INFO_BOOK_LIST_TIMEOUT_MS = 15000;
 const API_PROFILE_SCHEMA = 2;
 const API_PROFILE_ORDER = [
@@ -610,6 +612,24 @@ export async function importCurrentSillyTavernConnection(){
  updateSettings({independentConnectionProfileId:id,...(model?{independentApiModel:model}:{})});
  return {id,name:normalizeIndependentConnectionText(target?.name,180)||'兔子镜专用连接',model,created:!existing};
 }
+function independentConnectionTransportFingerprint(profile){
+ const keys=['mode','api','api-url','proxy','secret-id'];
+ return JSON.stringify(keys.map(key=>normalizeIndependentConnectionText(profile?.[key],1000)));
+}
+function savedIndependentModelsForProfile(profileId,ctx=getContext()){
+ const id=normalizeIndependentConnectionText(profileId,160); if(!id) return [];
+ let manager=null; try{ manager=independentConnectionManagerSettings(ctx); }catch{return [];}
+ const selected=manager.profiles.find(item=>String(item?.id||'')===id); if(!selected) return [];
+ const fingerprint=independentConnectionTransportFingerprint(selected);
+ const models=manager.profiles
+  .filter(item=>independentConnectionTransportFingerprint(item)===fingerprint)
+  .map(item=>normalizeIndependentConnectionText(item?.model,240)).filter(Boolean);
+ const own=normalizeIndependentConnectionText(selected?.model,240); if(own) models.unshift(own);
+ return [...new Set(models)];
+}
+export function getIndependentSavedModels(){
+ const st=getSettings(); return savedIndependentModelsForProfile(st?.independentConnectionProfileId,getContext());
+}
 function independentConnectionPayload(runtime){
  if(!runtime) return null;
  const {profile,apiMap,ctx}=runtime; const apiUrl=normalizeIndependentConnectionText(profile?.['api-url'],2000);
@@ -756,12 +776,17 @@ function normalizeWorldInfoBookName(value=''){
  const name=String(value||'').trim();
  return name && name.length<=WORLD_INFO_BOOK_NAME_MAX_CHARS ? name : '';
 }
+function currentWorldInfoBookScope(ctx=getContext()){
+ const scope=String(chatKey(ctx)||'').trim();
+ return scope && Array.isArray(ctx?.chat) ? scope : '';
+}
+function observedWorldInfoBookMapKey(scope='',name=''){ return `${String(scope||'')}\u0000${String(name||'')}`; }
 function trimObservedWorldInfoBookCache(){
  if(observedWorldInfoBooks.size<=WORLD_INFO_BOOK_CACHE_LIMIT) return;
  const stale=[...observedWorldInfoBooks.entries()]
   .sort((a,b)=>Number(a[1]?.lastSeen||0)-Number(b[1]?.lastSeen||0))
   .slice(0,observedWorldInfoBooks.size-WORLD_INFO_BOOK_CACHE_LIMIT);
- for(const [name] of stale) observedWorldInfoBooks.delete(name);
+ for(const [key] of stale) observedWorldInfoBooks.delete(key);
 }
 function loadObservedWorldInfoBookCache(){
  if(observedWorldInfoBookCacheLoaded) return;
@@ -770,9 +795,10 @@ function loadObservedWorldInfoBookCache(){
   const rows=JSON.parse(localStorage.getItem(WORLD_INFO_BOOK_CACHE_KEY)||'[]');
   if(!Array.isArray(rows)) return;
   for(const row of rows.slice(0,WORLD_INFO_BOOK_CACHE_LIMIT)){
-   const name=normalizeWorldInfoBookName(typeof row==='string'?row:row?.name); if(!name) continue;
+   const scope=String(row?.scope||'').trim();
+   const name=normalizeWorldInfoBookName(row?.name); if(!scope||!name) continue;
    const sources=new Set(Array.isArray(row?.sources)?row.sources.map(value=>String(value||'').trim()).filter(Boolean).slice(0,4):[]);
-   observedWorldInfoBooks.set(name,{name,sources,lastSeen:Number(row?.lastSeen)||0});
+   observedWorldInfoBooks.set(observedWorldInfoBookMapKey(scope,name),{scope,name,sources,lastSeen:Number(row?.lastSeen)||0});
   }
  }catch{}
 }
@@ -781,39 +807,48 @@ function persistObservedWorldInfoBookCache(){
   const rows=[...observedWorldInfoBooks.values()]
    .sort((a,b)=>Number(b.lastSeen||0)-Number(a.lastSeen||0))
    .slice(0,WORLD_INFO_BOOK_CACHE_LIMIT)
-   .map(item=>({name:item.name,sources:[...item.sources].slice(0,4),lastSeen:Number(item.lastSeen)||0}));
+   .map(item=>({scope:item.scope,name:item.name,sources:[...item.sources].slice(0,4),lastSeen:Number(item.lastSeen)||0}));
   localStorage.setItem(WORLD_INFO_BOOK_CACHE_KEY,JSON.stringify(rows));
  }catch{}
 }
-function rememberObservedWorldInfoBook(nameValue,sourceName=''){
+function dispatchWorldInfoBooksChanged(scope=currentWorldInfoBookScope()){
+ try{ globalThis.dispatchEvent?.(new CustomEvent(WORLD_INFO_BOOKS_CHANGED_EVENT,{detail:{scope:String(scope||'')}})); }catch{}
+}
+function rememberObservedWorldInfoBook(nameValue,sourceName='',scopeValue=currentWorldInfoBookScope()){
  loadObservedWorldInfoBookCache();
- const name=normalizeWorldInfoBookName(nameValue); if(!name) return false;
+ const scope=String(scopeValue||'').trim();
+ const name=normalizeWorldInfoBookName(nameValue); if(!scope||!name) return false;
  const source=String(sourceName||'').trim();
- const current=observedWorldInfoBooks.get(name)||{name,sources:new Set(),lastSeen:0};
- const wasKnown=observedWorldInfoBooks.has(name);
+ const key=observedWorldInfoBookMapKey(scope,name);
+ const current=observedWorldInfoBooks.get(key)||{scope,name,sources:new Set(),lastSeen:0};
+ const wasKnown=observedWorldInfoBooks.has(key);
  const hadSource=source?current.sources.has(source):true;
  if(source) current.sources.add(source);
  current.lastSeen=Date.now();
- observedWorldInfoBooks.set(name,current);
+ observedWorldInfoBooks.set(key,current);
  trimObservedWorldInfoBookCache();
  return !wasKnown || !hadSource;
 }
 function observeWorldInfoBooksFromPayload(payload){
  if(!payload || typeof payload!=='object') return 0;
+ const scope=currentWorldInfoBookScope(); if(!scope) return 0;
  const sourceNames=['globalLore','characterLore','chatLore','personaLore'];
  let changed=0;
  for(const sourceName of sourceNames){
   const rows=payload[sourceName]; if(!Array.isArray(rows)) continue;
-  for(const entry of rows){ if(rememberObservedWorldInfoBook(entry?.world,sourceName)) changed+=1; }
+  for(const entry of rows){ if(rememberObservedWorldInfoBook(entry?.world,sourceName,scope)) changed+=1; }
  }
  if(changed){
   persistObservedWorldInfoBookCache();
+  dispatchWorldInfoBooksChanged(scope);
  }
  return changed;
 }
 export function getObservedWorldInfoBooks(){
  loadObservedWorldInfoBookCache();
+ const scope=currentWorldInfoBookScope(); if(!scope) return [];
  return [...observedWorldInfoBooks.values()]
+  .filter(item=>item.scope===scope)
   .map(item=>({name:item.name,sources:[...item.sources],lastSeen:Number(item.lastSeen)||0}))
   .sort((a,b)=>a.name.localeCompare(b.name,'zh-Hans-CN'));
 }
@@ -1281,21 +1316,30 @@ export async function fetchIndependentModels(){
  const connectionId=normalizeIndependentConnectionText(st.independentConnectionProfileId,160);
  const url=connectionId?'/models':endpoint(st.independentApiBaseUrl,'/models');
  if(!url) throw independentModelListError('请先一键配置酒馆 API，或在高级选项填写手动 API 地址','MODEL_LIST_CONFIG');
- const r=await fetchIndependentUrl(url,{method:'GET',headers:headers(st)});
- const payload=await readIndependentResponsePayload(r);
- if(!r.ok){
-  const detail=compactIndependentPayloadError(payload.json) || String(payload.raw||'').trim().slice(0,180);
-  throw independentModelListError(`模型列表请求失败：HTTP ${r.status}${detail?` · ${detail}`:''}`,'MODEL_LIST_HTTP');
+ const controller=new AbortController();
+ const timeoutId=setTimeout(()=>controller.abort(),INDEPENDENT_MODEL_LIST_TIMEOUT_MS);
+ try{
+  const r=await fetchIndependentUrl(url,{method:'GET',headers:headers(st),signal:controller.signal});
+  const payload=await readIndependentResponsePayload(r);
+  if(!r.ok){
+   const detail=compactIndependentPayloadError(payload.json) || String(payload.raw||'').trim().slice(0,180);
+   throw independentModelListError(`模型列表请求失败：HTTP ${r.status}${detail?` · ${detail}`:''}`,'MODEL_LIST_HTTP');
+  }
+  if(independentPayloadHasError(payload.json)){
+   const detail=compactIndependentPayloadError(payload.json);
+   throw independentModelListError(`模型列表接口返回错误${detail?`：${detail}`:'。SillyTavern 未返回上游详细原因；可能是 API Key/地址错误，或该供应商不支持 GET /models'}`,'MODEL_LIST_UPSTREAM');
+  }
+  const models=extractIndependentModelList(payload.json);
+  if(!models.length){
+   throw independentModelListError('接口返回成功，但没有可识别的模型列表；该供应商可能不提供 GET /models。手动填写的模型 ID 会继续保留。','MODEL_LIST_EMPTY');
+  }
+  return models;
+ }catch(error){
+  if(controller.signal.aborted) throw independentModelListError('模型列表拉取超过 12 秒，已自动停止；不会影响已经一键配置的连接和当前模型。','MODEL_LIST_TIMEOUT');
+  throw error;
+ }finally{
+  clearTimeout(timeoutId);
  }
- if(independentPayloadHasError(payload.json)){
-  const detail=compactIndependentPayloadError(payload.json);
-  throw independentModelListError(`模型列表接口返回错误${detail?`：${detail}`:'。SillyTavern 未返回上游详细原因；可能是 API Key/地址错误，或该供应商不支持 GET /models'}`,'MODEL_LIST_UPSTREAM');
- }
- const models=extractIndependentModelList(payload.json);
- if(!models.length){
-  throw independentModelListError('接口返回成功，但没有可识别的模型列表；该供应商可能不提供 GET /models。手动填写的模型 ID 会继续保留。','MODEL_LIST_EMPTY');
- }
- return models;
 }
 export async function testIndependentConnection(){
  const st=getSettings();
@@ -5750,6 +5794,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
    for(const event of new Set(fullSyncEvents)){
      const handler=()=>{
        hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); cancelAllIndependentFlights('chat-changed'); messageSourceRevisions.clear(); activeGlobalWorldInfoCapture=null;
+       dispatchWorldInfoBooksChanged(currentWorldInfoBookScope());
        if(runtimeMode()==='independent' && automaticGenerationCutovers.size) ensureAutomaticGenerationCutover(getContext());
        markExternalGeometryLifecycle('chat-changed');
        syncAll(); scheduleLatest(700);

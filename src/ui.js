@@ -1,15 +1,15 @@
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.30.6';
-import { clearLastCombo } from './storage.js?rmv=1.4.30.6';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.30.6';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.30.6';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.30.6';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.6';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.30.6';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getLastIndependentApiRequestDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.30.6';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.4.30.6';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.30.7';
+import { clearLastCombo } from './storage.js?rmv=1.4.30.7';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.30.7';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.30.7';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.30.7';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.7';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.30.7';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.30.7';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.4.30.7';
 
-const SETTINGS_UI_VERSION = '1.4.30.6-visual-maintenance';
-const RUNTIME_VERSION = '1.4.30.6';
+const SETTINGS_UI_VERSION = '1.4.30.7-visual-maintenance';
+const RUNTIME_VERSION = '1.4.30.7';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -91,42 +91,53 @@ function renderBlacklistSettings() {
       ${section('展现形式', formats)}`);
 }
 
-function renderWorldInfoBookSettings() {
-    const target = $('#rh_world_info_book_filters');
+function worldInfoSourceLabel(value) {
+    return ({ characterLore: '角色', chatLore: '当前聊天', personaLore: 'Persona', globalLore: '当前全局' })[String(value || '')] || String(value || '');
+}
+function renderWorldInfoRows(target, books, disabled, emptyText) {
     if (!target.length) return;
-    const settings = getSettings();
-    const disabled = new Set(Array.isArray(settings.independentWorldInfoDisabledBooks) ? settings.independentWorldInfoDisabledBooks : []);
-    const byId = new Map();
-    for (const item of getObservedWorldInfoBooks()) {
-        const id = String(item?.name || '').trim();
-        if (!id) continue;
-        byId.set(id, { id, label: id, observed: true, pulled: false, sources: item.sources || [], stale: false });
-    }
-    for (const item of pulledWorldInfoBooks) {
-        const id = String(item?.id || item?.name || '').trim();
-        if (!id) continue;
-        const current = byId.get(id) || { id, label: id, observed: false, pulled: false, sources: [], stale: false };
-        current.label = String(item?.label || current.label || id).trim() || id;
-        current.pulled = true;
-        byId.set(id, current);
-    }
-    for (const id of disabled) {
-        if (!byId.has(id)) byId.set(id, { id, label: id, observed: false, pulled: false, sources: [], stale: true });
-    }
-    const books = [...byId.values()].sort((a, b) => String(a.label || a.id).localeCompare(String(b.label || b.id), 'zh-Hans-CN'));
     const rows = books.map((item, index) => {
         const enabled = !disabled.has(item.id);
-        const note = item.pulled ? '已拉取' : item.observed ? '本轮见过' : '已保存';
         const identity = item.label !== item.id ? `<br><span style="opacity:.55;font-size:10px;">${escapeHtml(item.id)}</span>` : '';
+        const sourceText = Array.isArray(item.sources) && item.sources.length
+            ? item.sources.map(worldInfoSourceLabel).filter(Boolean).join(' / ')
+            : item.note || '';
         return `<label class="checkbox_label" style="display:flex;align-items:flex-start;gap:7px;margin:4px 0;">
           <input class="rh-world-info-book-toggle" type="checkbox" data-book-index="${index}" ${enabled ? 'checked' : ''}>
-          <span style="min-width:0;flex:1;overflow-wrap:anywhere;"><b>${escapeHtml(item.label)}</b>${identity}<br><span style="opacity:.6;font-size:10px;">${note}</span></span>
+          <span style="min-width:0;flex:1;overflow-wrap:anywhere;"><b>${escapeHtml(item.label)}</b>${identity}${sourceText ? `<br><span style="opacity:.6;font-size:10px;">${escapeHtml(sourceText)}</span>` : ''}</span>
         </label>`;
     }).join('');
     target.data('rm-world-info-books', books.map(item => item.id));
-    target.html(books.length
-        ? `<div style="font-size:11px;line-height:1.4;opacity:.72;margin-bottom:5px;">勾选 = 允许这本世界书给独立 API 使用。</div>${rows}`
-        : '<div style="font-size:11px;line-height:1.4;opacity:.66;">点“拉取世界书”查看列表。</div>');
+    target.html(books.length ? rows : `<div style="font-size:11px;line-height:1.4;opacity:.66;">${escapeHtml(emptyText)}</div>`);
+}
+function renderWorldInfoBookSettings() {
+    const currentTarget = $('#rh_world_info_book_filters');
+    const allTarget = $('#rh_world_info_all_book_filters');
+    if (!currentTarget.length && !allTarget.length) return;
+    const settings = getSettings();
+    const disabled = new Set(Array.isArray(settings.independentWorldInfoDisabledBooks) ? settings.independentWorldInfoDisabledBooks : []);
+    const currentBooks = getObservedWorldInfoBooks().map(item => ({
+        id: String(item?.name || '').trim(),
+        label: String(item?.name || '').trim(),
+        sources: item?.sources || [],
+    })).filter(item => item.id);
+    renderWorldInfoRows(
+        currentTarget,
+        currentBooks,
+        disabled,
+        '当前聊天还没有观察到酒馆加载的世界书。进入角色聊天并正常生成后会自动显示当前聊天相关世界书；不会为了列表重新扫描条目。',
+    );
+
+    const byId = new Map();
+    for (const item of pulledWorldInfoBooks) {
+        const id = String(item?.id || item?.name || '').trim(); if (!id) continue;
+        byId.set(id, { id, label: String(item?.label || id).trim() || id, sources: [], note: '全部世界书' });
+    }
+    for (const id of disabled) {
+        if (!byId.has(id)) byId.set(id, { id, label: id, sources: [], note: '已保存为关闭' });
+    }
+    const allBooks = [...byId.values()].sort((a, b) => String(a.label || a.id).localeCompare(String(b.label || b.id), 'zh-Hans-CN'));
+    renderWorldInfoRows(allTarget, allBooks, disabled, '尚未拉取全部世界书。');
 }
 
 function independentApiProfileLabel(diagnostic) {
@@ -327,7 +338,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.6</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.7</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -382,12 +393,17 @@ export function initRabbitMirrorUI() {
               <label>最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
             </div>
             <label class="checkbox_label"><input id="rh_independent_read_global_world_info" type="checkbox"> 读取世界书</label>
-            <div class="rabbit-mirror-subnote" style="margin:-4px 0 4px 26px;opacity:.68;font-size:11px;line-height:1.45;">先拉列表，再勾选要用的书；只复用本轮已经激活的内容，不会重新扫描。</div>
-            <div class="flex-container" style="gap:7px;flex-wrap:wrap;align-items:center;margin:5px 0 0 26px;">
-              <button id="rh_world_info_books_fetch" class="menu_button" type="button">拉取世界书</button>
-              <span id="rh_world_info_books_fetch_status" style="opacity:.66;font-size:11px;">未拉取</span>
-            </div>
-            <div id="rh_world_info_book_filters" style="margin:7px 0 8px 26px;padding:7px 9px;border:1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 45%, transparent);border-radius:8px;max-height:260px;overflow:auto;"></div>
+            <div class="rabbit-mirror-subnote" style="margin:-4px 0 4px 26px;opacity:.68;font-size:11px;line-height:1.45;">进入当前角色聊天后，优先显示酒馆为当前聊天加载过的角色／聊天／Persona／当前全局世界书；真正发送时仍只复用主生成本轮实际激活的条目，不会重新扫描或重掷概率。</div>
+            <div style="margin:7px 0 2px 26px;font-size:11px;font-weight:700;opacity:.8;">当前聊天相关世界书</div>
+            <div id="rh_world_info_book_filters" style="margin:4px 0 8px 26px;padding:7px 9px;border:1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 45%, transparent);border-radius:8px;max-height:180px;overflow:auto;"></div>
+            <details id="rh_world_info_all_books" style="margin:4px 0 8px 26px;">
+              <summary style="cursor:pointer;font-size:11px;opacity:.76;">更多：从全部世界书中选择（折叠）</summary>
+              <div class="flex-container" style="gap:7px;flex-wrap:wrap;align-items:center;margin:7px 0 0;">
+                <button id="rh_world_info_books_fetch" class="menu_button" type="button">拉取全部世界书</button>
+                <span id="rh_world_info_books_fetch_status" style="opacity:.66;font-size:11px;">未拉取</span>
+              </div>
+              <div id="rh_world_info_all_book_filters" style="margin-top:7px;padding:7px 9px;border:1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 45%, transparent);border-radius:8px;max-height:260px;overflow:auto;"></div>
+            </details>
             <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议 <b>1.0</b>；想更稳可用 0.9～1.1。</div>
             <div id="rh_independent_api_diagnostic" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);opacity:.78;font-size:11px;line-height:1.5;word-break:break-word;">最近请求：暂无记录</div>
             <div style="opacity:.66;font-size:11px;line-height:1.45;">一键配置时不保存 API Key；旧手动模式仍按原逻辑保存在当前 SillyTavern 扩展设置里。</div>
@@ -560,6 +576,10 @@ export function initRabbitMirrorUI() {
     const independentDiagnosticListener = event => { renderIndependentApiDiagnostic(event?.detail || null); renderWorldInfoBookSettings(); };
     globalThis.addEventListener?.(API_REQUEST_DIAGNOSTIC_EVENT, independentDiagnosticListener);
     globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup = () => globalThis.removeEventListener?.(API_REQUEST_DIAGNOSTIC_EVENT, independentDiagnosticListener);
+    try { globalThis.__rabbitMirrorWorldInfoBooksUiCleanup?.(); } catch {}
+    const worldInfoBooksListener = () => renderWorldInfoBookSettings();
+    globalThis.addEventListener?.(WORLD_INFO_BOOKS_CHANGED_EVENT, worldInfoBooksListener);
+    globalThis.__rabbitMirrorWorldInfoBooksUiCleanup = () => globalThis.removeEventListener?.(WORLD_INFO_BOOKS_CHANGED_EVENT, worldInfoBooksListener);
     try { globalThis.__rabbitMirrorBlacklistUiCleanup?.(); } catch {}
     const blacklistListener = () => { checked('#rh_blacklist_enabled', getSettings().blacklistEnabled !== false); renderBlacklistSettings(); };
     globalThis.addEventListener?.(BLACKLIST_CHANGED_EVENT, blacklistListener);
@@ -606,7 +626,7 @@ export function initRabbitMirrorUI() {
             pulledWorldInfoBooks = await fetchWorldInfoBooks();
             renderWorldInfoBookSettings();
             status.text(`已拉取 ${pulledWorldInfoBooks.length} 本`);
-            toastr?.success?.(`已拉取 ${pulledWorldInfoBooks.length} 本世界书`);
+            toastr?.success?.(`已拉取 ${pulledWorldInfoBooks.length} 本世界书；列表保留在折叠区内`);
         } catch (error) {
             pulledWorldInfoBooks = [];
             renderWorldInfoBookSettings();
@@ -617,9 +637,10 @@ export function initRabbitMirrorUI() {
             button.prop('disabled', false);
         }
     });
-    $('#rh_world_info_book_filters').on('change', '.rh-world-info-book-toggle', function () {
+    $('#rh_world_info_book_filters, #rh_world_info_all_book_filters').on('change', '.rh-world-info-book-toggle', function () {
         const index = Number($(this).attr('data-book-index'));
-        const books = $('#rh_world_info_book_filters').data('rm-world-info-books') || [];
+        const container = $(this).closest('#rh_world_info_book_filters, #rh_world_info_all_book_filters');
+        const books = container.data('rm-world-info-books') || [];
         const name = String(books[index] || '').trim();
         if (!name) return;
         const nextDisabled = new Set(getSettings().independentWorldInfoDisabledBooks || []);
@@ -637,10 +658,8 @@ export function initRabbitMirrorUI() {
             const fresh=getSettings();
             $('#rh_independent_model').val(fresh.independentApiModel||imported?.model||'');
             renderIndependentConnectionStatus();
-            try {
-                const models=await fetchIndependentModels();
-                renderIndependentModelSelect(models,String($('#rh_independent_model').val()||''));
-            } catch {}
+            const savedModels=getIndependentSavedModels();
+            renderIndependentModelSelect(savedModels,String($('#rh_independent_model').val()||''));
             refreshRabbitMirrorGenerationMode();
             toastr?.success?.(`已一键配置酒馆连接：${String(imported?.name||'当前连接')}`);
         } catch(error) {
@@ -699,9 +718,13 @@ export function initRabbitMirrorUI() {
         const exists=select.find('option').toArray().some(option=>String(option.value||'')===current);
         select.val(exists ? current : '');
     });
-    $('#rh_independent_models').on('click', async () => {
+    $('#rh_independent_models').on('click', async function () {
         saveIndependentFields();
+        const button=$(this); const originalText=button.text();
         const current=String($('#rh_independent_model').val() || getSettings().independentApiModel || '').trim();
+        const savedModels=getIndependentSavedModels();
+        button.prop('disabled',true).text('正在拉取…');
+        if(savedModels.length) renderIndependentModelSelect(savedModels,current);
         try {
             const models=await fetchIndependentModels();
             renderIndependentModelSelect(models,current);
@@ -714,10 +737,13 @@ export function initRabbitMirrorUI() {
             }
             toastr?.success?.(`已拉取 ${models.length} 个模型；完整列表已显示在模型下拉框中`);
         } catch(error) {
-            // 拉取失败只清候选列表，不碰用户已经手动填写的 model ID。
-            renderIndependentModelSelect([],current);
+            // 远端 /models 卡住或失败时保留酒馆已保存模型与手动 ID，不让设置页无限等待。
+            renderIndependentModelSelect(savedModels,current);
             if(current) $('#rh_independent_model').val(current);
-            toastr?.warning?.(`模型列表拉取失败；手动模型 ID 不受影响。${String(error?.message||error)}`);
+            const fallbackText=savedModels.length ? `；已保留酒馆中已保存的 ${savedModels.length} 个模型` : '';
+            toastr?.warning?.(`模型列表拉取失败${fallbackText}。${String(error?.message||error)}`);
+        } finally {
+            button.prop('disabled',false).text(originalText);
         }
     });
     $('#rh_independent_test').on('click', async () => {

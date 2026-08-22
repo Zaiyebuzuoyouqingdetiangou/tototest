@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.30.6",
-  "css": "style.css?rmv=1.4.30.6",
+  "js": "index.js?rmv=1.4.30.7",
+  "css": "style.css?rmv=1.4.30.7",
   "author": "Toto",
-  "version": "1.4.30.6",
+  "version": "1.4.30.7",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.30.6：基于 1.4.30.5，仅提升独立 API 配置便利性：新增从 SillyTavern 当前 Chat Completion / Connection Manager 一键配置，密钥继续由酒馆 Secrets 保管；保留旧手动 OpenAI 兼容接口作为高级兼容，不改副 API Prompt、请求 body、stream/retry/single-flight、维修兔、外容器或视觉冷却。"
+  "description": "兔子镜测试版 1.4.30.7：基于 1.4.30.6，仅修世界书设置作用域/折叠展示与一键配置后的模型列表防卡；不改独立 API 生成 Prompt、POST body、stream/retry/single-flight 或其它运行链。"
 }

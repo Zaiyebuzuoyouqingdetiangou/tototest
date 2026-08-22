@@ -1,6 +1,13 @@
-# RabbitMirror 1.4.30.6 TEST
+# 1.4.30.7 TEST
 
-## 1.4.30.6 - 2026-08-22
+- 世界书设置按当前聊天隔离：默认列表只显示 SillyTavern 在当前聊天 World Info 生命周期中加载过的书，不再把其他角色/聊天的历史观察缓存混进来。实际发送逻辑仍只复用本轮最终激活条目，不重扫、不重掷 probability。
+- “全部世界书”移入默认折叠区，需要时再手动拉取完整名单，避免设置页被大量世界书撑长。
+- 一键配置酒馆 API 后不再同步等待远端 `/models`；先使用当前 Connection Manager 已保存模型。手动“拉取模型”增加 12 秒超时，失败/超时时保留已保存模型和手动模型 ID，不再无限卡住。
+- 不修改独立 API 生成 Prompt、POST 请求 body、stream/retry/single-flight、维修兔、外容器、sanitizer、视觉冷却或世界书实际激活捕获语义。
+
+# RabbitMirror 1.4.30.7 TEST
+
+## 1.4.30.7 - 2026-08-22
 
 - 独立 API 设置页新增“从酒馆当前连接一键配置”，参考 tokimemo 的 Connection Manager 导入方式：优先引用酒馆当前选中的 Chat Completion profile；没有可引用 profile 时，只在当前主 API 本身为 Chat Completion 时读取现有连接参数并创建兔子镜专用 Connection Manager profile。
 - 一键模式只保存 Connection Manager profile ID 与模型 ID；API Key 不复制到兔子镜设置，继续由 SillyTavern Secrets 保管。
