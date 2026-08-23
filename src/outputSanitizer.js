@@ -11737,6 +11737,61 @@ export function isolateRabbitMirrorInteractionIds(root) {
 // control while malformed cross-parent / one-way CSS remains permanently inert.
 // This entry point is intentionally separate from isolateRabbitMirrorInteractionIds()
 // so history/serialization callers can keep the no-listener behavior when needed.
+// cloneNode()/outerHTML preserve serializable "listener installed" markers but
+// never preserve addEventListener handlers. Clear only those runtime markers
+// before a detached snapshot or parsed fragment becomes live again; the existing
+// safe interaction rescue can then rebuild listeners without weakening sanitization.
+export function rearmRabbitMirrorSerializedInteractionRoot(root) {
+    if (!root?.querySelectorAll) return 0;
+    const listenerMarkers = [
+        CHANGE_PSEUDO_RESCUE_ATTR,
+        DIRECT_ID_CLICK_RESCUE_ATTR,
+        DIRECT_ID_CLASS_STATE_RESCUE_ATTR,
+        RAW_NAMED_FUNCTION_RESCUE_ATTR,
+        RAW_SCRIPT_TIMELINE_RESCUE_ATTR,
+        RAW_HOVER_PSEUDO_RESCUE_ATTR,
+        RAW_HOVER_DECORATION_RESTORE_ATTR,
+        RAW_SELF_MUTATION_RESCUE_ATTR,
+        INLINE_PSEUDO_RESCUE_ATTR,
+        HINTED_PSEUDO_RESCUE_ATTR,
+        PASSPORT_DOCUMENT_TRIGGER_RESCUE_ATTR,
+        INERT_ACTION_BUTTON_RESCUE_ATTR,
+    ];
+    const selector = listenerMarkers.map(attribute => `[${attribute}]`).join(',');
+    const candidates = new Set();
+    if (root.matches?.(selector)) candidates.add(root);
+    root.querySelectorAll(selector).forEach(node => candidates.add(node));
+
+    let cleared = 0;
+    for (const node of candidates) {
+        if (node.hasAttribute?.(INERT_ACTION_BUTTON_RESCUE_ATTR)) {
+            const describedBy = String(node.getAttribute?.('aria-describedby') || '').split(/\s+/).filter(Boolean);
+            const retained = [];
+            for (const id of describedBy) {
+                const status = node.parentElement?.querySelector?.(`#${escapeCssIdentifier(id)}`);
+                if (status?.hasAttribute?.(INERT_ACTION_STATUS_ATTR)) status.remove();
+                else retained.push(id);
+            }
+            if (node.nextElementSibling?.hasAttribute?.(INERT_ACTION_STATUS_ATTR)) node.nextElementSibling.remove();
+            if (retained.length) node.setAttribute('aria-describedby', retained.join(' '));
+            else node.removeAttribute?.('aria-describedby');
+            node.removeAttribute?.('data-rabbit-mirror-inert-action-active');
+            node.removeAttribute?.('aria-pressed');
+        }
+        for (const attribute of listenerMarkers) {
+            if (!node.hasAttribute?.(attribute)) continue;
+            node.removeAttribute(attribute);
+            cleared += 1;
+        }
+    }
+    root.removeAttribute?.(RAW_SCRIPT_TIMELINE_ROOT_ATTR);
+    delete root.dataset?.rabbitMirrorRawHoverFallback;
+    delete root.dataset?.rabbitMirrorSelfMutationFallback;
+    delete root.dataset?.rabbitMirrorInertActionFallback;
+    delete root.dataset?.rabbitMirrorTargetFallback;
+    return cleared;
+}
+
 export function activateRabbitMirrorInteractionRescue(root) {
     return scopeRabbitMirrorInteractionIds(root, { installRescue: true });
 }
@@ -17348,6 +17403,7 @@ function restoreRabbitMirrorInteractionResetSnapshot(root, button) {
     const keepOpen = details.hasAttribute('open');
     const restoredDetails = snapshot.node.cloneNode(true);
     if (keepOpen) restoredDetails.setAttribute('open', ''); else restoredDetails.removeAttribute('open');
+    rearmRabbitMirrorSerializedInteractionRoot(restoredDetails);
     details.replaceWith(restoredDetails);
     if (snapshot.instanceId) rabbitMirrorInteractionResetInstanceIds.set(restoredDetails, snapshot.instanceId);
     const restoredRoot = root === details ? restoredDetails : root;
@@ -17381,6 +17437,7 @@ function captureMaintenancePreRepairSnapshot(root) {
         workingNode.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)?.forEach(node => node.remove());
         workingNode.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
         const wasOpen = originalNode.hasAttribute('open');
+        rearmRabbitMirrorSerializedInteractionRoot(workingNode);
         originalNode.replaceWith(workingNode);
         if (wasOpen) workingNode.setAttribute('open', ''); else workingNode.removeAttribute('open');
         try { refreshRabbitMirrorToolsInScope?.(workingNode); } catch {}
@@ -17394,18 +17451,20 @@ function captureMaintenancePreRepairSnapshot(root) {
         return { key, root: workingNode, button: workingButton };
     }
 
-    const workingNode = details.cloneNode(true);
-    originalNode.replaceWith(workingNode);
-    const workingRoot = root === originalNode ? workingNode : root;
-    try { refreshRabbitMirrorToolsInScope?.(workingRoot); } catch {}
-    const workingButton = workingRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || workingNode.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || null;
+    // The follow-main-API mirror is already live. Keep its listener-bearing DOM in
+    // place and store only a detached rollback clone. Replacing the working node
+    // would drop handlers while preserving data-* "already bound" markers.
+    const snapshotNode = originalNode.cloneNode(true);
+    snapshotNode.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)?.forEach(node => node.remove());
+    snapshotNode.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
     maintenancePreRepairSnapshots.set(key, {
-        node: originalNode,
+        node: snapshotNode,
         open: originalNode.hasAttribute('open'),
         ts: Date.now(),
     });
     trimMaintenanceSnapshots();
-    return { key, root: workingRoot, button: workingButton };
+    const workingButton = root.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || originalNode.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || null;
+    return { key, root, button: workingButton };
 }
 
 function restoreMaintenancePreRepairSnapshot(root, button) {
@@ -17419,10 +17478,13 @@ function restoreMaintenancePreRepairSnapshot(root, button) {
     if (!details?.parentNode) return false;
     const originalNode = snapshot.node;
     if (snapshot.open) originalNode.setAttribute('open', ''); else originalNode.removeAttribute('open');
+    rearmRabbitMirrorSerializedInteractionRoot(originalNode);
     details.replaceWith(originalNode);
     maintenancePreRepairSnapshots.delete(key);
     setTimeout(() => {
         try { refreshRabbitMirrorToolsInScope?.(originalNode); } catch {}
+        try { activateRabbitMirrorInteractionRescue(originalNode); } catch {}
+        try { rehydrateRabbitMirrorMaintenanceRepairs(originalNode); } catch {}
     }, 0);
     return true;
 }

@@ -1,11 +1,11 @@
 import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.30.17';
 import { clearLastCombo } from './storage.js?rmv=1.4.30.17';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.30.22';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.30.23';
 import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.30.17';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.30.22';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.30.23';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.30.17';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.30.22';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.30.23';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.30.23';
 import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.30.17';
 
 const SETTINGS_UI_VERSION = '1.4.30.17-visual-maintenance';
@@ -253,7 +253,7 @@ function tokenMeterNoInjectionLabel(reason) {
     return labels[String(reason || '')] || '本轮未注入';
 }
 
-function renderTokenMeter(record = getLastRabbitMirrorTokenRecord()) {
+function renderTokenMeter(record = getLastRabbitMirrorTokenRecordForSource(getSettings().generationSource)) {
     const root = $('#rh_token_meter');
     if (!root.length) return;
     const main = root.find('[data-rh-token-meter-main]');
@@ -306,7 +306,10 @@ function attachTokenMeterListener() {
     try { globalThis.__rabbitMirrorTokenMeterUiCleanup?.(); } catch {}
     try { globalThis.__rabbitMirrorBlacklistUiCleanup?.(); } catch {}
     globalThis.__rabbitMirrorBlacklistUiCleanup = null;
-    const handler = event => renderTokenMeter(event?.detail || getLastRabbitMirrorTokenRecord());
+    // Select the record for the currently visible generation mode. A host-side
+    // "main API 0 Token" bookkeeping event must not hide the latest independent
+    // API measurement.
+    const handler = () => renderTokenMeter();
     globalThis.addEventListener?.(TOKEN_METER_EVENT, handler);
     globalThis.__rabbitMirrorTokenMeterUiCleanup = () => globalThis.removeEventListener?.(TOKEN_METER_EVENT, handler);
 }
@@ -783,6 +786,7 @@ export function initRabbitMirrorUI() {
         clearRabbitMirrorPrompt(generationSource === 'independent' ? 'independent-api' : 'mode-change');
         syncGenerationModeFields();
         refreshRabbitMirrorGenerationMode();
+        renderTokenMeter();
         toastr?.info?.(generationSource === 'independent' ? '已切换为独立 API。' : '已切换为跟随当前 API。');
         if (generationSource === 'independent') setWorldInfoPromptOpen(true);
     });

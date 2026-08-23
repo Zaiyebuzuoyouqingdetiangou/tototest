@@ -1,3 +1,10 @@
+## 1.4.30.23 TEST：Prompt 减重、交互维修与副 API Token 恢复
+
+- 只冷却真正连续重复的配色／视觉维度；没有重复时不注入整段历史说明。
+- 最终短检同时守住展现形式本体、真实可保持交互和 360px 数量群组完整性，避免规则越加越模板化。
+- 跟随主 API 维修不再克隆替换 live `<details>`；副 API 与历史恢复的克隆 DOM 会先重新武装 listener marker。
+- Token 面板按跟随／独立 API 保存各自最近一次真实规则开销，切换模式或主 API 清空注入后仍能显示副 API Token。
+
 ## 1.4.30.17 TEST：高级设置弹窗与独立 API 世界书选择
 
 - 高级设置使用真正的 body 级模态窗口：顶部返回、右上角 ×、安全区留白、内部独立滚动，手机不再顶到屏幕顶部或无法触摸滚动。
@@ -384,4 +391,3 @@
 - 基础交互使用 `radio/checkbox + label + CSS`，Live2D 未安装时仍完整可用。
 - 可选 Live2D 增强：如果 SillyTavern 官方 Live2D 扩展已启用、当前角色已绑定模型且 hit area 有 expression / motion 映射，RabbitMirror 会在触摸对应区域时播放匹配动画。RabbitMirror 不执行 Live2D hit area 的 message 映射，也不会因此自动生成回复。
 - 首版 Live2D 桥只处理单角色聊天；群聊为避免驱动错误角色会自动跳过 Live2D 动画，但 HTML/CSS 触摸反馈照常工作。
-

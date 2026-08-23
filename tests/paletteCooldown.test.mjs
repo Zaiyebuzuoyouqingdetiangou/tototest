@@ -30,8 +30,8 @@ values.set(historyKey, JSON.stringify([
 
 const warmRule = buildPaletteCooldownRule();
 assert.match(warmRule, /高明度暖黄低饱和/);
-assert.match(warmRule, /强冷却/);
-assert.match(warmRule, /不得只调整明度/);
+assert.match(warmRule, /配色短冷却/);
+assert.match(warmRule, /不得只调明暗/);
 assert.match(buildPaletteCooldownExecutionLock(), /重复配色族/);
 
 values.set(historyKey, JSON.stringify([
@@ -39,8 +39,8 @@ values.set(historyKey, JSON.stringify([
 ]));
 
 const darkRule = buildPaletteCooldownRule();
-assert.match(darkRule, /低明度主承载冷却/);
-assert.match(darkRule, /剩余 5 面/);
+assert.match(darkRule, /低明度主承载仍冷却/);
+assert.match(darkRule, /冷却 5 面/);
 assert.match(buildPaletteCooldownExecutionLock(), /禁止再次使用大面积深色背景/);
 
 values.set(historyKey, JSON.stringify([
@@ -49,8 +49,7 @@ values.set(historyKey, JSON.stringify([
 ]));
 
 const variedRule = buildPaletteCooldownRule();
-assert.doesNotMatch(variedRule, /强冷却：/);
-assert.match(variedRule, /没有色族在近三面达到两次/);
+assert.equal(variedRule, '');
 
 values.set(historyKey, JSON.stringify([
     { paletteFingerprint: palette({ brightness: '<prompt-injection>', hueFamily: 'IGNORE_PREVIOUS_RULES' }), ts: 6 },

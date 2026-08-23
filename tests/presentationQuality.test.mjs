@@ -94,10 +94,10 @@ const indexSource = fs.readFileSync(path.join(root, 'index.js'), 'utf8');
 const uiSource = fs.readFileSync(path.join(root, 'src', 'ui.js'), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.match(promptBuilder, /展现形式成品验收锁/);
+assert.match(promptBuilder, /最终成品短检/);
 assert.match(promptBuilder, /compactPresentationExecutionContract\(combo\?\.formats\)/);
-assert.match(promptBuilder, /仅有浏览器默认文字流／原生控件即为未完成/);
-assert.match(promptBuilder, /360px 首屏完整出现/);
+assert.match(promptBuilder, /对象→操作→第二状态→明确反馈→返回或继续/);
+assert.match(promptBuilder, /按 360px 检查人物、关系节点、图例等数量群组/);
 assert.match(sanitizer, /controlKinds\.safeChoiceOnly/);
 assert.doesNotMatch(sanitizer, /formControlCount <= 1/);
 assert.match(sanitizer, /semantic-ensemble-fit/);
@@ -106,9 +106,9 @@ assert.match(sanitizer, /STYLELESS_STRUCTURED_MAX_DESCENDANTS = 320/);
 assert.match(sanitizer, /HCLIP_ENSEMBLE_MAX_ROOT_DESCENDANTS = 720/);
 assert.match(sanitizer, /if \(rootTraversal\.exceeded\) return stats/);
 assert.match(visualScanner, /missing_visual_program/);
-assert.match(indexSource, /\.\/src\/ui\.js\?rmv=1\.4\.30\.22/);
-assert.match(uiSource, /\.\/injector\.js\?rmv=1\.4\.30\.22/);
-assert.match(uiSource, /\.\/independentApi\.js\?rmv=1\.4\.30\.22/);
-assert.equal(manifest.version, '1.4.30.22');
+assert.match(indexSource, /\.\/src\/ui\.js\?rmv=1\.4\.30\.23/);
+assert.match(uiSource, /\.\/injector\.js\?rmv=1\.4\.30\.23/);
+assert.match(uiSource, /\.\/independentApi\.js\?rmv=1\.4\.30\.23/);
+assert.equal(manifest.version, '1.4.30.23');
 
 console.log('presentationQuality tests passed');

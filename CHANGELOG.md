@@ -1,3 +1,11 @@
+# RabbitMirror 1.4.30.23 TEST
+
+- Prompt 减重：配色与六维视觉家族仅在实际连续重复时注入短冷却；最终成品锁压缩为“形式、交互、360px 手机”三项短检，并把完整可保持交互放回近输出位置。
+- 美化基调回归正式版：媒介本体决定构图、材质与色彩，不再把黑／深灰系统面板、蓝色科技 UI、浅暖纸面或通用圆角卡片当作默认高级感。
+- 跟随主 API 的手动维修保留 live DOM，只保存 detached rollback clone；克隆、反序列化与恢复前清除失真的 listener marker，再由既有安全交互库重绑。
+- 独立 API Token 记录按 follow / independent 分开保留；主 API 的“0 Token／未注入”状态不再覆盖最近一次副 API 规则 Token。
+- 不放宽不受信 HTML 净化、URL/CSS 安全、单请求与失败不自动重发边界；保留 1.4.30.22 的纯文字判定与移动端数量群组修复。
+
 # RabbitMirror 1.4.30.17 TEST
 
 - 修复手机高级设置弹窗：不再复用 `.rabbit-mirror-settings` 容器样式，改为 body 级独立模态层；顶部/底部尊重 safe-area，卡片内部独立滚动并保留 iOS 惯性滚动。

@@ -1,10 +1,9 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.17';
 import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.17';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.30.17';
-import { VISUAL_FAMILY_COOLDOWN_RULES } from '../data/raw/visualFamilyCooldownRules.js?rmv=1.4.30.17';
 import { pickCombination } from './picker.js?rmv=1.4.30.17';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRecentVisualFamilyCooldown, getRepeatedVisualFamilyDimensions, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.17';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.4.30.21';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.4.30.17';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.4.30.23';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.17';
 import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.30.17';
 import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.30.17';
@@ -242,27 +241,15 @@ function interactionFamilyCooldownRule() {
 }
 
 function visualFamilyCooldownRule() {
-    const recent = getRecentVisualFamilyCooldown(3);
-    if (!recent.length) return '';
-
     const repeated = getRepeatedVisualFamilyDimensions(3, 2);
-    const recentLines = recent.map(item => {
-        const when = item.roundsAgo === 0 ? '上一面' : `前 ${item.roundsAgo + 1} 面`;
-        const decay = item.roundsAgo === 0 ? '最高' : item.roundsAgo === 1 ? '中' : '低';
-        return `  - ${when}：${describeVisualFamilyDimensions(item.family)}（短期冷却权重：${decay}）`;
-    }).join('\n');
-    const repeatLine = repeated.length
-        ? `  - 当前真正连续未变的维度：${repeated.map(item => `${item.label}「${item.value}」×${item.streak}`).join('；')}。这些维度优先脱离，不得只换主色或强调色来规避。`
-        : '  - 当前没有形成连续两面的单维度锁定；仍按最近视觉家族整体避让，不需要为了避重机械切换到另一种固定视觉底盘。';
+    if (!repeated.length) return '';
+    const repeatedText = repeated.map(item => `${item.label}「${item.value}」×${item.streak}`).join('；');
+    const changeCount = repeated.length >= 2 ? '至少改变其中两项' : '改变该项，并自然改变一项与本轮媒介有关的其他维度';
 
     return String.raw`
-${VISUAL_FAMILY_COOLDOWN_RULES}
-近期实际视觉家族【由插件扫描真实 HTML/CSS；越近权重越高】:
-${recentLines}
-${repeatLine}
-  - 连续两面相同的维度才进入强短期冷却；只冷却正在重复的维度，其他维度仍服从本轮展现形式，不构成永久禁用。
-  - 若同时有两个及以上维度连续重复，本轮至少改变其中两项；若只有一个维度重复，必须改变该项，并再改变至少一个其他视觉维度。
-  - 颜色只是视觉家族的一部分：仅更换主色相、强调色或局部色值，而主底盘／明暗／轮廓／阅读／信息单位／空间结构仍近似，不算新的整体视觉家族。`;
+视觉短冷却【仅处理连续重复项】:
+  - 连续重复：${repeatedText}。
+  - 本轮从展现形式与内容重新推导，并${changeCount}；只换颜色、标题、边框或图标不算改变。未重复的维度保持自由，不机械轮换固定模板。`;
 }
 
 function hardStartupReserve() {
@@ -390,7 +377,7 @@ function compactPresentationExecutionContract(items) {
     return items.slice(0, 3).map(item => {
         const id = asText(item?.id || '');
         const title = asText(item?.title || item?.id || '未命名');
-        const summary = truncate(item?.summary || item?.raw || '', 150);
+        const summary = truncate(item?.summary || item?.raw || '', 86);
         const identity = id && title !== id ? `${id} ${title}` : title;
         return summary ? `${identity}：${summary}` : identity;
     }).join('；');
@@ -398,12 +385,10 @@ function compactPresentationExecutionContract(items) {
 
 function presentationFinalAcceptanceLock(combo) {
     return String.raw`
-展现形式成品验收锁【只在脑内自检，不得输出验收说明】:
-  - 本轮具体形式契约：${compactPresentationExecutionContract(combo?.formats)}
-  - 首个主要内容块必须让人不看标题也能从轮廓、比例、空间关系、阅读路径、材质接缝或排版结构中认出上述形式；至少落实两项与该形式直接相关的可见结构证据，不能只保留浏览器默认文字流、原生单选框／复选框或普通纵向信息块。
-  - 输出必须包含真正作用于本轮可见节点的视觉程序：可使用局部 <style> 或足够完整的 inline style；只有未命中的选择器、空规则、默认控件与零散字体颜色不算完成。
-  - 按 360px 手机宽度检查同一幅人物阵列、关系节点、图例等本应同时看见的数量语义群组：数量必须与内容一致且每一项完整进入首屏构图边界；优先让整组等比适配，不得把最后一项裁掉或用无提示横向溢出掩盖。
-  - 若任一项不成立，先重构本轮 HTML/CSS 再输出；不得以解释文字、通用圆角卡片或中性信息面板替代。`;
+最终成品短检【只在脑内执行】:
+  - 形式：${compactPresentationExecutionContract(combo?.formats)}。首个主体须以至少两项可见的轮廓／比例／空间／阅读／材质／排版证据呈现形式本体，真实 CSS 必须命中可见节点；不能只剩默认文字流、原生控件或通用卡片。
+  - 交互：必须有一条可触摸且可保持的完整链「对象→操作→第二状态→明确反馈→返回或继续」；动画、hover 与仅变色不能代替交互。
+  - 手机：按 360px 检查人物、关系节点、图例等数量群组，整组完整适配且正文由内容撑高，不得裁掉最后一项。任一项失败先重构再输出。`;
 }
 
 function legacyPresentationEmbodimentRule() {
@@ -432,7 +417,7 @@ function legacyPresentationEmbodimentRule() {
 }
 
 function globalCompletionFloorRule(compact = false) {
-    const rule = '展现形式与媒介本体决定具体长相。成品须主次清楚，比例、空间、材质、信息组织、细节与配色均符合本轮媒介与内容；配色须有主次，不得平均竞争。不得为追求「高级感」固定套用某一种布局、材质、视觉效果或配色。';
+    const rule = '展现形式与媒介本体决定具体长相。成品须主次清楚，比例、空间、材质、信息组织、细节与配色均服务本轮内容；不得把黑／深灰系统面板、蓝色科技 UI、浅暖纸面或通用圆角卡片当作默认高级感模板。';
     return compact ? `全局视觉地板：${rule}` : `全局视觉地板【始终适用】：\n${rule}`;
 }
 
@@ -641,19 +626,19 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const activeBans = [
         interaction ? `交互避用「${interaction.label}」` : '',
         paletteCooldownLock,
-        repeatedVisualDimensions.length ? `近期连续视觉维度优先避让：${repeatedVisualDimensions.map(item => `${item.label}「${item.value}」×${item.streak}`).join('；')}；不得只换颜色掩盖相同底盘／明暗／轮廓／阅读／信息单位／空间结构` : '',
+        repeatedVisualDimensions.length ? `连续视觉项：${repeatedVisualDimensions.map(item => `${item.label}「${item.value}」×${item.streak}`).join('；')}；从媒介重做，不得只换色` : '',
         innerDetailsBlocked ? '兔子镜内部 details/summary 冷却' : '',
     ].filter(Boolean);
 
     return [
         '<兔子镜近输出短锁 data-source="independent-api-near-output">',
         `本轮锁定：${samplingModeLabel(combo, settings)}；主题：${themes}；展现形式：${formats}。`,
-        `形式契约：${formatContract}。至少落实两项可见结构证据；仅有浏览器默认文字流／原生控件即为未完成。同一幅人物阵列、关系节点、图例等本应同时看见的数量语义群组须在 360px 首屏完整出现，优先整组适配，不得裁掉最后一项。`,
+        `短检：${formatContract}。首个主体落实两项可见结构证据和真实 CSS；完成一条「对象→操作→可保持第二状态→反馈→返回或继续」交互。360px 下数量群组完整适配、正文不裁切。`,
         directiveText ? `点菜优先：${directiveText}` : '',
         activeBans.length ? `近因避让：${activeBans.join('；')}。` : '',
         visualPreferenceLock ? `最终视觉偏好裁决：${visualPreferenceLock}；近期避让只负责脱离重复维度，不得覆盖这条视觉偏好。` : '',
-        '可读性底线：关键正文与实际承载背景必须保持清晰对比；不得为了明暗冷却把正文、按钮或标签做成接近背景色的低对比文字。',
-        '执行：首个主要内容块必须是真实的本轮展现形式本体，主题进入内容／关系／细节；不得退化为通用卡片或信息面板，交互从媒介内部对象生长并产生可保持反馈。直接输出唯一完整 <toto>...</toto>，闭合 </toto> 后立即结束。',
+        '可读性：正文、按钮、标签与实际背景保持清晰对比；冷却不得损害可读性。',
+        '执行：形式本体和交互都从本轮媒介内部生长，不用黑色系统面板或通用卡片兜底。直接输出唯一完整 <toto>...</toto>，闭合后结束。',
         '</兔子镜近输出短锁>',
     ].filter(Boolean).join('\n');
 }

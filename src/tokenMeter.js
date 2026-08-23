@@ -1,4 +1,8 @@
 const TOKEN_METER_STORAGE_KEY = 'rabbit_mirror_theater:token_meter:v1';
+const TOKEN_METER_SOURCE_STORAGE_KEYS = Object.freeze({
+    follow: 'rabbit_mirror_theater:token_meter:follow:v1',
+    independent: 'rabbit_mirror_theater:token_meter:independent:v1',
+});
 export const TOKEN_METER_EVENT = 'rabbit-mirror-token-meter-update';
 
 function safeInteger(value) {
@@ -137,9 +141,9 @@ export function estimatePromptTokens(text) {
     });
 }
 
-function readStoredRecord() {
+function readStoredRecord(storageKey = TOKEN_METER_STORAGE_KEY) {
     try {
-        const raw = globalThis.localStorage?.getItem?.(TOKEN_METER_STORAGE_KEY);
+        const raw = globalThis.localStorage?.getItem?.(storageKey);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         return parsed && typeof parsed === 'object' ? parsed : null;
@@ -148,10 +152,23 @@ function readStoredRecord() {
     }
 }
 
+function sourceForRecord(record) {
+    if (record?.status === 'independent') return 'independent';
+    if (record?.status === 'injected') return 'follow';
+    return '';
+}
+
 function publishRecord(record) {
     globalThis.__rabbitMirrorLastTokenMeterRecord = record;
+    const source = sourceForRecord(record);
+    if (source) {
+        const records = globalThis.__rabbitMirrorLastTokenMeterRecordsBySource || {};
+        records[source] = record;
+        globalThis.__rabbitMirrorLastTokenMeterRecordsBySource = records;
+    }
     try {
         globalThis.localStorage?.setItem?.(TOKEN_METER_STORAGE_KEY, JSON.stringify(record));
+        if (source) globalThis.localStorage?.setItem?.(TOKEN_METER_SOURCE_STORAGE_KEYS[source], JSON.stringify(record));
     } catch {
         // The live in-memory record remains available when storage is blocked.
     }
@@ -171,6 +188,27 @@ export function getLastRabbitMirrorTokenRecord() {
     const stored = readStoredRecord();
     if (stored) globalThis.__rabbitMirrorLastTokenMeterRecord = stored;
     return stored;
+}
+
+// Main-generation interception intentionally publishes a zero-injection record while
+// independent mode is active. Keep the last real record for each generation source so
+// that this bookkeeping event cannot erase the independent API's Token measurement.
+export function getLastRabbitMirrorTokenRecordForSource(generationSource = '') {
+    const source = String(generationSource || '').toLowerCase() === 'independent' ? 'independent' : 'follow';
+    const bySource = globalThis.__rabbitMirrorLastTokenMeterRecordsBySource;
+    if (bySource?.[source] && typeof bySource[source] === 'object') return bySource[source];
+
+    const current = getLastRabbitMirrorTokenRecord();
+    if (sourceForRecord(current) === source) return current;
+
+    const stored = readStoredRecord(TOKEN_METER_SOURCE_STORAGE_KEYS[source]);
+    if (stored) {
+        const records = bySource && typeof bySource === 'object' ? bySource : {};
+        records[source] = stored;
+        globalThis.__rabbitMirrorLastTokenMeterRecordsBySource = records;
+        return stored;
+    }
+    return sourceForRecord(current) ? null : current;
 }
 
 export function recordRabbitMirrorInjection({
