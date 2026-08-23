@@ -10,9 +10,10 @@ import {
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
 } from './feedbackCat.js?rmv=1.4.30.17';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.17';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.22';
 import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.30.17';
 import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.30.17';
+import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.22';
 
 
 const RUNTIME_VERSION = '1.4.30.17';
@@ -11899,7 +11900,10 @@ const STYLELESS_STRUCTURED_TITLE_ATTR = 'data-rm-styleless-title';
 const STYLELESS_STRUCTURED_SUBTITLE_ATTR = 'data-rm-styleless-subtitle';
 const STYLELESS_STRUCTURED_SECTION_ATTR = 'data-rm-styleless-section';
 const STYLELESS_STRUCTURED_TEXT_ATTR = 'data-rm-styleless-text';
+const STYLELESS_STRUCTURED_CHOICE_ATTR = 'data-rm-styleless-choice';
+const STYLELESS_STRUCTURED_CHOICE_LABEL_ATTR = 'data-rm-styleless-choice-label';
 const STYLELESS_STRUCTURED_COUNT_ATTR = 'data-rabbit-mirror-styleless-structured-count';
+const STYLELESS_STRUCTURED_MAX_DESCENDANTS = 320;
 const MOBILE_LAYOUT_RESCUE_STYLE_ATTR = 'data-rabbit-mirror-mobile-layout-rescue';
 const MOBILE_LAYOUT_SCOPE_ATTR = 'data-rabbit-mirror-mobile-layout-scope';
 const MOBILE_LAYOUT_RESCUE_COUNT_ATTR = 'data-rabbit-mirror-mobile-layout-count';
@@ -13108,7 +13112,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
             const detail = target
                 ? `；目标=${target.target} 阶段=${target.stage} overflow-x ${target.before?.overflowX}→${target.after?.overflowX} overflow-y ${target.before?.overflowY}→${target.after?.overflowY} scrollWidth ${target.before?.scrollWidth}→${target.after?.scrollWidth} clientWidth ${target.before?.clientWidth}→${target.after?.clientWidth}`
                 : '';
-            return `横向裁切 horizontalClipCandidates=${hclip.candidates || 0} horizontalClipRepaired=${hclip.repaired || 0} horizontalClipSkippedDecorative=${hclip.skippedDecorative || 0} horizontalClipSkippedExistingScroller=${hclip.skippedExistingScroller || 0} horizontalClipSkippedUncertain=${hclip.skippedUncertain || 0}${detail}`;
+            return `横向裁切 horizontalClipCandidates=${hclip.candidates || 0} horizontalClipRepaired=${hclip.repaired || 0} scrollRepaired=${hclip.scrollRepaired || 0} semanticEnsembleCandidates=${hclip.semanticEnsembleCandidates || 0} semanticEnsembleFitted=${hclip.semanticEnsembleFitted || 0} horizontalClipSkippedDecorative=${hclip.skippedDecorative || 0} horizontalClipSkippedExistingScroller=${hclip.skippedExistingScroller || 0} horizontalClipSkippedUncertain=${hclip.skippedUncertain || 0}${detail}`;
         })(),
         `repairScope=${root.getAttribute?.(MOBILE_LAYOUT_SCOPE_ATTR) || '(无)'} mobilePatched=${root.getAttribute?.(MOBILE_LAYOUT_RESCUE_COUNT_ATTR) || '0'} viewportPatched=${root.getAttribute?.(VIEWPORT_LAYOUT_COUNT_ATTR) || '0'}`,
         '',
@@ -14991,11 +14995,15 @@ function maintenanceStyleRuleCountFromText(cssText) {
 
 function maintenanceStylelessAuthoredRuleCount(root) {
     let rendered = 0;
+    let renderedStateVisual = 0;
     for (const style of root?.querySelectorAll?.('style') || []) {
         if ([...(style.attributes || [])].some(attribute => /^data-rabbit-mirror-/i.test(attribute.name))) continue;
-        rendered += maintenanceStyleRuleCountFromText(style.textContent || '');
+        const cssText = String(style.textContent || '');
+        rendered += maintenanceStyleRuleCountFromText(cssText);
+        renderedStateVisual += countMeaningfulStateVisualRules(cssText);
     }
     let raw = 0;
+    let rawStateVisual = 0;
     try {
         const decodedRaw = decodeHtmlEntities(String(getRawAssistantMessageForRenderedRoot(root) || ''));
         const isolated = extractMaintenanceMirrorSourceBySummary(decodedRaw, root) || decodedRaw;
@@ -15003,8 +15011,16 @@ function maintenanceStylelessAuthoredRuleCount(root) {
             .map(match => String(match[1] || ''))
             .join('\n');
         raw = maintenanceStyleRuleCountFromText(css);
+        rawStateVisual = countMeaningfulStateVisualRules(css);
     } catch {}
-    return { rendered, raw, total: Math.max(rendered, raw) };
+    return {
+        rendered,
+        raw,
+        total: Math.max(rendered, raw),
+        renderedStateVisual,
+        rawStateVisual,
+        stateVisual: Math.max(renderedStateVisual, rawStateVisual),
+    };
 }
 
 function maintenanceStylelessComputedVisualMaturity(elements = []) {
@@ -15071,14 +15087,18 @@ function maintenanceStylelessStructuredInfo(root, full = null) {
         computedVisualSignalCount: 0,
         formControlCount: 0,
         meaningfulFormControlCount: 0,
+        choiceControlCount: 0,
+        nonChoiceFormControlCount: 0,
+        stateVisualRuleCount: 0,
     };
     if (!root?.querySelectorAll || root.hasAttribute?.(STYLELESS_STRUCTURED_RESCUE_ATTR)) return empty;
     const details = root.matches?.('details') ? root : root.querySelector?.('details');
     if (!details) return empty;
     const authored = maintenanceStylelessAuthoredRuleCount(root);
-    if (authored.total > 0) return { ...empty, authoredRuleCount: authored.total };
 
-    const elements = [...details.querySelectorAll('*')].filter(element => {
+    const boundedTree = collectBoundedElementDescendants(details, STYLELESS_STRUCTURED_MAX_DESCENDANTS);
+    if (boundedTree.exceeded) return empty;
+    const elements = boundedTree.elements.filter(element => {
         const tag = String(element.tagName || '').toLowerCase();
         if (!tag || ['summary', 'style', 'script', 'template', 'br'].includes(tag)) return false;
         return !maintenanceMobileLayoutIsInternal(element);
@@ -15099,8 +15119,12 @@ function maintenanceStylelessStructuredInfo(root, full = null) {
         return declarations >= 5 || /(?:background(?:-image)?\s*:[^;]*(?:url\(|gradient\()|mask(?:-image)?\s*:|clip-path\s*:|filter\s*:)/i.test(style);
     }).length;
     const maturity = maintenanceStylelessComputedVisualMaturity(elements);
-    const formControls = [...details.querySelectorAll('input,button,select,textarea')];
+    const formControls = elements.filter(control => control.matches?.('input,button,select,textarea'));
     const formControlCount = formControls.length;
+    const controlKinds = analyzeStylelessControlKinds(formControls.map(control => ({
+        tagName: String(control.tagName || '').toLowerCase(),
+        type: String(control.getAttribute?.('type') || control.type || '').toLowerCase(),
+    })));
     const meaningfulFormControlCount = formControls.filter(control => {
         if (control.matches?.('button,select,textarea')) return maintenanceMobileLayoutTextLength(control) >= 1 || !!control.getAttribute?.('aria-label');
         if (!control.id) return false;
@@ -15109,22 +15133,27 @@ function maintenanceStylelessStructuredInfo(root, full = null) {
         return maintenanceMobileLayoutTextLength(label) >= 2 || !!control.getAttribute?.('aria-label');
     }).length;
 
-    // This rescue is deliberately fail-closed. It only handles the narrow case where a
-    // structured mirror has essentially no visual program at all. External/theme CSS,
-    // a modest but coherent inline design, or a real form are author intent and must win.
+    const namedStructure = classed.length >= 5 && distinctClasses.size >= 5;
+    const bareChoiceNarrative = controlKinds.choiceCount >= 2
+        && controlKinds.safeChoiceOnly
+        && elementCount >= 8;
+
+    // 1.4.30.22: authored rule count alone is not evidence that the browser received an
+    // effective visual program. Empty/non-matching rules and a few type-only declarations
+    // used to suppress this rescue, while three native radios also failed the old <=1 gate.
+    // Continue to fail closed for text inputs, buttons, selects and textareas; only a bounded
+    // radio/checkbox narrative may enter the neutral typographic fallback.
     const candidate = textLength >= 140
         && elementCount >= 8
         && semanticElementCount >= 1
         && visualProgramCount === 0
-        && classed.length >= 5
-        && distinctClasses.size >= 5
+        && (namedStructure || bareChoiceNarrative)
         && inlineStyledCount <= 2
         && inlineDeclarationCount <= 9
         && richInlineCount === 0
         && maturity.inlineStructuralVisualCount === 0
         && maturity.computedVisualSignalCount === 0
-        && formControlCount <= 1
-        && meaningfulFormControlCount === 0;
+        && controlKinds.safeChoiceOnly;
     return {
         candidate,
         authoredRuleCount: authored.total,
@@ -15140,17 +15169,22 @@ function maintenanceStylelessStructuredInfo(root, full = null) {
         computedVisualSignalCount: maturity.computedVisualSignalCount,
         formControlCount,
         meaningfulFormControlCount,
+        choiceControlCount: controlKinds.choiceCount,
+        nonChoiceFormControlCount: controlKinds.nonChoiceCount,
+        stateVisualRuleCount: authored.stateVisual,
     };
 }
 
 function maintenanceStylelessStructuredCss() {
     return `
-[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_SHELL_ATTR}] { width:100% !important; max-width:760px !important; min-width:0 !important; margin:10px auto !important; padding:clamp(14px,4vw,24px) !important; box-sizing:border-box !important; border:1px solid rgba(127,127,127,.28) !important; border-radius:16px !important; background:rgba(127,127,127,.06) !important; overflow:visible !important; }
-[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_HEADER_ATTR}] { display:block !important; margin:0 0 14px !important; padding:0 0 10px !important; border-bottom:1px solid rgba(127,127,127,.24) !important; }
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_SHELL_ATTR}] { width:100% !important; max-width:760px !important; min-width:0 !important; margin:8px auto !important; padding:clamp(10px,3vw,18px) clamp(4px,2vw,12px) !important; box-sizing:border-box !important; border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; overflow:visible !important; line-height:1.72 !important; }
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_HEADER_ATTR}] { display:block !important; margin:0 0 14px !important; padding:0 0 9px !important; border:0 !important; border-bottom:1px solid color-mix(in srgb,currentColor 24%,transparent) !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; }
 [${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_TITLE_ATTR}] { display:block !important; margin:0 0 6px !important; font-size:clamp(1.08rem,4.8vw,1.45rem) !important; line-height:1.3 !important; font-weight:800 !important; letter-spacing:.02em !important; overflow-wrap:anywhere !important; }
 [${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_SUBTITLE_ATTR}] { display:block !important; margin:0 0 10px !important; font-size:.88em !important; line-height:1.55 !important; opacity:.76 !important; overflow-wrap:anywhere !important; }
-[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_SECTION_ATTR}] { display:block !important; width:100% !important; max-width:100% !important; min-width:0 !important; margin:12px 0 !important; padding:12px 14px !important; box-sizing:border-box !important; border:1px solid rgba(127,127,127,.2) !important; border-radius:12px !important; background:rgba(127,127,127,.045) !important; overflow:visible !important; }
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_SECTION_ATTR}] { display:block !important; width:100% !important; max-width:100% !important; min-width:0 !important; margin:13px 0 !important; padding:0 !important; box-sizing:border-box !important; border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; overflow:visible !important; }
 [${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_TEXT_ATTR}] { max-width:100% !important; min-width:0 !important; line-height:1.75 !important; overflow-wrap:anywhere !important; word-break:break-word !important; }
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_CHOICE_ATTR}] { inline-size:18px !important; block-size:18px !important; margin:2px 8px 2px 2px !important; vertical-align:middle !important; accent-color:currentColor !important; }
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_CHOICE_LABEL_ATTR}] { display:inline-flex !important; align-items:center !important; gap:7px !important; min-height:32px !important; max-width:100% !important; margin:2px 10px 2px 0 !important; overflow-wrap:anywhere !important; }
 `;
 }
 
@@ -15185,6 +15219,14 @@ function installMaintenanceStylelessStructuredRescue(root) {
         if (/(?:^|[-_\s])(?:box|panel|section|speech|confession|track|card|note)(?:$|[-_\s])/.test(signature)) mark(element, STYLELESS_STRUCTURED_SECTION_ATTR);
         if (/(?:^|[-_\s])(?:text|content|speech|confession|rhyme|desc|description|body)(?:$|[-_\s])/.test(signature)
             || element.matches?.('p,blockquote,li')) mark(element, STYLELESS_STRUCTURED_TEXT_ATTR);
+    }
+    for (const control of shell.querySelectorAll('input[type="radio"],input[type="checkbox"]')) {
+        mark(control, STYLELESS_STRUCTURED_CHOICE_ATTR);
+        let label = control.closest?.('label') || null;
+        if (!label && control.id) {
+            try { label = shell.querySelector(`label[for="${cssEscape(control.id)}"]`); } catch {}
+        }
+        if (label) mark(label, STYLELESS_STRUCTURED_CHOICE_LABEL_ATTR);
     }
     let style = root.querySelector(`style[${STYLELESS_STRUCTURED_STYLE_ATTR}]`);
     if (!style) {
@@ -15529,7 +15571,7 @@ function buildMaintenanceFindings(root, {
     if (stylelessStructured.candidate) {
         add({
             id: 'styleless-structured-mirror', stage: 'structure', mode: 'style',
-            label: '兔子镜正文结构完整，但原始与当前镜面都没有可用 CSS 规则；可用中性结构样式做本地降级救援',
+            label: '兔子镜正文结构完整，但当前可见节点没有形成有效视觉程序；可用无卡片的中性排版做本地降级救援',
             evidence: [
                 `authoredRules=${stylelessStructured.authoredRuleCount}`,
                 `text=${stylelessStructured.textLength}`,
@@ -15544,6 +15586,9 @@ function buildMaintenanceFindings(root, {
                 `computedVisualSignals=${stylelessStructured.computedVisualSignalCount}`,
                 `formControls=${stylelessStructured.formControlCount}`,
                 `meaningfulFormControls=${stylelessStructured.meaningfulFormControlCount}`,
+                `choiceControls=${stylelessStructured.choiceControlCount}`,
+                `nonChoiceControls=${stylelessStructured.nonChoiceFormControlCount}`,
+                `stateVisualRules=${stylelessStructured.stateVisualRuleCount}`,
             ],
             confidence: 0.99,
         });
@@ -19004,6 +19049,7 @@ function independentMobileSpatialClippingAncestor(host, root) {
 
 function independentMobileSpatialCanvasInfo(host, root) {
     if (!host?.querySelectorAll || maintenanceMobileLayoutIsInternal(host)) return null;
+    if (host.hasAttribute?.(HCLIP_ENSEMBLE_FIT_ATTR) || host.closest?.(`[${HCLIP_ENSEMBLE_FIT_ATTR}]`)) return null;
     const hostStyle = maintenanceMobileLayoutComputedStyle(host);
     const position = String(hostStyle?.position || '').toLowerCase();
     if (!['relative', 'absolute'].includes(position)) return null;
@@ -19850,10 +19896,13 @@ const HCLIP_SCOPE_ATTR = 'data-rm-hclip-scope';
 const HCLIP_SCROLLER_ATTR = 'data-rm-hclip-scroller';
 const HCLIP_KEEP_Y_ATTR = 'data-rm-hclip-keep-y';
 const HCLIP_REPORT_ATTR = 'data-rm-hclip-report';
+const HCLIP_ENSEMBLE_FIT_ATTR = 'data-rm-hclip-ensemble-fit';
+const HCLIP_ENSEMBLE_CLIP_ATTR = 'data-rm-hclip-ensemble-clip';
 const HCLIP_STYLE_ATTR = 'data-rabbit-mirror-horizontal-clip-rescue';
 // 所有 transient 产物共用这个前缀，便于无条件清理。
 const HCLIP_TRANSIENT_ATTRS = Object.freeze([
     HCLIP_SCOPE_ATTR, HCLIP_SCROLLER_ATTR, HCLIP_KEEP_Y_ATTR, HCLIP_REPORT_ATTR,
+    HCLIP_ENSEMBLE_FIT_ATTR, HCLIP_ENSEMBLE_CLIP_ATTR,
 ]);
 
 const HCLIP_BREAKPOINT_PX = 640;
@@ -19861,6 +19910,11 @@ const HCLIP_BREAKPOINT_PX = 640;
 const HCLIP_MIN_OVERFLOW_PX = 8;
 // 候选容器扫描上限，避免超大镜面上做无差别布局读。
 const HCLIP_MAX_CONTAINERS = 140;
+// These budgets apply before selector/filter/layout work. Exceeding one simply keeps the
+// existing horizontal-scroll fallback and avoids doing quality repair on an attacker-sized DOM.
+const HCLIP_ENSEMBLE_MAX_ROOT_DESCENDANTS = 720;
+const HCLIP_ENSEMBLE_MAX_HOST_DESCENDANTS = 160;
+const HCLIP_ENSEMBLE_MAX_DIRECT_CHILDREN = 64;
 // 有意义正文的最低压缩字符数。
 const HCLIP_MEANINGFUL_TEXT = 12;
 // 明显小装饰的尺寸上限。
@@ -19975,6 +20029,131 @@ function hclipBoundaryContributors(container) {
     return found;
 }
 
+function hclipSemanticUnitSignature(element) {
+    const tag = String(element?.tagName || '').toLowerCase();
+    const classes = String(element?.getAttribute?.('class') || '')
+        .split(/\s+/)
+        .map(value => value.trim().toLowerCase())
+        .filter(value => value && !/^(?:active|selected|current|on|off|left|right|first|last)$/.test(value))
+        .slice(0, 2)
+        .sort()
+        .join('.');
+    return `${tag}|${classes}`;
+}
+
+function hclipSemanticEnsembleUnits(host) {
+    if (!host?.querySelectorAll) return [];
+    const hostTraversal = collectBoundedElementDescendants(host, HCLIP_ENSEMBLE_MAX_HOST_DESCENDANTS);
+    if (hostTraversal.exceeded) return [];
+    const tag = String(host.tagName || '').toUpperCase();
+    if (tag === 'SVG') {
+        return hostTraversal.elements.filter(element => String(element.tagName || '').toUpperCase() === 'TEXT').filter(element => {
+            const length = hclipCompactText(element);
+            return length >= 1 && length <= 40;
+        }).slice(0, 9);
+    }
+
+    if (Number(host.children?.length || 0) > HCLIP_ENSEMBLE_MAX_DIRECT_CHILDREN) return [];
+
+    const hostStyle = hclipSafeStyle(host);
+    const rowLike = /(?:flex|grid)/.test(String(hostStyle?.display || '').toLowerCase())
+        || ['relative', 'absolute'].includes(String(hostStyle?.position || '').toLowerCase());
+    const candidates = [...(host.children || [])].filter(element => {
+        if (maintenanceMobileLayoutIsInternal(element)) return false;
+        if (element.matches?.('style,script,template,input,button,select,textarea,summary,details')) return false;
+        if (element.querySelector?.('input,button,select,textarea,details,summary,[role="button"],[role="tab"]')) return false;
+        const length = hclipCompactText(element);
+        if (length < 1 || length > 42) return false;
+        const rect = hclipSafeRect(element);
+        return !!rect && Number(rect.width || 0) >= 8 && Number(rect.height || 0) >= 8;
+    });
+    if (candidates.length < 3) return [];
+
+    const groups = new Map();
+    for (const element of candidates) {
+        const key = hclipSemanticUnitSignature(element);
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(element);
+    }
+    const repeated = [...groups.values()].sort((a, b) => b.length - a.length)[0] || [];
+    if (repeated.length >= 3 && repeated.length <= 8) return repeated;
+    return rowLike && candidates.length <= 8 ? candidates : [];
+}
+
+function hclipSemanticClippingContainer(host, root, naturalWidth) {
+    let current = host;
+    for (let depth = 0; current && depth < 7; depth += 1, current = current.parentElement) {
+        const style = hclipSafeStyle(current);
+        const width = Number(current.clientWidth || hclipSafeRect(current)?.width || 0);
+        const independentSpatialScroller = current.hasAttribute?.(INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR);
+        if ((hclipIsClipping(style) || independentSpatialScroller) && width > 0 && naturalWidth > width + HCLIP_MIN_OVERFLOW_PX) return current;
+        if (current === root) break;
+    }
+    return null;
+}
+
+function inspectSemanticEnsembleFits(root) {
+    const stats = { narrow: false, candidates: 0, plans: [] };
+    if (!root?.querySelectorAll || !root?.isConnected) return stats;
+    const viewportWidth = hclipViewportWidth();
+    if (!viewportWidth || viewportWidth > HCLIP_BREAKPOINT_PX) return stats;
+    stats.narrow = true;
+    const rootRect = hclipSafeRect(root);
+    if (!rootRect || rootRect.width <= 0 || rootRect.height <= 0) return stats;
+
+    const rootTraversal = collectBoundedElementDescendants(root, HCLIP_ENSEMBLE_MAX_ROOT_DESCENDANTS);
+    if (rootTraversal.exceeded) return stats;
+    const hosts = rootTraversal.elements
+        .filter(element => element.matches?.('div,section,article,main,figure,ul,ol,svg'))
+        .slice(0, HCLIP_MAX_CONTAINERS);
+    for (const host of hosts) {
+        if (maintenanceMobileLayoutIsInternal(host) || host.hasAttribute?.(HCLIP_ENSEMBLE_FIT_ATTR)) continue;
+        if (host.querySelector?.('button,input,select,textarea,details,summary,[role="button"],[role="tab"]')) continue;
+        const units = hclipSemanticEnsembleUnits(host);
+        if (units.length < 3 || units.length > 8) continue;
+        const hostRect = hclipSafeRect(host);
+        if (!hostRect || hostRect.width <= 0 || hostRect.height <= 0) continue;
+        let farRight = Number(hostRect.right || 0);
+        if (Number(host.children?.length || 0) > HCLIP_ENSEMBLE_MAX_DIRECT_CHILDREN) continue;
+        for (const child of [...(host.children || [])]) {
+            const rect = hclipSafeRect(child);
+            if (rect) farRight = Math.max(farRight, Number(rect.right || 0));
+        }
+        const naturalWidth = Math.max(
+            Number(host.scrollWidth || 0),
+            Number(hostRect.width || 0),
+            farRight - Number(hostRect.left || 0),
+            String(host.tagName || '').toUpperCase() === 'SVG' ? Number(host.viewBox?.baseVal?.width || host.width?.baseVal?.value || 0) : 0,
+        );
+        const clip = hclipSemanticClippingContainer(host, root, naturalWidth);
+        if (!clip) continue;
+        const availableWidth = Math.min(
+            Number(root.clientWidth || rootRect.width || 0),
+            Number(clip.clientWidth || hclipSafeRect(clip)?.width || 0),
+        );
+        const totalTextLength = units.reduce((sum, element) => sum + hclipCompactText(element), 0);
+        const plan = semanticEnsembleScalePlan({
+            naturalWidth,
+            availableWidth,
+            unitCount: units.length,
+            totalTextLength,
+            hasComplexControls: false,
+        });
+        if (!plan.candidate) continue;
+        stats.candidates += 1;
+        stats.plans.push({ host, clip, ...plan });
+    }
+
+    // Prefer the outermost preserving canvas when nested wrappers describe the same group.
+    stats.plans = stats.plans.filter((plan, index, all) => !all.some((other, otherIndex) => (
+        otherIndex !== index
+        && other.host.contains?.(plan.host)
+        && other.unitCount >= plan.unitCount
+        && other.naturalWidth >= plan.naturalWidth
+    )));
+    return stats;
+}
+
 function hclipCollectClippingContainers(root) {
     // 语义预筛：只看可能承载正文／交互／grid-flex 内容的容器，且跳过插件自身 UI。
     // 这一步不做任何布局读。
@@ -20009,6 +20188,7 @@ function inspectHorizontalClip(root) {
 
     // 3) 语义候选 → 4) 几何溢出（只有溢出的少数才进入 getComputedStyle）
     for (const container of hclipCollectClippingContainers(root)) {
+        if (container.hasAttribute?.(HCLIP_ENSEMBLE_CLIP_ATTR)) continue;
         const overflow = hclipOverflowAmount(container);
         if (overflow < HCLIP_MIN_OVERFLOW_PX) continue;
         const style = hclipSafeStyle(container);
@@ -20059,12 +20239,19 @@ ${scope} [${HCLIP_SCROLLER_ATTR}][${HCLIP_KEEP_Y_ATTR}="hidden"] { overflow-y: h
 ${scope} [${HCLIP_SCROLLER_ATTR}][${HCLIP_KEEP_Y_ATTR}="clip"] { overflow-y: clip !important; }
 ${scope} [${HCLIP_SCROLLER_ATTR}][${HCLIP_KEEP_Y_ATTR}="scroll"] { overflow-y: scroll !important; }
 ${scope} [${HCLIP_SCROLLER_ATTR}][${HCLIP_KEEP_Y_ATTR}="auto"] { overflow-y: auto !important; }
+${scope} [${HCLIP_ENSEMBLE_FIT_ATTR}] { zoom:var(--rm-hclip-ensemble-scale) !important; transform-origin:top left !important; }
+@supports not (zoom:1) {
+${scope} [${HCLIP_ENSEMBLE_FIT_ATTR}] { transform:scale(var(--rm-hclip-ensemble-scale)) !important; transform-origin:top left !important; width:calc(100% / var(--rm-hclip-ensemble-scale)) !important; max-width:none !important; }
+}
 `;
 }
 
 export function clearRabbitMirrorHorizontalClipArtifacts(root) {
     if (!root?.querySelectorAll) return 0;
     let cleared = 0;
+    for (const element of root.querySelectorAll(`[${HCLIP_ENSEMBLE_FIT_ATTR}]`)) {
+        element.style?.removeProperty?.('--rm-hclip-ensemble-scale');
+    }
     for (const attr of HCLIP_TRANSIENT_ATTRS) {
         for (const element of [root, ...root.querySelectorAll(`[${attr}]`)]) {
             if (element?.hasAttribute?.(attr)) { element.removeAttribute(attr); cleared += 1; }
@@ -20079,18 +20266,28 @@ export function installMaintenanceHorizontalClipRescue(root) {
     // 幂等：先整体撤回上一轮的 transient 产物，再重新实测。跑两次不会继续叠加。
     clearRabbitMirrorHorizontalClipArtifacts(root);
 
+    const ensemble = inspectSemanticEnsembleFits(root);
+    for (const plan of ensemble.plans) {
+        plan.host.setAttribute(HCLIP_ENSEMBLE_FIT_ATTR, 'true');
+        plan.host.style?.setProperty?.('--rm-hclip-ensemble-scale', Number(plan.scale || 1).toFixed(4));
+        plan.clip.setAttribute(HCLIP_ENSEMBLE_CLIP_ATTR, 'true');
+    }
+
     const stats = inspectHorizontalClip(root);
     const report = {
         viewportWidth: stats.viewportWidth,
-        narrow: stats.narrow,
+        narrow: stats.narrow || ensemble.narrow,
         candidates: stats.candidates,
         repaired: 0,
+        scrollRepaired: 0,
+        semanticEnsembleCandidates: ensemble.candidates,
+        semanticEnsembleFitted: ensemble.plans.length,
         skippedDecorative: stats.skippedDecorative,
         skippedExistingScroller: stats.skippedExistingScroller,
         skippedUncertain: stats.skippedUncertain,
         targets: [],
     };
-    if (!stats.plans.length) {
+    if (!stats.plans.length && !ensemble.plans.length) {
         if (stats.narrow && (stats.candidates || stats.skippedDecorative || stats.skippedExistingScroller || stats.skippedUncertain)) {
             root.setAttribute(HCLIP_REPORT_ATTR, JSON.stringify(report));
         }
@@ -20103,6 +20300,23 @@ export function installMaintenanceHorizontalClipRescue(root) {
     style.setAttribute(HCLIP_STYLE_ATTR, 'true');
     style.textContent = maintenanceHorizontalClipCss(scopeToken);
     root.appendChild(style);
+
+    for (const plan of ensemble.plans) {
+        report.repaired += 1;
+        report.targets.push({
+            stage: 'semantic-ensemble-fit',
+            target: hclipElementPath(plan.host),
+            before: {
+                naturalWidth: plan.naturalWidth,
+                availableWidth: plan.availableWidth,
+                unitCount: plan.unitCount,
+            },
+            after: {
+                scale: Number(plan.scale.toFixed(4)),
+                visibleAsGroup: true,
+            },
+        });
+    }
 
     for (const plan of stats.plans) {
         const before = {
@@ -20120,6 +20334,7 @@ export function installMaintenanceHorizontalClipRescue(root) {
         plan.container.setAttribute(HCLIP_SCROLLER_ATTR, 'true');
         plan.container.setAttribute(HCLIP_KEEP_Y_ATTR, keepY);
         report.repaired += 1;
+        report.scrollRepaired += 1;
         report.targets.push({
             stage: 'ancestor-scroll-x',
             target: hclipElementPath(plan.container),
@@ -20810,6 +21025,9 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
         ['missing-checked-control-class', installMissingCheckedSubjectClassRescue],
         ['webkit-3d-flip-compat', installWebKit3DFlipRescue],
         ['visual-scenery-mobile-overflow', installVisualSceneryMobileNarrativeOverflowRescue],
+        // 1.4.30.22: this path is now fail-closed to a bounded radio/checkbox narrative and
+        // applies typography/choice spacing only—no generic card shell and no state mutation.
+        ['styleless-structured-rescue', installMaintenanceStylelessStructuredRescue],
         // 1.3.102: 两类高置信排版修复进入自动安全层，但只在真实展开、可测布局下运行。
         // 不提升 text/mobile-layout/annotation/完整交互/源码恢复，避免自动改变可见内容或消息源。
         ['viewport-layout-rescue', installMaintenanceAutoSafeViewportLayoutRescue],

@@ -1,6 +1,6 @@
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import { MODULE_NAME, getSettings } from './settings.js?rmv=1.4.30.17';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.17';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.22';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,

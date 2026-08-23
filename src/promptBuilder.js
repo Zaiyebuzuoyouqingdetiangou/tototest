@@ -4,6 +4,7 @@ import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.
 import { VISUAL_FAMILY_COOLDOWN_RULES } from '../data/raw/visualFamilyCooldownRules.js?rmv=1.4.30.17';
 import { pickCombination } from './picker.js?rmv=1.4.30.17';
 import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRecentVisualFamilyCooldown, getRepeatedVisualFamilyDimensions, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.17';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.4.30.21';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.17';
 import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.30.17';
 import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.30.17';
@@ -161,9 +162,12 @@ function recentRiskCorrection() {
         lines.push('近期真实输出的内容承载骨架或阅读路径过于相似。本轮必须改变主视觉结构、空间组织与内容寄生方式，不得继续用多个相似信息块自上而下堆叠。');
     }
 
-    const hasWeakMedia = flags.some(flag => ['weak_media_body', 'weak_spatial_complexity'].includes(flag));
+    const hasWeakMedia = flags.some(flag => ['weak_media_body', 'weak_spatial_complexity', 'missing_visual_program'].includes(flag));
     if (hasWeakMedia) {
         lines.push('近期真实输出的媒介本体偏弱。本轮必须让 DOM/CSS 直接呈现可辨认的媒介轮廓、前中后景层级与视觉锚点，而不是把媒介名只写在标题里。');
+    }
+    if (flags.includes('missing_visual_program')) {
+        lines.push('近期真实输出出现浏览器默认文字流或原生控件裸露。本轮先完成作用于可见节点的布局、材质、排版与交互状态 CSS，再输出正文；不得用通用卡片补壳。');
     }
 
     const hasWeakInteraction = flags.some(flag => ['missing_interaction', 'fake_interaction', 'visual_promise_unfulfilled'].includes(flag));
@@ -379,6 +383,27 @@ function presentationEmbodimentRule() {
   - 可根据本轮展现形式本体的需要，使用 Flex/Grid、定位、SVG、渐变、阴影、滤镜、clip-path、mask、transform、transition 与 CSS 动画等方式，构成空间、材质与视觉质感。
   - 动画必须让该展现形式中的主体、空间、材质或关系发生变化；交互必须作用于该形式内部真实存在的对象或结构。
   - 文字的数量、密度和排版由展现形式决定；文字媒介可以以正文和版式作为主要视觉本体。`;
+}
+
+function compactPresentationExecutionContract(items) {
+    if (!Array.isArray(items) || !items.length) return '当前对话语境中的本轮展现形式';
+    return items.slice(0, 3).map(item => {
+        const id = asText(item?.id || '');
+        const title = asText(item?.title || item?.id || '未命名');
+        const summary = truncate(item?.summary || item?.raw || '', 150);
+        const identity = id && title !== id ? `${id} ${title}` : title;
+        return summary ? `${identity}：${summary}` : identity;
+    }).join('；');
+}
+
+function presentationFinalAcceptanceLock(combo) {
+    return String.raw`
+展现形式成品验收锁【只在脑内自检，不得输出验收说明】:
+  - 本轮具体形式契约：${compactPresentationExecutionContract(combo?.formats)}
+  - 首个主要内容块必须让人不看标题也能从轮廓、比例、空间关系、阅读路径、材质接缝或排版结构中认出上述形式；至少落实两项与该形式直接相关的可见结构证据，不能只保留浏览器默认文字流、原生单选框／复选框或普通纵向信息块。
+  - 输出必须包含真正作用于本轮可见节点的视觉程序：可使用局部 <style> 或足够完整的 inline style；只有未命中的选择器、空规则、默认控件与零散字体颜色不算完成。
+  - 按 360px 手机宽度检查同一幅人物阵列、关系节点、图例等本应同时看见的数量语义群组：数量必须与内容一致且每一项完整进入首屏构图边界；优先让整组等比适配，不得把最后一项裁掉或用无提示横向溢出掩盖。
+  - 若任一项不成立，先重构本轮 HTML/CSS 再输出；不得以解释文字、通用圆角卡片或中性信息面板替代。`;
 }
 
 function legacyPresentationEmbodimentRule() {
@@ -603,8 +628,10 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     const themes = mode === 'format_only' ? '当前助手正文' : compactLockItems(combo?.themes, 'theme');
     const formats = compactLockItems(combo?.formats, 'presentation');
+    const formatContract = compactPresentationExecutionContract(combo?.formats);
     const interaction = interactionFamilyCooldownSnapshot();
     const repeatedVisualDimensions = getRepeatedVisualFamilyDimensions(3, 2);
+    const paletteCooldownLock = buildPaletteCooldownExecutionLock();
     const innerDetailsBlocked = getRecentRiskFlags(5).includes('inner_details_used');
     const directiveText = settings?.userDirectivePriority && directive?.rawDirective
         ? truncateDirectiveText(directive.rawDirective, 240)
@@ -613,6 +640,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
 
     const activeBans = [
         interaction ? `交互避用「${interaction.label}」` : '',
+        paletteCooldownLock,
         repeatedVisualDimensions.length ? `近期连续视觉维度优先避让：${repeatedVisualDimensions.map(item => `${item.label}「${item.value}」×${item.streak}`).join('；')}；不得只换颜色掩盖相同底盘／明暗／轮廓／阅读／信息单位／空间结构` : '',
         innerDetailsBlocked ? '兔子镜内部 details/summary 冷却' : '',
     ].filter(Boolean);
@@ -620,6 +648,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     return [
         '<兔子镜近输出短锁 data-source="independent-api-near-output">',
         `本轮锁定：${samplingModeLabel(combo, settings)}；主题：${themes}；展现形式：${formats}。`,
+        `形式契约：${formatContract}。至少落实两项可见结构证据；仅有浏览器默认文字流／原生控件即为未完成。同一幅人物阵列、关系节点、图例等本应同时看见的数量语义群组须在 360px 首屏完整出现，优先整组适配，不得裁掉最后一项。`,
         directiveText ? `点菜优先：${directiveText}` : '',
         activeBans.length ? `近因避让：${activeBans.join('；')}。` : '',
         visualPreferenceLock ? `最终视觉偏好裁决：${visualPreferenceLock}；近期避让只负责脱离重复维度，不得覆盖这条视觉偏好。` : '',
@@ -663,6 +692,7 @@ ${selectedFormats}`);
     chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
     chunks.push(interactionFamilyCooldownRule());
     chunks.push(innerDetailsCooldownRule());
+    chunks.push(buildPaletteCooldownRule());
     chunks.push(visualFamilyCooldownRule());
     chunks.push(visualColorTruthRule());
     chunks.push(stateBarIsolationRule());
@@ -685,6 +715,7 @@ ${shortVisualAvoidance(combo, 3)}`);
     // When visual editing is enabled, keep the full user-editable layer near the final output
     // contract so later theme/cooldown rules cannot dilute it. The OFF path remains the legacy flow.
     if (settings?.visualPromptEditingEnabled) chunks.push(editableVisualPromptRule(settings));
+    if (String(generationType || 'normal') !== 'independent') chunks.push(presentationFinalAcceptanceLock(combo));
     chunks.push(htmlSafetyCore());
     const visualPreferenceLock = compactVisualPreferenceExecutionLock(settings);
     // Main/current API receives the visual preference lock here, next to the final output protocol.

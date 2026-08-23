@@ -6,6 +6,7 @@ import {
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
 } from './generationGuard.js?rmv=1.4.30.17';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.4.30.22';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -462,6 +463,7 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     const weakSpatialComplexity = detectWeakSpatialComplexity(html, plain);
     const interactionMissing = detectInteractionMissing(html);
     const fakeInteraction = detectFakeInteraction(html, plain);
+    const missingVisualProgram = detectMissingVisualProgram(html, plain);
     if (sameBlockStack) flags.push('same_block_stack');
     if (sameGridCard) flags.push('same_grid_card_risk');
     if (catalogPage) flags.push('catalog_page_risk');
@@ -473,6 +475,7 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     if (weakSpatialComplexity) flags.push('weak_spatial_complexity');
     if (interactionMissing) flags.push('missing_interaction');
     if (fakeInteraction) flags.push('fake_interaction');
+    if (missingVisualProgram) flags.push('missing_visual_program');
     if (detectVisualPromiseWithoutMechanism(html, plain)) flags.push('visual_promise_unfulfilled');
     flags.push(...inspectVisualSceneryMotion(html, spatialSignalCount));
     return [...new Set(flags)];
@@ -977,6 +980,7 @@ export function scanRabbitMirrorHtml(messageHtml, renderedToto = null) {
     if (riskFlags.includes('missing_interaction')) structural.push('缺少有效内部交互');
     if (riskFlags.includes('fake_interaction')) structural.push('伪交互/仅悬停装饰风险');
     if (riskFlags.includes('visual_promise_unfulfilled')) structural.push('视觉承诺未兑现风险');
+    if (riskFlags.includes('missing_visual_program')) structural.push('有效视觉程序缺失／浏览器默认样式风险');
     structural.push(...dom.summaryFlags);
 
     const mediaStrength = (/clip-path|mask|<svg\b|<path\b|position\s*:\s*absolute|transform\s*:|border-radius\s*:\s*50%|aspect-ratio|radial-gradient|conic-gradient/i.test(html) && tagCount >= 35)
