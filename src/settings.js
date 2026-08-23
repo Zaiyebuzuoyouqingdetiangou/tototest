@@ -204,7 +204,9 @@ export function getSettings() {
 }
 
 export function updateSettings(patch) {
-    Object.assign(getSettings(), patch);
+    const settings = getSettings();
+    Object.assign(settings, patch);
+    if (String(settings.independentConnectionProfileId || '').trim()) settings.independentApiKey = '';
     saveSettingsDebounced();
 }
 

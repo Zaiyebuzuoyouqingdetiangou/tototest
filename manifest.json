@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.30.18",
+  "js": "index.js?rmv=1.4.30.19",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.30.18",
+  "version": "1.4.30.19",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.30.18：修复 iPhone / iOS Safari 中高级设置弹窗被页面层裁切、菜单压成竖条及无法正常显示的问题；高级设置与独立 API 世界书选择改为浏览器 top-layer dialog，并单独补回手机横排按钮与主题色兼容。生成、Prompt、请求、世界书捕获、性能修复、维修逻辑与默认设置不改。"
+  "description": "兔子镜测试版 1.4.30.19：独立 API 增加出站隐私边界，不再自动携带其他扩展 Prompt、聊天 metadata 或未显式启用的 worldInfo；保留当前聊天、角色卡、Persona、作者注释及用户启用后本轮实际激活的世界书。独立生成响应增加 12 MiB 安全上限；Connection Manager 模式自动清理旧手动 API Key；新增连接配置下拉选择。塔罗图片规则与图源不改。"
 }
