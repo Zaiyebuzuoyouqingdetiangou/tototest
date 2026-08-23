@@ -11,6 +11,7 @@ import { initTouchTheaterBridge, destroyTouchTheaterBridge } from './src/touchTh
 import { initRabbitMirrorMobileModalHotfix, destroyRabbitMirrorMobileModalHotfix } from './src/mobileModalHotfix.js?rmv=1.4.30.19';
 import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.4.30.19';
 import { initRabbitMirrorIndependentProfileSelectorHotfix, destroyRabbitMirrorIndependentProfileSelectorHotfix } from './src/independentProfileSelectorHotfix.js?rmv=1.4.30.19';
+import { initRabbitMirrorRenderedVisualFeedbackHotfix, destroyRabbitMirrorRenderedVisualFeedbackHotfix } from './src/renderedVisualFeedbackHotfix.js?rmv=1.4.30.22';
 
 const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.30.17';
 
@@ -32,6 +33,7 @@ jQuery(async () => {
     });
     initOutputSanitizer();
     initVisualScanner();
+    initRabbitMirrorRenderedVisualFeedbackHotfix();
     initIndependentRabbitMirror();
     initTouchTheaterBridge();
     console.log(`[RabbitMirror] runtime ${RABBIT_MIRROR_RUNTIME_VERSION} loaded`);
@@ -43,6 +45,7 @@ export function onDisable() {
     clearRabbitMirrorPrompt();
     destroyRabbitMirrorUI();
     destroyOutputSanitizer();
+    destroyRabbitMirrorRenderedVisualFeedbackHotfix();
     destroyVisualScanner();
     destroyIndependentRabbitMirror();
     destroyTouchTheaterBridge();
@@ -56,6 +59,7 @@ export function onClean() {
     destroyRabbitMirrorIndependentProfileSelectorHotfix();
     destroyRabbitMirrorUI();
     destroyOutputSanitizer();
+    destroyRabbitMirrorRenderedVisualFeedbackHotfix();
     destroyVisualScanner();
     destroyIndependentRabbitMirror();
     destroyTouchTheaterBridge();

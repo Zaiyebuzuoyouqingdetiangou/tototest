@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.30.23-perf-a",
+  "js": "index.js?rmv=1.4.30.23",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.30.23-perf-a",
+  "version": "1.4.30.23",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.30.23 PERF-A：仅停用 rendered visual feedback 热路径，用于定位云酒馆进入变慢与生成结束后发送延迟；其余 1.4.30.23 保持不变。"
+  "description": "兔子镜测试版 1.4.30.23：视觉与配色冷却只在真实连续重复时注入短指令，最终验收压缩为形式、交互、手机三项短检；恢复跟随主 API 的 live DOM 维修和克隆节点监听重绑；副 API Token 记录按生成来源独立保留，不再被主 API 的 0 Token 状态覆盖。保留 1.4.30.22 的纯文字与移动端数量群组修复及既有安全边界。"
 }
