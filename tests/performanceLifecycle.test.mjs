@@ -29,6 +29,11 @@ const startupGuard = sanitizer.match(/function initializeMaintenanceAutoSafeStar
 assert.ok(startupGuard);
 assert.doesNotMatch(startupGuard, /captureMaintenanceAutoSafeBaseline\(\)/, 'startup guard must not rescan the full chat');
 assert.match(sanitizer, /captureStartupBaseline[\s\S]*maintenanceAutoSafeSignature\(root\)/);
-assert.equal(manifest.version, '1.4.30.24');
+
+const index = read('index.js');
+assert.match(index, /\.\/src\/ui\.js\?rmv=1\.4\.30\.25/, '1.4.30.25 must force a fresh UI module after the 1.4.30.24 UI change');
+assert.doesNotMatch(index, /\.\/src\/ui\.js\?rmv=1\.4\.30\.23/, 'stale 1.4.30.23 UI cache key must not survive');
+assert.equal(manifest.js, 'index.js?rmv=1.4.30.25');
+assert.equal(manifest.version, '1.4.30.25');
 
 console.log('performance lifecycle tests passed');

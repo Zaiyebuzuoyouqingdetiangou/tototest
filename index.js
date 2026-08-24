@@ -1,4 +1,4 @@
-import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=1.4.30.23';
+import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=1.4.30.25';
 import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=1.4.30.23';
 import { clearLastCombo } from './src/storage.js?rmv=1.4.30.17';
 import { initVisualScanner, destroyVisualScanner } from './src/visualScanner.js?rmv=1.4.30.22';

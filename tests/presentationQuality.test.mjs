@@ -106,9 +106,9 @@ assert.match(sanitizer, /STYLELESS_STRUCTURED_MAX_DESCENDANTS = 320/);
 assert.match(sanitizer, /HCLIP_ENSEMBLE_MAX_ROOT_DESCENDANTS = 720/);
 assert.match(sanitizer, /if \(rootTraversal\.exceeded\) return stats/);
 assert.match(visualScanner, /missing_visual_program/);
-assert.match(indexSource, /\.\/src\/ui\.js\?rmv=1\.4\.30\.23/);
+assert.match(indexSource, /\.\/src\/ui\.js\?rmv=1\.4\.30\.25/);
 assert.match(uiSource, /\.\/injector\.js\?rmv=1\.4\.30\.23/);
 assert.match(uiSource, /\.\/independentApi\.js\?rmv=1\.4\.30\.24/);
-assert.equal(manifest.version, '1.4.30.24');
+assert.equal(manifest.version, '1.4.30.25');
 
 console.log('presentationQuality tests passed');
