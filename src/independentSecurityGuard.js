@@ -8,8 +8,7 @@ const RABBIT_EXECUTION_LOCK_HEADER = '<兔子镜近输出短锁 data-source="ind
 const MAX_INDEPENDENT_RESPONSE_BYTES = 12 * 1024 * 1024;
 const SECURITY_LIMIT_HEADER = 'x-rabbit-mirror-response-limit';
 
-let originalFetch = null;
-let wrappedFetch = null;
+let transportFetch = null;
 let getSettingsRef = null;
 let updateSettingsRef = null;
 
@@ -145,39 +144,75 @@ function copyInitWithBody(init, bodyText) {
     return { ...(init || {}), body: bodyText };
 }
 
-async function boundedResponse(response, maxBytes = MAX_INDEPENDENT_RESPONSE_BYTES) {
+function responseChunkByteLength(value) {
+    if (typeof value === 'string') return new TextEncoder().encode(value).byteLength;
+    return Number(value?.byteLength ?? value?.length ?? 0) || 0;
+}
+
+function responseLimitError(maxBytes, observedBytes = 0) {
+    const error = new Error(`RabbitMirror 独立 API 响应超过安全上限（${Math.round(maxBytes / 1024 / 1024)} MiB），已停止读取。`);
+    error.name = 'RabbitMirrorResponseLimitError';
+    error.code = 'RABBIT_MIRROR_RESPONSE_TOO_LARGE';
+    error.limitBytes = maxBytes;
+    error.observedBytes = Number(observedBytes || 0);
+    return error;
+}
+
+function boundedStreamingBody(body, safeMax) {
+    const reader = body.getReader();
+    let total = 0;
+    let closed = false;
+    const release = () => {
+        if (closed) return;
+        closed = true;
+        try { reader.releaseLock?.(); } catch {}
+    };
+    return new ReadableStream({
+        async pull(controller) {
+            try {
+                const { value, done } = await reader.read();
+                if (done) {
+                    release();
+                    controller.close();
+                    return;
+                }
+                if (!value) return;
+                total += responseChunkByteLength(value);
+                if (total > safeMax) {
+                    const error = responseLimitError(safeMax, total);
+                    try { await reader.cancel(error); } catch {}
+                    release();
+                    controller.error(error);
+                    return;
+                }
+                controller.enqueue(value);
+            } catch (error) {
+                release();
+                controller.error(error);
+            }
+        },
+        async cancel(reason) {
+            try { await reader.cancel(reason); } finally { release(); }
+        },
+    });
+}
+
+async function boundedBufferedResponse(response, safeMax) {
+    const text = await response.text();
+    const bytes = new TextEncoder().encode(text);
+    if (bytes.byteLength > safeMax) return oversizedResponse(safeMax, bytes.byteLength);
+    return rebuiltResponse(response, bytes);
+}
+
+function boundedResponse(response, maxBytes = MAX_INDEPENDENT_RESPONSE_BYTES) {
     const safeMax = Math.max(1024, Number(maxBytes) || MAX_INDEPENDENT_RESPONSE_BYTES);
     const contentLength = Number(response?.headers?.get?.('content-length') || 0);
     if (Number.isFinite(contentLength) && contentLength > safeMax) {
-        try { await response?.body?.cancel?.(); } catch {}
+        try { void response?.body?.cancel?.(); } catch {}
         return oversizedResponse(safeMax, contentLength);
     }
-    if (!response?.body?.getReader) {
-        const text = await response.text();
-        const bytes = new TextEncoder().encode(text);
-        if (bytes.byteLength > safeMax) return oversizedResponse(safeMax, bytes.byteLength);
-        return rebuiltResponse(response, bytes);
-    }
-
-    const reader = response.body.getReader();
-    const chunks = [];
-    let total = 0;
-    try {
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            if (!value) continue;
-            total += value.byteLength || value.length || 0;
-            if (total > safeMax) {
-                try { await reader.cancel(); } catch {}
-                return oversizedResponse(safeMax, total);
-            }
-            chunks.push(value);
-        }
-    } finally {
-        try { reader.releaseLock?.(); } catch {}
-    }
-    return rebuiltResponse(response, new Blob(chunks));
+    if (!response?.body?.getReader || typeof ReadableStream !== 'function') return boundedBufferedResponse(response, safeMax);
+    return rebuiltResponse(response, boundedStreamingBody(response.body, safeMax));
 }
 
 function rebuiltResponse(response, body) {
@@ -223,28 +258,26 @@ export function initRabbitMirrorIndependentSecurityGuard({ getSettings, updateSe
     getSettingsRef = typeof getSettings === 'function' ? getSettings : null;
     updateSettingsRef = typeof updateSettings === 'function' ? updateSettings : null;
     clearDormantLegacyApiKey();
+    transportFetch = typeof globalThis.fetch === 'function' ? globalThis.fetch : null;
+    return !!transportFetch;
+}
 
-    if (typeof globalThis.fetch !== 'function') return false;
-    const previousFetch = globalThis.fetch;
-    originalFetch = previousFetch;
-    wrappedFetch = async function rabbitMirrorSecurityFetch(input, init) {
-        if (!isGenerateEndpoint(input)) return Reflect.apply(previousFetch, globalThis, [input, init]);
-        clearDormantLegacyApiKey();
-        const rawBody = requestBodyText(input, init);
-        const sanitized = sanitizeRabbitMirrorCompletionBody(rawBody);
-        if (!sanitized.rabbitMirror) return Reflect.apply(previousFetch, globalThis, [input, init]);
-
-        const response = await Reflect.apply(previousFetch, globalThis, [input, sanitized.changed ? copyInitWithBody(init, sanitized.bodyText) : init]);
-        return boundedResponse(response, MAX_INDEPENDENT_RESPONSE_BYTES);
-    };
-    globalThis.fetch = wrappedFetch;
-    return true;
+export async function fetchRabbitMirrorIndependentCompletion(input, init) {
+    if (!isGenerateEndpoint(input)) throw new TypeError('RabbitMirror 独立 API Guard 只允许 SillyTavern Chat Completion 生成端点。');
+    clearDormantLegacyApiKey();
+    const rawBody = requestBodyText(input, init);
+    const sanitized = sanitizeRabbitMirrorCompletionBody(rawBody);
+    if (!sanitized.rabbitMirror) {
+        throw new TypeError('RabbitMirror 独立 API 请求缺少完整的上下文边界证据，已在发送前拒绝。');
+    }
+    const fetchImpl = transportFetch || globalThis.fetch;
+    if (typeof fetchImpl !== 'function') throw new TypeError('RabbitMirror 独立 API 传输不可用。');
+    const response = await Reflect.apply(fetchImpl, globalThis, [input, sanitized.changed ? copyInitWithBody(init, sanitized.bodyText) : init]);
+    return boundedResponse(response, MAX_INDEPENDENT_RESPONSE_BYTES);
 }
 
 export function destroyRabbitMirrorIndependentSecurityGuard() {
-    if (wrappedFetch && globalThis.fetch === wrappedFetch && originalFetch) globalThis.fetch = originalFetch;
-    originalFetch = null;
-    wrappedFetch = null;
+    transportFetch = null;
     getSettingsRef = null;
     updateSettingsRef = null;
 }

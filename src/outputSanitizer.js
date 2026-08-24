@@ -21608,7 +21608,7 @@ function removeFeedbackCatsInChatDom() {
 
 
 const PALETTE_DEDUPE_CHECKED_ATTR = 'data-rabbit-mirror-palette-dedupe-checked';
-function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, autoSafeForceCurrent = false, historyRestoreLight = false } = {}) {
+function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, autoSafeForceCurrent = false, historyRestoreLight = false, captureStartupBaseline = false } = {}) {
     if (!isCurrentRuntime() || !scope?.querySelectorAll) return;
     const maintenanceEnabled = isMaintenanceRabbitEnabled();
     const feedbackEnabled = isFeedbackCatEnabled();
@@ -21617,6 +21617,10 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, a
 
     getRenderedRabbitMirrorInteractionRoots(scope).forEach(root => {
         if (!isInsideChatMessage(root)) return;
+        if (captureStartupBaseline) {
+            const signature = maintenanceAutoSafeSignature(root);
+            if (signature) maintenanceAutoSafeBaselineSignatures.add(signature);
+        }
         try {
             clearLegacyRabbitMirrorAutoFrameArtifacts(root);
         } catch (error) {
@@ -21676,6 +21680,7 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, a
             console.debug('[RabbitMirror] recipe button install recovered for one mirror:', error);
         }
     });
+    if (captureStartupBaseline) trimMaintenanceAutoSafeSet(maintenanceAutoSafeBaselineSignatures);
     if (feedbackEnabled) updateFeedbackCatButtonTitles();
 }
 
@@ -21683,7 +21688,10 @@ function installMaintenanceRabbitsInChatDom() {
     const chatRoot = getChatRoot();
     if (!chatRoot) return;
     pruneMaintenanceAutoSafeOpenBindings();
-    installMaintenanceRabbitsInScope(chatRoot, { allowGlobalRemoval: true });
+    installMaintenanceRabbitsInScope(chatRoot, {
+        allowGlobalRemoval: true,
+        captureStartupBaseline: isMaintenanceAutoSafeEnabled() && !maintenanceAutoSafeReady,
+    });
 }
 
 export function refreshMaintenanceRabbits() {
@@ -24056,7 +24064,6 @@ const maintenanceInstallTimers = new Set();
 const maintenanceAutoSafePendingRoots = new Map();
 const maintenanceAutoSafeBaselineSignatures = new Set();
 let maintenanceAutoSafeAttemptedRoots = new WeakMap();
-const maintenanceAutoSafeStartupCaptureTimers = new Set();
 const maintenanceAutoSafeCurrentMessageTimers = new Map();
 const maintenanceAutoSafeOpenBindings = new Map();
 let maintenanceAutoSafeReady = false;
@@ -24150,8 +24157,6 @@ function cancelMaintenanceAutoSafeTimers() {
     }
     maintenanceAutoSafePendingRoots.clear();
     cancelMaintenanceAutoSafeCurrentMessageTimers();
-    for (const timer of maintenanceAutoSafeStartupCaptureTimers) clearTimeout(timer);
-    maintenanceAutoSafeStartupCaptureTimers.clear();
     if (maintenanceAutoSafeStartupTimer) clearTimeout(maintenanceAutoSafeStartupTimer);
     maintenanceAutoSafeStartupTimer = 0;
 }
@@ -24164,18 +24169,10 @@ function initializeMaintenanceAutoSafeStartupGuard() {
     rabbitMirrorInteractionResetSnapshots.clear();
     maintenanceAutoSafeReady = false;
     if (!isMaintenanceAutoSafeEnabled()) return;
-    captureMaintenanceAutoSafeBaseline();
-    for (const delay of [220, 760]) {
-        const timer = setTimeout(() => {
-            maintenanceAutoSafeStartupCaptureTimers.delete(timer);
-            captureMaintenanceAutoSafeBaseline();
-        }, delay);
-        maintenanceAutoSafeStartupCaptureTimers.add(timer);
-    }
+    // The immediate full-chat tool installation already visits every rendered mirror.
+    // It records startup signatures during that same pass; this timer only ends the
+    // history-protection window and never launches another long-chat traversal.
     maintenanceAutoSafeStartupTimer = setTimeout(() => {
-        for (const timer of maintenanceAutoSafeStartupCaptureTimers) clearTimeout(timer);
-        maintenanceAutoSafeStartupCaptureTimers.clear();
-        captureMaintenanceAutoSafeBaseline();
         maintenanceAutoSafeReady = true;
         maintenanceAutoSafeStartupTimer = 0;
     }, 1100);

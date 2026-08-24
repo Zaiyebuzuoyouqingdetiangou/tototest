@@ -1,6 +1,7 @@
 import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.30.17';
+import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.30.24';
 import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.30.23';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.23';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.30.24';
 import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.30.22';
 import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.30.17';
 import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.17';
@@ -1248,7 +1249,7 @@ async function fetchIndependentUrl(url,options={}){
   }
   if(connectionRuntime && method==='POST' && /\/chat\/completions(?:\?|$)/i.test(String(url))){
    let remoteBody={}; try{ remoteBody=typeof options.body==='string'?JSON.parse(options.body):({...options.body}); }catch{}
-   return await fetch(ST_CUSTOM_GENERATE_ENDPOINT,{
+   return await fetchRabbitMirrorIndependentCompletion(ST_CUSTOM_GENERATE_ENDPOINT,{
     method:'POST',credentials:'same-origin',headers:requestHeaders,signal:options.signal,
     body:JSON.stringify({...remoteBody,...connectionPayload,stream:remoteBody.stream!==false}),
    });
@@ -1279,7 +1280,7 @@ async function fetchIndependentUrl(url,options={}){
     custom_exclude_body:'',
     stream:remoteBody.stream!==false,
    };
-   return await fetch(ST_CUSTOM_GENERATE_ENDPOINT,{
+   return await fetchRabbitMirrorIndependentCompletion(ST_CUSTOM_GENERATE_ENDPOINT,{
     method:'POST',
     credentials:'same-origin',
     headers:requestHeaders,

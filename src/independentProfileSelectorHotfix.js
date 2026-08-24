@@ -83,9 +83,10 @@ function syncModel(profile) {
     }
 }
 
-function renderProfileOptions() {
+function renderProfileOptions({ force = false } = {}) {
     const select = document.getElementById(SELECT_ID);
     if (!select) return;
+    if (!force && select.dataset.rabbitMirrorProfilesReady === 'true') return;
     const rows = profiles();
     const selected = selectedProfileId();
     const known = new Set(rows.map(item => String(item.id)));
@@ -98,6 +99,7 @@ function renderProfileOptions() {
         options.push(`<option value="${escapeHtml(id)}"${id === selected ? ' selected' : ''}>${escapeHtml(profileLabel(item))}</option>`);
     }
     select.innerHTML = options.join('');
+    select.dataset.rabbitMirrorProfilesReady = 'true';
     const current = rows.find(item => String(item.id) === selected) || null;
     updateStatus(current);
 }
@@ -116,17 +118,19 @@ function onProfileChange(event) {
 }
 
 function onRefreshClick() {
-    renderProfileOptions();
+    renderProfileOptions({ force: true });
 }
 
-function ensureProfileSelector() {
+function ensureProfileSelector({ forceRefresh = false } = {}) {
     if (typeof document === 'undefined') return false;
     const importButton = document.getElementById('rh_independent_import_current');
     const card = importButton?.parentElement?.parentElement;
     if (!importButton || !card) return false;
 
     let row = document.getElementById(ROW_ID);
+    let created = false;
     if (!row) {
+        created = true;
         row = document.createElement('div');
         row.id = ROW_ID;
         row.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;margin-top:8px;align-items:center;';
@@ -139,7 +143,7 @@ function ensureProfileSelector() {
         document.getElementById(SELECT_ID)?.addEventListener('change', onProfileChange);
         document.getElementById(REFRESH_ID)?.addEventListener('click', onRefreshClick);
     }
-    renderProfileOptions();
+    renderProfileOptions({ force: forceRefresh || created });
     syncReleaseWatermark();
     return true;
 }
@@ -149,11 +153,13 @@ function clearRetryTimers() {
     retryTimers = [];
 }
 
-function scheduleEnsures() {
-    clearRetryTimers();
-    for (const delay of [0, 180, 700, 1800]) {
-        retryTimers.push(setTimeout(() => ensureProfileSelector(), delay));
-    }
+function scheduleEnsure(delay = 0, { forceRefresh = false } = {}) {
+    const timer = setTimeout(() => {
+        retryTimers = retryTimers.filter(value => value !== timer);
+        ensureProfileSelector({ forceRefresh });
+    }, Math.max(0, Number(delay) || 0));
+    retryTimers.push(timer);
+    return timer;
 }
 
 export function initRabbitMirrorIndependentProfileSelectorHotfix({
@@ -167,12 +173,20 @@ export function initRabbitMirrorIndependentProfileSelectorHotfix({
     updateSettingsRef = typeof updateSettings === 'function' ? updateSettings : null;
     getProfilesRef = typeof getIndependentConnectionProfiles === 'function' ? getIndependentConnectionProfiles : null;
     refreshModeRef = typeof refreshRabbitMirrorGenerationMode === 'function' ? refreshRabbitMirrorGenerationMode : null;
-    scheduleEnsures();
     installWatermarkSync();
 
     documentClickHandler = event => {
-        if (!event?.target?.closest?.('#rh_independent_import_current')) return;
-        for (const delay of [300, 1200]) retryTimers.push(setTimeout(() => ensureProfileSelector(), delay));
+        const target = event?.target;
+        if (!target?.closest) return;
+        if (target.closest('#rh_independent_import_current')) {
+            scheduleEnsure(0);
+            scheduleEnsure(300, { forceRefresh: true });
+            scheduleEnsure(1200, { forceRefresh: true });
+            return;
+        }
+        if (target.closest('#rabbit_mirror_theater_settings .inline-drawer-toggle, #rh_generation_independent, #rh_independent_api_fields')) {
+            scheduleEnsure(0);
+        }
     };
     document.addEventListener('click', documentClickHandler, true);
 }

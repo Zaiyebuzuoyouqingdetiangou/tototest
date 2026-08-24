@@ -11,6 +11,7 @@ const {
     sanitizeIndependentContextContent,
     sanitizeRabbitMirrorCompletionBody,
     initRabbitMirrorIndependentSecurityGuard,
+    fetchRabbitMirrorIndependentCompletion,
     destroyRabbitMirrorIndependentSecurityGuard,
     rabbitMirrorIndependentSecurityLimits,
 } = await import(moduleUrl);
@@ -58,40 +59,98 @@ assert.equal(unrelated.changed, false);
 const originalFetch = globalThis.fetch;
 let capturedBody = '';
 globalThis.SillyTavern = { getContext: () => ({ authorNote: 'LIVE_NOTE' }) };
-globalThis.fetch = async (_input, init) => {
+const transport = async (_input, init) => {
     capturedBody = String(init?.body || '');
     return new Response('OK', { status: 200, headers: { 'content-type': 'text/plain' } });
 };
+globalThis.fetch = transport;
 let updated = null;
 initRabbitMirrorIndependentSecurityGuard({
     getSettings: () => ({ independentConnectionProfileId: 'profile', independentApiKey: 'legacy-secret' }),
     updateSettings: patch => { updated = patch; },
 });
 assert.deepEqual(updated, { independentApiKey: '' });
-const ok = await globalThis.fetch('/api/backends/chat-completions/generate', { method: 'POST', body: JSON.stringify(payload) });
+assert.equal(globalThis.fetch, transport, 'the guard must not wrap global fetch');
+const ok = await fetchRabbitMirrorIndependentCompletion('/api/backends/chat-completions/generate', { method: 'POST', body: JSON.stringify(payload) });
 assert.equal(await ok.text(), 'OK');
 assert.ok(capturedBody.includes('LIVE_NOTE'));
 assert.ok(!capturedBody.includes('PROMPT_SECRET'));
+
+// Ordinary SillyTavern main-API traffic reaches the real fetch directly, even when
+// its request body is large. Independent privacy work is now an explicit capability.
+let ordinaryCalls = 0;
+globalThis.fetch = async () => { ordinaryCalls += 1; return new Response('MAIN'); };
+const ordinaryBody = JSON.stringify({ messages: [{ role: 'user', content: 'x'.repeat(3 * 1024 * 1024) }] });
+const ordinary = await globalThis.fetch('/api/backends/chat-completions/generate', { method: 'POST', body: ordinaryBody });
+assert.equal(await ordinary.text(), 'MAIN');
+assert.equal(ordinaryCalls, 1);
+
+// A caller cannot use the dedicated transport as a generic proxy: missing evidence
+// fails closed before the captured network transport receives anything.
+await assert.rejects(
+    fetchRabbitMirrorIndependentCompletion('/api/backends/chat-completions/generate', {
+        method: 'POST',
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'ordinary' }] }),
+    }),
+    /缺少完整的上下文边界证据/,
+);
+await assert.rejects(
+    fetchRabbitMirrorIndependentCompletion('/api/other', { method: 'POST', body: JSON.stringify(payload) }),
+    /只允许 SillyTavern Chat Completion 生成端点/,
+);
+
 destroyRabbitMirrorIndependentSecurityGuard();
 
-// If another wrapper is installed after RabbitMirror, destroying RabbitMirror must not break
-// the already-captured inner wrapper. The guard closure keeps its own previous fetch reference.
-let stackedCaptured = '';
-globalThis.fetch = async (_input, init) => { stackedCaptured = String(init?.body || ''); return new Response('STACKED', { status: 200 }); };
+globalThis.fetch = async () => new Response('not read', {
+    status: 200,
+    headers: { 'content-length': String(rabbitMirrorIndependentSecurityLimits.maxResponseBytes + 1) },
+});
 initRabbitMirrorIndependentSecurityGuard({ getSettings: () => ({}), updateSettings: () => {} });
-const rabbitGuardFetch = globalThis.fetch;
-globalThis.fetch = (...args) => rabbitGuardFetch(...args);
-destroyRabbitMirrorIndependentSecurityGuard();
-const stackedOk = await globalThis.fetch('/api/backends/chat-completions/generate', { method: 'POST', body: JSON.stringify(payload) });
-assert.equal(await stackedOk.text(), 'STACKED');
-assert.ok(!stackedCaptured.includes('PROMPT_SECRET'));
-
-globalThis.fetch = async () => new Response('x'.repeat(rabbitMirrorIndependentSecurityLimits.maxResponseBytes + 1), { status: 200 });
-initRabbitMirrorIndependentSecurityGuard({ getSettings: () => ({}), updateSettings: () => {} });
-const tooLarge = await globalThis.fetch('/api/backends/chat-completions/generate', { method: 'POST', body: JSON.stringify(payload) });
+const tooLarge = await fetchRabbitMirrorIndependentCompletion('/api/backends/chat-completions/generate', { method: 'POST', body: JSON.stringify(payload) });
 assert.equal(tooLarge.status, 413);
 const err = await tooLarge.json();
 assert.equal(err.error.code, 'RABBIT_MIRROR_RESPONSE_TOO_LARGE');
+destroyRabbitMirrorIndependentSecurityGuard();
+
+// Streaming responses resolve at headers/first chunk instead of waiting for EOF.
+globalThis.fetch = async () => new Response(new ReadableStream({
+    start(controller) {
+        controller.enqueue(new TextEncoder().encode('chunk1'));
+        setTimeout(() => controller.enqueue(new TextEncoder().encode('chunk2')), 30);
+        setTimeout(() => { controller.enqueue(new TextEncoder().encode('chunk3')); controller.close(); }, 60);
+    },
+}), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+initRabbitMirrorIndependentSecurityGuard({ getSettings: () => ({}), updateSettings: () => {} });
+const streamStart = performance.now();
+const streamed = await fetchRabbitMirrorIndependentCompletion('/api/backends/chat-completions/generate', { method: 'POST', body: JSON.stringify(payload) });
+const streamResolvedMs = performance.now() - streamStart;
+const streamReader = streamed.body.getReader();
+const firstChunk = await streamReader.read();
+assert.ok(streamResolvedMs < 25, `streaming fetch should resolve before later chunks (${streamResolvedMs.toFixed(1)}ms)`);
+assert.equal(new TextDecoder().decode(firstChunk.value), 'chunk1');
+let streamText = 'chunk1';
+while (true) {
+    const chunk = await streamReader.read();
+    if (chunk.done) break;
+    streamText += new TextDecoder().decode(chunk.value);
+}
+assert.equal(streamText, 'chunk1chunk2chunk3');
+destroyRabbitMirrorIndependentSecurityGuard();
+
+// Unknown-length streams retain the 12 MiB limit: the body errors and cancels as
+// soon as the running byte count crosses the cap, without buffering earlier chunks.
+const half = Math.floor(rabbitMirrorIndependentSecurityLimits.maxResponseBytes / 2) + 1;
+let sourceCancelled = false;
+globalThis.fetch = async () => new Response(new ReadableStream({
+    pull(controller) {
+        controller.enqueue(new Uint8Array(half));
+    },
+    cancel() { sourceCancelled = true; },
+}), { status: 200 });
+initRabbitMirrorIndependentSecurityGuard({ getSettings: () => ({}), updateSettings: () => {} });
+const limitedStream = await fetchRabbitMirrorIndependentCompletion('/api/backends/chat-completions/generate', { method: 'POST', body: JSON.stringify(payload) });
+await assert.rejects(limitedStream.arrayBuffer(), error => error?.code === 'RABBIT_MIRROR_RESPONSE_TOO_LARGE');
+assert.equal(sourceCancelled, true);
 destroyRabbitMirrorIndependentSecurityGuard();
 
 globalThis.fetch = originalFetch;
