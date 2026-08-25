@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.6-ms1';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.6-ms1';
+import { getSettings } from './settings.js?rmv=1.4.7-ms1';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.7-ms1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -10,9 +10,9 @@ import {
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
 } from './feedbackCat.js?rmv=1.4.30.17';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.6-ms1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.6-ms1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.6-ms1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.7-ms1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.7-ms1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.7-ms1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.22';
 
 
@@ -21694,6 +21694,43 @@ function installMaintenanceRabbitsInChatDom() {
     });
 }
 
+function cancelStartupMaintenanceHistoryInstall() {
+    if (startupMaintenanceInstallTimer) clearTimeout(startupMaintenanceInstallTimer);
+    startupMaintenanceInstallTimer = 0;
+    startupMaintenanceInstallQueue = [];
+}
+
+function installMaintenanceRabbitsDeferredInChatDom() {
+    const chatRoot = getChatRoot();
+    if (!chatRoot) return;
+    cancelStartupMaintenanceHistoryInstall();
+    pruneMaintenanceAutoSafeOpenBindings();
+    const messageRoots = [...(chatRoot.querySelectorAll?.('.mes[mesid], [mesid].mes') || [])];
+    if (!messageRoots.length) return;
+    const split = Math.max(0, messageRoots.length - 6);
+    const immediate = messageRoots.slice(split);
+    startupMaintenanceInstallQueue = messageRoots.slice(0, split).reverse();
+    const install = root => {
+        if (!root?.isConnected) return;
+        installMaintenanceRabbitsInScope(root, {
+            historyRestoreLight: true,
+            captureStartupBaseline: isMaintenanceAutoSafeEnabled(),
+        });
+    };
+    // The newest few messages receive tools immediately. Older mirrors are restored in tiny
+    // chunks so a long chat cannot block Safari's first usable frame.
+    for (const root of immediate) install(root);
+    const pump = () => {
+        startupMaintenanceInstallTimer = 0;
+        if (!isCurrentRuntime()) { startupMaintenanceInstallQueue = []; return; }
+        const chunk = startupMaintenanceInstallQueue.splice(0, 3);
+        for (const root of chunk) install(root);
+        if (!startupMaintenanceInstallQueue.length) return;
+        startupMaintenanceInstallTimer = setTimeout(pump, 40);
+    };
+    if (startupMaintenanceInstallQueue.length) startupMaintenanceInstallTimer = setTimeout(pump, 120);
+}
+
 export function refreshMaintenanceRabbits() {
     installMaintenanceRabbitsInChatDom();
 }
@@ -24060,6 +24097,8 @@ let toolEntryDelegatedClickHandler = null;
 let toolEntryDelegatedPointerHandler = null;
 
 const maintenanceInstallTimers = new Set();
+let startupMaintenanceInstallTimer = 0;
+let startupMaintenanceInstallQueue = [];
 
 const maintenanceAutoSafePendingRoots = new Map();
 const maintenanceAutoSafeBaselineSignatures = new Set();
@@ -24169,9 +24208,8 @@ function initializeMaintenanceAutoSafeStartupGuard() {
     rabbitMirrorInteractionResetSnapshots.clear();
     maintenanceAutoSafeReady = false;
     if (!isMaintenanceAutoSafeEnabled()) return;
-    // The immediate full-chat tool installation already visits every rendered mirror.
-    // It records startup signatures during that same pass; this timer only ends the
-    // history-protection window and never launches another long-chat traversal.
+    // Existing mirrors are baseline-tagged by the deferred startup installer in small chunks.
+    // This timer only ends the initial protection window and never launches a full-chat traversal.
     maintenanceAutoSafeStartupTimer = setTimeout(() => {
         maintenanceAutoSafeReady = true;
         maintenanceAutoSafeStartupTimer = 0;
@@ -24338,7 +24376,7 @@ function scheduleMaintenanceRabbitInstall() {
     if (maintenanceInstallTimers.size) return;
     const timer = setTimeout(() => {
         maintenanceInstallTimers.delete(timer);
-        installMaintenanceRabbitsInChatDom();
+        installMaintenanceRabbitsDeferredInChatDom();
     }, 180);
     maintenanceInstallTimers.add(timer);
 }
@@ -24498,10 +24536,10 @@ export async function initOutputSanitizer() {
     installChatRootReadyObserver();
     installToolEntryDelegation();
     installChatMutationObserver();
-    // 1.3.57: the initial full-chat tool pass is already executed immediately below.
-    // Scheduling the same pass again 180ms later only re-scanned every historical mirror
-    // during startup; later DOM changes and host events still use the coalesced scheduler.
-    installMaintenanceRabbitsInChatDom();
+    // Long-chat startup must not synchronously traverse every historical mirror. Install
+    // tools on the newest few messages first, then yield between small historical chunks.
+    // Later DOM changes and host events still use the same scoped/coalesced installers.
+    installMaintenanceRabbitsDeferredInChatDom();
     if (recipeRecordedHandler) globalThis.removeEventListener?.(RECIPE_RECORDED_EVENT, recipeRecordedHandler);
     recipeRecordedHandler = event => {
         const index = Number(event?.detail?.messageIndex);
@@ -24586,6 +24624,7 @@ export function destroyOutputSanitizer() {
     pendingObservedMessageRoots.clear();
     for (const timer of maintenanceInstallTimers) clearTimeout(timer);
     maintenanceInstallTimers.clear();
+    cancelStartupMaintenanceHistoryInstall();
     cancelMaintenanceAutoSafeTimers();
     removeMaintenanceAutoSafeOpenBindings();
     maintenanceAutoSafeBaselineSignatures.clear();

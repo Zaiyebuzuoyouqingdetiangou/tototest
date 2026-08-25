@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.6-test-multiface-step1",
+  "js": "index.js?rmv=1.4.7-test-multiface-step1",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.6-test-multiface-step1",
+  "version": "1.4.7-test-multiface-step1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版｜单请求多面 第一阶段（基础层）+ 独立 API 上下文控制：保留多面批次基础；新增自定义最近读取层数、历史兔子镜过滤，并继续保留 52,000/76,000 字符预算兜底。提取层未改造，多面尚不可端到端使用。"
+  "description": "兔子镜测试版｜单请求多面 第一阶段（基础层）+ 独立 API 正文上下文/启动性能修复：上下文不再读取模型推理字段，保留自定义层数与历史兔子镜过滤；长聊天启动分批恢复历史镜面。多面仍停留第一阶段，尚不可端到端使用。"
 }

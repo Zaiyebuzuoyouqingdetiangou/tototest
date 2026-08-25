@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const COHORT = '1.4.6-ms1';
+const COHORT = '1.4.7-ms1';
 
 // 本阶段 cache cohort：源码内容变化的模块（settings/storage/picker）
 // 加上所有直接或间接 import 它们的父模块。

@@ -1,12 +1,12 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.6-ms1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.7-ms1';
 import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.30.24';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.6-ms1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.6-ms1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.6-ms1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.6-ms1';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.7-ms1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.7-ms1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.7-ms1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.7-ms1';
 import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.17';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.6-ms1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.6-ms1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.7-ms1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.7-ms1';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
 const RUNTIME_VERSION = '1.4.30.17';
@@ -1115,10 +1115,11 @@ function contextBundle(ctx,targetIndex,globalWorldInfoSnapshot=null,preparedGlob
  const globalView=preparedGlobalWorldInfoView || globalWorldInfoContextView(globalWorldInfoSnapshot);
  const capturedWorldInfoBlock=String(globalView?.block||'');
  const fixedSuffix=`\n\n【当前角色卡】\n${charJson}\n\n【当前 Persona】\n${personaJson}\n\n【当前世界书、作者注释与实际扩展提示】\n${worldJson}${capturedWorldInfoBlock}`;
- const transcriptHeader='【当前聊天逐轮正文与可用推理】\n';
- // History is collected newest-first, but the user can now cap how many real chat layers
- // the independent API may read. Historical RabbitMirror <toto> blocks are removed before
- // counting the row against either the layer limit or the existing character budgets.
+ const transcriptHeader='【当前聊天逐轮正文】\n';
+ // History is collected newest-first, but the user can cap how many real chat layers
+ // the independent API may read. Only the visible message body (m.mes) is eligible:
+ // SillyTavern reasoning / reasoning_content / thoughts are deliberately excluded from
+ // independent context. Historical RabbitMirror <toto> blocks are removed before counting.
  const configuredLayers=Number(getSettings()?.independentContextMaxLayers);
  const maxLayers=Math.max(1,Math.min(200,Number.isFinite(configuredLayers)?Math.round(configuredLayers):20));
  // When activated World Info reuse is enabled, reserve its single capped block plus the other fixed sections first.
@@ -1128,17 +1129,15 @@ function contextBundle(ctx,targetIndex,globalWorldInfoSnapshot=null,preparedGlob
   : CONTEXT_TRANSCRIPT_BUDGET;
  const rows=[]; let used=0; let includedLayers=0; let filteredRabbitMirrorChars=0;
  for(let real=Math.min(targetIndex,chat.length-1);real>=0 && includedLayers<maxLayers;real--){
-  const m=chat[real]; const role=m?.is_user?'USER':'ASSISTANT'; const reasoning=reasoningOf(m);
+  const m=chat[real]; const role=m?.is_user?'USER':'ASSISTANT';
   const filtered=stripHistoricalRabbitMirrorBlocks(m?.mes||'');
   const body=filtered.text;
-  if(!body && !reasoning){
-   filteredRabbitMirrorChars+=filtered.filteredRabbitMirrorChars;
-   continue;
-  }
-  let row=`[${real} ${role}]\n${body}${reasoning?`\n[可用推理内容]\n${reasoning}`:''}`;
+  filteredRabbitMirrorChars+=filtered.filteredRabbitMirrorChars;
+  if(!body) continue;
+  let row=`[${real} ${role}]\n${body}`;
   if(row.length>16000) row=`${row.slice(0,8000)}\n…[中段裁剪]…\n${row.slice(-8000)}`;
   if(rows.length && used+row.length>transcriptBudget) break;
-  rows.unshift(row); used+=row.length; includedLayers+=1; filteredRabbitMirrorChars+=filtered.filteredRabbitMirrorChars;
+  rows.unshift(row); used+=row.length; includedLayers+=1;
  }
  const transcript=rows.join('\n\n');
  const bundle=`${transcriptHeader}${transcript}${fixedSuffix}`;
@@ -1870,7 +1869,7 @@ ${independentSystemRules}`;
  const globalWorldInfoView=globalWorldInfoContextView(globalWorldInfoSnapshot);
  const contextResult=contextBundle(ctx,index,globalWorldInfoSnapshot,globalWorldInfoView);
  const contextText=contextResult.text;
- const independentUserLead='请根据以下当前聊天、可用推理、角色卡、Persona、世界书与作者注释生成兔子镜：';
+ const independentUserLead='请根据以下当前聊天正文、角色卡、Persona、世界书与作者注释生成兔子镜：';
  const independentUserTail='现在依据近输出短锁完成唯一成品。不要解释构思过程，不要复述规则，直接输出完整 <toto>...</toto>。';
  const userPrompt=`${independentUserLead}
 
@@ -5891,6 +5890,54 @@ function syncAll(){
   reconcileVisibleMirrorDuplicates();
  }))));
 }
+const STARTUP_SYNC_IMMEDIATE_MESSAGES=6;
+const STARTUP_SYNC_CHUNK_MESSAGES=4;
+function syncMessageBatch(indices=[],historyRestoreLight=true){
+ const batch=new Set((Array.isArray(indices)?indices:[]).filter(index=>Number.isInteger(index)&&index>=0));
+ if(!batch.size) return;
+ const run=()=>withOwnerLockStoreBatch(()=>withRestorableHtmlCacheBatch(()=>withExternalHostSyncIndex(()=>{
+  syncMessages(batch);
+  reconcileVisibleMirrorDuplicates(batch);
+ })));
+ return historyRestoreLight ? withHistoricalRestoreLightPass(run) : run();
+}
+function scheduleStartupPersistenceReconciliation(expectedSequence=runtimeConfigSequence){
+ const timer=setTimeout(()=>{
+  passiveRecoveryTimers.delete(timer);
+  if(expectedSequence!==runtimeConfigSequence || !currentRuntime()) return;
+  // Preserve the old localStore <-> chatMetadata migration semantics, but only after the
+  // visible/history DOM restoration has yielded. This pass touches data, not message DOM.
+  const ctx=getContext(); const store=readStore();
+  const result=synchronizeIndependentChatPersistence(ctx,store);
+  if(result.storeChanged) writeStore(store);
+ },120);
+ passiveRecoveryTimers.add(timer);
+}
+function scheduleStartupHistorySync(expectedSequence=runtimeConfigSequence){
+ const ctx=getContext();
+ const indices=assistantMessages(ctx).map(item=>Number(item.i)).filter(index=>Number.isInteger(index)&&index>=0);
+ pruneForeignChatExternalHosts();
+ const split=Math.max(0,indices.length-STARTUP_SYNC_IMMEDIATE_MESSAGES);
+ const historical=indices.slice(0,split).reverse();
+ const immediate=indices.slice(split);
+ // Make the current/recent conversation usable first. Historical owners are restored in
+ // small yielded chunks so long chats cannot monopolize Safari's main thread on entry.
+ syncMessageBatch(immediate,true);
+ removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);
+ if(!historical.length){ scheduleStartupPersistenceReconciliation(expectedSequence); return; }
+ const pump=()=>{
+  if(expectedSequence!==runtimeConfigSequence || !currentRuntime()) return;
+  const chunk=historical.splice(0,STARTUP_SYNC_CHUNK_MESSAGES);
+  syncMessageBatch(chunk,true);
+  removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);
+  if(!observer && allExternalHosts().some(node=>node.dataset.rmSource==='independent')) installObserverIfNeeded({skipHistoricalProbe:true});
+  if(!historical.length){ scheduleStartupPersistenceReconciliation(expectedSequence); return; }
+  const timer=setTimeout(()=>{ passiveRecoveryTimers.delete(timer); pump(); },36);
+  passiveRecoveryTimers.add(timer);
+ };
+ const timer=setTimeout(()=>{ passiveRecoveryTimers.delete(timer); pump(); },120);
+ passiveRecoveryTimers.add(timer);
+}
 let queuedIndices=new Set();
 let syncTimer=null;
 function queueMessageSync(indices=[]){
@@ -6054,10 +6101,11 @@ function schedulePassiveRecoveryAfterSourceSwitch(expectedSequence=runtimeConfig
   passiveRecoveryTimers.add(timer);
  }
 }
-function installObserverIfNeeded(){
+function installObserverIfNeeded({skipHistoricalProbe=false}={}){
  disconnectObserver();
  const mode=runtimeMode();
- const preserveIndependentInInline=mode==='inline' && (allExternalHosts().some(node=>node.dataset.rmSource==='independent') || currentChatHasRestorableIndependentRecord());
+ const liveIndependent=allExternalHosts().some(node=>node.dataset.rmSource==='independent');
+ const preserveIndependentInInline=mode==='inline' && (liveIndependent || (!skipHistoricalProbe && currentChatHasRestorableIndependentRecord()));
  if(mode==='off' || (mode==='inline' && !preserveIndependentInInline) || typeof MutationObserver==='undefined') return;
  const chat=document.querySelector('#chat'); if(!chat) return;
  observer=new MutationObserver(records=>{
@@ -6279,11 +6327,11 @@ function restoreMountedIndependentRecords(snapshots=[]){
  if(changed) writeStore(store);
 }
 
-async function reconfigureRuntime(){
+async function reconfigureRuntime({coldStart=false}={}){
  if(!currentRuntime()) return;
  const sequence=++runtimeConfigSequence;
  clearPassiveRecoveryTimers();
- const mountedIndependentSnapshots=captureMountedIndependentRecords();
+ const mountedIndependentSnapshots=coldStart?[]:captureMountedIndependentRecords();
  disconnectObserver(); unsubscribeHostEvents();
  const mode=runtimeMode();
  const previousMode=lastAppliedRuntimeMode;
@@ -6305,18 +6353,18 @@ async function reconfigureRuntime(){
    clearScheduledGeneration(); cancelAllIndependentFlights('mode-disabled');
    if(mode==='inline'){
      document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(el=>restoreFollowInline(el));
-     // Reconcile exact independent records once before returning. This repairs
-     // source switches where SillyTavern rebuilt the message DOM during the same
-     // settings change and detached the old external shell.
-     syncAll();
+     // Cold entry restores only the newest few owners synchronously and yields between
+     // historical chunks. Source switches/hot updates keep the exact full reconciliation.
+     if(coldStart) scheduleStartupHistorySync(sequence); else syncAll();
      removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);
-     installObserverIfNeeded();
+     installObserverIfNeeded({skipHistoricalProbe:coldStart});
      if(runtimeModeTransition) schedulePassiveRecoveryAfterSourceSwitch(sequence);
    }
    if(mode==='off'){ document.querySelectorAll(`[${SOURCE_ATTR}]`).forEach(n=>n.remove()); removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document); }
    return;
  }
- syncAll(); installObserverIfNeeded();
+ if(coldStart) scheduleStartupHistorySync(sequence); else syncAll();
+ installObserverIfNeeded({skipHistoricalProbe:coldStart});
  if(runtimeModeTransition) schedulePassiveRecoveryAfterSourceSwitch(sequence);
  await installHostEventsIfNeeded(sequence);
  if(sequence!==runtimeConfigSequence || !currentRuntime()) return;
@@ -6326,12 +6374,14 @@ export function refreshRabbitMirrorGenerationMode(){ void reconfigureRuntime(); 
 export async function initIndependentRabbitMirror(){
  if(!currentRuntime()) return;
  migratePersistedInteractionStateRecords();
- // Preserve already-mounted ready mirrors before a hot-update cleanup removes
- // the old runtime DOM. This is a last-resort migration path when a previous
- // build already pruned its current-output cache.
- const mountedSnapshots=captureMountedIndependentRecords();
- const mountedFollowSnapshots=captureMountedFollowSnapshots();
- try{ globalThis.__rabbitMirrorIndependentCleanup?.(); }catch{}
+ // Snapshot traversal is a hot-update recovery mechanism, not a cold-start requirement.
+ // On a fresh page there is no previous RabbitMirror runtime to preserve, so walking every
+ // historical assistant message here only delays chat availability.
+ const previousCleanup=globalThis.__rabbitMirrorIndependentCleanup;
+ const hotUpdate=typeof previousCleanup==='function';
+ const mountedSnapshots=hotUpdate?captureMountedIndependentRecords():[];
+ const mountedFollowSnapshots=hotUpdate?captureMountedFollowSnapshots():[];
+ try{ previousCleanup?.(); }catch{}
  restoreMountedIndependentRecords(mountedSnapshots);
  restoreMountedFollowSnapshots(mountedFollowSnapshots);
  globalThis.__rabbitMirrorIndependentCleanup=destroyIndependentRabbitMirror;
@@ -6344,7 +6394,7 @@ export async function initIndependentRabbitMirror(){
  installRepairPersistenceListener();
  installExternalGeometryListeners();
  installBackgroundLifecycleListeners();
- await reconfigureRuntime();
+ await reconfigureRuntime({coldStart:!hotUpdate});
  // Hot updates never restart historical loading/error placeholders. Only a
  // genuinely new assistant reply or an explicit manual retry may issue a POST.
 }

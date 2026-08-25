@@ -80,10 +80,26 @@ const bundle = sandbox.globalThis.__bundle;
     assert.ok(result.text.length <= 76000, `total context must remain under 76k, got ${result.text.length}`);
 }
 
+
+{
+    currentSettings = { independentContextMaxLayers: 5 };
+    const chat = Array.from({ length: 5 }, (_, i) => ({
+        is_user: i % 2 === 0,
+        mes: `BODY${i}-` + '正文'.repeat(120),
+        reasoning: `SECRET_REASONING_${i}_` + '推理'.repeat(12000),
+        extra: { reasoning_content: `SECRET_EXTRA_${i}`, thoughts: `SECRET_THOUGHT_${i}` },
+    }));
+    const result = bundle({ chat }, 4);
+    assert.equal(result.layers, 5);
+    assert.doesNotMatch(result.text, /SECRET_REASONING|SECRET_EXTRA|SECRET_THOUGHT|可用推理内容/);
+    assert.ok(result.transcriptChars < 5000, `reasoning must not inflate five visible-body layers, got ${result.transcriptChars}`);
+}
+
 assert.match(settingsSource, /independentContextMaxLayers:\s*20/);
 assert.match(settingsSource, /Math\.max\(1,\s*Math\.min\(200,/);
 assert.match(uiSource, /id="rh_independent_context_layers"/);
 assert.match(uiSource, /先过滤历史兔子镜/);
+assert.match(uiSource, /不读取模型 reasoning \/ reasoning_content \/ thoughts/);
 assert.match(uiSource, /52,000 字符聊天与 76,000 字符总上下文上限保护/);
 assert.match(tokenSource, /independentContextLayers/);
 assert.match(tokenSource, /filteredRabbitMirrorChars/);
