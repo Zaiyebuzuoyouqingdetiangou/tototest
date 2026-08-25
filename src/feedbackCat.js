@@ -380,6 +380,7 @@ export function buildFeedbackCatFinalCheck(feedback) {
 }
 
 export function syncFeedbackCatExtensionPrompt(feedback = getActiveFeedbackForCurrentChat()) {
+    globalThis.__rabbitMirrorPerfDiag?.mark?.('feedbackCat.promptSync', { active: !!feedback });
     const prompt = buildFeedbackCatPrompt(feedback);
     try {
         setExtensionPrompt(
@@ -398,6 +399,7 @@ export function syncFeedbackCatExtensionPrompt(feedback = getActiveFeedbackForCu
 }
 
 export function clearFeedbackCatExtensionPrompt() {
+    globalThis.__rabbitMirrorPerfDiag?.mark?.('feedbackCat.promptClear');
     try {
         setExtensionPrompt(
             FEEDBACK_PROMPT_KEY,

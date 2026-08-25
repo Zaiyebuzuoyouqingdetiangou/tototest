@@ -1,11 +1,11 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=1.4.9-perffix1';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.4.30.17';
-import { getSettings } from './settings.js?rmv=1.4.9-perffix1';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.4.9-startupdiag1';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.4.9-startupdiag1';
+import { getSettings } from './settings.js?rmv=1.4.9-startupdiag1';
 import {
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.4.9-perffix1';
+} from './generationGuard.js?rmv=1.4.9-startupdiag1';
 import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.4.30.22';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
@@ -1172,6 +1172,7 @@ export async function initVisualScanner() {
         const eventTypes = mod?.event_types || {};
         if (!eventSource?.on) return;
         const captureNow = () => {
+            const finishCapture = globalThis.__rabbitMirrorPerfDiag?.begin?.('visualScanner.captureNow', {}, 0);
             if (visualScannerCaptureTimer) {
                 clearTimeout(visualScannerCaptureTimer);
                 visualScannerCaptureTimer = 0;
@@ -1180,6 +1181,8 @@ export async function initVisualScanner() {
                 captureRabbitMirrorGenerationSnapshots(mod?.chat || globalThis.chat);
             } catch (error) {
                 console.debug('[RabbitMirror] generation snapshot capture skipped:', error);
+            } finally {
+                finishCapture?.();
             }
         };
         const scheduleCapture = (delay = 140) => {
@@ -1194,6 +1197,7 @@ export async function initVisualScanner() {
             visualScannerTimers.add(timer);
         };
         const scheduleScan = () => {
+            globalThis.__rabbitMirrorPerfDiag?.mark?.('visualScanner.scheduleScan');
             // Multiple SillyTavern end events can fire for the same reply. Keep
             // only one early and one settled scan instead of stacking another
             // pair for every event.

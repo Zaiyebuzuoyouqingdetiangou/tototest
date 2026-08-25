@@ -1,4 +1,4 @@
-const PERF_DIAG_VERSION = '1.4.9-perffix1';
+const PERF_DIAG_VERSION = '1.4.9-startupdiag1';
 const MAX_ENTRIES = 600;
 let cleanup = [];
 let entries = [];
@@ -71,6 +71,30 @@ export function initRabbitMirrorPerformanceDiagnostics() {
         try { console.table(rows); } catch { console.log('[RM PERF] summary', rows); }
         return rows;
     };
+    globalThis.rabbitMirrorStartupSummary = () => {
+        const timings = api.summary().filter(item =>
+            item.name.startsWith('startup.')
+            || item.name.startsWith('ui.')
+            || item.name.startsWith('touchTheater.')
+            || item.name.startsWith('visualScanner.')
+        );
+        const activity = api.dump().filter(item =>
+            item.name === 'settings.update'
+            || item.name === 'settings.saveScheduled'
+            || item.name === 'feedbackCat.promptSync'
+            || item.name === 'feedbackCat.promptClear'
+            || item.name === 'visualScanner.scheduleScan'
+        );
+        try {
+            console.log('[RM STARTUP] 模块耗时');
+            console.table(timings);
+            console.log('[RM STARTUP] 启动副作用标记');
+            console.table(activity);
+        } catch {
+            console.log('[RM STARTUP]', { timings, activity });
+        }
+        return { timings, activity };
+    };
 
     push('mark', 'diagnostic.init', 0, {
         version: PERF_DIAG_VERSION,
@@ -139,5 +163,6 @@ export function destroyRabbitMirrorPerformanceDiagnostics() {
     if (globalThis.__rabbitMirrorPerfDiag?.version === PERF_DIAG_VERSION) delete globalThis.__rabbitMirrorPerfDiag;
     try { delete globalThis.rabbitMirrorPerfDump; } catch {}
     try { delete globalThis.rabbitMirrorPerfSummary; } catch {}
+    try { delete globalThis.rabbitMirrorStartupSummary; } catch {}
     if (globalThis.__rabbitMirrorPerfDiagCleanup === destroyRabbitMirrorPerformanceDiagnostics) delete globalThis.__rabbitMirrorPerfDiagCleanup;
 }

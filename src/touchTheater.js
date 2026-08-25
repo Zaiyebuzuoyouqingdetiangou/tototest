@@ -398,10 +398,15 @@ function normalizeTouchTheaterRuntime(theater) {
 
 function normalizeExistingTouchTheaters() {
     if (typeof document === 'undefined' || !document.querySelectorAll) return;
-    for (const theater of document.querySelectorAll(TOUCH_THEATER_SELECTOR)) {
+    const finish = globalThis.__rabbitMirrorPerfDiag?.begin?.('touchTheater.normalizeExisting', {}, 0);
+    const theaters = [...document.querySelectorAll(TOUCH_THEATER_SELECTOR)];
+    let rabbitTheaters = 0;
+    for (const theater of theaters) {
         if (!theater.closest?.(RABBIT_MIRROR_SELECTOR)) continue;
+        rabbitTheaters += 1;
         normalizeTouchTheaterRuntime(theater);
     }
+    finish?.({ candidates: theaters.length, rabbitTheaters });
 }
 
 const TOUCH_RUNTIME_MUTATION_SELECTOR = `${TOUCH_THEATER_SELECTOR}, ${TOUCH_THRESHOLD_REACTION_SELECTOR}`;

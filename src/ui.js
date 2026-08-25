@@ -1,12 +1,12 @@
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.9-perffix1';
-import { clearLastCombo } from './storage.js?rmv=1.4.9-perffix1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.9-perffix1';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.30.17';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.9-perffix1';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.9-startupdiag1';
+import { clearLastCombo } from './storage.js?rmv=1.4.9-startupdiag1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.9-startupdiag1';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.9-startupdiag1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.9-startupdiag1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.9-perffix1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.9-perffix1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.9-perffix1';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.9-startupdiag1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.9-startupdiag1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.9-startupdiag1';
 
 const SETTINGS_UI_VERSION = '1.4.30.17-visual-maintenance';
 const RUNTIME_VERSION = '1.4.30.17';
@@ -26,6 +26,7 @@ const WORLD_INFO_BOOK_RENDER_DEBOUNCE_MS = 140;
 function scheduleUiMountRetry() {
     if (!isCurrentRuntime() || uiMountRetryTimer || uiMountRetryCount >= 20) return;
     uiMountRetryCount += 1;
+    globalThis.__rabbitMirrorPerfDiag?.mark?.('ui.mountRetryScheduled', { retry: uiMountRetryCount });
     uiMountRetryTimer = setTimeout(() => {
         uiMountRetryTimer = 0;
         initRabbitMirrorUI();
@@ -387,6 +388,7 @@ function memoryTestMessage(result) {
 
 export function initRabbitMirrorUI() {
     if (!isCurrentRuntime()) return;
+    const finishUiInit = globalThis.__rabbitMirrorPerfDiag?.begin?.('ui.initCall', { retry: uiMountRetryCount }, 0);
     const settings = getSettings();
     const noSendRegex = '/<toto\\b[^>]*>[\\s\\S]*?<\\/toto>\\s*/gi';
     const existing = $('#rabbit_mirror_theater_settings');
@@ -408,7 +410,7 @@ export function initRabbitMirrorUI() {
                     && $advanced.find('#rh_advanced_back_top').length
                     && $advanced.find('#rh_advanced_page_worldinfo').length;
             });
-        if (existing.length === 1 && currentPanels.length === 1) return;
+        if (existing.length === 1 && currentPanels.length === 1) { finishUiInit?.({ outcome: 'already-mounted' }); return; }
         // A hot reload may leave the old settings DOM alive even after manifest.json has updated.
         // Remove every stale/duplicate panel so the claimed runtime becomes the only UI owner.
         existing.remove();
@@ -418,6 +420,7 @@ export function initRabbitMirrorUI() {
     const settingsMount = $('#extensions_settings2');
     if (!settingsMount.length) {
         scheduleUiMountRetry();
+        finishUiInit?.({ outcome: 'mount-missing' });
         return;
     }
     uiMountRetryCount = 0;
@@ -1168,6 +1171,7 @@ export function initRabbitMirrorUI() {
         resetSettings();
         location.reload();
     });
+    finishUiInit?.({ outcome: 'mounted' });
 }
 
 export function destroyRabbitMirrorUI() {

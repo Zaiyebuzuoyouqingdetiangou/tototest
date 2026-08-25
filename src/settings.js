@@ -216,8 +216,19 @@ export function getSettings() {
 
 export function updateSettings(patch) {
     const settings = getSettings();
-    Object.assign(settings, patch);
+    const safePatch = patch && typeof patch === 'object' ? patch : {};
+    const keys = Object.keys(safePatch).slice(0, 24);
+    const changedKeys = keys.filter(key => {
+        try { return JSON.stringify(settings?.[key]) !== JSON.stringify(safePatch[key]); } catch { return settings?.[key] !== safePatch[key]; }
+    });
+    globalThis.__rabbitMirrorPerfDiag?.mark?.('settings.update', {
+        keys: keys.join(','),
+        changedKeys: changedKeys.join(','),
+        changedCount: changedKeys.length,
+    });
+    Object.assign(settings, safePatch);
     if (String(settings.independentConnectionProfileId || '').trim()) settings.independentApiKey = '';
+    globalThis.__rabbitMirrorPerfDiag?.mark?.('settings.saveScheduled', { source: 'updateSettings', keys: keys.join(',') });
     saveSettingsDebounced();
 }
 

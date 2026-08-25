@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const COHORT = '1.4.9-perffix1';
+const COHORT = '1.4.9-startupdiag1';
 
 // 本阶段 cache cohort：源码内容变化的模块（settings/storage/picker）
 // 加上所有直接或间接 import 它们的父模块。
@@ -19,6 +19,7 @@ const COHORT_MODULES = [
     'index.js',
     'src/blacklist.js',
     'src/generationGuard.js',
+    'src/feedbackCat.js',
     'src/independentApi.js',
     'src/independentSecurityGuard.js',
     'src/injector.js',
@@ -30,6 +31,7 @@ const COHORT_MODULES = [
     'src/renderedVisualFeedbackHotfix.js',
     'src/settings.js',
     'src/tokenMeter.js',
+    'src/touchTheater.js',
     'src/storage.js',
     'src/ui.js',
     'src/visualScanner.js',
