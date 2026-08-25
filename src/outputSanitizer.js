@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.8-ms1';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.8-ms1';
+import { getSettings } from './settings.js?rmv=1.4.9-ms1';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.9-ms1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -10,9 +10,9 @@ import {
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
 } from './feedbackCat.js?rmv=1.4.30.17';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.8-ms1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.8-ms1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.8-ms1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-ms1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.9-ms1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.9-ms1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.22';
 
 
@@ -21610,6 +21610,7 @@ function removeFeedbackCatsInChatDom() {
 const PALETTE_DEDUPE_CHECKED_ATTR = 'data-rabbit-mirror-palette-dedupe-checked';
 function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, autoSafeForceCurrent = false, historyRestoreLight = false, captureStartupBaseline = false } = {}) {
     if (!isCurrentRuntime() || !scope?.querySelectorAll) return;
+    const perfEnd = globalThis.__rabbitMirrorPerfDiag?.begin?.('maintenance.installScope', { allowGlobalRemoval: !!allowGlobalRemoval, historyRestoreLight: !!historyRestoreLight, captureStartupBaseline: !!captureStartupBaseline }, 8);
     const maintenanceEnabled = isMaintenanceRabbitEnabled();
     const feedbackEnabled = isFeedbackCatEnabled();
     if (allowGlobalRemoval && !maintenanceEnabled) removeMaintenanceRabbitsInChatDom();
@@ -21682,6 +21683,7 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, a
     });
     if (captureStartupBaseline) trimMaintenanceAutoSafeSet(maintenanceAutoSafeBaselineSignatures);
     if (feedbackEnabled) updateFeedbackCatButtonTitles();
+    perfEnd?.();
 }
 
 function installMaintenanceRabbitsInChatDom() {
@@ -21719,6 +21721,7 @@ function installMaintenanceRabbitsDeferredInChatDom() {
     const split = Math.max(0, messageRoots.length - 6);
     const immediate = messageRoots.slice(split);
     const historical = messageRoots.slice(0, split);
+    globalThis.__rabbitMirrorPerfDiag?.mark?.('maintenance.startupDeferred', { total: messageRoots.length, immediate: immediate.length, historical: historical.length });
     const install = root => {
         if (!root?.isConnected) return;
         installMaintenanceRabbitsInScope(root, {
@@ -21728,16 +21731,16 @@ function installMaintenanceRabbitsDeferredInChatDom() {
     };
     for (const root of immediate) install(root);
     if (!historical.length) return;
-    // Do not pump every historical message after startup. Observe cheap message roots only and
-    // install tools when a row approaches the viewport; this preserves old-message functionality
-    // without a tens-of-seconds background DOM traversal on long iPhone chats.
     if (typeof IntersectionObserver === 'function') {
         startupMaintenanceVisibilityObserver = new IntersectionObserver(entries => {
+            const perfEnd = globalThis.__rabbitMirrorPerfDiag?.begin?.('maintenance.visibilityObserver', { entries: entries.length }, 8);
+            let installed = 0;
             for (const entry of entries) {
                 if (!entry.isIntersecting) continue;
                 startupMaintenanceVisibilityObserver?.unobserve?.(entry.target);
-                install(entry.target);
+                install(entry.target); installed += 1;
             }
+            perfEnd?.({ installed });
         }, { root: chatRoot, rootMargin: '1200px 0px', threshold: 0 });
         for (const root of historical) startupMaintenanceVisibilityObserver.observe(root);
         return;
@@ -24492,6 +24495,7 @@ function installChatMutationObserver() {
     chatInstallObserver?.disconnect?.();
     observedChatInstallRoot = chatRoot;
     chatInstallObserver = new MutationObserver(mutations => {
+        const perfEnd = globalThis.__rabbitMirrorPerfDiag?.begin?.('maintenance.mutationObserver', { records: mutations.length }, 8);
         const messageRoots = new Set();
         for (const mutation of mutations) {
             if (mutation.type !== 'childList') continue;
@@ -24532,6 +24536,7 @@ function installChatMutationObserver() {
             }
         }
         if (messageRoots.size) scheduleObservedChatInstall(messageRoots);
+        perfEnd?.({ affectedMessages: messageRoots.size });
     });
     // Tool installation only needs structural insertions. Watching class/style/hidden and
     // characterData reacts to CSS animation and generated UI updates and can saturate Safari.

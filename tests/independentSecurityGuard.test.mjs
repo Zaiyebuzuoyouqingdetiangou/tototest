@@ -52,6 +52,13 @@ const parsed = JSON.parse(rewritten.bodyText);
 assert.ok(parsed.messages[1].content.includes('KEEP_NOTE'));
 assert.ok(!parsed.messages[1].content.includes('PROMPT_SECRET'));
 
+
+const modernPrompt = `【当前聊天逐轮正文】\n[9 ASSISTANT]\nhello modern\n\n【当前角色卡摘要】\n{"name":"A"}\n\n【当前 Persona 摘要】\n{"name":"P"}\n\n【当前作者注释】\nNOTE\n\n${lock}\n\n现在依据近输出短锁完成唯一成品。`;
+const modernPayload = { model: 'x', messages: [{ role: 'user', content: modernPrompt }], stream: true };
+const modernChecked = sanitizeRabbitMirrorCompletionBody(JSON.stringify(modernPayload), 'ignored');
+assert.equal(modernChecked.rabbitMirror, true, 'modern compact context must satisfy the guard');
+assert.equal(modernChecked.changed, false, 'modern compact context has no legacy sensitive aggregate to rewrite');
+
 const unrelated = sanitizeRabbitMirrorCompletionBody(JSON.stringify({ messages: [{ role: 'user', content: 'hello' }] }), 'x');
 assert.equal(unrelated.rabbitMirror, false);
 assert.equal(unrelated.changed, false);
@@ -75,6 +82,10 @@ const ok = await fetchRabbitMirrorIndependentCompletion('/api/backends/chat-comp
 assert.equal(await ok.text(), 'OK');
 assert.ok(capturedBody.includes('LIVE_NOTE'));
 assert.ok(!capturedBody.includes('PROMPT_SECRET'));
+capturedBody = '';
+const modernOk = await fetchRabbitMirrorIndependentCompletion('/api/backends/chat-completions/generate', { method: 'POST', body: JSON.stringify(modernPayload) });
+assert.equal(await modernOk.text(), 'OK');
+assert.ok(capturedBody.includes('【当前聊天逐轮正文】'));
 
 // Ordinary SillyTavern main-API traffic reaches the real fetch directly, even when
 // its request body is large. Independent privacy work is now an explicit capability.

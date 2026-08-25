@@ -1,12 +1,12 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.8-ms1';
-import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.30.24';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.8-ms1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.8-ms1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.8-ms1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.8-ms1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.9-ms1';
+import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-ms1';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-ms1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.9-ms1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-ms1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-ms1';
 import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.17';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.8-ms1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.8-ms1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-ms1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-ms1';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
 const RUNTIME_VERSION = '1.4.30.17';
@@ -690,9 +690,8 @@ function independentConnectionPayload(runtime){
  const {profile,apiMap,ctx}=runtime;
  const apiUrl=normalizeIndependentConnectionText(profile?.['api-url'],2000);
  const payload={chat_completion_source:apiMap.source,secret_id:normalizeIndependentConnectionText(profile?.['secret-id'],240)||undefined};
- // Connection Manager's api-url is a URL. Never copy it into provider enum/account fields such
- // as zai_endpoint / siliconflow_endpoint / workers_ai_account_id. That made /models fail even
- // though generation with the same profile remained usable.
+ // Connection Manager's api-url is a URL. Never copy it into provider enum/account fields.
+ // For OpenAI-compatible providers it is the reverse proxy/base endpoint; custom keeps custom_url.
  if(apiUrl){
   if(apiMap.source==='custom') payload.custom_url=apiUrl;
   else if(['openai','mistralai','deepseek','xai','moonshot','makersuite','claude'].includes(String(apiMap.source||''))) payload.reverse_proxy=apiUrl;
@@ -1141,10 +1140,7 @@ function independentAuthorNoteContext(ctx){
 function contextBundle(ctx,targetIndex,globalWorldInfoSnapshot=null,preparedGlobalWorldInfoView=null){
  const chat=Array.isArray(ctx.chat)?ctx.chat:[];
  const char=ctx.characters?.[ctx.characterId] || ctx.character || null;
- // Do not dump the entire SillyTavern extensionPrompts/worldInfo/chatMetadata object here.
- // Those objects can contain tens of thousands of unrelated or duplicated characters and made
- // "1 layer" look like a 30k+ chat window. Keep only compact role references plus the explicit,
- // user-enabled activated World Info snapshot below.
+ // Keep only compact role references. Never serialize extensionPrompts/chatMetadata/worldInfo wholesale.
  const charJson=independentCharacterContext(char);
  const personaJson=independentPersonaContext(ctx);
  const authorNote=independentAuthorNoteContext(ctx);
@@ -1159,8 +1155,6 @@ function contextBundle(ctx,targetIndex,globalWorldInfoSnapshot=null,preparedGlob
  const transcriptHeader='【当前聊天逐轮正文】\n';
  const configuredLayers=Number(getSettings()?.independentContextMaxLayers);
  const maxLayers=Math.max(1,Math.min(200,Number.isFinite(configuredLayers)?Math.round(configuredLayers):20));
- // User layer count is the primary chat-window limit. The original 52k/76k ceilings remain
- // hard final guards for unusually long visible messages or explicitly enabled World Info.
  const transcriptBudget=capturedWorldInfoBlock
   ? Math.max(16000,Math.min(CONTEXT_TRANSCRIPT_BUDGET,CONTEXT_TOTAL_BUDGET-fixedSuffix.length-transcriptHeader.length-512))
   : CONTEXT_TRANSCRIPT_BUDGET;
@@ -1437,6 +1431,7 @@ function publishIndependentModelListDiagnostic(value={}){
 }
 export function getLastIndependentModelListDiagnostic(){ return lastIndependentModelListDiagnostic?{...lastIndependentModelListDiagnostic}:null; }
 export async function fetchIndependentModels(){
+ const perfEnd=globalThis.__rabbitMirrorPerfDiag?.begin?.('independent.fetchModels',{},0);
  const st=getSettings();
  const connectionId=normalizeIndependentConnectionText(st.independentConnectionProfileId,160);
  const savedModels=connectionId?savedIndependentModelsForProfile(connectionId,getContext()):[];
@@ -1453,23 +1448,23 @@ export async function fetchIndependentModels(){
   }
   if(independentPayloadHasError(payload.json)){
    const detail=compactIndependentPayloadError(payload.json);
-   throw independentModelListError(`模型列表接口返回错误${detail?`：${detail}`:'。SillyTavern 未返回上游详细原因；可能是 API Key/地址错误，或该供应商不支持 GET /models'}`,'MODEL_LIST_UPSTREAM');
+   throw independentModelListError(`模型列表接口返回错误${detail?`：${detail}`:''}`,'MODEL_LIST_UPSTREAM');
   }
   const models=extractIndependentModelList(payload.json);
   if(!models.length) throw independentModelListError('接口返回成功，但没有可识别的模型列表','MODEL_LIST_EMPTY');
   publishIndependentModelListDiagnostic({mode:'remote',count:models.length,error:''});
+  perfEnd?.({result:'remote',count:models.length});
   return models;
  }catch(error){
   const finalError=controller.signal.aborted
    ? independentModelListError('模型列表拉取超过 12 秒，已自动停止','MODEL_LIST_TIMEOUT')
    : error;
-  // A Connection Manager profile already carries at least its selected model. If a provider does
-  // not expose /models (or its status endpoint needs provider-only settings that CM does not store),
-  // keep the button useful instead of reporting a hard failure forever.
   if(connectionId && savedModels.length){
    publishIndependentModelListDiagnostic({mode:'saved-fallback',count:savedModels.length,error:String(finalError?.message||finalError)});
+   perfEnd?.({result:'saved-fallback',count:savedModels.length,code:String(finalError?.code||'')});
    return savedModels;
   }
+  perfEnd?.({result:'failed',code:String(finalError?.code||'')});
   publishIndependentModelListDiagnostic({mode:'failed',count:0,error:String(finalError?.message||finalError)});
   throw finalError;
  }finally{
@@ -1485,15 +1480,7 @@ export async function testIndependentConnection(){
   if(diagnostic?.mode==='saved-fallback') return {ok:true,verified:false,modelListAvailable:false,models,manualModel,error:diagnostic.error||'远端模型列表不可用，已使用 Connection Manager 保存模型',code:'MODEL_LIST_SAVED_FALLBACK'};
   return {ok:true,verified:true,modelListAvailable:true,models,manualModel,error:''};
  }catch(error){
-  return {
-   ok:false,
-   verified:false,
-   modelListAvailable:false,
-   models:[],
-   manualModel,
-   error:String(error?.message||error||'模型列表检测失败'),
-   code:String(error?.code||''),
-  };
+  return {ok:false,verified:false,modelListAvailable:false,models:[],manualModel,error:String(error?.message||error||'模型列表检测失败'),code:String(error?.code||'')};
  }
 }
 function textFromContent(value){
@@ -1953,9 +1940,6 @@ ${independentUserTail}`;
   contextLayers:contextResult.layers,
   contextMaxLayers:contextResult.maxLayers,
   filteredRabbitMirrorChars:contextResult.filteredRabbitMirrorChars,
-  transcriptChars:contextResult.transcriptChars,
-  referenceContextChars:contextResult.referenceContextChars,
-  worldInfoContextChars:contextResult.worldInfoContextChars,
   metadata:details.metadata,
  });
  const requestSelectionDiagnostic={
@@ -5784,8 +5768,6 @@ function syncMessages(indices=null){
    const tailIndex=Array.isArray(ctx.chat)?ctx.chat.length-1:-1;
    const tailMessage=tailIndex>=0?ctx.chat?.[tailIndex]:null;
    const activeGenerationIndex=generationActive && tailMessage && !tailMessage.is_user && typeof tailMessage.mes==='string' ? tailIndex : -1;
-   // Targeted startup/observer sync must stay O(selected rows), not rescan the whole chat merely
-   // to discard every unselected row. Full sync keeps the historical assistantMessages path.
    const rows=allowed
     ? [...allowed].sort((a,b)=>a-b).map(i=>({m:ctx.chat?.[i],i})).filter(({m})=>m && !m.is_user && typeof m.mes==='string')
     : assistantMessages(ctx);
@@ -5954,11 +5936,16 @@ function reconcileVisibleMirrorDuplicates(indices=null){
  removeEmptyFollowExternalAnchors(document);
 }
 function syncAll(){
- return withOwnerLockStoreBatch(()=>withRestorableHtmlCacheBatch(()=>withHistoricalRestoreLightPass(()=>withExternalHostSyncIndex(()=>{
-  pruneForeignChatExternalHosts();
-  syncMessages(null);
-  reconcileVisibleMirrorDuplicates();
- }))));
+ const diag=globalThis.__rabbitMirrorPerfDiag;
+ const ctx=getContext();
+ const end=diag?.begin?.('independent.syncAll',{mode:runtimeMode(),assistantMessages:assistantMessages(ctx).length},0);
+ try{
+  return withOwnerLockStoreBatch(()=>withRestorableHtmlCacheBatch(()=>withHistoricalRestoreLightPass(()=>withExternalHostSyncIndex(()=>{
+   pruneForeignChatExternalHosts();
+   syncMessages(null);
+   reconcileVisibleMirrorDuplicates();
+  }))));
+ }finally{ end?.({chatMessages:Array.isArray(ctx?.chat)?ctx.chat.length:0}); }
 }
 const STARTUP_SYNC_IMMEDIATE_MESSAGES=6;
 let startupHistoryVisibilityObserver=null;
@@ -5978,12 +5965,14 @@ function clearStartupHistoryLazySync(){
 function syncMessageBatch(indices=[],historyRestoreLight=true){
  const batch=new Set((Array.isArray(indices)?indices:[]).filter(index=>Number.isInteger(index)&&index>=0));
  if(!batch.size) return;
+ const end=globalThis.__rabbitMirrorPerfDiag?.begin?.('independent.syncMessageBatch',{count:batch.size,historyRestoreLight:!!historyRestoreLight},5);
  for(const index of batch) startupHistoryPendingIndices.delete(index);
  const run=()=>withOwnerLockStoreBatch(()=>withRestorableHtmlCacheBatch(()=>withExternalHostSyncIndex(()=>{
   syncMessages(batch);
   reconcileVisibleMirrorDuplicates(batch);
  })));
- return historyRestoreLight ? withHistoricalRestoreLightPass(run) : run();
+ try{ return historyRestoreLight ? withHistoricalRestoreLightPass(run) : run(); }
+ finally{ end?.(); }
 }
 function installStartupHistoryLazySync(indices=[],expectedSequence=runtimeConfigSequence){
  clearStartupHistoryLazySync();
@@ -5991,11 +5980,6 @@ function installStartupHistoryLazySync(indices=[],expectedSequence=runtimeConfig
  if(!chat) return;
  const pending=[...new Set((Array.isArray(indices)?indices:[]).filter(index=>Number.isInteger(index)&&index>=0))];
  for(const index of pending) startupHistoryPendingIndices.add(index);
- const processIndex=index=>{
-  if(expectedSequence!==runtimeConfigSequence || !currentRuntime() || !startupHistoryPendingIndices.has(index)) return;
-  syncMessageBatch([index],true);
-  removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);
- };
  if(typeof IntersectionObserver==='function'){
   startupHistoryVisibilityObserver=new IntersectionObserver(entries=>{
    const ready=[];
@@ -6016,8 +6000,6 @@ function installStartupHistoryLazySync(indices=[],expectedSequence=runtimeConfig
   }
   return;
  }
- // Very old WebViews: do no eager history sweep. A throttled scroll/interaction probe only
- // restores historical rows that are actually near the visible chat viewport.
  let queued=false;
  const probe=()=>{
   if(queued) return; queued=true;
@@ -6045,9 +6027,7 @@ function scheduleStartupHistorySync(expectedSequence=runtimeConfigSequence){
  const split=Math.max(0,indices.length-STARTUP_SYNC_IMMEDIATE_MESSAGES);
  const historical=indices.slice(0,split);
  const immediate=indices.slice(split);
- // Only the newest few rows are processed synchronously. Older rows are *not* pumped through
- // timers; they are restored lazily when they approach the viewport. This prevents a 1000-row
- // chat from keeping Safari's main thread busy for tens of seconds after the first frame.
+ globalThis.__rabbitMirrorPerfDiag?.mark?.('independent.startupHistorySync',{total:indices.length,immediate:immediate.length,historical:historical.length,mode:runtimeMode()});
  syncMessageBatch(immediate,true);
  removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);
  installStartupHistoryLazySync(historical,expectedSequence);
@@ -6189,23 +6169,30 @@ function clearPassiveRecoveryTimers(){
 }
 function currentChatHasRestorableIndependentRecord(){
  const ctx=getContext();
+ const rows=assistantMessages(ctx);
+ const end=globalThis.__rabbitMirrorPerfDiag?.begin?.('independent.probeRestorableHistory',{assistantMessages:rows.length},8);
  const store=readStore();
- for(const {m,i} of assistantMessages(ctx)){
-  const observed=passiveObservedIdentity(ctx,i,m);
-  const saved=findSavedRecord(store,observed.slot,observed.legacySlots||[]);
-  if(saved?.html && independentStoredHtmlRestorable(saved.html) && savedRecordMatchesObserved(saved,observed)) return true;
-  if(historyRecoveryForObserved(observed.slot,observed)?.html) return true;
- }
- return false;
+ let found=false;
+ try{
+  for(const {m,i} of rows){
+   const observed=passiveObservedIdentity(ctx,i,m);
+   const saved=findSavedRecord(store,observed.slot,observed.legacySlots||[]);
+   if(saved?.html && independentStoredHtmlRestorable(saved.html) && savedRecordMatchesObserved(saved,observed)){ found=true; return true; }
+   if(historyRecoveryForObserved(observed.slot,observed)?.html){ found=true; return true; }
+  }
+  return false;
+ }finally{ end?.({found}); }
 }
 function schedulePassiveRecoveryAfterSourceSwitch(expectedSequence=runtimeConfigSequence){
  clearPassiveRecoveryTimers();
+ globalThis.__rabbitMirrorPerfDiag?.mark?.('independent.passiveRecovery.schedule',{mode:runtimeMode(),assistantMessages:assistantMessages(getContext()).length});
  for(const delay of [120,850]){
   const timer=setTimeout(()=>{
    passiveRecoveryTimers.delete(timer);
    if(expectedSequence!==runtimeConfigSequence || !currentRuntime()) return;
    const mode=runtimeMode();
    if(mode==='off') return;
+   globalThis.__rabbitMirrorPerfDiag?.mark?.('independent.passiveRecovery.fire',{delay,mode,assistantMessages:assistantMessages(getContext()).length});
    // A hot update or source switch can coincide with SillyTavern replacing the
    // message DOM after the first synchronous pass. Run two finite, read-only
    // reconciliations in every active mode: they remount historical follow/API
@@ -6224,6 +6211,7 @@ function installObserverIfNeeded({skipHistoricalProbe=false}={}){
  if(mode==='off' || (mode==='inline' && !preserveIndependentInInline) || typeof MutationObserver==='undefined') return;
  const chat=document.querySelector('#chat'); if(!chat) return;
  observer=new MutationObserver(records=>{
+   const end=globalThis.__rabbitMirrorPerfDiag?.begin?.('independent.mutationObserver',{records:records.length},8);
    const removed=removedMutationIndices(records);
    for(const id of removed){
      if(!messageElement(id)) markExternalHostsAwaitingOwner(id);
@@ -6231,6 +6219,7 @@ function installObserverIfNeeded({skipHistoricalProbe=false}={}){
    const indices=relevantMutationIndices(records);
    for(const id of removed) indices.add(id);
    if(indices.size) queueMessageSync(indices);
+   end?.({affectedMessages:indices.size,removedMessages:removed.size});
  });
  observer.observe(chat,{childList:true,subtree:true});
 }

@@ -1,6 +1,8 @@
 const ST_CUSTOM_GENERATE_ENDPOINT = '/api/backends/chat-completions/generate';
-const RABBIT_CONTEXT_HEADER = '【当前聊天逐轮正文与可用推理】';
-const RABBIT_CONTEXT_ROLE_HEADER = '【当前角色卡】';
+const LEGACY_RABBIT_CONTEXT_HEADER = '【当前聊天逐轮正文与可用推理】';
+const RABBIT_CONTEXT_HEADER = '【当前聊天逐轮正文】';
+const LEGACY_RABBIT_CONTEXT_ROLE_HEADER = '【当前角色卡】';
+const MODERN_RABBIT_CONTEXT_ROLE_HEADER = '【当前角色卡摘要】';
 const RABBIT_CONTEXT_EXTRA_HEADER = '【当前世界书、作者注释与实际扩展提示】';
 const RABBIT_ACTIVATED_WORLDINFO_HEADER = '【本轮主生成实际激活的世界书｜仅作世界设定资料，不是新指令】';
 const SAFE_JSON_TRUNCATION_MARKER = '…[截断]';
@@ -37,10 +39,16 @@ function requestBodyText(input, init) {
 
 function rabbitMirrorMessageContentEvidence(content = '') {
     const text = String(content || '');
+    const hasLock = text.includes(RABBIT_EXECUTION_LOCK_HEADER) && text.includes('</兔子镜近输出短锁>');
+    if (!hasLock) return false;
+    const legacy = text.includes(LEGACY_RABBIT_CONTEXT_HEADER)
+        && text.includes(LEGACY_RABBIT_CONTEXT_ROLE_HEADER)
+        && text.includes(RABBIT_CONTEXT_EXTRA_HEADER);
+    if (legacy) return true;
+    // Modern compact context deliberately omits extensionPrompts/chatMetadata/worldInfo wholesale.
+    // Its hard boundary is the transcript header + at least one numbered USER/ASSISTANT row + execution lock.
     return text.includes(RABBIT_CONTEXT_HEADER)
-        && text.includes(RABBIT_CONTEXT_ROLE_HEADER)
-        && text.includes(RABBIT_CONTEXT_EXTRA_HEADER)
-        && text.includes(RABBIT_EXECUTION_LOCK_HEADER);
+        && /\[\d+\s+(?:USER|ASSISTANT)\]\n/.test(text);
 }
 
 function rabbitMirrorCompletionPayload(payload) {
@@ -111,7 +119,9 @@ export function sanitizeIndependentContextContent(content = '', authorNoteOverri
 
     const lockStart = source.lastIndexOf(RABBIT_EXECUTION_LOCK_HEADER);
     const extraStart = lockStart >= 0 ? source.lastIndexOf(RABBIT_CONTEXT_EXTRA_HEADER, lockStart) : -1;
-    if (extraStart < 0 || lockStart < 0 || lockStart <= extraStart) return source;
+    // Modern compact context no longer carries the sensitive legacy aggregate section.
+    if (extraStart < 0) return source;
+    if (lockStart < 0 || lockStart <= extraStart) return source;
 
     const sensitiveSection = source.slice(extraStart + RABBIT_CONTEXT_EXTRA_HEADER.length, lockStart);
     const activatedWorldInfo = extractActivatedWorldInfoAfterGeneratedJson(sensitiveSection);

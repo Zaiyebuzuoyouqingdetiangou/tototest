@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const source = fs.readFileSync(path.join(root, 'src', 'performanceDiagnostics.js'), 'utf8');
+assert.doesNotMatch(source, /globalThis\.fetch\s*=/, 'diagnostics must not monkeypatch fetch');
+assert.doesNotMatch(source, /XMLHttpRequest/, 'diagnostics must not intercept XHR');
+assert.doesNotMatch(source, /localStorage|sessionStorage/, 'diagnostics must not read persisted user data');
+assert.doesNotMatch(source, /request\.body|response\.body/, 'diagnostics must not read request/response bodies');
+assert.doesNotMatch(source, /querySelector|querySelectorAll/, 'diagnostics module must not traverse chat DOM');
+const mod = await import('../src/performanceDiagnostics.js');
+mod.initRabbitMirrorPerformanceDiagnostics();
+const end = globalThis.__rabbitMirrorPerfDiag.begin('test.measure', { count: 1 }, 0);
+end({ ok: true });
+const dump = globalThis.rabbitMirrorPerfDump();
+assert.ok(dump.some(row => row.name === 'test.measure' && row.count === 1 && row.ok === true));
+assert.ok(Array.isArray(globalThis.rabbitMirrorPerfSummary()));
+mod.destroyRabbitMirrorPerformanceDiagnostics();
+assert.equal(globalThis.__rabbitMirrorPerfDiag, undefined);
+console.log('performanceDiagnostics tests passed');

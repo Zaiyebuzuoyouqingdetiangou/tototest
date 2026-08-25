@@ -1,12 +1,12 @@
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.8-ms1';
-import { clearLastCombo } from './storage.js?rmv=1.4.8-ms1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.8-ms1';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.9-ms1';
+import { clearLastCombo } from './storage.js?rmv=1.4.9-ms1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.9-ms1';
 import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.30.17';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.8-ms1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.9-ms1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.8-ms1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.8-ms1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.8-ms1';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.9-ms1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.9-ms1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.9-ms1';
 
 const SETTINGS_UI_VERSION = '1.4.30.17-visual-maintenance';
 const RUNTIME_VERSION = '1.4.30.17';
@@ -275,12 +275,7 @@ function renderTokenMeter(record = getLastRabbitMirrorTokenRecordForSource(getSe
         const filteredText = chars.filteredRabbitMirrorChars
             ? ` · 已过滤历史兔子镜 ${formatMeterNumber(chars.filteredRabbitMirrorChars)} 字符`
             : '';
-        const contextBreakdown=[
-            chars.independentTranscriptChars ? `聊天正文 ${formatMeterNumber(chars.independentTranscriptChars)}` : '',
-            chars.independentReferenceChars ? `角色/Persona/作者注释 ${formatMeterNumber(chars.independentReferenceChars)}` : '',
-            chars.independentWorldInfoChars ? `世界书 ${formatMeterNumber(chars.independentWorldInfoChars)}` : '',
-        ].filter(Boolean).join(' + ');
-        exact.text(`规则约 ${formatMeterNumber(tokens.min)}–${formatMeterNumber(tokens.max)} Token；上下文 ${formatMeterNumber(chars.independentContext)} 字符${layerText}${filteredText}${contextBreakdown?`（${contextBreakdown}）`:''}。`);
+        exact.text(`规则约 ${formatMeterNumber(tokens.min)}–${formatMeterNumber(tokens.max)} Token；上下文 ${formatMeterNumber(chars.independentContext)} 字符${layerText}${filteredText}。`);
         const parts = [
             `基础约 ${formatMeterNumber(tokens.baseEstimated)}`,
             chars.feedback ? `反馈约 ${formatMeterNumber(tokens.feedbackEstimated)}` : '反馈 0',
@@ -937,9 +932,9 @@ export function initRabbitMirrorUI() {
                 $('#rh_independent_model_select').val(models[0]);
                 updateSettings({independentApiModel:models[0]});
             }
-            const modelDiagnostic=getLastIndependentModelListDiagnostic?.();
-            if(modelDiagnostic?.mode==='saved-fallback') {
-                toastr?.info?.(`远端完整模型列表不可用；已从酒馆 Connection Manager 读取 ${models.length} 个已保存模型，可继续使用。`);
+            const diagnostic=getLastIndependentModelListDiagnostic();
+            if(diagnostic?.mode==='saved-fallback') {
+                toastr?.warning?.(`远端模型列表不可用；已显示酒馆连接中保存的 ${models.length} 个模型。${diagnostic.error||''}`);
             } else {
                 toastr?.success?.(`已拉取 ${models.length} 个模型；完整列表已显示在模型下拉框中`);
             }

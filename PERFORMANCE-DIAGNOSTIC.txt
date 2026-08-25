@@ -1,0 +1,17 @@
+兔子镜 1.4.9 性能诊断版
+
+用途：只记录耗时，不改变生成/恢复逻辑。不会记录聊天正文、Prompt、角色卡内容或 API Key。
+
+复现后：
+1. 浏览器按 F12 打开 Console。
+2. 输入 rabbitMirrorPerfSummary() 回车，把表格截图发给 ChatGPT。
+3. 如需完整记录，再输入 rabbitMirrorPerfDump() 回车；可右键保存或复制输出。
+
+重点日志：
+- independent.syncAll：全聊天同步
+- independent.passiveRecovery.fire：120/850ms 被动恢复触发
+- independent.syncMessageBatch：可视消息批同步
+- maintenance.installScope：维修兔/反馈工具安装
+- independent.mutationObserver / maintenance.mutationObserver：DOM 观察器
+- browser.longtask / browser.eventLoopStall：浏览器主线程卡顿
+- network.resource：API/资源耗时（只记录路径，不记录正文/参数）
