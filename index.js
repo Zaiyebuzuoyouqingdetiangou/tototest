@@ -1,4 +1,4 @@
-const LIGHT_BOOT_VERSION = '1.4.9-subapifix1';
+const LIGHT_BOOT_VERSION = '1.4.9-contextboundary1';
 const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.30.17';
 const bootStartedAt = (() => { try { return performance.now(); } catch { return Date.now(); } })();
 const bootEntries = [];
@@ -72,13 +72,13 @@ const SPECS = Object.freeze({
     storage: './src/storage.js?rmv=1.4.9-subapifix1',
     generationGuard: './src/generationGuard.js?rmv=1.4.9-subapifix1',
     feedbackCat: './src/feedbackCat.js?rmv=1.4.9-subapifix1',
-    independentSecurityGuard: './src/independentSecurityGuard.js?rmv=1.4.9-subapifix1',
+    independentSecurityGuard: './src/independentSecurityGuard.js?rmv=1.4.9-contextboundary1',
     injector: './src/injector.js?rmv=1.4.9-subapifix1',
     outputSanitizer: './src/outputSanitizer.js?rmv=1.4.9-subapifix1',
     checkedSelectorRepair: './src/checkedSelectorRepair.js?rmv=1.4.30.26',
     visualScanner: './src/visualScanner.js?rmv=1.4.9-subapifix1',
     renderedVisualFeedbackHotfix: './src/renderedVisualFeedbackHotfix.js?rmv=1.4.9-subapifix1',
-    independentApi: './src/independentApi.js?rmv=1.4.9-subapifix1',
+    independentApi: './src/independentApi.js?rmv=1.4.9-contextboundary1',
     touchTheater: './src/touchTheater.js?rmv=1.4.9-subapifix1',
     mobileModalHotfix: './src/mobileModalHotfix.js?rmv=1.4.30.19',
     profileSelectorHotfix: './src/independentProfileSelectorHotfix.js?rmv=1.4.7-test',

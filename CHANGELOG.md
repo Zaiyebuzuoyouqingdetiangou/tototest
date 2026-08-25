@@ -1,3 +1,11 @@
+# ContextBoundary1
+
+- 独立 API 上下文不再读取 `authorNote` / `note`，Security Guard 对旧版敏感聚合上下文也不再重新注入当前作者注释；旧版兼容净化只允许保留经过识别的“本轮实际激活世界书”。
+- 独立 API 资料边界收紧为：当前聊天可见正文 + 角色卡摘要 + Persona 摘要 + 用户允许且本轮实际激活的世界书。
+- `independentContextMaxLayers` 保持用户可配置，不强制改为 1 层。
+- `memoryScanEnabled`、`memoryProviderIds`、`memoryMaxChars` 及记忆插件读取逻辑未修改。
+- 保留 SubApiFix1 的 524 / HTTP 200 不完整兔子镜手动重试状态机，以及 LightBoot / PerfFix 性能修复。
+
 # SubApiFix1
 
 - 基于 LightBoot1 + PerfFix1，不回退启动性能修复。

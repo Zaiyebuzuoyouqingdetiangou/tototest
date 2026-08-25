@@ -104,7 +104,7 @@ const bundle = sandbox.globalThis.__bundle;
         characters: [{ name: 'A', description: 'D'.repeat(5000), personality: 'P'.repeat(4000), scenario: 'S'.repeat(3000) }],
         name1: 'U',
         powerUserSettings: { persona_description: 'PERSONA'.repeat(2000) },
-        authorNote: 'NOTE'.repeat(2000),
+        authorNote: 'AUTHOR_NOTE_SHOULD_NOT_LEAK'.repeat(500),
         extensionPrompts: { secret: 'EXTENSION_PROMPT_SHOULD_NOT_LEAK'.repeat(2000) },
         chatMetadata: { secret: 'CHAT_METADATA_SHOULD_NOT_LEAK'.repeat(2000) },
         worldInfo: { secret: 'WORLD_INFO_SHOULD_NOT_LEAK'.repeat(2000) },
@@ -112,12 +112,15 @@ const bundle = sandbox.globalThis.__bundle;
     const result = bundle(ctx, 0);
     assert.equal(result.layers, 1);
     assert.match(result.text, /ONE_VISIBLE_LAYER/);
-    assert.doesNotMatch(result.text, /EXTENSION_PROMPT_SHOULD_NOT_LEAK|CHAT_METADATA_SHOULD_NOT_LEAK|WORLD_INFO_SHOULD_NOT_LEAK/);
+    assert.doesNotMatch(result.text, /AUTHOR_NOTE_SHOULD_NOT_LEAK|EXTENSION_PROMPT_SHOULD_NOT_LEAK|CHAT_METADATA_SHOULD_NOT_LEAK|WORLD_INFO_SHOULD_NOT_LEAK/);
     assert.ok(result.text.length < 12000, `one-layer compact context should stay small, got ${result.text.length}`);
     assert.ok(result.referenceContextChars < 9000);
 }
 
 assert.match(settingsSource, /independentContextMaxLayers:\s*20/);
+assert.match(settingsSource, /memoryScanEnabled:\s*false/);
+assert.match(settingsSource, /memoryProviderIds:\s*\[\]/);
+assert.match(settingsSource, /memoryMaxChars:\s*2200/);
 assert.match(settingsSource, /Math\.max\(1,\s*Math\.min\(200,/);
 assert.match(uiSource, /id="rh_independent_context_layers"/);
 assert.match(uiSource, /先过滤历史兔子镜/);
@@ -126,4 +129,4 @@ assert.match(uiSource, /52,000 字符聊天与 76,000 字符总上下文上限�
 assert.match(tokenSource, /independentContextLayers/);
 assert.match(tokenSource, /filteredRabbitMirrorChars/);
 
-console.log('independentContextWindow: 历史兔子镜过滤、可选读取层数、52k/76k字符兜底全部通过');
+console.log('independentContextWindow: 可选层数保留；作者注释/推理/扩展提示/聊天元数据不进入独立 API；记忆插件设置保留');

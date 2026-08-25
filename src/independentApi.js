@@ -1,5 +1,5 @@
 import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.9-subapifix1';
-import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-subapifix1';
+import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-contextboundary1';
 import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-subapifix1';
 import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.9-subapifix1';
 import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapifix1';
@@ -1129,24 +1129,17 @@ function independentPersonaContext(ctx){
  for(const key of Object.keys(view)) if(!view[key]) delete view[key];
  return Object.keys(view).length ? safeJson(view,2500) : '';
 }
-function independentAuthorNoteContext(ctx){
- const note=ctx?.authorNote ?? ctx?.note ?? '';
- if(note && typeof note==='object') return safeJson(note,1800);
- return clipIndependentContextText(note,1800);
-}
 function contextBundle(ctx,targetIndex,globalWorldInfoSnapshot=null,preparedGlobalWorldInfoView=null){
  const chat=Array.isArray(ctx.chat)?ctx.chat:[];
  const char=ctx.characters?.[ctx.characterId] || ctx.character || null;
- // Keep only compact role references. Never serialize extensionPrompts/chatMetadata/worldInfo wholesale.
+ // Keep only compact role/persona references. Never serialize authorNote/extensionPrompts/chatMetadata/worldInfo wholesale.
  const charJson=independentCharacterContext(char);
  const personaJson=independentPersonaContext(ctx);
- const authorNote=independentAuthorNoteContext(ctx);
  const globalView=preparedGlobalWorldInfoView || globalWorldInfoContextView(globalWorldInfoSnapshot);
  const capturedWorldInfoBlock=String(globalView?.block||'');
  const referenceParts=[];
  if(charJson) referenceParts.push(`【当前角色卡摘要】\n${charJson}`);
  if(personaJson) referenceParts.push(`【当前 Persona 摘要】\n${personaJson}`);
- if(authorNote) referenceParts.push(`【当前作者注释】\n${authorNote}`);
  const referenceBlock=referenceParts.length?`\n\n${referenceParts.join('\n\n')}`:'';
  const fixedSuffix=`${referenceBlock}${capturedWorldInfoBlock}`;
  const transcriptHeader='【当前聊天逐轮正文】\n';

@@ -45,7 +45,7 @@ function rabbitMirrorMessageContentEvidence(content = '') {
         && text.includes(LEGACY_RABBIT_CONTEXT_ROLE_HEADER)
         && text.includes(RABBIT_CONTEXT_EXTRA_HEADER);
     if (legacy) return true;
-    // Modern compact context deliberately omits extensionPrompts/chatMetadata/worldInfo wholesale.
+    // Modern compact context deliberately omits authorNote/extensionPrompts/chatMetadata/worldInfo wholesale.
     // Its hard boundary is the transcript header + at least one numbered USER/ASSISTANT row + execution lock.
     return text.includes(RABBIT_CONTEXT_HEADER)
         && /\[\d+\s+(?:USER|ASSISTANT)\]\n/.test(text);
@@ -55,13 +55,6 @@ function rabbitMirrorCompletionPayload(payload) {
     if (!payload || typeof payload !== 'object' || !Array.isArray(payload.messages)) return false;
     return payload.messages.some(message => rabbitMirrorMessageContentEvidence(message?.content));
 }
-
-function normalizeAuthorNote(value) {
-    if (value == null) return '';
-    if (typeof value === 'string') return value.trim();
-    try { return JSON.stringify(value, null, 2).slice(0, 12000).trim(); } catch { return String(value || '').trim().slice(0, 12000); }
-}
-
 
 function generatedJsonEnd(section = '') {
     const text = String(section || '');
@@ -104,16 +97,7 @@ function extractActivatedWorldInfoAfterGeneratedJson(section = '') {
     return remainder;
 }
 
-function currentAuthorNote() {
-    try {
-        const context = globalThis.SillyTavern?.getContext?.() || {};
-        return normalizeAuthorNote(context.authorNote ?? context.note ?? '');
-    } catch {
-        return '';
-    }
-}
-
-export function sanitizeIndependentContextContent(content = '', authorNoteOverride) {
+export function sanitizeIndependentContextContent(content = '') {
     const source = String(content || '');
     if (!rabbitMirrorMessageContentEvidence(source)) return source;
 
@@ -125,13 +109,12 @@ export function sanitizeIndependentContextContent(content = '', authorNoteOverri
 
     const sensitiveSection = source.slice(extraStart + RABBIT_CONTEXT_EXTRA_HEADER.length, lockStart);
     const activatedWorldInfo = extractActivatedWorldInfoAfterGeneratedJson(sensitiveSection);
-    const authorNote = normalizeAuthorNote(authorNoteOverride !== undefined ? authorNoteOverride : currentAuthorNote());
-    const safeSection = `【当前作者注释】\n${authorNote || '（无）'}${activatedWorldInfo ? `\n\n${activatedWorldInfo}` : ''}\n\n`;
+    const safeSection = activatedWorldInfo ? `${activatedWorldInfo}\n\n` : '';
 
     return `${source.slice(0, extraStart)}${safeSection}${source.slice(lockStart)}`;
 }
 
-export function sanitizeRabbitMirrorCompletionBody(bodyText = '', authorNoteOverride) {
+export function sanitizeRabbitMirrorCompletionBody(bodyText = '') {
     const raw = String(bodyText || '');
     if (!raw) return { bodyText: raw, changed: false, rabbitMirror: false };
     let payload;
@@ -141,7 +124,7 @@ export function sanitizeRabbitMirrorCompletionBody(bodyText = '', authorNoteOver
     let changed = false;
     const messages = payload.messages.map(message => {
         if (!message || typeof message !== 'object' || typeof message.content !== 'string') return message;
-        const content = sanitizeIndependentContextContent(message.content, authorNoteOverride);
+        const content = sanitizeIndependentContextContent(message.content);
         if (content === message.content) return message;
         changed = true;
         return { ...message, content };

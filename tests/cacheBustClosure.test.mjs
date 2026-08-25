@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const COHORT = '1.4.9-subapifix1';
+const CONTEXT_BOUNDARY_COHORT = '1.4.9-contextboundary1';
 
 // 本阶段 cache cohort：源码内容变化的模块（settings/storage/picker）
 // 加上所有直接或间接 import 它们的父模块。
@@ -20,8 +21,6 @@ const COHORT_MODULES = [
     'src/blacklist.js',
     'src/generationGuard.js',
     'src/feedbackCat.js',
-    'src/independentApi.js',
-    'src/independentSecurityGuard.js',
     'src/injector.js',
     'src/outputSanitizer.js',
     'src/performanceDiagnostics.js',
@@ -89,12 +88,13 @@ for (const edge of edges) {
     parentsOf.get(edge.target).add(edge.from);
 }
 const leaks = [];
+const ALLOWED_NEW_BOUNDARY_PARENTS = new Set(['src/independentApi.js']);
 for (const target of COHORT_MODULES) {
     for (const parent of parentsOf.get(target) || []) {
-        if (!COHORT_MODULES.includes(parent)) leaks.push(`${parent} imports cohort module ${target}`);
+        if (!COHORT_MODULES.includes(parent) && !ALLOWED_NEW_BOUNDARY_PARENTS.has(parent)) leaks.push(`${parent} imports cohort module ${target}`);
     }
 }
-assert.deepEqual(leaks, [], 'cohort 必须闭合：引用 cohort 模块的父模块也必须在 cohort 内');
+assert.deepEqual(leaks, [], '旧 cohort 仍闭合；仅允许新的 ContextBoundary 模块复用旧 cohort 依赖');
 
 // 4. cohort 外模块不得被误改成本阶段 cohort 键
 const overreach = edges.filter(edge => !COHORT_MODULES.includes(edge.target) && edge.rmv === COHORT);
@@ -102,6 +102,15 @@ assert.deepEqual(
     overreach.map(edge => `${edge.from} -> ${edge.target}`),
     [],
     'cohort 外模块不应被改成本阶段缓存键',
+);
+
+// 4b. ContextBoundary1 只改 independentApi / independentSecurityGuard；所有入站 URL 必须使用新键。
+const CONTEXT_BOUNDARY_MODULES = ['src/independentApi.js', 'src/independentSecurityGuard.js'];
+const boundaryStale = edges.filter(edge => CONTEXT_BOUNDARY_MODULES.includes(edge.target) && edge.rmv !== CONTEXT_BOUNDARY_COHORT);
+assert.deepEqual(
+    boundaryStale.map(edge => `${edge.from} -> ${edge.target}?rmv=${edge.rmv}`),
+    [],
+    `ContextBoundary1 模块必须全部使用 ?rmv=${CONTEXT_BOUNDARY_COHORT}`,
 );
 
 // 5. 各模块内部的 RUNTIME_VERSION 不是发布缓存键，本轮不得被改动

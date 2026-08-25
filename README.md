@@ -1,6 +1,8 @@
-# 兔子镜测试版 SubApiFix1
+# 兔子镜测试版 ContextBoundary1
 
-这是基于 LightBoot1 + PerfFix1 的副 API 收尾候选版。轻启动、无全聊天 `syncAll()` 性能修复全部保留；本轮只收敛 HTTP 524、HTTP 200 但兔子镜不完整，以及手动重说失败时旧成品被提前抑制的问题。
+这是基于 SubApiFix1 的独立 API 上下文边界收口候选版。LightBoot、PerfFix、HTTP 524 / 不完整响应的手动重试修复全部保留；本轮只删除独立 API 对 SillyTavern 作者注释的读取/重新注入，并继续禁止把 extensionPrompts、chatMetadata、整包 worldInfo 或模型推理字段作为独立 API 上下文。上下文层数仍由用户自行设置。
+
+独立 API 的常规上下文来源现在是：当前聊天可见正文、紧凑角色卡摘要、紧凑 Persona 摘要，以及用户允许且本轮主生成实际激活的世界书。兔子镜设置中的“读取记忆插件”属于用户显式开启的独立功能，本轮不修改其开关、provider 选择或最大字符设置。
 
 - HTTP 524 当轮仍只发送 **1 次**付费请求，不自动重发；若失败模式为 stream=true，仅为下一次用户明确点击“重新生成兔子镜”准备同参数 `stream=false` twin。
 - HTTP 200 但 `<toto>` 不完整时同样不会自动二次扣费；流式模式会为下一次手动重说准备 exact non-stream twin。

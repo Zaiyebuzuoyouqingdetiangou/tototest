@@ -110,7 +110,7 @@ assert.match(visualScanner, /missing_visual_program/);
 // 这里只断言链路仍然闭合在同一 cohort；完整闭包校验见 cacheBustClosure.test.mjs。
 assert.match(indexSource, /\.\/src\/ui\.js\?rmv=1\.4\.9-subapifix1/);
 assert.match(uiSource, /\.\/injector\.js\?rmv=1\.4\.9-subapifix1/);
-assert.match(uiSource, /\.\/independentApi\.js\?rmv=1\.4\.9-subapifix1/);
-assert.equal(manifest.version, '1.4.9-test-multiface-step1-subapifix1');
+assert.match(uiSource, /\.\/independentApi\.js\?rmv=1\.4\.9-contextboundary1/);
+assert.equal(manifest.version, '1.4.9-test-multiface-step1-contextboundary1');
 
 console.log('presentationQuality tests passed');

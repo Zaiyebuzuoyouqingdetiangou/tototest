@@ -54,7 +54,7 @@ assert.match(index, /\.\/src\/ui\.js\?rmv=1\.4\.9-subapifix1/, 'ui.js must load 
 assert.doesNotMatch(index, /\.\/src\/ui\.js\?rmv=1\.4\.30\.2[0-9]/, 'stale 1.4.30.x UI cache key must not survive');
 assert.match(index, /\.\/src\/checkedSelectorRepair\.js\?rmv=1\.4\.30\.26/, 'formal checked-selector repair must be present in the test baseline');
 assert.match(index, /\.\/src\/maintenanceRecommendationHotfix\.js\?rmv=1\.4\.5/, 'formal maintenance recommendation must be present in the test baseline');
-assert.equal(manifest.js, 'index.js?rmv=1.4.9-test-multiface-step1-subapifix1');
-assert.equal(manifest.version, '1.4.9-test-multiface-step1-subapifix1');
+assert.equal(manifest.js, 'index.js?rmv=1.4.9-test-multiface-step1-contextboundary1');
+assert.equal(manifest.version, '1.4.9-test-multiface-step1-contextboundary1');
 
 console.log('performance lifecycle tests passed');
