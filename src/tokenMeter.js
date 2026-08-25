@@ -265,6 +265,9 @@ export function recordRabbitMirrorIndependentPrompt({
     feedbackPrompt = '',
     executionLock = '',
     contextChars = 0,
+    contextLayers = 0,
+    contextMaxLayers = 0,
+    filteredRabbitMirrorChars = 0,
     metadata = {},
 } = {}) {
     const finalPrompt = String(extensionPrompt || '');
@@ -287,6 +290,9 @@ export function recordRabbitMirrorIndependentPrompt({
             feedback: feedback.length,
             executionLock: lock.length,
             independentContext: safeInteger(contextChars),
+            independentContextLayers: safeInteger(contextLayers),
+            independentContextMaxLayers: safeInteger(contextMaxLayers),
+            filteredRabbitMirrorChars: safeInteger(filteredRabbitMirrorChars),
             motherLibrary: safeInteger(metadata.motherLibraryChars),
             sharedMemory: safeInteger(metadata.memoryChars),
             selectedThemes: safeInteger(metadata.selectedThemeChars),

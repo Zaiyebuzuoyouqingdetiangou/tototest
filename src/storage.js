@@ -630,6 +630,95 @@ export function getRecentInteractionFamilyCounts(limit = 5) {
     return counts;
 }
 
+// 单请求多面：批次待提交队列。
+//
+// 与 PENDING_KEY 分开存放，因为语义不同：PENDING_KEY 是"一次生成一个组合"，
+// 多面是"一次生成 N 个组合，各自等待自己那一面真正渲染完成后再分别提交"。
+// 未真正生成出来的面永远不会进入正式历史——这是与旧 pending 相同的安全语义。
+const PENDING_BATCH_KEY = 'rabbit_mirror_theater:pending_batch:v1';
+
+export function setPendingComboBatch(combos = []) {
+    try {
+        const faces = (Array.isArray(combos) ? combos : []).filter(Boolean).slice(0, 3);
+        if (!faces.length) { localStorage.removeItem(PENDING_BATCH_KEY); return ''; }
+        if (faces.length === 1) { setPendingCombo(faces[0]); localStorage.removeItem(PENDING_BATCH_KEY); return ''; }
+        const batchId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        // 批次成为权威状态：清掉逐面 setLastCombo 可能留下的单面残留，
+        // 否则 commitPendingCombo 之后仍可能提交到别人的旧组合。
+        localStorage.removeItem(PENDING_KEY);
+        const payload = JSON.stringify({
+            batchId,
+            pendingTs: Date.now(),
+            pendingSession: PENDING_SESSION_TOKEN,
+            faces: faces.map((combo, index) => ({ ...combo, batchId, faceIndex: index, signature: signatureOf(combo) })),
+        });
+        localStorage.setItem(PENDING_BATCH_KEY, payload);
+        // 读回验证：某些宿主的 setItem 在配额压力下会静默失败或截断。
+        // 调用方据返回值决定是否降级为单面，绝不返回一个表面成功但无法提交的计划。
+        const verify = localStorage.getItem(PENDING_BATCH_KEY);
+        if (verify !== payload) {
+            localStorage.removeItem(PENDING_BATCH_KEY);
+            console.warn('[RabbitMirror] Pending combo batch failed read-back verification.');
+            return '';
+        }
+        return batchId;
+    } catch (error) {
+        console.warn('[RabbitMirror] Failed to store pending combo batch:', error);
+        return '';
+    }
+}
+
+export function readPendingComboBatch() {
+    try {
+        const raw = localStorage.getItem(PENDING_BATCH_KEY);
+        if (!raw) return null;
+        const batch = JSON.parse(raw);
+        if (!batch || typeof batch !== 'object' || !Array.isArray(batch.faces)) return null;
+        // 与单面 pending 相同的双判据：跨页面会话或超龄一律丢弃，绝不补写历史。
+        const session = String(batch.pendingSession || '');
+        const at = Number(batch.pendingTs);
+        if ((session && session !== PENDING_SESSION_TOKEN) || !Number.isFinite(at) || Date.now() - at > PENDING_MAX_AGE_MS) {
+            localStorage.removeItem(PENDING_BATCH_KEY);
+            return null;
+        }
+        return batch;
+    } catch { return null; }
+}
+
+// 只提交实际渲染成功的那一面。停止／截断／只成功 2/3 面时，未提交的面不会留下历史。
+export function commitPendingBatchFace(faceIndex = 0, visualSignature = '', visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null) {
+    const batch = readPendingComboBatch();
+    if (!batch) return false;
+    const index = Math.trunc(Number(faceIndex));
+    const face = batch.faces.find(item => Number(item?.faceIndex) === index);
+    if (!face || face.committed === true) return false;
+    // 直连共享底层：不经过 PENDING_KEY，因此绝不可能提交到别人的旧组合。
+    const written = commitComboToHistory(
+        face,
+        { visualSignature, visualSkeleton, riskFlags, paletteFingerprint, interactionFamily },
+        { batchId: batch.batchId, faceIndex: index },
+    );
+    if (!written) return false;   // 写入失败 → 不标记 committed，可重试
+    face.committed = true;
+    try {
+        if (batch.faces.every(item => item.committed === true)) localStorage.removeItem(PENDING_BATCH_KEY);
+        else localStorage.setItem(PENDING_BATCH_KEY, JSON.stringify(batch));
+    } catch (error) {
+        console.warn('[RabbitMirror] Failed to persist batch face state:', error);
+        // 落盘失败不回滚历史：历史已经是事实，批次状态下次读取时按 committed 重建。
+    }
+    return true;
+}
+
+// 只清单面 pending，不动历史与批次。供批次规划清理逐面 setLastCombo 残留。
+export function clearPendingCombo() {
+    try { localStorage.removeItem(PENDING_KEY); } catch {}
+}
+
+export function clearPendingComboBatch() {
+    try { localStorage.removeItem(PENDING_BATCH_KEY); } catch {}
+}
+
 export function setPendingCombo(combo) {
     try {
         if (!combo) return;
@@ -642,6 +731,67 @@ export function setPendingCombo(combo) {
         localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
     } catch (error) {
         console.warn('[RabbitMirror] Failed to store pending combo:', error);
+    }
+}
+
+// 共享底层：把一个已经确认属于本次生成的 combo 写进正式历史。
+//
+// 单面 pending 与批次 face 都直连这里，不再互相借道对方的存储槽。
+// 返回 true 仅代表「确实写进了 STORAGE_KEY」；任何解析/写入失败都返回 false，
+// 调用方据此决定是否标记 committed，绝不会把失败当成成功。
+// 批次提交幂等：history 是唯一权威的「已提交」记录。
+//
+// pending_batch 的 committed 标记可能落盘失败（配额、隐私模式、宿主限制），
+// 一旦丢失，重试同一 face 会二次写入 history。因此改为在 history 条目上带
+// batchId + faceIndex，写入前先查重 —— 只要那一面真的进过 history，重试就是幂等的。
+function historyHasBatchFace(history, batchId, faceIndex) {
+    if (!batchId) return false;
+    const index = Number(faceIndex);
+    return (Array.isArray(history) ? history : []).some(item =>
+        item && item.batchId === batchId && Number(item.faceIndex) === index);
+}
+
+function commitComboToHistory(combo, visual = {}, options = {}) {
+    if (!combo || typeof combo !== 'object') return false;
+    const { visualSignature = '', visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null } = visual || {};
+    const batchId = String(options?.batchId || '');
+    const faceIndex = options?.faceIndex;
+    try {
+        const history = readHistory();
+        // 已经在 history 里 → 视为提交成功，但绝不重复写入。
+        if (batchId && historyHasBatchFace(history, batchId, faceIndex)) return true;
+        const now = Date.now();
+        const sig = combo.signature || signatureOf(combo);
+        const last = history[history.length - 1];
+        // 批次面带幂等键，不走签名去重分支：三面本就应各占一条。
+        if (!batchId && last?.signature === sig && now - Number(last?.ts || 0) < 120000) {
+            if (visualSignature) last.visualSignature = String(visualSignature).slice(0, 280);
+            if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 420);
+            if (Array.isArray(riskFlags) && riskFlags.length) last.riskFlags = [...new Set(riskFlags)].slice(0, 8);
+            if (paletteFingerprint && typeof paletteFingerprint === 'object') last.paletteFingerprint = paletteFingerprint;
+            const normalizedFamily = normalizeInteractionFamily(interactionFamily);
+            if (normalizedFamily) last.interactionFamily = normalizedFamily;
+            last.visualSignatureTs = now;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
+            return true;
+        }
+        history.push({
+            ...combo,
+            signature: sig,
+            ts: now,
+            ...(batchId ? { batchId, faceIndex: Number(faceIndex) } : {}),
+            visualSignature: visualSignature ? String(visualSignature).slice(0, 280) : combo.visualSignature,
+            visualSkeleton: visualSkeleton ? String(visualSkeleton).slice(0, 420) : combo.visualSkeleton,
+            riskFlags: Array.isArray(riskFlags) ? [...new Set(riskFlags)].slice(0, 8) : [],
+            paletteFingerprint: paletteFingerprint && typeof paletteFingerprint === 'object' ? paletteFingerprint : undefined,
+            interactionFamily: normalizeInteractionFamily(interactionFamily),
+            visualSignatureTs: visualSignature || visualSkeleton || (Array.isArray(riskFlags) && riskFlags.length) || paletteFingerprint || normalizeInteractionFamily(interactionFamily) ? now : undefined,
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
+        return true;
+    } catch (error) {
+        console.warn('[RabbitMirror] Failed to write combo history:', error);
+        return false;
     }
 }
 
@@ -667,36 +817,9 @@ export function commitPendingCombo(visualSignature = '', visualSkeleton = '', ri
             return;
         }
 
-        const history = readHistory();
-        const now = Date.now();
-        const sig = pending.signature || signatureOf(pending);
-        const last = history[history.length - 1];
-        if (last?.signature === sig && now - Number(last?.ts || 0) < 120000) {
-            if (visualSignature) last.visualSignature = String(visualSignature).slice(0, 280);
-            if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 420);
-            if (Array.isArray(riskFlags) && riskFlags.length) last.riskFlags = [...new Set(riskFlags)].slice(0, 8);
-            if (paletteFingerprint && typeof paletteFingerprint === 'object') last.paletteFingerprint = paletteFingerprint;
-            const normalizedFamily = normalizeInteractionFamily(interactionFamily);
-            if (normalizedFamily) last.interactionFamily = normalizedFamily;
-            last.visualSignatureTs = now;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
+        if (commitComboToHistory(pending, { visualSignature, visualSkeleton, riskFlags, paletteFingerprint, interactionFamily })) {
             localStorage.removeItem(PENDING_KEY);
-            return;
         }
-
-        history.push({
-            ...pending,
-            signature: sig,
-            ts: now,
-            visualSignature: visualSignature ? String(visualSignature).slice(0, 280) : pending.visualSignature,
-            visualSkeleton: visualSkeleton ? String(visualSkeleton).slice(0, 420) : pending.visualSkeleton,
-            riskFlags: Array.isArray(riskFlags) ? [...new Set(riskFlags)].slice(0, 8) : [],
-            paletteFingerprint: paletteFingerprint && typeof paletteFingerprint === 'object' ? paletteFingerprint : undefined,
-            interactionFamily: normalizeInteractionFamily(interactionFamily),
-            visualSignatureTs: visualSignature || visualSkeleton || (Array.isArray(riskFlags) && riskFlags.length) || paletteFingerprint || normalizeInteractionFamily(interactionFamily) ? now : undefined,
-        });
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
-        localStorage.removeItem(PENDING_KEY);
     } catch (error) {
         console.warn('[RabbitMirror] Failed to commit pending combo:', error);
     }
@@ -711,6 +834,7 @@ export function clearLastCombo() {
     try {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(PENDING_KEY);
+        localStorage.removeItem(PENDING_BATCH_KEY);
         localStorage.removeItem(ATTEMPT_STORAGE_KEY);
         localStorage.removeItem(DIRECTIVE_PICK_STORAGE_KEY);
         localStorage.removeItem(FORMAT_ELIGIBLE_MISS_STORAGE_KEY);

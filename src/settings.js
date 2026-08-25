@@ -51,6 +51,7 @@ export const defaultSettings = Object.freeze({
     independentApiModel: '',
     independentApiTemperature: 0.8,
     independentApiMaxTokens: 30000,
+    independentContextMaxLayers: 20,
     independentDisplayMode: 'external',
     independentReadGlobalWorldInfo: false,
     independentWorldInfoDisabledBooks: [],
@@ -67,6 +68,8 @@ export const defaultSettings = Object.freeze({
     favoriteThemeMultipliers: {},
     favoriteFormatMultipliers: {},
     presentationWorldviewLock: false,
+    // 每轮生成的兔子镜面数（1/2/3）。默认 1，与既有单面行为完全一致。
+    rabbitMirrorFaceCount: 1,
     richFormatBias: false,
     maintenanceRabbitEnabled: true,
     maintenanceRabbitAutoSafeEnabled: true,
@@ -124,6 +127,10 @@ export function getSettings() {
         settings.independentApiTemperature = Math.max(0, Math.min(2, Number.isFinite(temperature) ? temperature : 0.8));
     }
     settings.independentApiMaxTokens = Math.max(512, Math.min(32000, Number(settings.independentApiMaxTokens) || 30000));
+    {
+        const contextLayers = Number(settings.independentContextMaxLayers);
+        settings.independentContextMaxLayers = Math.max(1, Math.min(200, Number.isFinite(contextLayers) ? Math.round(contextLayers) : 20));
+    }
 
     if (settings.showCot === undefined && settings.showWonderland !== undefined) {
         settings.showCot = !!settings.showWonderland;
@@ -167,6 +174,10 @@ export function getSettings() {
     settings.favoriteThemeMultipliers = normalizeFavoriteMultipliers(settings.favoriteThemeMultipliers, settings.favoriteThemeIds);
     settings.favoriteFormatMultipliers = normalizeFavoriteMultipliers(settings.favoriteFormatMultipliers, settings.favoriteFormatIds, canonicalFormatSettingId);
     settings.presentationWorldviewLock = settings.presentationWorldviewLock === true;
+    // 只接受 1/2/3；任何异常值（NaN、字符串、0、负数、超界）都回落到 1，
+    // 保证旧设置升级与畸形写入都不会意外开启多面。
+    const faceCount = Math.trunc(Number(settings.rabbitMirrorFaceCount));
+    settings.rabbitMirrorFaceCount = (faceCount === 2 || faceCount === 3) ? faceCount : 1;
     if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
     if (settings.maintenanceRabbitEnabled === undefined) {
         settings.maintenanceRabbitEnabled = legacyRescueWasEnabled || defaultSettings.maintenanceRabbitEnabled;

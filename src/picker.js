@@ -11,8 +11,11 @@ import {
     recordFormatEligibleMissRound,
     setDirectiveScopedPick,
     setLastCombo,
-} from './storage.js?rmv=1.4.30.17';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.4.30.17';
+    setPendingComboBatch,
+    clearPendingComboBatch,
+    clearPendingCombo,
+} from './storage.js?rmv=1.4.6-ms1';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.4.6-ms1';
 
 function randomUnit() {
     try {
@@ -693,6 +696,73 @@ function directiveScopeKey(directive, settings) {
     return hashText(`${directive.messageKey}|${directive.rawDirective}|${config}`);
 }
 
+// 单请求多面：按面依次抽取，每一面都要避开历史冷却 + 本批前面已选的组合。
+//
+// 复用既有 hardExcluded 机制而不是新写一套过滤：批内互斥与历史冷却因此走同一条
+// 代码路径，不会出现两套优先级互相打架。
+//
+// 幂等：同一个 generationScopeKey 重复调用必须返回同一批次计划。
+// pickCombination 自己的 cachedPick 只有一个槽，抽完第 3 面就被 face2 占据，
+// 第二次调用时第 1 面会重新抽 —— 所以批次必须有自己的计划缓存。
+let cachedBatchPlan = null;
+
+// 批次规划建立后，batch pending 成为多面计划的权威状态：
+// 每个 face 不再各自调用 setLastCombo()，否则单面 PENDING_KEY 会被逐面覆盖，
+// 最终只剩最后一面，前面两面的组合永久丢失。
+export function pickCombinationBatch(settings, generationScopeKey = '', generationContext = null, faceCount = 1) {
+    const total = (faceCount === 2 || faceCount === 3) ? faceCount : 1;
+    const scopeKey = normalizeGenerationScopeKey(generationScopeKey);
+
+    // 单面：完全走既有路径，setLastCombo / PENDING_KEY 语义与 1.4.5-test 逐字一致。
+    if (total === 1) {
+        clearPendingComboBatch();
+        return [pickCombination(settings, generationScopeKey, generationContext)];
+    }
+
+    if (scopeKey && cachedBatchPlan?.scopeKey === scopeKey && cachedBatchPlan?.total === total) {
+        return cachedBatchPlan.faces;
+    }
+
+    const first = pickCombination(settings, generationScopeKey, generationContext);
+    if (first?.disabled || !first?.combo) {
+        clearPendingComboBatch();
+        return [first];
+    }
+
+    const faces = [first];
+    const usedThemes = [...(first.combo.themeIds || [])];
+    const usedFormats = [...(first.combo.formatIds || [])];
+
+    for (let index = 1; index < total; index += 1) {
+        // 每面独立 scopeKey，否则 pickCombination 的点菜缓存会让三面命中同一结果。
+        const faceScope = scopeKey ? `${scopeKey}:face${index}` : '';
+        const next = pickCombination(settings, faceScope, {
+            ...(generationContext || {}),
+            batchExcludedThemeIds: [...usedThemes],
+            batchExcludedFormatIds: [...usedFormats],
+        });
+        if (!next?.combo) break;
+        faces.push(next);
+        usedThemes.push(...(next.combo.themeIds || []));
+        usedFormats.push(...(next.combo.formatIds || []));
+    }
+
+    // 批次 pending 取代逐面 setLastCombo 留下的单面残留：
+    // 先清掉被逐面覆盖过的 PENDING_KEY，再把完整计划写进批次槽。
+    clearPendingCombo();
+    const batchId = setPendingComboBatch(faces.map(item => item.combo));
+    if (!batchId) {
+        // 批次存储失败：多面计划无法提交，返回它只会得到三面都进不了历史的结果。
+        // 安全降级为原单面路径，且不缓存这个失败的计划。
+        console.warn('[RabbitMirror] Pending combo batch storage failed; falling back to single face.');
+        cachedBatchPlan = null;
+        clearPendingComboBatch();
+        return [pickCombination(settings, generationScopeKey, generationContext)];
+    }
+    if (scopeKey) cachedBatchPlan = { scopeKey, total, faces };
+    return faces;
+}
+
 export function pickCombination(settings, generationScopeKey = '', generationContext = null) {
     const scopeKey = normalizeGenerationScopeKey(generationScopeKey);
     if (scopeKey && cachedPick?.scopeKey === scopeKey) return cachedPick.payload;
@@ -705,9 +775,17 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
     const formalRecent = getRecentIds(settings.cooldownRounds || 10);
     const attemptRecent = getRecentGenerationAttemptIds(chatKey, settings.cooldownRounds || 10);
     const recent = mergeRecent(formalRecent, attemptRecent);
+    // 单请求多面：本批前面已选中的组合并入硬排除，与历史冷却走同一条过滤路径。
+    // generationContext 不带这两个字段时（既有单面调用）结果与原来逐字相同。
+    const batchExcludedThemeIds = Array.isArray(generationContext?.batchExcludedThemeIds)
+        ? generationContext.batchExcludedThemeIds.map(value => String(value || '')).filter(Boolean)
+        : [];
+    const batchExcludedFormatIds = Array.isArray(generationContext?.batchExcludedFormatIds)
+        ? generationContext.batchExcludedFormatIds.map(value => String(value || '')).filter(Boolean)
+        : [];
     const hardRecent = {
-        themeIds: attemptRecent.themeIds || [],
-        formatIds: attemptRecent.formatIds || [],
+        themeIds: [...(attemptRecent.themeIds || []), ...batchExcludedThemeIds],
+        formatIds: [...(attemptRecent.formatIds || []), ...batchExcludedFormatIds],
     };
     const favorites = getFavoritesState(settings);
     const validFormatIds = PRESENTATION_FORMATS.map(item => String(item?.id || '')).filter(Boolean);

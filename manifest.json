@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.30.25",
+  "js": "index.js?rmv=1.4.6-test-multiface-step1",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.30.25",
+  "version": "1.4.6-test-multiface-step1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.4.30.25：保留 1.4.30.24 的性能与生成生命周期优化；修复 23→24 升级时 UI 模块仍使用 1.4.30.23 缓存键、可能复用旧 UI 并间接拉起旧版独立 API/清洗模块的问题。新增启动缓存一致性回归检查，不改生成、审美、交互、安全、塔罗或移动端布局逻辑。"
+  "description": "兔子镜测试版｜单请求多面 第一阶段（基础层）+ 独立 API 上下文控制：保留多面批次基础；新增自定义最近读取层数、历史兔子镜过滤，并继续保留 52,000/76,000 字符预算兜底。提取层未改造，多面尚不可端到端使用。"
 }

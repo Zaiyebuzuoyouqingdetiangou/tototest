@@ -1,3 +1,12 @@
+## 单请求多面 第一阶段（基础层）
+
+仅实现基础层，**提取层未改造，多面尚不可端到端使用**。
+
+- `settings.js` 新增 `rabbitMirrorFaceCount`，默认 1；归一化只接受 1/2/3，NaN/Infinity/0/负数/超界/null 全部回落到 1，旧设置升级不会意外开启多面。
+- `picker.js` 新增 `pickCombinationBatch()`：按面依次抽取，复用既有 `hardExcluded` 机制做批内互斥，不新写过滤路径。每面用独立 scopeKey，避免点菜缓存把三面命中同一结果。`faceCount === 1` 时直接返回 `[pickCombination(...)]`。
+- `picker.js` 的 `hardRecent` 并入 `generationContext.batchExcludedThemeIds / batchExcludedFormatIds`；不传这两个字段时与原版逐字等价。
+- `storage.js` 新增 `pending_batch:v1` 批次队列与 `commitPendingBatchFace()`：只提交实际渲染成功的那一面，停止／截断／只成功 2 面时未提交的面不进入正式历史；沿用单面 pending 的会话标记 + 超龄双判据。
+
 # RabbitMirror 1.4.30.23 TEST
 
 - Prompt 减重：配色与六维视觉家族仅在实际连续重复时注入短冷却；最终成品锁压缩为“形式、交互、360px 手机”三项短检，并把完整可保持交互放回近输出位置。
