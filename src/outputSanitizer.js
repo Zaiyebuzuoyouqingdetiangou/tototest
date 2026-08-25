@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.9-startupdiag1';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.9-startupdiag1';
+import { getSettings } from './settings.js?rmv=1.4.9-loaderdiag1';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.9-loaderdiag1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,10 +9,10 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.4.9-startupdiag1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-startupdiag1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.9-startupdiag1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.9-startupdiag1';
+} from './feedbackCat.js?rmv=1.4.9-loaderdiag1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-loaderdiag1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.9-loaderdiag1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.9-loaderdiag1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.22';
 
 

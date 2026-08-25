@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.9-test-multiface-step1-startupdiag1",
+  "js": "index.js?rmv=1.4.9-test-multiface-step1-loaderdiag1",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.9-test-multiface-step1-startupdiag1",
+  "version": "1.4.9-test-multiface-step1-loaderdiag1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版｜StartupDiag1：基于 PerfFix1，仅增加启动分段性能诊断；分别计时 UI、Security Guard、Output Sanitizer、Visual Scanner、Independent API、Touch Theater 等初始化，并记录 RabbitMirror 自身 settings.update/saveScheduled 与挨打猫 Prompt 同步标记。正常生命周期仍保持 PerfFix1 的无全聊天 syncAll 修复。"
+  "description": "兔子镜测试版｜LoaderDiag1：基于 StartupDiag1，不改变功能目标；入口改为诊断用逐模块动态 import，直接测量模块下载、依赖解析、JS 解析/编译与顶层执行的首次加载耗时。保留 PerfFix1 无全聊天 syncAll 修复。仅用于定位启动卡顿，不作为最终性能版。"
 }

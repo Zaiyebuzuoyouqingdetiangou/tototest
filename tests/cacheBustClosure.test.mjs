@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const COHORT = '1.4.9-startupdiag1';
+const COHORT = '1.4.9-loaderdiag1';
 
 // 本阶段 cache cohort：源码内容变化的模块（settings/storage/picker）
 // 加上所有直接或间接 import 它们的父模块。
@@ -48,14 +48,16 @@ function collectJsFiles(dir) {
     return out;
 }
 
-const IMPORT_RE = /from\s+'(\.[^'?]+)(?:\?rmv=([\w.\-]+))?'/g;
+const IMPORT_RES = [/from\s+'(\.[^'?]+)(?:\?rmv=([\w.\-]+))?'/g, /import\(\s*'(\.[^'?]+)(?:\?rmv=([\w.\-]+))?'\s*\)/g];
 const edges = [];
 for (const file of collectJsFiles(ROOT)) {
     const rel = relative(ROOT, file).split('\\').join('/');
     const source = readFileSync(file, 'utf-8');
-    for (const match of source.matchAll(IMPORT_RE)) {
-        const target = normalize(join(dirname(rel), match[1])).split('\\').join('/');
-        edges.push({ from: rel, target, rmv: match[2] || null });
+    for (const IMPORT_RE of IMPORT_RES) {
+        for (const match of source.matchAll(IMPORT_RE)) {
+            const target = normalize(join(dirname(rel), match[1])).split('\\').join('/');
+            edges.push({ from: rel, target, rmv: match[2] || null });
+        }
     }
 }
 

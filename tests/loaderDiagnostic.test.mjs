@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const source = fs.readFileSync(path.join(root, 'index.js'), 'utf8');
+assert.match(source, /rabbitMirrorLoaderSummary/);
+assert.match(source, /async function timedImport/);
+assert.match(source, /timedImport\('outputSanitizer'/);
+assert.match(source, /timedImport\('independentApi'/);
+assert.match(source, /moduleGraph\.total/);
+assert.doesNotMatch(source, /^import\s+\{/m, 'loader diagnostic index must not use eager static project imports');
+assert.doesNotMatch(source, /request\.body|response\.body|localStorage|sessionStorage/, 'loader diagnostics must not inspect user data');
+console.log('loaderDiagnostic tests passed');
