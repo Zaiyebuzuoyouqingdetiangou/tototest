@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const ROOT=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+const source=readFileSync(resolve(ROOT,'src/independentApi.js'),'utf8');
+const payload=source.slice(source.indexOf('function independentConnectionPayload(runtime){'),source.indexOf('function independentDiagnosticBase'));
+assert.match(payload,/apiMap\.source==='custom'.*payload\.custom_url/s);
+assert.match(payload,/payload\.reverse_proxy=apiUrl/);
+assert.doesNotMatch(payload,/payload\.zai_endpoint=apiUrl|payload\.siliconflow_endpoint=apiUrl|payload\.minimax_endpoint=apiUrl|payload\.workers_ai_account_id=apiUrl/);
+const models=source.slice(source.indexOf('export async function fetchIndependentModels(){'),source.indexOf('export async function testIndependentConnection(){'));
+assert.match(models,/savedIndependentModelsForProfile/);
+assert.match(models,/mode:'saved-fallback'/);
+assert.match(models,/return savedModels/);
+assert.match(source,/export function getLastIndependentModelListDiagnostic/);
+console.log('independentModelList: Connection Manager 模型列表 payload 与保存模型兜底通过');

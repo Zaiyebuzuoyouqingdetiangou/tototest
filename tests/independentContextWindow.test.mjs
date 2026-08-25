@@ -95,6 +95,28 @@ const bundle = sandbox.globalThis.__bundle;
     assert.ok(result.transcriptChars < 5000, `reasoning must not inflate five visible-body layers, got ${result.transcriptChars}`);
 }
 
+
+{
+    currentSettings = { independentContextMaxLayers: 1 };
+    const huge = 'X'.repeat(50000);
+    const ctx = {
+        chat: [{ is_user: false, mes: 'ONLY_VISIBLE_BODY' }],
+        characterId: 0,
+        characters: [{ name: '角色', description: 'D'.repeat(8000), personality: 'P'.repeat(4000), scenario: 'S'.repeat(4000) }],
+        name1: '用户',
+        personaDescription: 'U'.repeat(8000),
+        authorNote: 'A'.repeat(8000),
+        extensionPrompts: { giant: huge },
+        worldInfo: { giant: huge },
+        chatMetadata: { giant: huge },
+    };
+    const result = bundle(ctx, 0);
+    assert.equal(result.layers, 1);
+    assert.match(result.text, /ONLY_VISIBLE_BODY/);
+    assert.doesNotMatch(result.text, /X{100}|extensionPrompts|chatMetadata/);
+    assert.ok(result.referenceContextChars < 9000, `compact references must stay bounded, got ${result.referenceContextChars}`);
+    assert.ok(result.text.length < 12000, `one short visible layer must not inflate to 30k+ from fixed metadata, got ${result.text.length}`);
+}
 assert.match(settingsSource, /independentContextMaxLayers:\s*20/);
 assert.match(settingsSource, /Math\.max\(1,\s*Math\.min\(200,/);
 assert.match(uiSource, /id="rh_independent_context_layers"/);
@@ -104,4 +126,4 @@ assert.match(uiSource, /52,000 字符聊天与 76,000 字符总上下文上限�
 assert.match(tokenSource, /independentContextLayers/);
 assert.match(tokenSource, /filteredRabbitMirrorChars/);
 
-console.log('independentContextWindow: 历史兔子镜过滤、可选读取层数、52k/76k字符兜底全部通过');
+console.log('independentContextWindow: 正文-only、紧凑固定资料、历史兔子镜过滤、层数与52k/76k兜底全部通过');

@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.7-ms1';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.7-ms1';
+import { getSettings } from './settings.js?rmv=1.4.8-ms1';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.8-ms1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -10,9 +10,9 @@ import {
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
 } from './feedbackCat.js?rmv=1.4.30.17';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.7-ms1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.7-ms1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.7-ms1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.8-ms1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.8-ms1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.8-ms1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.22';
 
 
@@ -21698,6 +21698,15 @@ function cancelStartupMaintenanceHistoryInstall() {
     if (startupMaintenanceInstallTimer) clearTimeout(startupMaintenanceInstallTimer);
     startupMaintenanceInstallTimer = 0;
     startupMaintenanceInstallQueue = [];
+    try { startupMaintenanceVisibilityObserver?.disconnect?.(); } catch {}
+    startupMaintenanceVisibilityObserver = null;
+    if (startupMaintenanceFallbackRoot && startupMaintenanceFallbackHandler) {
+        try { startupMaintenanceFallbackRoot.removeEventListener('scroll', startupMaintenanceFallbackHandler, false); } catch {}
+        try { startupMaintenanceFallbackRoot.removeEventListener('pointerdown', startupMaintenanceFallbackHandler, true); } catch {}
+        try { startupMaintenanceFallbackRoot.removeEventListener('focusin', startupMaintenanceFallbackHandler, true); } catch {}
+    }
+    startupMaintenanceFallbackRoot = null;
+    startupMaintenanceFallbackHandler = null;
 }
 
 function installMaintenanceRabbitsDeferredInChatDom() {
@@ -21709,7 +21718,7 @@ function installMaintenanceRabbitsDeferredInChatDom() {
     if (!messageRoots.length) return;
     const split = Math.max(0, messageRoots.length - 6);
     const immediate = messageRoots.slice(split);
-    startupMaintenanceInstallQueue = messageRoots.slice(0, split).reverse();
+    const historical = messageRoots.slice(0, split);
     const install = root => {
         if (!root?.isConnected) return;
         installMaintenanceRabbitsInScope(root, {
@@ -21717,18 +21726,45 @@ function installMaintenanceRabbitsDeferredInChatDom() {
             captureStartupBaseline: isMaintenanceAutoSafeEnabled(),
         });
     };
-    // The newest few messages receive tools immediately. Older mirrors are restored in tiny
-    // chunks so a long chat cannot block Safari's first usable frame.
     for (const root of immediate) install(root);
-    const pump = () => {
-        startupMaintenanceInstallTimer = 0;
-        if (!isCurrentRuntime()) { startupMaintenanceInstallQueue = []; return; }
-        const chunk = startupMaintenanceInstallQueue.splice(0, 3);
-        for (const root of chunk) install(root);
-        if (!startupMaintenanceInstallQueue.length) return;
-        startupMaintenanceInstallTimer = setTimeout(pump, 40);
+    if (!historical.length) return;
+    // Do not pump every historical message after startup. Observe cheap message roots only and
+    // install tools when a row approaches the viewport; this preserves old-message functionality
+    // without a tens-of-seconds background DOM traversal on long iPhone chats.
+    if (typeof IntersectionObserver === 'function') {
+        startupMaintenanceVisibilityObserver = new IntersectionObserver(entries => {
+            for (const entry of entries) {
+                if (!entry.isIntersecting) continue;
+                startupMaintenanceVisibilityObserver?.unobserve?.(entry.target);
+                install(entry.target);
+            }
+        }, { root: chatRoot, rootMargin: '1200px 0px', threshold: 0 });
+        for (const root of historical) startupMaintenanceVisibilityObserver.observe(root);
+        return;
+    }
+    let queued = false;
+    const probe = () => {
+        if (queued) return;
+        queued = true;
+        startupMaintenanceInstallTimer = setTimeout(() => {
+            startupMaintenanceInstallTimer = 0; queued = false;
+            if (!isCurrentRuntime()) return;
+            const viewport = chatRoot.getBoundingClientRect?.(); if (!viewport) return;
+            let installed = 0;
+            for (const root of historical) {
+                if (!root?.isConnected || root.hasAttribute?.('data-rm-lazy-tools-ready')) continue;
+                const box = root.getBoundingClientRect?.(); if (!box) continue;
+                if (box.bottom >= viewport.top - 1200 && box.top <= viewport.bottom + 1200) {
+                    root.setAttribute?.('data-rm-lazy-tools-ready', 'true'); install(root); installed += 1;
+                    if (installed >= 6) break;
+                }
+            }
+        }, 80);
     };
-    if (startupMaintenanceInstallQueue.length) startupMaintenanceInstallTimer = setTimeout(pump, 120);
+    startupMaintenanceFallbackRoot = chatRoot; startupMaintenanceFallbackHandler = probe;
+    chatRoot.addEventListener('scroll', probe, { passive: true });
+    chatRoot.addEventListener('pointerdown', probe, true); chatRoot.addEventListener('focusin', probe, true);
+    probe();
 }
 
 export function refreshMaintenanceRabbits() {
@@ -24099,6 +24135,9 @@ let toolEntryDelegatedPointerHandler = null;
 const maintenanceInstallTimers = new Set();
 let startupMaintenanceInstallTimer = 0;
 let startupMaintenanceInstallQueue = [];
+let startupMaintenanceVisibilityObserver = null;
+let startupMaintenanceFallbackRoot = null;
+let startupMaintenanceFallbackHandler = null;
 
 const maintenanceAutoSafePendingRoots = new Map();
 const maintenanceAutoSafeBaselineSignatures = new Set();
