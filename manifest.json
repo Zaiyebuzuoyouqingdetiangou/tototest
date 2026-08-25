@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.9-test-multiface-step1-perfdiag1",
+  "js": "index.js?rmv=1.4.9-test-multiface-step1-perfdiag2",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.9-test-multiface-step1-perfdiag1",
+  "version": "1.4.9-test-multiface-step1-perfdiag2",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版｜1.4.9 性能诊断版：不改变生成/恢复逻辑，仅记录启动同步、历史恢复、维修兔、MutationObserver、浏览器长任务与 API 请求耗时；不记录聊天正文、Prompt 或 API Key。"
+  "description": "兔子镜测试版｜1.4.9 性能诊断版：不改变生成/恢复逻辑，在 PerfDiag1 基础上为每次全聊天 syncAll 记录触发来源（CHAT_CHANGED、后台恢复、reconfigure、事件 fallback 等）；不记录聊天正文、Prompt 或 API Key。"
 }

@@ -14,7 +14,7 @@ import { initRabbitMirrorIndependentProfileSelectorHotfix, destroyRabbitMirrorIn
 import { initRabbitMirrorMaintenanceRecommendationHotfix, destroyRabbitMirrorMaintenanceRecommendationHotfix } from './src/maintenanceRecommendationHotfix.js?rmv=1.4.5';
 import { initRabbitMirrorRenderedVisualFeedbackHotfix, destroyRabbitMirrorRenderedVisualFeedbackHotfix } from './src/renderedVisualFeedbackHotfix.js?rmv=1.4.9-ms1';
 import { initRabbitMirrorCheckedSelectorRepair, destroyRabbitMirrorCheckedSelectorRepair } from './src/checkedSelectorRepair.js?rmv=1.4.30.26';
-import { initRabbitMirrorPerformanceDiagnostics, destroyRabbitMirrorPerformanceDiagnostics } from './src/performanceDiagnostics.js?rmv=1.4.9-perfdiag1';
+import { initRabbitMirrorPerformanceDiagnostics, destroyRabbitMirrorPerformanceDiagnostics } from './src/performanceDiagnostics.js?rmv=1.4.9-perfdiag2';
 
 const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.30.17';
 

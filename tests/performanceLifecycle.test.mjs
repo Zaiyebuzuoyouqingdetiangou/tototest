@@ -39,7 +39,7 @@ assert.match(independent, /const STARTUP_SYNC_IMMEDIATE_MESSAGES=6/);
 assert.doesNotMatch(independent, /STARTUP_SYNC_CHUNK_MESSAGES/, 'cold startup must not pump the entire history');
 assert.match(independent, /IntersectionObserver/);
 assert.match(independent, /installStartupHistoryLazySync/);
-assert.match(independent, /if\(coldStart\) scheduleStartupHistorySync\(sequence\); else syncAll\(\);/);
+assert.match(independent, /if\(coldStart\) scheduleStartupHistorySync\(sequence\); else syncAll\('reconfigureRuntime'/);
 assert.match(independent, /const hotUpdate=typeof previousCleanup==='function';/);
 const sanitizerInit = sanitizer.slice(sanitizer.indexOf('export async function initOutputSanitizer()'), sanitizer.indexOf('export function destroyOutputSanitizer()'));
 assert.match(sanitizerInit, /installMaintenanceRabbitsDeferredInChatDom\(\)/);
@@ -52,7 +52,7 @@ assert.match(index, /\.\/src\/ui\.js\?rmv=1\.4\.9-ms1/, 'ui.js must load from th
 assert.doesNotMatch(index, /\.\/src\/ui\.js\?rmv=1\.4\.30\.2[0-9]/, 'stale 1.4.30.x UI cache key must not survive');
 assert.match(index, /\.\/src\/checkedSelectorRepair\.js\?rmv=1\.4\.30\.26/, 'formal checked-selector repair must be present in the test baseline');
 assert.match(index, /\.\/src\/maintenanceRecommendationHotfix\.js\?rmv=1\.4\.5/, 'formal maintenance recommendation must be present in the test baseline');
-assert.equal(manifest.js, 'index.js?rmv=1.4.9-test-multiface-step1-perfdiag1');
-assert.equal(manifest.version, '1.4.9-test-multiface-step1-perfdiag1');
+assert.equal(manifest.js, 'index.js?rmv=1.4.9-test-multiface-step1-perfdiag2');
+assert.equal(manifest.version, '1.4.9-test-multiface-step1-perfdiag2');
 
 console.log('performance lifecycle tests passed');

@@ -111,6 +111,6 @@ assert.match(visualScanner, /missing_visual_program/);
 assert.match(indexSource, /\.\/src\/ui\.js\?rmv=1\.4\.9-ms1/);
 assert.match(uiSource, /\.\/injector\.js\?rmv=1\.4\.9-ms1/);
 assert.match(uiSource, /\.\/independentApi\.js\?rmv=1\.4\.9-ms1/);
-assert.equal(manifest.version, '1.4.9-test-multiface-step1-perfdiag1');
+assert.equal(manifest.version, '1.4.9-test-multiface-step1-perfdiag2');
 
 console.log('presentationQuality tests passed');

@@ -4964,7 +4964,7 @@ function resumeRabbitMirrorLifecycle(event){
   if(currentMode==='off') return;
   const last=assistantMessages(getContext()).at(-1);
   markExternalGeometryLifecycle('background-resume');
-  syncAll();
+  syncAll('background-resume');
   if(currentMode==='independent' && last) scheduleMessageGeneration(last.i,160,true);
  },80);
 }
@@ -5935,10 +5935,10 @@ function reconcileVisibleMirrorDuplicates(indices=null){
  removeEmptyInlineAnchors(document);
  removeEmptyFollowExternalAnchors(document);
 }
-function syncAll(){
+function syncAll(reason='unknown',detail={}){
  const diag=globalThis.__rabbitMirrorPerfDiag;
  const ctx=getContext();
- const end=diag?.begin?.('independent.syncAll',{mode:runtimeMode(),assistantMessages:assistantMessages(ctx).length},0);
+ const end=diag?.begin?.('independent.syncAll',{reason:String(reason||'unknown'),...detail,mode:runtimeMode(),assistantMessages:assistantMessages(ctx).length},0);
  try{
   return withOwnerLockStoreBatch(()=>withRestorableHtmlCacheBatch(()=>withHistoricalRestoreLightPass(()=>withExternalHostSyncIndex(()=>{
    pruneForeignChatExternalHosts();
@@ -6197,7 +6197,7 @@ function schedulePassiveRecoveryAfterSourceSwitch(expectedSequence=runtimeConfig
    // message DOM after the first synchronous pass. Run two finite, read-only
    // reconciliations in every active mode: they remount historical follow/API
    // mirrors from message source or exact cache and never issue a network POST.
-   syncAll();
+   syncAll('passive-recovery',{delay});
    if(!observer) installObserverIfNeeded();
   },delay);
   passiveRecoveryTimers.add(timer);
@@ -6248,7 +6248,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
        // Do not invalidate every mounted mirror's geometry merely because the chat
        // changed. New/replaced message DOM is detected per host by owner-dom-replaced;
        // real viewport changes have their own geometry refresh path.
-       syncAll(); scheduleLatest(700);
+       syncAll('host:CHAT_CHANGED',{event:String(event||'CHAT_CHANGED')}); scheduleLatest(700);
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
@@ -6326,7 +6326,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
          // create an orphaned first request beside the real second request.
          queueMessageSync([last.i]);
          scheduleMessageGeneration(last.i,420,true);
-       } else syncAll();
+       } else syncAll('host:generation-finished:fallback',{event:String(event||'generation-finished')});
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
@@ -6344,7 +6344,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
          cancelFlightsForMessage(id,'swipe-changed');
          queueMessageSync([id]);
          scheduleMessageGeneration(id,260,true);
-       } else syncAll();
+       } else syncAll('host:MESSAGE_SWIPED:fallback',{event:String(event||'MESSAGE_SWIPED'),payloadType:messageId===null?'null':Array.isArray(messageId)?'array':typeof messageId,payloadKeys:messageId&&typeof messageId==='object'&&!Array.isArray(messageId)?Object.keys(messageId).slice(0,12).join(','):''});
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
@@ -6362,7 +6362,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
            const live=currentGenerationIdentity(id);
            if(live && String(live.msg?.mes||'').trim() && !hasGenerationWorkFor(id,live.slot,live.sourceHash)) scheduleMessageGeneration(id,180,true);
          }
-       } else syncAll();
+       } else syncAll('host:render-event:fallback',{event:String(event||'render-event'),payloadType:messageId===null?'null':Array.isArray(messageId)?'array':typeof messageId,payloadKeys:messageId&&typeof messageId==='object'&&!Array.isArray(messageId)?Object.keys(messageId).slice(0,12).join(','):''});
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
@@ -6459,7 +6459,7 @@ async function reconfigureRuntime({coldStart=false}={}){
      document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(el=>restoreFollowInline(el));
      // Cold entry restores only the newest few owners synchronously and yields between
      // historical chunks. Source switches/hot updates keep the exact full reconciliation.
-     if(coldStart) scheduleStartupHistorySync(sequence); else syncAll();
+     if(coldStart) scheduleStartupHistorySync(sequence); else syncAll('reconfigureRuntime',{coldStart:false,mode,previousMode:previousMode??'',runtimeModeTransition});
      removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);
      installObserverIfNeeded({skipHistoricalProbe:coldStart});
      if(runtimeModeTransition) schedulePassiveRecoveryAfterSourceSwitch(sequence);
@@ -6467,7 +6467,7 @@ async function reconfigureRuntime({coldStart=false}={}){
    if(mode==='off'){ document.querySelectorAll(`[${SOURCE_ATTR}]`).forEach(n=>n.remove()); removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document); }
    return;
  }
- if(coldStart) scheduleStartupHistorySync(sequence); else syncAll();
+ if(coldStart) scheduleStartupHistorySync(sequence); else syncAll('reconfigureRuntime',{coldStart:false,mode,previousMode:previousMode??'',runtimeModeTransition});
  installObserverIfNeeded({skipHistoricalProbe:coldStart});
  if(runtimeModeTransition) schedulePassiveRecoveryAfterSourceSwitch(sequence);
  await installHostEventsIfNeeded(sequence);
