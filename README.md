@@ -1,3 +1,9 @@
+# 兔子镜测试版 LightBoot1
+
+这是基于 PerfFix1 的轻启动性能候选版。用途是验证“开兔子镜进入酒馆明显更慢”是否主要来自扩展启动期模块图阻塞。
+
+验证：打开云酒馆后确认 `__rabbitMirrorLightBoot.version` 为 `1.4.9-lightboot1`。重点比较首次进入酒馆/聊天的体感时间；需要诊断时可运行 `rabbitMirrorLightBootSummary()`。
+
 ## 1.4.30.23 TEST：Prompt 减重、交互维修与副 API Token 恢复
 
 - 只冷却真正连续重复的配色／视觉维度；没有重复时不注入整段历史说明。

@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const COHORT = '1.4.9-loaderdiag1';
+const COHORT = '1.4.9-lightboot1';
 
 // 本阶段 cache cohort：源码内容变化的模块（settings/storage/picker）
 // 加上所有直接或间接 import 它们的父模块。
@@ -48,7 +48,7 @@ function collectJsFiles(dir) {
     return out;
 }
 
-const IMPORT_RES = [/from\s+'(\.[^'?]+)(?:\?rmv=([\w.\-]+))?'/g, /import\(\s*'(\.[^'?]+)(?:\?rmv=([\w.\-]+))?'\s*\)/g];
+const IMPORT_RES = [/from\s+'(\.[^'?]+)(?:\?rmv=([\w.\-]+))?'/g, /import\(\s*'(\.[^'?]+)(?:\?rmv=([\w.\-]+))?'\s*\)/g, /:\s*'(\.[^'?]+)(?:\?rmv=([\w.\-]+))?'/g];
 const edges = [];
 for (const file of collectJsFiles(ROOT)) {
     const rel = relative(ROOT, file).split('\\').join('/');

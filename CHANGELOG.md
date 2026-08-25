@@ -1,3 +1,11 @@
+# LightBoot1
+
+- 保留 PerfFix1：正常生命周期不再使用全聊天 `syncAll()`。
+- 扩展入口改为极小 bootstrap，不再在 SillyTavern 首屏之前静态加载整套 RabbitMirror 模块图。
+- `generate_interceptor` 立即注册轻量桥；真实 `injector.js` 仅在生成或宿主首屏完成后的空闲启动阶段加载，解除启动期 `injector -> script.js` 反向依赖等待。
+- Output Sanitizer / Visual Scanner / Independent API / Touch Theater / UI 分组加载，并在组间让出事件循环。
+- 不修改 Prompt 内容、不关闭 Security Guard、不删除维修兔、Touch Theater 或独立 API。
+
 ## 单请求多面 第一阶段（基础层）
 
 仅实现基础层，**提取层未改造，多面尚不可端到端使用**。
