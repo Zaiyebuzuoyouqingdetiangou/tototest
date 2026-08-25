@@ -7,7 +7,7 @@ Goal:
 - Keep the manifest generate_interceptor available immediately through a tiny lazy bridge.
 
 Validation after install:
-1. Confirm: __rabbitMirrorLightBoot.version === '1.4.9-lightboot1'
+1. Confirm: __rabbitMirrorLightBoot.version === '1.4.9-subapifix1'
 2. Compare tavern first-screen/initial-chat load time with the previous PerfFix1 build.
 3. Optional: rabbitMirrorLightBootSummary() shows deferred module import timings.
 4. rabbitMirrorPerfSummary() should still show no normal-lifecycle independent.syncAll regression.

@@ -1,3 +1,13 @@
+# SubApiFix1
+
+- 基于 LightBoot1 + PerfFix1，不回退启动性能修复。
+- HTTP 524 明确记为 `gateway-timeout`；当轮绝不自动重发，下一次用户明确重说只把同一请求 profile 的 `stream` 从 true 改为 false。
+- HTTP 200 但返回内容未形成完整兔子镜时，不再把 request diagnostic 留在 `ok:true`；改记 `incomplete-mirror`，并在原请求为流式时为下一次手动重说 stage exact non-stream twin。
+- finish_reason 明确为 length / max_tokens 时仍判定真实截断，不误当 stream 兼容问题。
+- 仅丢失外层 `</toto>`、内部 `<details>...</details>` 完整时允许高置信恢复；真正未闭合正文仍 fail-closed。
+- 手动重说不再先删除 persisted owner / owner lock；等待期间保留上一版 ready 镜，失败时恢复旧成品，成功后原位覆盖。
+- 仍维持 single-shot：一次用户动作只发送一次生成请求，不新增自动计费重试。
+
 # LightBoot1
 
 - 保留 PerfFix1：正常生命周期不再使用全聊天 `syncAll()`。

@@ -1,8 +1,14 @@
-# 兔子镜测试版 LightBoot1
+# 兔子镜测试版 SubApiFix1
 
-这是基于 PerfFix1 的轻启动性能候选版。用途是验证“开兔子镜进入酒馆明显更慢”是否主要来自扩展启动期模块图阻塞。
+这是基于 LightBoot1 + PerfFix1 的副 API 收尾候选版。轻启动、无全聊天 `syncAll()` 性能修复全部保留；本轮只收敛 HTTP 524、HTTP 200 但兔子镜不完整，以及手动重说失败时旧成品被提前抑制的问题。
 
-验证：打开云酒馆后确认 `__rabbitMirrorLightBoot.version` 为 `1.4.9-lightboot1`。重点比较首次进入酒馆/聊天的体感时间；需要诊断时可运行 `rabbitMirrorLightBootSummary()`。
+- HTTP 524 当轮仍只发送 **1 次**付费请求，不自动重发；若失败模式为 stream=true，仅为下一次用户明确点击“重新生成兔子镜”准备同参数 `stream=false` twin。
+- HTTP 200 但 `<toto>` 不完整时同样不会自动二次扣费；流式模式会为下一次手动重说准备 exact non-stream twin。
+- 若仅丢失最外层 `</toto>`，但内部 `<details>...</details>` 已完整结束，可高置信恢复；真正截断的 `<details>` 仍拒绝。
+- 手动重说期间保留上一版成功兔子镜的持久化 owner 与当前 ready 画面；新结果成功后再覆盖，失败则恢复旧成品。
+- non-stream 手动重说一旦成功，原有能力记忆会把该 profile 记住，后续同连接/模型优先复用；不会把一次 HTTP 200 半成品错误记成成功能力。
+
+验证：打开云酒馆后确认 `__rabbitMirrorLightBoot.version` 为 `1.4.9-subapifix1`。
 
 ## 1.4.30.23 TEST：Prompt 减重、交互维修与副 API Token 恢复
 

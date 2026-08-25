@@ -1,12 +1,12 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.9-lightboot1';
-import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-lightboot1';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-lightboot1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.9-lightboot1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-lightboot1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-lightboot1';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-lightboot1';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-lightboot1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-lightboot1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.9-subapifix1';
+import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-subapifix1';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-subapifix1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.9-subapifix1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapifix1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-subapifix1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-subapifix1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-subapifix1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-subapifix1';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
 const RUNTIME_VERSION = '1.4.30.17';
@@ -355,9 +355,6 @@ function writePersistedOwner(ctx,index,msg,value,{overwrite=true}={}){
  if(!next) return false;
  if(existing && JSON.stringify(existing)===JSON.stringify(next)) return false;
  state.version=CHAT_OUTPUT_METADATA_SCHEMA; state.owners[ownerKey]=next; metadata[CHAT_OUTPUT_METADATA_KEY]=state; saveChatOutputMetadata(ctx); return true;
-}
-function suppressPersistedOwnerForResay(ctx,index,msg){
- return writePersistedOwner(ctx,index,msg,{deleted:true,ts:Date.now()},{overwrite:true});
 }
 function chatPersistenceSlot(ctx,index,swipe,record){
  const sourceHash=String(record?.sourceHash||record?.bodyHash||'').trim();
@@ -1544,7 +1541,13 @@ function extractMirrorInner(raw){
  const toto=cleaned.match(/<toto\b[^>]*>([\s\S]*?)<\/toto>/i);
  if(toto) return toto[1].trim();
  const details=cleaned.match(/<details\b[\s\S]*?<\/details>/i);
- if(details && /兔子镜|RabbitMirror/i.test(details[0])) return details[0].trim();
+ // High-confidence outer-wrapper rescue: a streamed answer can occasionally
+ // finish a complete <details> work and lose only the final </toto>. Accept the
+ // complete details only when the RabbitMirror <toto> opening boundary exists,
+ // or when the legacy RabbitMirror label itself is present. Never auto-close a
+ // truncated <details> body.
+ const hasRabbitMirrorOpening=/<toto\b[^>]*>/i.test(cleaned);
+ if(details && (hasRabbitMirrorOpening || /兔子镜|RabbitMirror/i.test(details[0]))) return details[0].trim();
  return '';
 }
 function responseFinishReason(payload){ return String(payload?.choices?.[0]?.finish_reason ?? payload?.stop_reason ?? payload?.candidates?.[0]?.finishReason ?? '').trim(); }
@@ -1613,6 +1616,25 @@ function nextCompatibilityProfileName(currentProfile='',preferNonStreaming=false
  const tail=API_PROFILE_ORDER.slice(start+1);
  return tail[0]||'';
 }
+function stageManualNonStreamRetry(st,currentProfile='',reason=''){
+ const current=String(currentProfile||'');
+ if(!current || !profileUsesStreaming(current)) return '';
+ const next=nextCompatibilityProfileName(current,true);
+ if(!next || profileUsesStreaming(next)) return '';
+ stageNextApiProfile(st,next,reason);
+ forgetRememberedApiProfileIfMatches(st,current);
+ return next;
+}
+function republishIndependentSemanticFailure(requestDiagnostic,semanticFailure,nextProfile='',extra={}){
+ return publishIndependentApiRequestDiagnostic({
+  ...(requestDiagnostic&&typeof requestDiagnostic==='object'?requestDiagnostic:{}),
+  ok:false,
+  semanticFailure:String(semanticFailure||'semantic-failure'),
+  nextProfile:String(nextProfile||''),
+  ...(extra&&typeof extra==='object'?extra:{}),
+  ts:Date.now(),
+ });
+}
 
 function compactRemoteError(status,raw=''){
  const source=String(raw||'');
@@ -1669,7 +1691,8 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
  const connectionId=normalizeIndependentConnectionText(st.independentConnectionProfileId,160);
  const url=connectionId?'/chat/completions':endpoint(st.independentApiBaseUrl,profile.kind==='responses'?'/responses':'/chat/completions');
  const stageCompatibility=(reason='',preferNonStreaming=false)=>{
-  const next=nextCompatibilityProfileName(profile.name,preferNonStreaming);
+  if(preferNonStreaming) return stageManualNonStreamRetry(st,profile.name,reason);
+  const next=nextCompatibilityProfileName(profile.name,false);
   if(next){
    stageNextApiProfile(st,next,reason);
    forgetRememberedApiProfileIfMatches(st,profile.name);
@@ -1763,8 +1786,20 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
   return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:'副 API 返回 HTTP 200，但没有解析到正文。本轮只发送了 1 次生成请求，不会自动再次请求；请手动重新生成兔子镜。'};
  }
  let next='';
- if(retryableParameterError(r.status,result)) next=stageCompatibility(`http-${Number(r.status||0)}-parameter-error`,false);
- const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,nextProfile:next});
+ let semanticFailure='';
+ if(Number(r.status)===524){
+  semanticFailure='gateway-timeout';
+  // HTTP 524 proves that this paid attempt reached the upstream path but the
+  // gateway did not finish it. Never auto-send a second request. For the
+  // player's explicit resay, stage only the exact same profile with stream
+  // disabled; if that succeeds, rememberApiProfile() will persist it.
+  next=stageCompatibility('http-524-gateway-timeout',true);
+ }
+ if(!next && retryableParameterError(r.status,result)){
+  semanticFailure=semanticFailure||'parameter-error';
+  next=stageCompatibility(`http-${Number(r.status||0)}-parameter-error`,false);
+ }
+ const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,semanticFailure,nextProfile:next});
  return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:''};
 }
 
@@ -1964,8 +1999,11 @@ ${independentUserTail}`;
    const detail=compactRemoteError(r.status,result.raw||'');
    const mode=String(profile||'');
    const next=String(requestDiagnostic?.nextProfile||'');
+   const exactNonStreamRetry=next && profileUsesStreaming(mode) && !profileUsesStreaming(next);
    const retryHint=next
-    ? `；本轮只发送了 1 次生成请求。点击“重新生成兔子镜”时将尝试下一兼容模式：${next}`
+    ? exactNonStreamRetry
+      ? `；本轮只发送了 1 次生成请求，不会自动重发。点击“重新生成兔子镜”时将仅把 stream 改为 false，其他消息结构、温度与输出字段保持不变，尝试：${next}`
+      : `；本轮只发送了 1 次生成请求，不会自动重发。点击“重新生成兔子镜”时将尝试下一兼容模式：${next}`
     : '；本轮只发送了 1 次生成请求，不会自动重复请求，请手动重新生成兔子镜';
    throw new Error(`独立 API 请求失败：HTTP ${r.status}${detail?` · ${detail}`:''}${mode?`；参数模式：${mode}`:''}${retryHint}`);
  }
@@ -1979,12 +2017,23 @@ ${independentUserTail}`;
    const finish=responseFinishReason(result.payload);
    const configuredMax=Number(st.independentApiMaxTokens)||12000;
    if(/length|max_tokens|MAX_TOKENS/i.test(finish)){
+     republishIndependentSemanticFailure(requestDiagnostic,'truncated-output','',{finishReason:finish,responseChars:raw.length});
      const recommendation=configuredMax<8192?'；建议把“最大输出”提高到至少 8192 后重新生成':'';
      throw new Error(`独立 API 已返回内容，但兔子镜在输出完成前被截断（finish_reason: ${finish}）。当前最大输出设置：${configuredMax}${recommendation}；参数模式：${profile}`);
    }
-   throw new Error(`独立 API 调用成功，但返回内容不是完整兔子镜${finish?`（finish_reason: ${finish}）`:''}；参数模式：${profile}`);
+   // HTTP 200 is not enough to prove a usable profile. A streamed response can
+   // end with a syntactically incomplete mirror even though the HTTP transport
+   // succeeded. Stage exactly the same request with stream=false for the next
+   // explicit resay; never issue that second paid request automatically.
+   const next=stageManualNonStreamRetry(st,profile,'http-200-incomplete-mirror');
+   republishIndependentSemanticFailure(requestDiagnostic,'incomplete-mirror',next,{finishReason:finish,responseChars:raw.length});
+   const retryHint=next
+    ? `；本轮不会自动重发。点击“重新生成兔子镜”时将仅把 stream 改为 false，其他消息结构、温度与输出字段保持不变，尝试：${next}`
+    : '；本轮不会自动重发，请手动重新生成兔子镜';
+   throw new Error(`独立 API 调用成功，但返回内容不是完整兔子镜${finish?`（finish_reason: ${finish}）`:''}；参数模式：${profile}${retryHint}`);
  }
  if(!independentMirrorBodyEvidence(inner)){
+   republishIndependentSemanticFailure(requestDiagnostic,'empty-mirror-body','',{responseChars:raw.length});
    throw new Error('独立 API 返回了只有标题或样式的空壳兔子镜；本次结果不会保存，也不会交给维修兔改写正文。请在挨打猫中使用“重说”。');
  }
  const visualProgram=independentVisualProgramIntegrity(inner);
@@ -1994,6 +2043,7 @@ ${independentUserTail}`;
     : visualProgram.reason==='state-css-missing'
       ? '存在 checkbox/radio 状态交互，但没有对应的有效样式程序'
       : '大量自定义 class 依赖样式表，但没有有效样式定义';
+   republishIndependentSemanticFailure(requestDiagnostic,'visual-program-invalid','',{responseChars:raw.length,visualFailure:String(visualProgram.reason||'')});
    throw new Error(`独立 API 返回了 HTML 主体，但视觉样式程序缺失（${detail}）。本次半成品不会保存，也不会让维修兔凭空猜测 CSS；请重新生成兔子镜。`);
  }
  // Capability memory is earned only after the response has passed the real
@@ -5057,7 +5107,13 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  const persistedOwner=persistedOwnerForMessage(ctx,index,msg);
  const persistedSuppressed=!!persistedOwner?.deleted;
  const persistedReady=!persistedSuppressed&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)?persistedOwner:null;
- if(force){ suppressPersistedOwnerForResay(ctx,index,msg); clearOwnerLockForBase(baseSlot); }
+ if(force){
+  // Keep the last successful persisted owner and owner lock intact while a
+  // paid resay is in flight. The force branch already bypasses the restore
+  // returns below, so deleting the old owner before success is unnecessary.
+  // Successful resay overwrites it atomically; failed/slow resay can therefore
+  // fall back to the known-good mirror after reload instead of losing it.
+ }
  else if(persistedReady){
   const persistedSlot=chatPersistenceSlot(ctx,index,swipeId(msg),persistedReady)||slot;
   if(!store?.[persistedSlot]?.html){ saveRecordForSlot(store,persistedSlot,persistedReady,{dropLegacy:false}); writeStore(store); }
@@ -5113,7 +5169,13 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  } else cancelFlightsForSlot(slot,sourceHash);
  if(el){
   collapseDuplicateIdentityHosts(el,key,'independent',sourceHash);
-  ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
+  // A manual resay should not blank a perfectly good mirror while the new paid
+  // request is still running. Keep the old ready work visible; the action toast
+  // already tells the user that resay is in progress. Automatic first-time
+  // generation still shows the loading placeholder normally.
+  if(!(force && previousReadyRecord?.html)){
+   ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
+  }
  }
  const runId=++generationSequence; const controller=new AbortController(); let stale=false;
  const flight={task:null,runId,key,slot,index,sourceHash,revision,cancelled:false,controller,baseSlot,timedOut:false,timeoutTimer:0};
@@ -5178,16 +5240,25 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   {
    const liveEl=messageElement(index);
    if(liveEl){
-    const liveHost=collapseDuplicateIdentityHosts(liveEl,key,'independent',sourceHash);
-    if(readyDetailsFromHost(liveHost)){
-     // The old ready mirror belongs to the previous正文 version. Do not reveal
-     // it beside the new正文, but also do not leave a non-interactive CSS-only
-     // error notice. Replace the mounted stale details with a real error
-     // placeholder that carries the exact owner identity, feedback cat and a
-     // direct retry action. The previous ready HTML remains in cache/history.
-     clearExternalHostFreshSourceState(liveHost);
-     ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
-    } else ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
+    if(force && previousReadyRecord?.html){
+     // Manual resay is transactional from the user's point of view: failure
+     // keeps the last known-good mirror mounted and persisted. The precise
+     // error is still surfaced through the toast/log and the next manual retry
+     // profile remains staged in diagnostics.
+     ensureExternalUi(liveEl,key,previousReadyRecord.html,'ready','independent',sourceHash);
+     toastr?.error?.(String(err?.message||err));
+    } else {
+     const liveHost=collapseDuplicateIdentityHosts(liveEl,key,'independent',sourceHash);
+     if(readyDetailsFromHost(liveHost)){
+      // The old ready mirror belongs to the previous正文 version. Do not reveal
+      // it beside the new正文, but also do not leave a non-interactive CSS-only
+      // error notice. Replace the mounted stale details with a real error
+      // placeholder that carries the exact owner identity, feedback cat and a
+      // direct retry action. The previous ready HTML remains in cache/history.
+      clearExternalHostFreshSourceState(liveHost);
+      ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
+     } else ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
+    }
    }
   }
  }).finally(()=>{

@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.9-test-multiface-step1-lightboot1",
+  "js": "index.js?rmv=1.4.9-test-multiface-step1-subapifix1",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.9-test-multiface-step1-lightboot1",
+  "version": "1.4.9-test-multiface-step1-subapifix1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版｜LightBoot1：保留 PerfFix1 无全聊天 syncAll 修复；入口改为轻量 bootstrap，SillyTavern 首屏完成后按空闲时段分批加载重模块，生成拦截器改为按需加载，避免 injector→script.js 与 1.3MB Output Sanitizer 阻塞酒馆首屏。"
+  "description": "兔子镜测试版｜SubApiFix1：基于 LightBoot1 + PerfFix1；修复副 API HTTP 524 与 HTTP 200 不完整兔子镜的手动重试状态机。失败当轮仍只发送 1 次请求、不自动重发；下一次明确重说仅切换为同参数非流式兼容模式并在成功后记忆。手动重说期间保留上一版成功兔子镜，不再先删除持久化成品。保留轻启动与无全聊天 syncAll 性能修复。"
 }
