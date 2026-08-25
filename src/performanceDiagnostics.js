@@ -1,4 +1,4 @@
-const PERF_DIAG_VERSION = '1.4.9-perfdiag3';
+const PERF_DIAG_VERSION = '1.4.9-perffix1';
 const MAX_ENTRIES = 600;
 let cleanup = [];
 let entries = [];

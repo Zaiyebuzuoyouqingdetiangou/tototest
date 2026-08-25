@@ -1,12 +1,12 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.9-perfdiag3';
-import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-perfdiag3';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-perfdiag3';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.9-perfdiag3';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-perfdiag3';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-perfdiag3';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.9-perffix1';
+import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-perffix1';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-perffix1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.9-perffix1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-perffix1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-perffix1';
 import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.30.17';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-perfdiag3';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-perfdiag3';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-perffix1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-perffix1';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
 const RUNTIME_VERSION = '1.4.30.17';
@@ -4964,7 +4964,7 @@ function resumeRabbitMirrorLifecycle(event){
   if(currentMode==='off') return;
   const last=assistantMessages(getContext()).at(-1);
   markExternalGeometryLifecycle('background-resume');
-  syncAll('background-resume');
+  scheduleStartupHistorySync(runtimeConfigSequence);
   if(currentMode==='independent' && last) scheduleMessageGeneration(last.i,160,true);
  },80);
 }
@@ -6197,7 +6197,8 @@ function schedulePassiveRecoveryAfterSourceSwitch(expectedSequence=runtimeConfig
    // message DOM after the first synchronous pass. Run two finite, read-only
    // reconciliations in every active mode: they remount historical follow/API
    // mirrors from message source or exact cache and never issue a network POST.
-   syncAll('passive-recovery',{delay});
+   globalThis.__rabbitMirrorPerfDiag?.mark?.('independent.boundedRecovery',{reason:'passive-recovery',delay});
+   scheduleStartupHistorySync(expectedSequence);
    if(!observer) installObserverIfNeeded();
   },delay);
   passiveRecoveryTimers.add(timer);
@@ -6222,6 +6223,22 @@ function installObserverIfNeeded({skipHistoricalProbe=false}={}){
    end?.({affectedMessages:indices.size,removedMessages:removed.size});
  });
  observer.observe(chat,{childList:true,subtree:true});
+}
+function resolveHostEventMessageIndex(payload,ctx=getContext(),{fallbackLastAssistant=true}={}){
+ const chat=Array.isArray(ctx?.chat)?ctx.chat:[];
+ let raw=payload;
+ if(payload && typeof payload==='object' && !Array.isArray(payload)){
+  raw=payload.messageId ?? payload.message_id ?? payload.mesid ?? payload.index ?? payload.id;
+  if(raw===undefined){
+   const exact=chat.indexOf(payload);
+   if(exact>=0) raw=exact;
+  }
+ }
+ const parsed=Number(raw);
+ if(Number.isInteger(parsed) && parsed>=0 && chat?.[parsed] && !chat[parsed].is_user) return parsed;
+ if(!fallbackLastAssistant) return null;
+ const last=assistantMessages(ctx).at(-1)?.i;
+ return Number.isInteger(last)&&last>=0?last:null;
 }
 async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence){
  unsubscribeHostEvents();
@@ -6248,7 +6265,8 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
        // Do not invalidate every mounted mirror's geometry merely because the chat
        // changed. New/replaced message DOM is detected per host by owner-dom-replaced;
        // real viewport changes have their own geometry refresh path.
-       syncAll('host:CHAT_CHANGED',{event:String(event||'CHAT_CHANGED')}); scheduleLatest(700);
+       globalThis.__rabbitMirrorPerfDiag?.mark?.('independent.boundedRecovery',{reason:'host:CHAT_CHANGED',event:String(event||'CHAT_CHANGED')});
+       scheduleStartupHistorySync(runtimeConfigSequence); scheduleLatest(700);
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
@@ -6326,25 +6344,19 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
          // create an orphaned first request beside the real second request.
          queueMessageSync([last.i]);
          scheduleMessageGeneration(last.i,420,true);
-       } else syncAll('host:generation-finished:fallback',{event:String(event||'generation-finished')});
+       } else globalThis.__rabbitMirrorPerfDiag?.mark?.('independent.eventNoOwner',{reason:'host:generation-finished:fallback',event:String(event||'generation-finished')});
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
    for(const event of new Set(swipeEvents)){
      const handler=messageId=>{
        const ctx=getContext();
-       const raw=messageId&&typeof messageId==='object'
-         ? (messageId.messageId ?? messageId.mesid ?? messageId.index)
-         : messageId;
-       const parsed=Number(raw);
-       const id=Number.isInteger(parsed)&&parsed>=0&&!ctx.chat?.[parsed]?.is_user
-         ? parsed
-         : assistantMessages(ctx).at(-1)?.i;
+       const id=resolveHostEventMessageIndex(messageId,ctx,{fallbackLastAssistant:true});
        if(Number.isInteger(id)&&id>=0){
          cancelFlightsForMessage(id,'swipe-changed');
          queueMessageSync([id]);
          scheduleMessageGeneration(id,260,true);
-       } else syncAll('host:MESSAGE_SWIPED:fallback',{event:String(event||'MESSAGE_SWIPED'),payloadType:messageId===null?'null':Array.isArray(messageId)?'array':typeof messageId,payloadKeys:messageId&&typeof messageId==='object'&&!Array.isArray(messageId)?Object.keys(messageId).slice(0,12).join(','):''});
+       } else globalThis.__rabbitMirrorPerfDiag?.mark?.('independent.eventNoOwner',{reason:'host:MESSAGE_SWIPED:fallback',event:String(event||'MESSAGE_SWIPED')});
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
@@ -6353,7 +6365,8 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
    // version only when no poll, pending task or shared flight already owns it.
    for(const event of new Set(renderOnlyEvents)){
      const handler=messageId=>{
-       const id=Number(messageId);
+       const ctx=getContext();
+       const id=resolveHostEventMessageIndex(messageId,ctx,{fallbackLastAssistant:true});
        if(Number.isInteger(id)&&id>=0){
          const active=hostGenerationLooksActive();
          if(active) ensureGenerationPlaceholderForIndex(id,true);
@@ -6362,7 +6375,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
            const live=currentGenerationIdentity(id);
            if(live && String(live.msg?.mes||'').trim() && !hasGenerationWorkFor(id,live.slot,live.sourceHash)) scheduleMessageGeneration(id,180,true);
          }
-       } else syncAll('host:render-event:fallback',{event:String(event||'render-event'),payloadType:messageId===null?'null':Array.isArray(messageId)?'array':typeof messageId,payloadKeys:messageId&&typeof messageId==='object'&&!Array.isArray(messageId)?Object.keys(messageId).slice(0,12).join(','):''});
+       } else globalThis.__rabbitMirrorPerfDiag?.mark?.('independent.eventNoOwner',{reason:'host:render-event:fallback',event:String(event||'render-event')});
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
@@ -6459,7 +6472,7 @@ async function reconfigureRuntime({coldStart=false}={}){
      document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(el=>restoreFollowInline(el));
      // Cold entry restores only the newest few owners synchronously and yields between
      // historical chunks. Source switches/hot updates keep the exact full reconciliation.
-     if(coldStart) scheduleStartupHistorySync(sequence); else syncAll('reconfigureRuntime',{coldStart:false,mode,previousMode:previousMode??'',runtimeModeTransition});
+     scheduleStartupHistorySync(sequence);
      removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);
      installObserverIfNeeded({skipHistoricalProbe:coldStart});
      if(runtimeModeTransition) schedulePassiveRecoveryAfterSourceSwitch(sequence);
@@ -6467,7 +6480,7 @@ async function reconfigureRuntime({coldStart=false}={}){
    if(mode==='off'){ document.querySelectorAll(`[${SOURCE_ATTR}]`).forEach(n=>n.remove()); removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document); }
    return;
  }
- if(coldStart) scheduleStartupHistorySync(sequence); else syncAll('reconfigureRuntime',{coldStart:false,mode,previousMode:previousMode??'',runtimeModeTransition});
+ scheduleStartupHistorySync(sequence);
  installObserverIfNeeded({skipHistoricalProbe:coldStart});
  if(runtimeModeTransition) schedulePassiveRecoveryAfterSourceSwitch(sequence);
  await installHostEventsIfNeeded(sequence);

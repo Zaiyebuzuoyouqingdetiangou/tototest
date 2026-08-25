@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.9-test-multiface-step1-perfdiag3",
+  "js": "index.js?rmv=1.4.9-test-multiface-step1-perffix1",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.9-test-multiface-step1-perfdiag3",
+  "version": "1.4.9-test-multiface-step1-perffix1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版｜1.4.9 性能诊断版 PerfDiag3：修正 PerfDiag2 的模块缓存键闭包，确保 syncAll 触发来源标签实际加载；不改变生成/恢复逻辑，不记录聊天正文、Prompt 或 API Key。"
+  "description": "兔子镜测试版｜性能修复候选 PerfFix1：移除正常生命周期中的重复全聊天 syncAll，CHAT_CHANGED/后台恢复/source 切换/reconfigure 改为最近消息同步＋历史可视区懒恢复；消息事件优先解析精确楼层，不再因无效 payload 退化为全聊天扫描。保留性能诊断。"
 }
