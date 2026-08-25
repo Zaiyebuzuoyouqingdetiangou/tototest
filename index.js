@@ -1,20 +1,20 @@
-import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=1.4.9-ms1';
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=1.4.9-ms1';
-import { clearLastCombo } from './src/storage.js?rmv=1.4.9-ms1';
-import { initVisualScanner, destroyVisualScanner } from './src/visualScanner.js?rmv=1.4.9-ms1';
-import { initOutputSanitizer, destroyOutputSanitizer } from './src/outputSanitizer.js?rmv=1.4.9-ms1';
+import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=1.4.9-perfdiag3';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=1.4.9-perfdiag3';
+import { clearLastCombo } from './src/storage.js?rmv=1.4.9-perfdiag3';
+import { initVisualScanner, destroyVisualScanner } from './src/visualScanner.js?rmv=1.4.9-perfdiag3';
+import { initOutputSanitizer, destroyOutputSanitizer } from './src/outputSanitizer.js?rmv=1.4.9-perfdiag3';
 import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.4.30.17';
-import { getSettings, updateSettings } from './src/settings.js?rmv=1.4.9-ms1';
-import { clearRabbitMirrorGenerationSnapshots } from './src/generationGuard.js?rmv=1.4.9-ms1';
-import { initIndependentRabbitMirror, destroyIndependentRabbitMirror, getIndependentConnectionProfiles, refreshRabbitMirrorGenerationMode } from './src/independentApi.js?rmv=1.4.9-ms1';
+import { getSettings, updateSettings } from './src/settings.js?rmv=1.4.9-perfdiag3';
+import { clearRabbitMirrorGenerationSnapshots } from './src/generationGuard.js?rmv=1.4.9-perfdiag3';
+import { initIndependentRabbitMirror, destroyIndependentRabbitMirror, getIndependentConnectionProfiles, refreshRabbitMirrorGenerationMode } from './src/independentApi.js?rmv=1.4.9-perfdiag3';
 import { initTouchTheaterBridge, destroyTouchTheaterBridge } from './src/touchTheater.js?rmv=1.4.30.17';
 import { initRabbitMirrorMobileModalHotfix, destroyRabbitMirrorMobileModalHotfix } from './src/mobileModalHotfix.js?rmv=1.4.30.19';
-import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.4.9-ms1';
+import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.4.9-perfdiag3';
 import { initRabbitMirrorIndependentProfileSelectorHotfix, destroyRabbitMirrorIndependentProfileSelectorHotfix } from './src/independentProfileSelectorHotfix.js?rmv=1.4.7-test';
 import { initRabbitMirrorMaintenanceRecommendationHotfix, destroyRabbitMirrorMaintenanceRecommendationHotfix } from './src/maintenanceRecommendationHotfix.js?rmv=1.4.5';
-import { initRabbitMirrorRenderedVisualFeedbackHotfix, destroyRabbitMirrorRenderedVisualFeedbackHotfix } from './src/renderedVisualFeedbackHotfix.js?rmv=1.4.9-ms1';
+import { initRabbitMirrorRenderedVisualFeedbackHotfix, destroyRabbitMirrorRenderedVisualFeedbackHotfix } from './src/renderedVisualFeedbackHotfix.js?rmv=1.4.9-perfdiag3';
 import { initRabbitMirrorCheckedSelectorRepair, destroyRabbitMirrorCheckedSelectorRepair } from './src/checkedSelectorRepair.js?rmv=1.4.30.26';
-import { initRabbitMirrorPerformanceDiagnostics, destroyRabbitMirrorPerformanceDiagnostics } from './src/performanceDiagnostics.js?rmv=1.4.9-perfdiag2';
+import { initRabbitMirrorPerformanceDiagnostics, destroyRabbitMirrorPerformanceDiagnostics } from './src/performanceDiagnostics.js?rmv=1.4.9-perfdiag3';
 
 const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.30.17';
 

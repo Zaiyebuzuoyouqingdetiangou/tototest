@@ -12,10 +12,10 @@ assert.doesNotMatch(source, /request\.body|response\.body/, 'diagnostics must no
 assert.doesNotMatch(source, /querySelector|querySelectorAll/, 'diagnostics module must not traverse chat DOM');
 const mod = await import('../src/performanceDiagnostics.js');
 mod.initRabbitMirrorPerformanceDiagnostics();
-const end = globalThis.__rabbitMirrorPerfDiag.begin('test.measure', { count: 1 }, 0);
+const end = globalThis.__rabbitMirrorPerfDiag.begin('test.measure', { count: 1, reason: 'cache-bust-check' }, 0);
 end({ ok: true });
 const dump = globalThis.rabbitMirrorPerfDump();
-assert.ok(dump.some(row => row.name === 'test.measure' && row.count === 1 && row.ok === true));
+assert.ok(dump.some(row => row.name === 'test.measure' && row.count === 1 && row.ok === true && row.reason === 'cache-bust-check'));
 assert.ok(Array.isArray(globalThis.rabbitMirrorPerfSummary()));
 mod.destroyRabbitMirrorPerformanceDiagnostics();
 assert.equal(globalThis.__rabbitMirrorPerfDiag, undefined);
