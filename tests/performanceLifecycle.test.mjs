@@ -44,6 +44,13 @@ assert.doesNotMatch(independent, /syncAll\('(?:reconfigureRuntime|background-res
 assert.match(independent, /function resolveHostEventMessageIndex\(/);
 assert.match(independent, /scheduleStartupHistorySync\(runtimeConfigSequence\)/);
 assert.match(independent, /const hotUpdate=typeof previousCleanup==='function';/);
+assert.match(independent, /const FINAL_RENDER_SOURCE_STABLE_WAIT_MS = 520/);
+assert.match(independent, /const FINAL_RENDER_POLL_INTERVAL_MS = 120/);
+assert.match(independent, /function confirmFinalRenderedGeneration\(index\)/);
+assert.match(independent, /state\.finalRenderHash===live\.sourceHash[\s\S]{0,220}state\.finalRenderRevision===live\.revision/, 'fast path must bind to the exact正文 fingerprint and revision');
+assert.match(independent, /const finalRenderEvents=\[et\.CHARACTER_MESSAGE_RENDERED\]/);
+assert.match(independent, /if\(!confirmFinalRenderedGeneration\(id\)[\s\S]{0,220}scheduleMessageGeneration\(id,FINAL_RENDER_POLL_INTERVAL_MS,true,true\)/, 'final render event may only schedule the guarded generation path');
+assert.doesNotMatch(independent.slice(independent.indexOf('for(const event of new Set(finalRenderEvents))'), independent.indexOf('function independentRequestConfigSignature')), /fetchIndependentUrl|requestIndependentCompletion|callIndependentApi/, 'final render event must not dispatch a paid request directly');
 const sanitizerInit = sanitizer.slice(sanitizer.indexOf('export async function initOutputSanitizer()'), sanitizer.indexOf('export function destroyOutputSanitizer()'));
 assert.match(sanitizerInit, /installMaintenanceRabbitsDeferredInChatDom\(\)/);
 assert.doesNotMatch(sanitizerInit, /\n\s*installMaintenanceRabbitsInChatDom\(\);/, 'cold startup must not synchronously scan all historical mirrors');
@@ -51,11 +58,11 @@ assert.doesNotMatch(sanitizerInit, /\n\s*installMaintenanceRabbitsInChatDom\(\);
 const index = read('index.js');
 // multiface-step1 起 ui.js 进入本阶段 cache cohort：不再断言旧的 1.4.30.25 键，
 // 改为断言 cohort 完整性（详见 cacheBustClosure.test.mjs）。
-assert.match(index, /\.\/src\/ui\.js\?rmv=1\.4\.9-securityfix3/, 'SecurityFix3 UI parent must use its dedicated cache key');
+assert.match(index, /\.\/src\/ui\.js\?rmv=1\.4\.9-tagscan1/, 'SecurityFix5 UI parent must use its dedicated cache key');
 assert.doesNotMatch(index, /\.\/src\/ui\.js\?rmv=1\.4\.30\.2[0-9]/, 'stale 1.4.30.x UI cache key must not survive');
 assert.match(index, /\.\/src\/checkedSelectorRepair\.js\?rmv=1\.4\.30\.26/, 'formal checked-selector repair must be present in the test baseline');
 assert.match(index, /\.\/src\/maintenanceRecommendationHotfix\.js\?rmv=1\.4\.5/, 'formal maintenance recommendation must be present in the test baseline');
-assert.equal(manifest.js, 'index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix3');
-assert.equal(manifest.version, '1.4.9-test-multiface-step1-externaldiag1-securityfix3');
+assert.equal(manifest.js, 'index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix5-tagscan1');
+assert.equal(manifest.version, '1.4.9-test-multiface-step1-externaldiag1-securityfix5-tagscan1');
 
 console.log('performance lifecycle tests passed');

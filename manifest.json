@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix3",
-  "css": "style.css?rmv=1.4.30.19",
+  "js": "index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix5-tagscan1",
+  "css": "style.css?rmv=1.4.30.21",
   "author": "Toto",
-  "version": "1.4.9-test-multiface-step1-externaldiag1-securityfix3",
+  "version": "1.4.9-test-multiface-step1-externaldiag1-securityfix5-tagscan1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版｜ExternalDiag1 SecurityFix3：修复桌面高级设置、独立 API 重说状态与维修兔跨父层 checked 识别；保留 SecurityFix2 的性能、上下文和单次请求边界。"
+  "description": "兔子镜测试版｜SecurityFix5 TagScan1：可扫描当前聊天可见正文中的自定义标签，显示次数并由用户勾选保存；保留 ContextSpeed1 的快速通道、增量流、单请求缓存与安全边界。"
 }

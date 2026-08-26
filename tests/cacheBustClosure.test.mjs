@@ -11,49 +11,17 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const COHORT = '1.4.9-chatsafety1';
-const CONTEXT_BOUNDARY_COHORT = '1.4.9-securityfix2';
-const SECURITY_FIX2_COHORT = '1.4.9-securityfix2';
-const SECURITY_FIX3_COHORT = '1.4.9-securityfix3';
-
-// 本阶段 cache cohort：源码内容变化的模块（settings/storage/picker）
-// 加上所有直接或间接 import 它们的父模块。
-const COHORT_MODULES = [
-    'index.js',
-    'src/blacklist.js',
-    'src/generationGuard.js',
-    'src/feedbackCat.js',
-    'src/injector.js',
-    'src/independentApi.js',
-    'src/independentSecurityGuard.js',
-    'src/outputSanitizer.js',
-    'src/performanceDiagnostics.js',
-    'src/paletteCooldown.js',
-    'src/picker.js',
-    'src/promptBuilder.js',
-    'src/renderedVisualFeedbackHotfix.js',
+const RELEASE_COHORT = '1.4.9-tagscan1';
+const REQUIRED_RELEASE_MODULES = [
     'src/settings.js',
     'src/tokenMeter.js',
-    'src/touchTheater.js',
-    'src/storage.js',
-    'src/visualScanner.js',
-];
-
-const SECURITY_FIX2_MODULES = [
-    'src/injector.js',
-    'src/promptBuilder.js',
-    'src/independentSecurityGuard.js',
-    'src/touchTheater.js',
-    'src/externalDiagnostics.js',
-    'src/visualScanner.js',
-    'src/renderedVisualFeedbackHotfix.js',
-];
-
-const SECURITY_FIX3_MODULES = [
-    'src/outputSanitizer.js',
     'src/independentApi.js',
     'src/ui.js',
-    'src/mobileModalHotfix.js',
+    'src/outputSanitizer.js',
+    'src/injector.js',
+    'src/promptBuilder.js',
+    'src/visualScanner.js',
+    'src/blacklist.js',
 ];
 
 function collectJsFiles(dir) {
@@ -87,37 +55,22 @@ for (const file of collectJsFiles(ROOT)) {
 
 assert.ok(edges.length > 0, 'import graph must not be empty');
 
-// 1. cohort 内模块的所有入站 URL 必须落在同一 cohort
-const stale = edges.filter(edge => COHORT_MODULES.includes(edge.target)
-    && !SECURITY_FIX2_MODULES.includes(edge.target)
-    && !SECURITY_FIX3_MODULES.includes(edge.target)
-    && edge.rmv !== COHORT);
+// 1. 本次所有 1.4.9 JS 发布边使用同一个完整 cohort，避免热更新混装。
+const releaseEdges = edges.filter(edge => /^1\.4\.9-/.test(String(edge.rmv || '')));
+const stale = releaseEdges.filter(edge => edge.rmv !== RELEASE_COHORT);
 assert.deepEqual(
     stale.map(edge => `${edge.from} -> ${edge.target}?rmv=${edge.rmv}`),
     [],
-    `cohort 内模块必须全部使用 ?rmv=${COHORT}，否则父模块会命中旧缓存`,
+    `所有 1.4.9 发布边必须使用 ?rmv=${RELEASE_COHORT}，否则父模块会命中旧缓存`,
 );
 
-
-// SecurityFix2 modules not changed in this round keep one closed cache key.
-for (const target of SECURITY_FIX2_MODULES) {
+for (const target of REQUIRED_RELEASE_MODULES) {
     const fixEdges = edges.filter(edge => edge.target === target);
     assert.ok(fixEdges.length > 0, `${target} must have an inbound runtime edge`);
     assert.deepEqual(
         [...new Set(fixEdges.map(edge => edge.rmv))],
-        [SECURITY_FIX2_COHORT],
-        `${target} must use exactly one SecurityFix2 cache key`,
-    );
-}
-
-// SecurityFix3 changes the desktop modal, resay renderer and maintenance runtime.
-for (const target of SECURITY_FIX3_MODULES) {
-    const fixEdges = edges.filter(edge => edge.target === target);
-    assert.ok(fixEdges.length > 0, `${target} must have an inbound runtime edge`);
-    assert.deepEqual(
-        [...new Set(fixEdges.map(edge => edge.rmv))],
-        [SECURITY_FIX3_COHORT],
-        `${target} must use exactly one SecurityFix3 cache key`,
+        [RELEASE_COHORT],
+        `${target} must use exactly one ContextSpeed1 cache key`,
     );
 }
 
@@ -132,46 +85,13 @@ const conflicting = [...keysByTarget.entries()]
     .map(([target, keys]) => `${target}: ${[...keys].sort().join(' / ')}`);
 assert.deepEqual(conflicting, [], '同一模块不得被多种 ?rmv 键引用');
 
-// 3. cohort 必须是 import 闭包：cohort 内模块的父模块也必须在 cohort 内
-const parentsOf = new Map();
-for (const edge of edges) {
-    if (!parentsOf.has(edge.target)) parentsOf.set(edge.target, new Set());
-    parentsOf.get(edge.target).add(edge.from);
-}
-const leaks = [];
-const ALLOWED_NEW_BOUNDARY_PARENTS = new Set(['src/ui.js']);
-for (const target of COHORT_MODULES) {
-    if (SECURITY_FIX2_MODULES.includes(target) || SECURITY_FIX3_MODULES.includes(target)) continue;
-    for (const parent of parentsOf.get(target) || []) {
-        if (!COHORT_MODULES.includes(parent) && !ALLOWED_NEW_BOUNDARY_PARENTS.has(parent)) leaks.push(`${parent} imports cohort module ${target}`);
-    }
-}
-assert.deepEqual(leaks, [], '旧 cohort 仍闭合；仅允许新的 ContextBoundary 模块复用旧 cohort 依赖');
-
-// 4. cohort 外模块不得被误改成本阶段 cohort 键
-const overreach = edges.filter(edge => !COHORT_MODULES.includes(edge.target) && edge.rmv === COHORT);
-assert.deepEqual(
-    overreach.map(edge => `${edge.from} -> ${edge.target}`),
-    [],
-    'cohort 外模块不应被改成本阶段缓存键',
-);
-
-// 4b. ChatSafety1 keeps the context-boundary modules in the same cache cohort.
-const CONTEXT_BOUNDARY_MODULES = ['src/independentSecurityGuard.js'];
-const boundaryStale = edges.filter(edge => CONTEXT_BOUNDARY_MODULES.includes(edge.target) && edge.rmv !== CONTEXT_BOUNDARY_COHORT);
-assert.deepEqual(
-    boundaryStale.map(edge => `${edge.from} -> ${edge.target}?rmv=${edge.rmv}`),
-    [],
-    `ContextBoundary1 模块必须全部使用 ?rmv=${CONTEXT_BOUNDARY_COHORT}`,
-);
-
-// 5. 各模块内部的 RUNTIME_VERSION 不是发布缓存键，本轮不得被改动
+// 3. 各模块内部的 RUNTIME_VERSION 不是发布缓存键，不得写成 cohort 串。
 const runtimeVersions = new Set();
 for (const file of collectJsFiles(ROOT)) {
     for (const match of readFileSync(file, 'utf-8').matchAll(/RUNTIME_VERSION\s*=\s*'([\w.\-]+)'/g)) {
         runtimeVersions.add(match[1]);
     }
 }
-assert.equal(runtimeVersions.has(COHORT), false, 'RUNTIME_VERSION 不是发布缓存键，不得改成 cohort 串');
+assert.equal(runtimeVersions.has(RELEASE_COHORT), false, 'RUNTIME_VERSION 不是发布缓存键，不得改成 cohort 串');
 
-console.log(`cacheBustClosure: ${edges.length} 条 import 边，cohort ${COHORT_MODULES.length} 个模块，5 组断言全部通过`);
+console.log(`cacheBustClosure: ${edges.length} 条 import 边，ContextSpeed1 单一 cache cohort 通过`);

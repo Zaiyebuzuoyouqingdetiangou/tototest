@@ -1,14 +1,14 @@
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.4.9-securityfix2';
-import { clearLastCombo } from './src/storage.js?rmv=1.4.9-chatsafety1';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.4.9-chatsafety1';
-import { getSettings, updateSettings } from './src/settings.js?rmv=1.4.9-chatsafety1';
-import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.4.9-securityfix2';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.4.9-tagscan1';
+import { clearLastCombo } from './src/storage.js?rmv=1.4.9-tagscan1';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.4.9-tagscan1';
+import { getSettings, updateSettings } from './src/settings.js?rmv=1.4.9-tagscan1';
+import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.4.9-tagscan1';
 
 // SecurityFix2 leaves only the prompt interceptor and request guard in the parser-critical
 // graph. The 1.8 MiB UI/sanitizer/independent runtime graph is imported after the host has
 // received a paint/idle opportunity, or immediately after explicit RabbitMirror intent.
-const GOLDEN_MERGE_VERSION = '1.4.9-externaldiag1-securityfix3';
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.30.19';
+const GOLDEN_MERGE_VERSION = '1.4.9-externaldiag1-securityfix5-tagscan1';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.30.21';
 let runtimeCancelled = false;
 let deferredRuntimePromise = null;
 let deferredRuntimeModules = null;
@@ -55,11 +55,11 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.4.9-securityfix3'),
-        import('./src/visualScanner.js?rmv=1.4.9-securityfix2'),
-        import('./src/independentApi.js?rmv=1.4.9-securityfix3'),
-        import('./src/touchTheater.js?rmv=1.4.9-securityfix2'),
-        import('./src/ui.js?rmv=1.4.9-securityfix3'),
+        import('./src/outputSanitizer.js?rmv=1.4.9-tagscan1'),
+        import('./src/visualScanner.js?rmv=1.4.9-tagscan1'),
+        import('./src/independentApi.js?rmv=1.4.9-tagscan1'),
+        import('./src/touchTheater.js?rmv=1.4.9-tagscan1'),
+        import('./src/ui.js?rmv=1.4.9-tagscan1'),
     ]).then(async ([output, visual, independent, touch, ui]) => {
         if (runtimeCancelled) return null;
         deferredRuntimeModules = { output, visual, independent, touch, ui };
@@ -239,7 +239,7 @@ function loadMirrorVisualCompat() {
     if (!deferredRuntimeModules) return Promise.resolve(null);
     return Promise.all([
         loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.4.30.26', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
-        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.4.9-securityfix2', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
+        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.4.9-tagscan1', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
     ]);
 }
 
@@ -254,7 +254,7 @@ function mobileLike() {
 
 function loadMobileModalCompat() {
     if (!mobileLike()) return Promise.resolve(null);
-    return ensureDeferredCoreRuntime('mobile-settings-intent').then(() => loadOptional('mobileModal', './src/mobileModalHotfix.js?rmv=1.4.9-securityfix3', mod => mod.initRabbitMirrorMobileModalHotfix?.()));
+    return ensureDeferredCoreRuntime('mobile-settings-intent').then(() => loadOptional('mobileModal', './src/mobileModalHotfix.js?rmv=1.4.9-tagscan1', mod => mod.initRabbitMirrorMobileModalHotfix?.()));
 }
 
 function isRabbitMirrorSurface(target) {
@@ -317,7 +317,7 @@ async function ensureExternalDiagnostics() {
     if (runtimeCancelled) return null;
     if (externalDiagnosticsApi) return externalDiagnosticsApi;
     if (externalDiagnosticsPromise) return externalDiagnosticsPromise;
-    externalDiagnosticsPromise = import('./src/externalDiagnostics.js?rmv=1.4.9-securityfix2').then(mod => {
+    externalDiagnosticsPromise = import('./src/externalDiagnostics.js?rmv=1.4.9-tagscan1').then(mod => {
         if (runtimeCancelled) return null;
         externalDiagnosticsModule = mod;
         externalDiagnosticsApi = mod.initRabbitMirrorExternalDiagnostics?.() || null;
@@ -333,7 +333,7 @@ function disableExternalDiagnostics() {
 }
 
 function clearDeferredGenerationSnapshots() {
-    void import('./src/generationGuard.js?rmv=1.4.9-chatsafety1')
+    void import('./src/generationGuard.js?rmv=1.4.9-tagscan1')
         .then(mod => mod.clearRabbitMirrorGenerationSnapshots?.())
         .catch(() => {});
 }

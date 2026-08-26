@@ -7,6 +7,34 @@ export const VISUAL_PROMPT_MAX_CHARS = 5000;
 export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
 export const VISUAL_AVOID_PROMPT_MAX_CHARS = 1000;
 export const WORLD_INFO_BOOK_NAME_MAX_CHARS = 512;
+export const INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT = 32;
+export const DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS = Object.freeze([
+    'thinking',
+    'updatevariable',
+    'updatevarible',
+]);
+
+export function normalizeIndependentContextExcludedTags(value) {
+    const source = Array.isArray(value)
+        ? value
+        : String(value ?? '').split(/[\s,，、;；]+/);
+    const normalized = [];
+    const seen = new Set();
+    for (const rawValue of source) {
+        const raw = String(rawValue ?? '').trim();
+        if (!raw) continue;
+        const unwrapped = raw
+            .replace(/^<\s*\/?\s*/, '')
+            .replace(/\s*\/?>\s*$/, '')
+            .split(/\s/, 1)[0]
+            .toLowerCase();
+        if (!/^[a-z][a-z0-9._:-]{0,63}$/.test(unwrapped) || seen.has(unwrapped)) continue;
+        seen.add(unwrapped);
+        normalized.push(unwrapped);
+        if (normalized.length >= INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT) break;
+    }
+    return normalized;
+}
 
 
 const LEGACY_FORMAT_ID_ALIASES = Object.freeze({
@@ -52,6 +80,7 @@ export const defaultSettings = Object.freeze({
     independentApiTemperature: 0.8,
     independentApiMaxTokens: 30000,
     independentContextMaxLayers: 20,
+    independentContextExcludedTags: [...DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS],
     independentDisplayMode: 'external',
     independentReadGlobalWorldInfo: false,
     independentWorldInfoDisabledBooks: [],
@@ -131,6 +160,7 @@ export function getSettings() {
         const contextLayers = Number(settings.independentContextMaxLayers);
         settings.independentContextMaxLayers = Math.max(1, Math.min(200, Number.isFinite(contextLayers) ? Math.round(contextLayers) : 20));
     }
+    settings.independentContextExcludedTags = normalizeIndependentContextExcludedTags(settings.independentContextExcludedTags);
 
     if (settings.showCot === undefined && settings.showWonderland !== undefined) {
         settings.showCot = !!settings.showWonderland;
@@ -216,7 +246,10 @@ export function getSettings() {
 
 export function updateSettings(patch) {
     const settings = getSettings();
-    const safePatch = patch && typeof patch === 'object' ? patch : {};
+    const safePatch = patch && typeof patch === 'object' ? { ...patch } : {};
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'independentContextExcludedTags')) {
+        safePatch.independentContextExcludedTags = normalizeIndependentContextExcludedTags(safePatch.independentContextExcludedTags);
+    }
     const keys = Object.keys(safePatch).slice(0, 24);
     const changedKeys = keys.filter(key => {
         try { return JSON.stringify(settings?.[key]) !== JSON.stringify(safePatch[key]); } catch { return settings?.[key] !== safePatch[key]; }

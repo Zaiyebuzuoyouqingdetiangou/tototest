@@ -1,3 +1,17 @@
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix5-tagscan1
+
+- “副 API 正文标签过滤”窗口新增“扫描当前聊天标签”：只扫描当前已加载聊天的可见 `.mes_text`，汇总自定义标签名与出现次数。
+- 扫描结果只进入本次弹窗的临时候选；不会自动勾选、不会自动保存，也不会修改原正文。只有用户明确勾选并点击保存后，才从下一轮副 API 上下文副本中生效。
+- 扫描排除隐藏节点、闭合 `details` 正文、兔子镜自身 DOM、工具入口、代码块示例、普通 HTML/SVG/MathML 标签；真实自定义元素与正文中可见的普通/二次转义标签均可识别。
+- 长聊天扫描按帧分批，并限制为最多 500 条已渲染消息、20,000 个节点、256,000 个可见文本字符与 100 种候选；关闭弹窗、再次扫描或聊天切换会取消旧任务。
+
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix4-contextspeed1
+
+- 独立 API 在 `CHARACTER_MESSAGE_RENDERED` 确认的同一正文指纹上使用 520ms 有界快速通道；正文随后变化会自动失效，网络请求仍只从原单次付费链路发出。
+- SSE / NDJSON 改为同一个 Response body 的增量读取，支持 UTF-8 与 JSON 跨 chunk、SSE 多行 data、keepalive 和 `[DONE]`；非流式与误标响应保持原兼容路径，不自动重发。
+- 最近历史正文使用最多 12 项、仅单次请求存活的小缓存；目标正文始终重新读取当前可见 DOM，不跨请求复用。
+- 新增“副 API 正文标签过滤”窗口：预设 `thinking`、`UpdateVariable`、`UpdateVarible`，可取消或添加自定义标签；仅过滤副 API 上下文副本，不修改聊天记录、主 API 或美化 Prompt。
+
 ## 1.4.9-test-multiface-step1-externaldiag1-securityfix3
 
 - 修复 body 级高级设置弹窗在桌面端失去按钮横排与主题色的问题；世界书提示弹窗同步使用相同的桌面基础样式。

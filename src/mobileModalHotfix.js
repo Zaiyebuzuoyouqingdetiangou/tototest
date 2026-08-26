@@ -1,6 +1,6 @@
-const RELEASE_VERSION = '1.4.30.19';
+const RELEASE_VERSION = '1.4.30.21';
 const STYLE_ID = 'rabbit_mirror_top_layer_modal_hotfix';
-const TARGET_IDS = ['rh_advanced_modal', 'rh_world_info_prompt_modal'];
+const TARGET_IDS = ['rh_advanced_modal', 'rh_world_info_prompt_modal', 'rh_independent_tag_filter_modal'];
 
 let rootObserver = null;
 const modalObservers = new Map();
@@ -67,7 +67,8 @@ function installModalStyle() {
         line-height: 1.35 !important;
       }
       #rh_advanced_modal_card,
-      #rh_world_info_prompt_modal > div {
+      #rh_world_info_prompt_modal > div,
+      #rh_independent_tag_filter_modal > div {
         background: var(--SmartThemeBlurTintColor, #202226) !important;
         color: var(--SmartThemeBodyColor, #ddd) !important;
       }
@@ -134,7 +135,7 @@ function installModalStyle() {
 function closeThroughExistingControl(dialog) {
     const closeId = dialog.id === 'rh_advanced_modal'
         ? 'rh_advanced_close'
-        : 'rh_world_info_prompt_close';
+        : (dialog.id === 'rh_independent_tag_filter_modal' ? 'rh_independent_tag_filter_close' : 'rh_world_info_prompt_close');
     const closeButton = dialog.querySelector(`#${closeId}`);
     if (closeButton) {
         closeButton.click();

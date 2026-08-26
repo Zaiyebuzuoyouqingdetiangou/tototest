@@ -1,15 +1,15 @@
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.9-chatsafety1';
-import { clearLastCombo } from './storage.js?rmv=1.4.9-chatsafety1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.9-securityfix2';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.9-chatsafety1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.9-securityfix3';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.4.9-tagscan1';
+import { clearLastCombo } from './storage.js?rmv=1.4.9-tagscan1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.9-tagscan1';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.9-tagscan1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.9-tagscan1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.9-chatsafety1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.9-securityfix3';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.9-chatsafety1';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.9-tagscan1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.4.9-tagscan1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.9-tagscan1';
 
-const SETTINGS_UI_VERSION = '1.4.30.19-visual-maintenance';
-const RUNTIME_VERSION = '1.4.30.19';
+const SETTINGS_UI_VERSION = '1.4.30.21-tagscan1';
+const RUNTIME_VERSION = '1.4.30.21';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -273,10 +273,11 @@ function renderTokenMeter(record = getLastRabbitMirrorTokenRecordForSource(getSe
         const layerText = chars.independentContextLayers
             ? ` · 最近 ${formatMeterNumber(chars.independentContextLayers)}/${formatMeterNumber(chars.independentContextMaxLayers || chars.independentContextLayers)} 层`
             : '';
-        const filteredText = chars.filteredRabbitMirrorChars
-            ? ` · 已过滤历史兔子镜 ${formatMeterNumber(chars.filteredRabbitMirrorChars)} 字符`
-            : '';
-        exact.text(`规则约 ${formatMeterNumber(tokens.min)}–${formatMeterNumber(tokens.max)} Token；上下文 ${formatMeterNumber(chars.independentContext)} 字符${layerText}${filteredText}。`);
+        const filteredText = [
+            chars.filteredRabbitMirrorChars ? `历史兔子镜 ${formatMeterNumber(chars.filteredRabbitMirrorChars)} 字符` : '',
+            chars.filteredContextTagChars ? `指定标签 ${formatMeterNumber(chars.filteredContextTagChars)} 字符` : '',
+        ].filter(Boolean).join(' · ');
+        exact.text(`规则约 ${formatMeterNumber(tokens.min)}–${formatMeterNumber(tokens.max)} Token；上下文 ${formatMeterNumber(chars.independentContext)} 字符${layerText}${filteredText ? ` · 已过滤 ${filteredText}` : ''}。`);
         const parts = [
             `基础约 ${formatMeterNumber(tokens.baseEstimated)}`,
             chars.feedback ? `反馈约 ${formatMeterNumber(tokens.feedbackEstimated)}` : '反馈 0',
@@ -413,8 +414,10 @@ export function initRabbitMirrorUI() {
         if (existing.length === 1 && currentPanels.length === 1) { finishUiInit?.({ outcome: 'already-mounted' }); return; }
         // A hot reload may leave the old settings DOM alive even after manifest.json has updated.
         // Remove every stale/duplicate panel so the claimed runtime becomes the only UI owner.
+        try { globalThis.__rabbitMirrorTagFilterScanUiCleanup?.(); } catch {}
+        globalThis.__rabbitMirrorTagFilterScanUiCleanup = null;
         existing.remove();
-        $('body > #rh_advanced_modal, body > #rh_world_info_prompt_modal').remove();
+        $('body > #rh_advanced_modal, body > #rh_world_info_prompt_modal, body > #rh_independent_tag_filter_modal').remove();
     }
 
     const settingsMount = $('#extensions_settings2');
@@ -429,7 +432,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.19</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.21</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -484,7 +487,11 @@ export function initRabbitMirrorUI() {
               <label>最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
               <label>自动读取最近 <input id="rh_independent_context_layers" class="text_pole" type="number" min="1" max="200" step="1" inputmode="numeric" style="width:76px;"> 层</label>
             </div>
-            <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议 <b>1.0</b>；独立 API 会先过滤历史兔子镜，只读取聊天可见正文，不读取模型 reasoning / reasoning_content / thoughts；再读取最近 X 层聊天。无论填写多少，仍受 12,000 字符聊天正文、20,000 字符上下文和 32,000 字符完整请求上限保护。</div>
+            <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;">
+              <button id="rh_independent_tag_filter_open" class="menu_button" type="button">管理正文标签过滤</button>
+              <span id="rh_independent_tag_filter_summary" style="opacity:.72;font-size:11px;line-height:1.4;">尚未设置</span>
+            </div>
+            <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议 <b>1.0</b>；独立 API 会先过滤历史兔子镜和你指定的标签区块，只读取聊天可见正文，不读取模型 reasoning / reasoning_content / thoughts；再读取最近 X 层聊天。过滤只作用于发给副 API 的临时副本，不改酒馆正文。无论填写多少，仍受 12,000 字符聊天正文、20,000 字符上下文和 32,000 字符完整请求上限保护。</div>
             <div id="rh_independent_api_diagnostic" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);opacity:.78;font-size:11px;line-height:1.5;word-break:break-word;">最近请求：暂无记录</div>
             <div style="opacity:.66;font-size:11px;line-height:1.45;">一键配置时不保存 API Key；旧手动模式仍按原逻辑保存在当前 SillyTavern 扩展设置里。</div>
           </div>
@@ -663,7 +670,7 @@ export function initRabbitMirrorUI() {
   </div>
 </div>`;
 
-    $('body > #rh_advanced_modal, body > #rh_world_info_prompt_modal').remove();
+    $('body > #rh_advanced_modal, body > #rh_world_info_prompt_modal, body > #rh_independent_tag_filter_modal').remove();
     settingsMount.append(html);
     // The settings root uses CSS layout containment and a scroll container. Move the
     // advanced dialog to <body> so it is a real viewport modal instead of being clipped
@@ -689,6 +696,33 @@ export function initRabbitMirrorUI() {
   </div>
 </div>`;
     $(worldInfoPromptHtml).appendTo(document.body);
+    const tagFilterModalHtml = `
+<div id="rh_independent_tag_filter_modal" role="dialog" aria-modal="true" aria-label="副 API 正文标签过滤" aria-hidden="true" style="display:none;position:fixed;inset:0;z-index:2147483002;background:rgba(8,10,14,.62);box-sizing:border-box;padding:18px 12px;align-items:center;justify-content:center;overflow:hidden;pointer-events:auto;">
+  <div style="width:min(560px,calc(100vw - 24px));max-height:min(720px,calc(100dvh - 36px));overflow:hidden;background:var(--SmartThemeBlurTintColor,#202226);color:var(--SmartThemeBodyColor,#ddd);border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:18px;box-shadow:0 22px 70px rgba(0,0,0,.42);display:flex;flex-direction:column;">
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 40px;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent);">
+      <div><b style="font-size:15px;">副 API 正文标签过滤</b><div style="opacity:.65;font-size:11px;line-height:1.35;margin-top:2px;">只从发给副 API 的上下文副本中移除，原正文与美化规则保持不变</div></div>
+      <button id="rh_independent_tag_filter_close" class="menu_button" type="button" aria-label="关闭" style="width:38px;min-width:38px;height:38px;padding:0;border-radius:12px;font-size:20px;line-height:1;">×</button>
+    </div>
+    <div style="padding:14px;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;">
+      <div style="font-size:12px;line-height:1.55;opacity:.82;">勾选要整段过滤的标签。标签名不区分大小写；可填写 <code>thinking</code>、<code>&lt;thinking&gt;</code> 或自定义标签名。最多 ${INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT} 项，不接受正则。</div>
+      <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;align-items:center;margin-top:12px;padding:10px;border:1px solid color-mix(in srgb,currentColor 13%,transparent);border-radius:11px;background:color-mix(in srgb,currentColor 4%,transparent);">
+        <button id="rh_independent_tag_filter_scan" class="menu_button" type="button">扫描当前聊天标签</button>
+        <div id="rh_independent_tag_filter_scan_status" aria-live="polite" style="min-width:0;opacity:.72;font-size:11px;line-height:1.45;">只扫描当前已加载的可见正文；扫描结果需要手动勾选并保存。</div>
+      </div>
+      <div id="rh_independent_tag_filter_list" style="display:grid;gap:7px;margin-top:12px;"></div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:12px;">
+        <input id="rh_independent_tag_filter_input" class="text_pole" type="text" autocapitalize="off" autocomplete="off" spellcheck="false" maxlength="80" placeholder="添加标签，例如 &lt;analysis&gt;">
+        <button id="rh_independent_tag_filter_add" class="menu_button" type="button">添加并勾选</button>
+      </div>
+      <div id="rh_independent_tag_filter_error" aria-live="polite" style="min-height:18px;margin-top:5px;color:#ef9a9a;font-size:11px;line-height:1.4;"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;padding:11px 14px 14px;border-top:1px solid color-mix(in srgb,currentColor 12%,transparent);">
+      <button id="rh_independent_tag_filter_cancel" class="menu_button" type="button">取消</button>
+      <button id="rh_independent_tag_filter_save" class="menu_button" type="button" style="font-weight:700;">保存并从下一轮生效</button>
+    </div>
+  </div>
+</div>`;
+    $(tagFilterModalHtml).appendTo(document.body);
     attachTokenMeterListener();
     renderTokenMeter();
 
@@ -702,6 +736,63 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_max_tokens').val(settings.independentApiMaxTokens ?? 30000);
     $('#rh_independent_context_layers').val(settings.independentContextMaxLayers ?? 20);
     $('#rh_independent_model').val(settings.independentApiModel || '');
+    const tagFilterPresetLabels = new Map([
+        ['thinking', 'thinking'],
+        ['updatevariable', 'UpdateVariable'],
+        ['updatevarible', 'UpdateVarible'],
+    ]);
+    let tagFilterDraft = new Set();
+    let tagFilterDetected = new Map();
+    let tagFilterScanController = null;
+    let tagFilterScanEpoch = 0;
+    const renderTagFilterSummary = () => {
+        const tags = normalizeIndependentContextExcludedTags(getSettings().independentContextExcludedTags);
+        const summary = tags.length
+            ? `已过滤 ${tags.length} 项：${tags.slice(0, 3).map(tag => tagFilterPresetLabels.get(tag) || tag).join('、')}${tags.length > 3 ? '…' : ''}`
+            : '未过滤任何自定义标签';
+        $('#rh_independent_tag_filter_summary').text(summary);
+    };
+    const renderTagFilterDraft = () => {
+        const list = $('#rh_independent_tag_filter_list').empty();
+        const knownTags = [...new Set([...DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, ...tagFilterDraft, ...tagFilterDetected.keys()])];
+        for (const tag of knownTags) {
+            const row = $('<div>').css({ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: '8px', alignItems: 'center', padding: '8px 9px', border: '1px solid color-mix(in srgb,currentColor 13%,transparent)', borderRadius: '10px' });
+            const label = $('<label>').addClass('checkbox_label').css({ minWidth: 0, overflowWrap: 'anywhere' });
+            const checkbox = $('<input>').attr({ type: 'checkbox', 'data-rh-context-tag': tag }).prop('checked', tagFilterDraft.has(tag));
+            label.append(checkbox, document.createTextNode(` <${tagFilterPresetLabels.get(tag) || tag}>`));
+            row.append(label);
+            const detectedCount = Number(tagFilterDetected.get(tag) || 0);
+            if (detectedCount > 0) row.append($('<span>').text(`扫描到 ${detectedCount} 次`).css({ opacity: .68, fontSize: '10px', whiteSpace: 'nowrap' }));
+            else if (tagFilterPresetLabels.has(tag)) row.append($('<span>').text('常用').css({ opacity: .62, fontSize: '10px' }));
+            else row.append($('<button>').attr({ type: 'button', 'data-rh-remove-context-tag': tag }).addClass('menu_button').text('移除').css({ minWidth: '64px' }));
+            list.append(row);
+        }
+        if (!knownTags.length) list.append($('<div>').text('当前没有可选标签。').css({ opacity: .65, fontSize: '11px' }));
+    };
+    const cancelTagFilterScan = () => {
+        tagFilterScanEpoch += 1;
+        try { tagFilterScanController?.abort?.(); } catch {}
+        tagFilterScanController = null;
+        $('#rh_independent_tag_filter_scan').prop('disabled', false).text('扫描当前聊天标签');
+        $('#rh_independent_tag_filter_save').prop('disabled', false);
+    };
+    try { globalThis.__rabbitMirrorTagFilterScanUiCleanup?.(); } catch {}
+    globalThis.__rabbitMirrorTagFilterScanUiCleanup = cancelTagFilterScan;
+    const setTagFilterOpen = open => {
+        const modal = $('#rh_independent_tag_filter_modal');
+        cancelTagFilterScan();
+        if (open) {
+            tagFilterDraft = new Set(normalizeIndependentContextExcludedTags(getSettings().independentContextExcludedTags));
+            tagFilterDetected = new Map();
+            $('#rh_independent_tag_filter_input').val('');
+            $('#rh_independent_tag_filter_error').text('');
+            $('#rh_independent_tag_filter_scan_status').text('只扫描当前已加载的可见正文；扫描结果需要手动勾选并保存。');
+            renderTagFilterDraft();
+        }
+        modal.attr('aria-hidden', open ? 'false' : 'true').css('display', open ? 'flex' : 'none');
+        if (open) setTimeout(() => $('#rh_independent_tag_filter_input').trigger('focus'), 0);
+    };
+    renderTagFilterSummary();
     const renderIndependentConnectionStatus = () => {
         const currentId=String(getSettings().independentConnectionProfileId||'').trim();
         const profile=getIndependentConnectionProfiles().find(item=>item.id===currentId);
@@ -803,6 +894,85 @@ export function initRabbitMirrorUI() {
     $('#rh_world_info_prompt_disable').on('click', () => applyIndependentWorldInfoChoice(false));
     $('#rh_world_info_prompt_close').on('click', () => setWorldInfoPromptOpen(false));
     $('#rh_world_info_prompt_modal').on('click', function (event) { if (event.target === this) setWorldInfoPromptOpen(false); });
+    $('#rh_independent_tag_filter_open').on('click', () => setTagFilterOpen(true));
+    $('#rh_independent_tag_filter_close, #rh_independent_tag_filter_cancel').on('click', () => setTagFilterOpen(false));
+    $('#rh_independent_tag_filter_modal').on('click', function (event) { if (event.target === this) setTagFilterOpen(false); });
+    $('#rh_independent_tag_filter_list').on('change', '[data-rh-context-tag]', function () {
+        const tag = String($(this).attr('data-rh-context-tag') || '');
+        if (!tag) return;
+        if (this.checked && !tagFilterDraft.has(tag) && tagFilterDraft.size >= INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT) {
+            this.checked = false;
+            $('#rh_independent_tag_filter_error').text(`最多只能过滤 ${INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT} 个标签。`);
+            return;
+        }
+        if (this.checked) tagFilterDraft.add(tag); else tagFilterDraft.delete(tag);
+        $('#rh_independent_tag_filter_error').text('');
+    });
+    $('#rh_independent_tag_filter_list').on('click', '[data-rh-remove-context-tag]', function () {
+        tagFilterDraft.delete(String($(this).attr('data-rh-remove-context-tag') || ''));
+        renderTagFilterDraft();
+    });
+    const addTagFilterDraft = () => {
+        const raw = String($('#rh_independent_tag_filter_input').val() || '').trim();
+        const normalized = normalizeIndependentContextExcludedTags([raw]);
+        if (!normalized.length) {
+            $('#rh_independent_tag_filter_error').text('请输入普通标签名；只允许字母开头以及字母、数字、点、下划线、冒号或连字符。');
+            return;
+        }
+        if (!tagFilterDraft.has(normalized[0]) && tagFilterDraft.size >= INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT) {
+            $('#rh_independent_tag_filter_error').text(`最多只能过滤 ${INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT} 个标签。`);
+            return;
+        }
+        tagFilterDraft.add(normalized[0]);
+        $('#rh_independent_tag_filter_input').val('');
+        $('#rh_independent_tag_filter_error').text('');
+        renderTagFilterDraft();
+    };
+    $('#rh_independent_tag_filter_add').on('click', addTagFilterDraft);
+    $('#rh_independent_tag_filter_input').on('keydown', event => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        addTagFilterDraft();
+    });
+    $('#rh_independent_tag_filter_scan').on('click', async () => {
+        cancelTagFilterScan();
+        const controller = new AbortController();
+        tagFilterScanController = controller;
+        const epoch = ++tagFilterScanEpoch;
+        $('#rh_independent_tag_filter_scan').prop('disabled', true).text('正在扫描…');
+        $('#rh_independent_tag_filter_save').prop('disabled', true);
+        $('#rh_independent_tag_filter_scan_status').text('正在分批扫描当前已加载的可见正文…');
+        $('#rh_independent_tag_filter_error').text('');
+        try {
+            const result = await scanCurrentChatIndependentContextTags({ signal: controller.signal });
+            if (epoch !== tagFilterScanEpoch || $('#rh_independent_tag_filter_modal').attr('aria-hidden') !== 'false') return;
+            tagFilterDetected = new Map((result?.tags || []).map(item => [String(item?.name || ''), Number(item?.count || 0)]).filter(([name, count]) => name && count > 0));
+            renderTagFilterDraft();
+            const total = [...tagFilterDetected.values()].reduce((sum, count) => sum + count, 0);
+            const base = result?.available === false
+                ? '当前没有可扫描的聊天正文。'
+                : (tagFilterDetected.size
+                    ? `扫描到 ${tagFilterDetected.size} 种、${total} 个自定义标签；尚未自动勾选。`
+                    : '当前已加载的可见正文中没有发现可选自定义标签。');
+            $('#rh_independent_tag_filter_scan_status').text(`${base}${result?.truncated ? ' 已达到安全上限，结果可能不完整。' : ''}`);
+        } catch (error) {
+            if (epoch !== tagFilterScanEpoch || controller.signal.aborted) return;
+            $('#rh_independent_tag_filter_scan_status').text(error?.name === 'AbortError' ? String(error?.message || '扫描已取消，请重新扫描。') : '扫描失败，请稍后重试。');
+        } finally {
+            if (epoch === tagFilterScanEpoch) {
+                tagFilterScanController = null;
+                $('#rh_independent_tag_filter_scan').prop('disabled', false).text('扫描当前聊天标签');
+                $('#rh_independent_tag_filter_save').prop('disabled', false);
+            }
+        }
+    });
+    $('#rh_independent_tag_filter_save').on('click', () => {
+        const selectedTags = normalizeIndependentContextExcludedTags([...tagFilterDraft]);
+        updateSettings({ independentContextExcludedTags: selectedTags });
+        renderTagFilterSummary();
+        setTagFilterOpen(false);
+        toastr?.success?.('正文标签过滤已保存，从下一轮副 API 生成生效。');
+    });
 
     $('input[name="rh_generation_source"]').on('change', e => {
         const generationSource = e.target.value === 'independent' ? 'independent' : 'follow';
@@ -1244,7 +1414,9 @@ export function initRabbitMirrorUI() {
 }
 
 export function destroyRabbitMirrorUI() {
-    $('#rh_advanced_modal, #rh_world_info_prompt_modal').remove();
+    try { globalThis.__rabbitMirrorTagFilterScanUiCleanup?.(); } catch {}
+    globalThis.__rabbitMirrorTagFilterScanUiCleanup = null;
+    $('#rh_advanced_modal, #rh_world_info_prompt_modal, #rh_independent_tag_filter_modal').remove();
     if (uiMountRetryTimer) {
         clearTimeout(uiMountRetryTimer);
         uiMountRetryTimer = 0;

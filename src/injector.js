@@ -1,13 +1,13 @@
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.4.9-chatsafety1';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.4.9-tagscan1';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.4.9-chatsafety1';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.4.9-chatsafety1';
+} from './feedbackCat.js?rmv=1.4.9-tagscan1';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.4.9-tagscan1';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -17,7 +17,7 @@ let generationGuardPromise = null;
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.4.9-securityfix2').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.4.9-tagscan1').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -27,7 +27,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.4.9-chatsafety1').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.4.9-tagscan1').catch(error => {
             generationGuardPromise = null;
             throw error;
         });

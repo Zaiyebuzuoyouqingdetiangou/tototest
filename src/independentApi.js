@@ -1,15 +1,15 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.9-chatsafety1';
-import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-securityfix2';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-securityfix2';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.4.9-securityfix3';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-securityfix2';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-chatsafety1';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-chatsafety1';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-chatsafety1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-chatsafety1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.4.9-tagscan1';
+import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-tagscan1';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-tagscan1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.4.9-tagscan1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-tagscan1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-tagscan1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-tagscan1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-tagscan1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-tagscan1';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
-const RUNTIME_VERSION = '1.4.30.19';
+const RUNTIME_VERSION = '1.4.30.21';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -156,6 +156,7 @@ const INDEPENDENT_MAX_DATA_URI_CHARS = 192000;
 const CONTEXT_TRANSCRIPT_BUDGET = 12000;
 const CONTEXT_TOTAL_BUDGET = 20000;
 const MAX_INDEPENDENT_REQUEST_CHARS = 32000;
+const INDEPENDENT_VISIBLE_TEXT_CACHE_LIMIT = 12;
 const GLOBAL_WORLD_INFO_SNAPSHOT_TTL_MS = 30 * 60 * 1000;
 const GLOBAL_WORLD_INFO_SNAPSHOT_LIMIT = 96;
 const GLOBAL_WORLD_INFO_CONTEXT_BUDGET = 6000;
@@ -165,6 +166,9 @@ const ACTIVE_GENERATION_WAIT_MS = 10 * 60 * 1000;
 const WEAK_GENERATION_FLAG_GRACE_MS = 30 * 1000;
 const WEAK_GENERATION_SOURCE_STABLE_WAIT_MS = 4500;
 const SOURCE_STABLE_WAIT_MS = 1400;
+const FINAL_RENDER_SOURCE_STABLE_WAIT_MS = 520;
+const FINAL_RENDER_POLL_INTERVAL_MS = 120;
+const FINAL_RENDER_CONFIRMATION_TTL_MS = 5000;
 const INDEPENDENT_REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 const HOST_GENERATION_EVENT_HINT_MS = 15000;
 const GENERATION_PLACEHOLDER_POLL_LIMIT_MS = 12000;
@@ -673,7 +677,7 @@ function publishIndependentApiRequestDiagnostic(value){
  return diagnostic;
 }
 export function getLastIndependentApiRequestDiagnostic(){ return readLastIndependentApiRequestDiagnostic(); }
-export { API_REQUEST_DIAGNOSTIC_EVENT };
+export { API_REQUEST_DIAGNOSTIC_EVENT, scanCurrentChatIndependentContextTags };
 function hashText(text=''){ let h=2166136261; for(const ch of String(text)){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619);} return (h>>>0).toString(36); }
 function getContext(){ try { return globalThis.SillyTavern?.getContext?.() || {}; } catch { return {}; } }
 function normalizeIndependentConnectionText(value,max=1000){ return String(value??'').replace(/\r\n?/g,'\n').replace(/\u0000/g,'').trim().slice(0,max); }
@@ -1209,7 +1213,246 @@ function decodeIndependentVisibleEntities(value=''){
  }
  return text.replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/&lt;/gi,'<').replace(/&gt;/gi,'>').replace(/&quot;/gi,'"').replace(/&#39;|&apos;/gi,"'");
 }
-function stripInvisibleIndependentContextMarkup(value=''){
+function independentContextExcludedTagSet(settings=getSettings()){
+ return new Set(normalizeIndependentContextExcludedTags(settings?.independentContextExcludedTags));
+}
+function scanIndependentMarkupToken(source,start){
+ if(source.startsWith('<!--',start)){
+  const close=source.indexOf('-->',start+4);
+  return {end:close>=0?close+3:source.length,name:'',closing:false,selfClosing:false};
+ }
+ let cursor=start+1;
+ if(source[cursor]==='!' || source[cursor]==='?'){
+  const close=source.indexOf('>',cursor+1);
+  return close>=0?{end:close+1,name:'',closing:false,selfClosing:false}:null;
+ }
+ while(/\s/.test(source[cursor]||'')) cursor+=1;
+ let closing=false;
+ if(source[cursor]==='/'){ closing=true; cursor+=1; while(/\s/.test(source[cursor]||'')) cursor+=1; }
+ const nameStart=cursor;
+ while(/[A-Za-z0-9._:-]/.test(source[cursor]||'') && cursor-nameStart<64) cursor+=1;
+ const name=source.slice(nameStart,cursor).toLowerCase();
+ if(!/^[a-z][a-z0-9._:-]{0,63}$/.test(name)) return null;
+ let quote='';
+ const hardEnd=Math.min(source.length,start+4096);
+ for(;cursor<hardEnd;cursor+=1){
+  const char=source[cursor];
+  if(quote){ if(char===quote) quote=''; continue; }
+  if(char==='"' || char==="'"){ quote=char; continue; }
+  if(char==='>'){
+   const before=source.slice(start,cursor).replace(/\s+$/,'');
+   return {end:cursor+1,name,closing,selfClosing:!closing && before.endsWith('/')};
+  }
+ }
+ return null;
+}
+function decodeConfiguredIndependentTagTokens(value='',selected=new Set()){
+ let source=String(value||'');
+ const encodedLt='&(?:amp;){0,3}(?:lt|#0*60|#x0*3c);';
+ const encodedGt='&(?:amp;){0,3}(?:gt|#0*62|#x0*3e);';
+ for(const tag of selected){
+  const escaped=String(tag).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const token=new RegExp(`${encodedLt}(\\s*\\/?\\s*${escaped}(?![a-z0-9._:-])[\\s\\S]{0,4096}?)${encodedGt}`,'gi');
+  source=source.replace(token,(_match,inner)=>`<${inner}>`);
+ }
+ return source;
+}
+function configuredIndependentTagPrefix(source,start,selected){
+ let cursor=start+1;
+ while(/\s/.test(source[cursor]||'')) cursor+=1;
+ let closing=false;
+ if(source[cursor]==='/'){ closing=true; cursor+=1; while(/\s/.test(source[cursor]||'')) cursor+=1; }
+ const nameStart=cursor;
+ while(/[A-Za-z0-9._:-]/.test(source[cursor]||'') && cursor-nameStart<64) cursor+=1;
+ const name=source.slice(nameStart,cursor).toLowerCase();
+ if(!name || !selected.has(name) || /[A-Za-z0-9._:-]/.test(source[cursor]||'')) return null;
+ return {name,closing};
+}
+function stripConfiguredIndependentTagBlocks(value='',excludedTags=new Set()){
+ const selected=excludedTags instanceof Set?excludedTags:new Set(normalizeIndependentContextExcludedTags(excludedTags));
+ const source=decodeConfiguredIndependentTagTokens(value,selected);
+ if(!selected.size || !source.includes('<')) return {text:source,filteredExcludedTagChars:0,filteredExcludedTags:[]};
+ const output=[]; const blockedStack=[]; const matched=new Set(); let filteredExcludedTagChars=0;
+ for(let cursor=0;cursor<source.length;){
+  if(source[cursor]!=='<'){
+   const next=source.indexOf('<',cursor);
+   const end=next>=0?next:source.length;
+   const chunk=source.slice(cursor,end);
+   if(blockedStack.length) filteredExcludedTagChars+=chunk.length; else output.push(chunk);
+   cursor=end; continue;
+  }
+  const token=scanIndependentMarkupToken(source,cursor);
+  if(!token){
+   const selectedPrefix=configuredIndependentTagPrefix(source,cursor,selected);
+   if(selectedPrefix){
+    matched.add(selectedPrefix.name);
+    filteredExcludedTagChars+=source.length-cursor;
+    break;
+   }
+   if(blockedStack.length) filteredExcludedTagChars+=1; else output.push('<');
+   cursor+=1; continue;
+  }
+  const raw=source.slice(cursor,token.end);
+  const isSelected=!!token.name && selected.has(token.name);
+  if(isSelected){
+   matched.add(token.name); filteredExcludedTagChars+=raw.length;
+   if(token.closing){
+    if(blockedStack[blockedStack.length-1]===token.name) blockedStack.pop();
+   }else if(!token.selfClosing) blockedStack.push(token.name);
+  }else if(blockedStack.length) filteredExcludedTagChars+=raw.length;
+  else output.push(raw);
+  cursor=token.end;
+ }
+ return {text:output.join(''),filteredExcludedTagChars,filteredExcludedTags:[...matched]};
+}
+const INDEPENDENT_TAG_SCAN_MAX_MESSAGES=500;
+const INDEPENDENT_TAG_SCAN_MAX_NODES=20000;
+const INDEPENDENT_TAG_SCAN_MAX_TEXT_CHARS=256000;
+const INDEPENDENT_TAG_SCAN_MAX_UNIQUE_TAGS=100;
+const INDEPENDENT_TAG_SCAN_STANDARD_TAGS=new Set(`a abbr address area article aside audio b base bdi bdo blockquote body br button canvas caption cite code col colgroup data datalist dd del details dfn dialog div dl dt em embed fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 head header hgroup hr html i iframe img input ins kbd label legend li link main map mark menu meta meter nav noscript object ol optgroup option output p picture pre progress q rp rt ruby s samp script search section select slot small source span strong style sub summary sup table tbody td template textarea tfoot th thead time title tr track u ul var video wbr`.split(' '));
+const INDEPENDENT_TAG_SCAN_RESERVED_TAGS=new Set(['toto']);
+const INDEPENDENT_TAG_SCAN_SKIP_SUBTREES=new Set(['toto','script','style','template','noscript','iframe','object','embed','svg','math']);
+const INDEPENDENT_TAG_SCAN_SKIP_CODE_SUBTREES=new Set(['code','pre','textarea','kbd','samp']);
+const INDEPENDENT_TAG_SCAN_BLOCKED_SELECTOR='toto, [data-rabbit-mirror-external-source], [data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-ui-version], script, style, template, noscript, iframe, object, embed, svg, math, [hidden], [inert], [aria-hidden="true"], [aria-hidden="1"], .displayNone, .display-none, .hidden, .invisible, .sr-only, [class*="display-none"], [class*="display_none"]';
+function normalizedIndependentDiscoveredTagName(value=''){
+ const tag=normalizeIndependentContextExcludedTags([String(value||'')])[0]||'';
+ if(!tag || INDEPENDENT_TAG_SCAN_STANDARD_TAGS.has(tag) || INDEPENDENT_TAG_SCAN_RESERVED_TAGS.has(tag)) return '';
+ return tag;
+}
+function recordIndependentDiscoveredTag(counts,name,maxUnique=INDEPENDENT_TAG_SCAN_MAX_UNIQUE_TAGS){
+ const tag=normalizedIndependentDiscoveredTagName(name);
+ if(!tag) return {accepted:false,truncated:false};
+ if(!counts.has(tag) && counts.size>=maxUnique) return {accepted:false,truncated:true};
+ counts.set(tag,Number(counts.get(tag)||0)+1);
+ return {accepted:true,truncated:false};
+}
+function decodeIndependentTagDiscoveryEntities(value=''){
+ return String(value||'')
+  .replace(/&(?:amp;){0,3}(?:lt|#0*60|#x0*3c);/gi,'<')
+  .replace(/&(?:amp;){0,3}(?:gt|#0*62|#x0*3e);/gi,'>');
+}
+function discoverIndependentContextTagNamesInText(value='',counts=new Map(),state={}){
+ const source=decodeIndependentTagDiscoveryEntities(value);
+ const blockedStack=[];
+ for(let cursor=0;cursor<source.length;){
+  const start=source.indexOf('<',cursor);
+  if(start<0) break;
+  const token=scanIndependentMarkupToken(source,start);
+  if(!token){ cursor=start+1; continue; }
+  if(blockedStack.length){
+   if(token.closing && blockedStack[blockedStack.length-1]===token.name) blockedStack.pop();
+   else if(!token.closing && !token.selfClosing && INDEPENDENT_TAG_SCAN_SKIP_SUBTREES.has(token.name)) blockedStack.push(token.name);
+   cursor=token.end; continue;
+  }
+  if(INDEPENDENT_TAG_SCAN_SKIP_SUBTREES.has(token.name)){
+   if(!token.closing && !token.selfClosing) blockedStack.push(token.name);
+   cursor=token.end; continue;
+  }
+  if(token.name && !token.closing){
+   const recorded=recordIndependentDiscoveredTag(counts,token.name);
+   if(recorded.truncated) state.truncated=true;
+  }
+  cursor=token.end;
+ }
+ return counts;
+}
+function independentTagScanHidden(node){
+ if(!node || node.nodeType!==1) return false;
+ const inline=String(node.getAttribute?.('style')||'');
+ if(/(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*hidden|content-visibility\s*:\s*hidden|opacity\s*:\s*0(?:\D|$))\b/i.test(inline)) return true;
+ if(typeof globalThis.getComputedStyle!=='function') return false;
+ try{
+  const computed=globalThis.getComputedStyle(node);
+  return String(computed?.display||'').toLowerCase()==='none'
+   || ['hidden','collapse'].includes(String(computed?.visibility||'').toLowerCase())
+   || String(computed?.contentVisibility||'').toLowerCase()==='hidden'
+   || Number.parseFloat(String(computed?.opacity||'1'))===0;
+ }catch{return false;}
+}
+function independentTagScanAbortError(message='标签扫描已取消'){
+ try{return new DOMException(message,'AbortError');}
+ catch{const error=new Error(message); error.name='AbortError'; return error;}
+}
+function yieldIndependentTagScanFrame(){
+ return new Promise(resolve=>{
+  if(typeof globalThis.requestIdleCallback==='function') globalThis.requestIdleCallback(()=>resolve(),{timeout:50});
+  else if(typeof globalThis.requestAnimationFrame==='function') globalThis.requestAnimationFrame(()=>resolve());
+  else setTimeout(resolve,0);
+ });
+}
+async function scanCurrentChatIndependentContextTags({signal}={}){
+ if(typeof document==='undefined' || !document.querySelectorAll) return {available:false,tags:[],scannedMessages:0,scannedNodes:0,scannedTextChars:0,truncated:false};
+ const chatRoot=document.querySelector('#chat');
+ if(!chatRoot) return {available:false,tags:[],scannedMessages:0,scannedNodes:0,scannedTextChars:0,truncated:false};
+ const allBodies=[...chatRoot.querySelectorAll('.mes[mesid] .mes_text')].filter(body=>{
+  const owner=body?.closest?.('.mes[mesid]');
+  return !!owner && owner.parentElement===chatRoot && owner.querySelector?.('.mes_text')===body;
+ });
+ const bodies=allBodies.slice(-INDEPENDENT_TAG_SCAN_MAX_MESSAGES);
+ const counts=new Map(); const state={truncated:allBodies.length>bodies.length}; const reasons=new Set();
+ if(allBodies.length>bodies.length) reasons.add('messages');
+ let scannedMessages=0; let scannedNodes=0; let scannedTextChars=0; let workSinceYield=0;
+ let sliceStarted=typeof performance!=='undefined' && performance.now?performance.now():Date.now();
+ const ensureCurrent=()=>{
+  if(signal?.aborted) throw independentTagScanAbortError();
+  if(document.querySelector('#chat')!==chatRoot) throw independentTagScanAbortError('聊天已切换，请重新扫描');
+ };
+ const maybeYield=async force=>{
+  const now=typeof performance!=='undefined' && performance.now?performance.now():Date.now();
+  if(!force && workSinceYield<800 && now-sliceStarted<6) return;
+  await yieldIndependentTagScanFrame(); ensureCurrent(); workSinceYield=0;
+  sliceStarted=typeof performance!=='undefined' && performance.now?performance.now():Date.now();
+ };
+ outer: for(const body of bodies){
+  ensureCurrent();
+  if(!body?.isConnected || body.closest?.('#chat')!==chatRoot) throw independentTagScanAbortError('聊天正文已变化，请重新扫描');
+  let blockedByAncestor=false;
+  for(let ancestor=body;ancestor && ancestor!==chatRoot;ancestor=ancestor.parentElement){
+   if(ancestor.matches?.(INDEPENDENT_TAG_SCAN_BLOCKED_SELECTOR) || independentTagScanHidden(ancestor)){ blockedByAncestor=true; break; }
+  }
+  if(blockedByAncestor) continue;
+  const stack=[{node:body,depth:0,literalAllowed:true}];
+  while(stack.length){
+   ensureCurrent();
+   if(scannedNodes>=INDEPENDENT_TAG_SCAN_MAX_NODES){ state.truncated=true; reasons.add('nodes'); break outer; }
+   const {node,depth,literalAllowed}=stack.pop(); scannedNodes+=1; workSinceYield+=1;
+   if(depth>40){ state.truncated=true; reasons.add('depth'); continue; }
+   if(node?.nodeType===3){
+    if(!literalAllowed) { await maybeYield(false); continue; }
+    const remaining=INDEPENDENT_TAG_SCAN_MAX_TEXT_CHARS-scannedTextChars;
+    if(remaining<=0){ state.truncated=true; reasons.add('text'); await maybeYield(false); continue; }
+    const raw=String(node.nodeValue||''); const text=raw.slice(0,remaining);
+    scannedTextChars+=text.length;
+    if(text.length<raw.length){ state.truncated=true; reasons.add('text'); }
+    const before=counts.size;
+    discoverIndependentContextTagNamesInText(text,counts,state);
+    if(state.truncated && counts.size===INDEPENDENT_TAG_SCAN_MAX_UNIQUE_TAGS && counts.size===before) reasons.add('tags');
+    await maybeYield(false); continue;
+   }
+   if(node?.nodeType!==1) { await maybeYield(false); continue; }
+   if(node!==body && (node.matches?.(INDEPENDENT_TAG_SCAN_BLOCKED_SELECTOR) || independentTagScanHidden(node))){ await maybeYield(false); continue; }
+   const localName=String(node.localName||node.tagName||'').toLowerCase();
+   if(INDEPENDENT_TAG_SCAN_SKIP_SUBTREES.has(localName) || INDEPENDENT_TAG_SCAN_SKIP_CODE_SUBTREES.has(localName)) { await maybeYield(false); continue; }
+   if(node!==body && (!node.namespaceURI || node.namespaceURI==='http://www.w3.org/1999/xhtml')){
+    const recorded=recordIndependentDiscoveredTag(counts,localName);
+    if(recorded.truncated){ state.truncated=true; reasons.add('tags'); }
+   }
+   let children=[...(node.childNodes||[])];
+   if(String(node.tagName||'').toUpperCase()==='DETAILS' && !node.open){
+    const summary=children.find(child=>child?.nodeType===1 && String(child.tagName||'').toUpperCase()==='SUMMARY');
+    children=summary?[summary]:[];
+   }
+   for(let child=children.length-1;child>=0;child-=1) stack.push({node:children[child],depth:depth+1,literalAllowed});
+   await maybeYield(false);
+  }
+  scannedMessages+=1;
+  if(scannedMessages%20===0) await maybeYield(true);
+ }
+ ensureCurrent();
+ const tags=[...counts.entries()].map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count || a.name.localeCompare(b.name));
+ return {available:true,tags,scannedMessages,scannedNodes,scannedTextChars,truncated:state.truncated,reasons:[...reasons],currentRenderedOnly:true};
+}
+function stripInvisibleIndependentContextMarkup(value='',excludedTags=new Set()){
  let source=String(value||'').replace(/<!--[\s\S]*?-->/g,' ');
  for(let pass=0;pass<4;pass++){
   const previous=source;
@@ -1218,15 +1461,18 @@ function stripInvisibleIndependentContextMarkup(value=''){
    .replace(/<([a-z][\w:-]*)\b(?=[^>]*(?:\shidden(?:\s|=|>)|\saria-hidden\s*=\s*["']?true\b|\sinert(?:\s|=|>)|\sstyle\s*=\s*["'][^"']*(?:display\s*:\s*none|visibility\s*:\s*hidden|content-visibility\s*:\s*hidden)[^"']*["']))[^>]*>[\s\S]*?<\/\1\s*>/gi,' ');
   source=next; if(next===previous) break;
  }
- return decodeIndependentVisibleEntities(source.replace(/<br\s*\/?\s*>/gi,'\n').replace(/<\/(?:p|div|li|section|article|blockquote|h[1-6]|tr)\s*>/gi,'\n').replace(/<[^>]*>/g,' '))
+ const decoded=decodeIndependentVisibleEntities(source).replace(/<!--[\s\S]*?-->/g,' ');
+ const configured=stripConfiguredIndependentTagBlocks(decoded,excludedTags);
+ const text=configured.text.replace(/<br\s*\/?\s*>/gi,'\n').replace(/<\/(?:p|div|li|section|article|blockquote|h[1-6]|tr)\s*>/gi,'\n').replace(/<[^>]*>/g,' ')
   .replace(/[ \t]+\n/g,'\n').replace(/\n[ \t]+/g,'\n').replace(/[ \t]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+ return {...configured,text};
 }
-function liveVisibleIndependentMessageText(index){
+function liveVisibleIndependentMessageText(index,excludedTags=new Set()){
  if(typeof document==='undefined' || !document.querySelector) return {available:false,text:''};
  try{
   const body=document.querySelector(`#chat .mes[mesid="${Number(index)}"] .mes_text, #chat [mesid="${Number(index)}"].mes .mes_text`);
   if(!body) return {available:false,text:''};
-  const parts=[]; const stack=[{node:body,depth:0}]; let examined=0; let chars=0;
+  const parts=[]; const stack=[{node:body,depth:0}]; const filteredExcludedTags=new Set(); let examined=0; let chars=0; let filteredExcludedTagChars=0;
   const blockedSelector='toto, [data-rabbit-mirror-external-source], [data-rabbit-mirror-tool-entry-host], script, style, template, noscript, [hidden], [inert], [aria-hidden="true"], [aria-hidden="1"], .displayNone, .display-none, .hidden, .invisible, .sr-only, [class*="display-none"], [class*="display_none"]';
   const blockTags=new Set(['BR','P','DIV','LI','SECTION','ARTICLE','BLOCKQUOTE','H1','H2','H3','H4','H5','H6','TR']);
   for(let ancestor=body,depth=0;ancestor && depth<5;ancestor=ancestor.parentElement,depth+=1){
@@ -1243,6 +1489,12 @@ function liveVisibleIndependentMessageText(index){
    }
    if(node?.nodeType!==1) continue;
    if(node.matches?.(blockedSelector)) continue;
+   const localName=String(node.localName||node.tagName||'').toLowerCase();
+   if(localName && excludedTags.has(localName)){
+    filteredExcludedTags.add(localName);
+    filteredExcludedTagChars+=String(node.textContent||'').length;
+    continue;
+   }
    const inline=String(node.getAttribute?.('style')||'');
    if(/(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*hidden|content-visibility\s*:\s*hidden|opacity\s*:\s*0(?:\D|$))\b/i.test(inline)) continue;
    if(typeof globalThis.getComputedStyle==='function'){
@@ -1261,22 +1513,38 @@ function liveVisibleIndependentMessageText(index){
    if(blockTags.has(node.tagName) && parts.length) parts.push('\n');
    for(let child=children.length-1;child>=0;child-=1) stack.push({node:children[child],depth:depth+1});
   }
-  return {available:true,text:parts.join('').replace(/[ \t]+\n/g,'\n').replace(/\n[ \t]+/g,'\n').replace(/[ \t]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim()};
+  return {available:true,text:parts.join('').replace(/[ \t]+\n/g,'\n').replace(/\n[ \t]+/g,'\n').replace(/[ \t]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim(),filteredExcludedTagChars,filteredExcludedTags:[...filteredExcludedTags]};
  }catch{return {available:true,text:''};}
 }
-function canonicalVisibleMessageText(message,index){
- const live=liveVisibleIndependentMessageText(index);
+function canonicalVisibleMessageText(message,index,excludedTags=independentContextExcludedTagSet()){
+ const live=liveVisibleIndependentMessageText(index,excludedTags);
  if(live.available){
-  const filtered=stripHistoricalRabbitMirrorBlocks(live.text);
-  return {text:String(filtered.text||'').replace(/\s+/g,' ').trim(),filteredRabbitMirrorChars:filtered.filteredRabbitMirrorChars,source:'live-dom'};
+  const configured=stripConfiguredIndependentTagBlocks(live.text,excludedTags);
+  const filtered=stripHistoricalRabbitMirrorBlocks(configured.text);
+  return {text:String(filtered.text||'').replace(/\s+/g,' ').trim(),filteredRabbitMirrorChars:filtered.filteredRabbitMirrorChars,filteredExcludedTagChars:Number(live.filteredExcludedTagChars||0)+configured.filteredExcludedTagChars,filteredExcludedTags:[...new Set([...(live.filteredExcludedTags||[]),...configured.filteredExcludedTags])],source:'live-dom'};
  }
  // Browser runtime fails closed when the message has no rendered DOM. The lexical
  // branch exists only for non-DOM test/tooling contexts where no API request can run.
- if(typeof document!=='undefined') return {text:'',filteredRabbitMirrorChars:0,source:'not-rendered'};
+ if(typeof document!=='undefined') return {text:'',filteredRabbitMirrorChars:0,filteredExcludedTagChars:0,filteredExcludedTags:[],source:'not-rendered'};
  const hasDisplay=typeof message?.extra?.display_text==='string' && String(message.extra.display_text).trim().length>0;
  const source=hasDisplay ? message.extra.display_text : String(message?.mes||'');
  const filtered=stripHistoricalRabbitMirrorBlocks(source);
- return {text:stripInvisibleIndependentContextMarkup(filtered.text),filteredRabbitMirrorChars:filtered.filteredRabbitMirrorChars,source:hasDisplay?'non-dom-display-test':'non-dom-mes-test'};
+ const visible=stripInvisibleIndependentContextMarkup(filtered.text,excludedTags);
+ return {text:visible.text,filteredRabbitMirrorChars:filtered.filteredRabbitMirrorChars,filteredExcludedTagChars:visible.filteredExcludedTagChars,filteredExcludedTags:visible.filteredExcludedTags,source:hasDisplay?'non-dom-display-test':'non-dom-mes-test'};
+}
+function createIndependentVisibleTextReader(targetIndex,settings=getSettings()){
+ const excludedTags=independentContextExcludedTagSet(settings);
+ const cache=new Map();
+ return (message,index)=>{
+  const key=Number(index);
+  if(key!==Number(targetIndex) && cache.has(key)) return cache.get(key);
+  const result=canonicalVisibleMessageText(message,index,excludedTags);
+  if(key!==Number(targetIndex)){
+   if(cache.size>=INDEPENDENT_VISIBLE_TEXT_CACHE_LIMIT) cache.delete(cache.keys().next().value);
+   cache.set(key,result);
+  }
+  return result;
+ };
 }
 function clipIndependentContextText(value='',max=0){
  const text=String(value??'').replace(/\r\n?/g,'\n').trim();
@@ -1305,7 +1573,7 @@ function independentPersonaContext(ctx){
  for(const key of Object.keys(view)) if(!view[key]) delete view[key];
  return Object.keys(view).length ? safeJson(view,2500) : '';
 }
-function contextBundle(ctx,targetIndex,globalWorldInfoSnapshot=null,preparedGlobalWorldInfoView=null,budgetOverride=CONTEXT_TOTAL_BUDGET){
+function contextBundle(ctx,targetIndex,globalWorldInfoSnapshot=null,preparedGlobalWorldInfoView=null,budgetOverride=CONTEXT_TOTAL_BUDGET,readVisible=null){
  const chat=Array.isArray(ctx.chat)?ctx.chat:[];
  const char=ctx.characters?.[ctx.characterId] || ctx.character || null;
  // Keep only compact role/persona references. Never serialize authorNote/extensionPrompts/chatMetadata/worldInfo wholesale.
@@ -1323,12 +1591,16 @@ function contextBundle(ctx,targetIndex,globalWorldInfoSnapshot=null,preparedGlob
  const maxLayers=Math.max(1,Math.min(200,Number.isFinite(configuredLayers)?Math.round(configuredLayers):20));
  const totalBudget=Math.max(8000,Math.min(CONTEXT_TOTAL_BUDGET,Number(budgetOverride)||CONTEXT_TOTAL_BUDGET));
  const transcriptBudget=Math.max(4000,Math.min(CONTEXT_TRANSCRIPT_BUDGET,totalBudget-fixedSuffix.length-transcriptHeader.length-512));
- const rows=[]; let used=0; let includedLayers=0; let filteredRabbitMirrorChars=0;
+ const visibleReader=typeof readVisible==='function'?readVisible:createIndependentVisibleTextReader(targetIndex);
+ const rows=[]; const filteredExcludedTags=new Set(); let used=0; let includedLayers=0; let filteredRabbitMirrorChars=0; let filteredExcludedTagChars=0; let targetVisibleChars=0;
  for(let real=Math.min(targetIndex,chat.length-1);real>=0 && includedLayers<maxLayers;real--){
   const m=chat[real]; const role=m?.is_user?'USER':'ASSISTANT';
-  const filtered=canonicalVisibleMessageText(m,real);
+  const filtered=visibleReader(m,real);
   const body=filtered.text;
   filteredRabbitMirrorChars+=filtered.filteredRabbitMirrorChars;
+  filteredExcludedTagChars+=Number(filtered.filteredExcludedTagChars||0);
+  for(const tag of filtered.filteredExcludedTags||[]) filteredExcludedTags.add(tag);
+  if(real===Number(targetIndex)) targetVisibleChars=body.length;
   if(!body) continue;
   let row=`[${real} ${role}]\n${body}`;
   if(row.length>8000) row=`${row.slice(0,4000)}\n…[正文中段裁剪]…\n${row.slice(-4000)}`;
@@ -1344,6 +1616,9 @@ function contextBundle(ctx,targetIndex,globalWorldInfoSnapshot=null,preparedGlob
   layers:includedLayers,
   maxLayers,
   filteredRabbitMirrorChars,
+  filteredExcludedTagChars,
+  filteredExcludedTags:[...filteredExcludedTags],
+  targetVisibleChars,
   transcriptChars:transcript.length,
   referenceContextChars:referenceBlock.length,
   worldInfoContextChars:capturedWorldInfoBlock.length,
@@ -1685,23 +1960,129 @@ function extractResponseText(payload){
  return '';
 }
 function parseSsePayload(text=''){
- const chunks=[]; let lastPayload=null;
- for(const line of String(text).split(/\r?\n/)){
-   if(!line.startsWith('data:')) continue;
-   const data=line.slice(5).trim(); if(!data||data==='[DONE]') continue;
-   try{
-     const json=JSON.parse(data); lastPayload=json;
-     const part=extractResponseText(json); if(part) chunks.push(part);
-   }catch{}
+ const state={payload:null,text:'',dataLines:[],done:false};
+ const consumePayload=data=>{
+  const value=String(data||'').trim();
+  if(!value) return true;
+  if(value==='[DONE]'){ state.done=true; return true; }
+  try{
+   const payload=JSON.parse(value); state.payload=payload;
+   const part=extractResponseText(payload); if(part) state.text=mergeIndependentStreamText(state.text,part);
+   return true;
+  }catch{return false;}
+ };
+ const flush=()=>{
+  if(!state.dataLines.length) return;
+  consumePayload(state.dataLines.join('\n'));
+  state.dataLines=[];
+ };
+ for(const line of String(text).split(/\r\n|\n|\r/)){
+  if(!line){ flush(); continue; }
+  if(line.startsWith(':')) continue;
+  const colon=line.indexOf(':');
+  const field=colon>=0?line.slice(0,colon):line;
+  if(field!=='data') continue;
+  let data=colon>=0?line.slice(colon+1):''; if(data.startsWith(' ')) data=data.slice(1);
+  state.dataLines.push(data);
+  if(consumePayload(state.dataLines.join('\n'))) state.dataLines=[];
  }
- return {payload:lastPayload,text:chunks.join('').trim()};
+ flush();
+ return {payload:state.payload,text:state.text.trim(),done:state.done};
+}
+function parseNdjsonPayload(text=''){
+ let payload=null; let merged=''; let done=false;
+ for(const line of String(text).split(/\r\n|\n|\r/)){
+  const data=line.trim(); if(!data) continue;
+  if(data==='[DONE]'){ done=true; continue; }
+  try{ payload=JSON.parse(data); const part=extractResponseText(payload); if(part) merged=mergeIndependentStreamText(merged,part); }catch{}
+ }
+ return {payload,text:merged.trim(),done};
+}
+function mergeIndependentStreamText(current='',incoming=''){
+ const previous=String(current||''); const next=String(incoming||'');
+ if(!next) return previous;
+ if(!previous) return next;
+ if(next.startsWith(previous)) return next;
+ if(previous===next) return previous;
+ return previous+next;
+}
+function incrementalIndependentStreamState(kind='sse'){
+ const state={kind,payload:null,text:'',rawChunks:[],lineBuffer:'',dataLines:[],done:false};
+ const consumeJson=data=>{
+  const value=String(data||'').trim();
+  if(!value) return true;
+  if(value==='[DONE]'){ state.done=true; return true; }
+  try{
+   const payload=JSON.parse(value); state.payload=payload;
+   const part=extractResponseText(payload); if(part) state.text=mergeIndependentStreamText(state.text,part);
+   return true;
+  }catch{return false;}
+ };
+ const flushSseEvent=()=>{
+  if(!state.dataLines.length) return;
+  consumeJson(state.dataLines.join('\n'));
+  state.dataLines=[];
+ };
+ const consumeLine=line=>{
+  if(state.kind==='ndjson'){
+   consumeJson(line); return;
+  }
+  if(!line){ flushSseEvent(); return; }
+  if(line.startsWith(':')) return;
+  const colon=line.indexOf(':');
+  const field=colon>=0?line.slice(0,colon):line;
+  if(field!=='data') return;
+  let data=colon>=0?line.slice(colon+1):''; if(data.startsWith(' ')) data=data.slice(1);
+  state.dataLines.push(data);
+  if(consumeJson(state.dataLines.join('\n'))) state.dataLines=[];
+ };
+ const drainLines=final=>{
+  while(state.lineBuffer){
+   let end=-1; let width=1;
+   for(let i=0;i<state.lineBuffer.length;i+=1){
+    if(state.lineBuffer[i]==='\n'){ end=i; break; }
+    if(state.lineBuffer[i]==='\r'){
+     if(i===state.lineBuffer.length-1 && !final) return;
+     end=i; width=state.lineBuffer[i+1]==='\n'?2:1; break;
+    }
+   }
+   if(end<0){ if(final){ consumeLine(state.lineBuffer); state.lineBuffer=''; } return; }
+   consumeLine(state.lineBuffer.slice(0,end));
+   state.lineBuffer=state.lineBuffer.slice(end+width);
+  }
+ };
+ return {
+  state,
+  push(text){ const chunk=String(text||''); if(chunk) state.rawChunks.push(chunk); state.lineBuffer+=chunk; drainLines(false); },
+  finish(){ drainLines(true); if(state.kind==='sse') flushSseEvent(); return {raw:state.rawChunks.join(''),payload:state.payload,text:state.text.trim(),streamed:true}; },
+ };
 }
 async function readApiResponse(response){
  const contentType=String(response.headers?.get?.('content-type')||'').toLowerCase();
+ const streamKind=/text\/event-stream/.test(contentType)?'sse':(/application\/(?:x-)?ndjson/.test(contentType)?'ndjson':'');
+ const reader=streamKind && typeof response.body?.getReader==='function' ? response.body.getReader() : null;
+ if(reader){
+  const decoder=new TextDecoder(); const incremental=incrementalIndependentStreamState(streamKind);
+  try{
+   while(true){
+    const {done,value}=await reader.read();
+    if(done) break;
+    incremental.push(decoder.decode(value,{stream:true}));
+    if(incremental.state.done){ try{ await reader.cancel('rabbit-mirror-stream-done'); }catch{} break; }
+   }
+   incremental.push(decoder.decode());
+   const parsed=incremental.finish();
+   if(!parsed.text){
+    const fallback=streamKind==='ndjson'?parseNdjsonPayload(parsed.raw):parseSsePayload(parsed.raw);
+    parsed.payload=parsed.payload||fallback.payload; parsed.text=fallback.text;
+   }
+   return {...parsed,contentType};
+  }finally{ try{ reader.releaseLock?.(); }catch{} }
+ }
  const raw=await response.text();
- const streamed=/text\/event-stream|application\/x-ndjson/.test(contentType) || /^\s*data:/m.test(raw);
+ const streamed=!!streamKind || /^\s*data:/m.test(raw);
  if(streamed){
-   const parsed=parseSsePayload(raw); return {raw,payload:parsed.payload,text:parsed.text,streamed:true,contentType};
+   const parsed=streamKind==='ndjson'?parseNdjsonPayload(raw):parseSsePayload(raw); return {raw,payload:parsed.payload,text:parsed.text,streamed:true,contentType};
  }
  try{ const payload=JSON.parse(raw); return {raw,payload,text:extractResponseText(payload),streamed:false,contentType}; }
  catch{ return {raw,payload:null,text:String(raw||'').trim(),streamed:false,contentType}; }
@@ -2137,15 +2518,18 @@ function commitIndependentVisualResult(inner=''){
 async function callIndependentApi(ctx,index,msg,signal=null,requestOptions={}){
  const st=getSettings(); if((!st.independentConnectionProfileId&&!st.independentApiBaseUrl)||!st.independentApiModel) throw new Error('独立 API 尚未完成酒馆连接与模型设置');
  const generationScopeKey=`independent:${Date.now().toString(36)}:${index}:${swipeId(msg)}`;
+ const readVisible=createIndependentVisibleTextReader(index,st);
  // Feedback-cat history and memory-plugin content belong to the main-generation path.
  // The independent request may inspect only this turn's visible text and approved summaries.
  const activeFeedback=null;
  const feedbackPrompt='';
  const feedbackFinalCheck='';
+ const targetVisibleAtStart=readVisible(msg,index);
+ if(!targetVisibleAtStart.text) throw new Error('当前正文在可见性检查和标签过滤后为空；本次未发送副 API 请求。请调整过滤标签或确认正文已完成渲染。');
  const directiveStart=Math.max(0,index-3);
  const boundedDirectiveChat=Array.isArray(ctx.chat)?ctx.chat.slice(directiveStart,index+1).map((message,offset)=>({
   is_user:!!message?.is_user,
-  mes:canonicalVisibleMessageText(message,directiveStart+offset).text,
+  mes:directiveStart+offset===index?targetVisibleAtStart.text:readVisible(message,directiveStart+offset).text,
  })):[];
  const details=buildRabbitMirrorPromptDetails(st,'independent',null,generationScopeKey,{chat:boundedDirectiveChat});
  const basePrompt=details.prompt;
@@ -2175,7 +2559,8 @@ ${independentBehaviorPatch}`:''}
  if(availableContextChars<8000) throw new Error('兔子镜规则与执行锁本身已超过独立 API 完整请求安全预算；本次未发送网络请求。');
  const globalWorldInfoSnapshot=globalWorldInfoSnapshotFor(ctx,index,msg);
  const globalWorldInfoView=globalWorldInfoContextView(globalWorldInfoSnapshot);
- const contextResult=contextBundle(ctx,index,globalWorldInfoSnapshot,globalWorldInfoView,availableContextChars);
+ const contextResult=contextBundle(ctx,index,globalWorldInfoSnapshot,globalWorldInfoView,availableContextChars,readVisible);
+ if(!contextResult.targetVisibleChars) throw new Error('当前正文在可见性检查和标签过滤后为空；本次未发送副 API 请求。请调整过滤标签或确认正文已完成渲染。');
  const contextText=contextResult.text;
  const userPrompt=`${independentUserLead}
 
@@ -2198,6 +2583,7 @@ ${independentUserTail}`;
   contextLayers:contextResult.layers,
   contextMaxLayers:contextResult.maxLayers,
   filteredRabbitMirrorChars:contextResult.filteredRabbitMirrorChars,
+  filteredContextTagChars:contextResult.filteredExcludedTagChars,
   totalRequestChars,
   metadata:details.metadata,
  });
@@ -5162,16 +5548,31 @@ function renderAutomaticDispatchConsumed(index,sourceHash=''){
  markAutomaticFailureStop(live.slot,sourceHash||live.sourceHash,'host-operation-already-dispatched');
  return ensureExternalUi(el,live.key,'这次宿主生成已经发送过 1 次独立 API 请求；正文随后又发生了变化。为避免重复扣费，兔子镜没有自动发送第二次。确认最终正文后请点击“重新生成兔子镜”。','error','independent',sourceHash||live.sourceHash);
 }
-function scheduleMessageGeneration(index,delay=260,sourceAware=true){
+function confirmFinalRenderedGeneration(index){
+ const state=generationPolls.get(generationPollKey(index));
+ const live=currentGenerationIdentity(index);
+ if(!state || !live) return false;
+ state.finalRenderHash=live.sourceHash;
+ state.finalRenderRevision=live.revision;
+ state.finalRenderAt=Date.now();
+ state.queue?.(FINAL_RENDER_POLL_INTERVAL_MS);
+ return true;
+}
+function scheduleMessageGeneration(index,delay=260,sourceAware=true,finalRenderConfirmed=false){
  const initialContext=getContext();
  const initialMessage=initialContext.chat?.[index];
  if(suppressesAutomaticGeneration(initialContext,index) || hasExistingFollowRabbitMirror(initialContext,index,initialMessage)) return null;
  const pollKey=generationPollKey(index); const previous=generationPolls.get(pollKey);
  if(previous){ previous.cancelled=true; if(previous.timer) clearTimeout(previous.timer); }
- const state={cancelled:false,timer:0,startedAt:Date.now(),stableSince:0,lastHash:'',lastRevision:-1,weakActiveSince:0};
+ const state={cancelled:false,timer:0,startedAt:Date.now(),stableSince:0,lastHash:'',lastRevision:-1,weakActiveSince:0,finalRenderHash:'',finalRenderRevision:-1,finalRenderAt:0,queue:null};
  generationPolls.set(pollKey,state);
  const finish=()=>{ if(generationPolls.get(pollKey)===state) generationPolls.delete(pollKey); };
- const queue=ms=>{ state.timer=setTimeout(()=>{ state.timer=0; poll(); },ms); };
+ const queue=ms=>{ if(state.timer) clearTimeout(state.timer); state.timer=setTimeout(()=>{ state.timer=0; poll(); },ms); };
+ state.queue=queue;
+ if(finalRenderConfirmed){
+  const rendered=currentGenerationIdentity(index);
+  if(rendered){ state.finalRenderHash=rendered.sourceHash; state.finalRenderRevision=rendered.revision; state.finalRenderAt=Date.now(); }
+ }
  const poll=()=>{
   if(state.cancelled || !currentRuntime() || runtimeMode()!=='independent'){ finish(); return; }
   const live=currentGenerationIdentity(index);
@@ -5187,7 +5588,10 @@ function scheduleMessageGeneration(index,delay=260,sourceAware=true){
    else { finish(); renderGenerationGateTimeout(index); }
    return;
   }
-  if(activity.weak){
+  const finalRenderMatches=state.finalRenderHash===live.sourceHash
+   && state.finalRenderRevision===live.revision
+   && Date.now()-state.finalRenderAt<=FINAL_RENDER_CONFIRMATION_TTL_MS;
+  if(activity.weak && !finalRenderMatches){
    if(!state.weakActiveSince) state.weakActiveSince=Date.now();
    if(Date.now()-state.weakActiveSince<WEAK_GENERATION_FLAG_GRACE_MS){
     state.stableSince=0; state.lastHash=''; state.lastRevision=-1; queue(generationWaitPollDelay(state.startedAt)); return;
@@ -5197,11 +5601,15 @@ function scheduleMessageGeneration(index,delay=260,sourceAware=true){
   if(!sourceAware){ finish(); void generateFor(index,live.msg,false,false); return; }
   if(live.sourceHash!==state.lastHash || live.revision!==state.lastRevision){
    state.lastHash=live.sourceHash; state.lastRevision=live.revision; state.stableSince=Date.now();
+   if(state.finalRenderHash!==live.sourceHash || state.finalRenderRevision!==live.revision){ state.finalRenderHash=''; state.finalRenderRevision=-1; state.finalRenderAt=0; }
   }
   const hasBody=String(live.msg?.mes||'').trim().length>0;
-  const stableWait=activity.weak?WEAK_GENERATION_SOURCE_STABLE_WAIT_MS:SOURCE_STABLE_WAIT_MS;
+  const confirmedFinal=state.finalRenderHash===live.sourceHash
+   && state.finalRenderRevision===live.revision
+   && Date.now()-state.finalRenderAt<=FINAL_RENDER_CONFIRMATION_TTL_MS;
+  const stableWait=confirmedFinal?FINAL_RENDER_SOURCE_STABLE_WAIT_MS:(activity.weak?WEAK_GENERATION_SOURCE_STABLE_WAIT_MS:SOURCE_STABLE_WAIT_MS);
   if(hasBody && state.stableSince && Date.now()-state.stableSince>=stableWait){ finish(); void generateFor(index,live.msg,false,true); return; }
-  if(Date.now()-state.startedAt<OWNER_REATTACH_WAIT_MS) queue(GENERATION_PLACEHOLDER_POLL_INTERVAL_MS);
+  if(Date.now()-state.startedAt<OWNER_REATTACH_WAIT_MS) queue(confirmedFinal?FINAL_RENDER_POLL_INTERVAL_MS:GENERATION_PLACEHOLDER_POLL_INTERVAL_MS);
   else { finish(); renderGenerationGateTimeout(index,'source-stability'); }
  };
  queue(delay);
@@ -6610,7 +7018,8 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
    const swipeEvents=[et.MESSAGE_SWIPED].filter(Boolean);
    const worldInfoEntriesLoadedEvents=[et.WORLDINFO_ENTRIES_LOADED].filter(Boolean);
    const worldInfoActivatedEvents=[et.WORLD_INFO_ACTIVATED].filter(Boolean);
-   const renderOnlyEvents=[et.MESSAGE_RECEIVED,et.CHARACTER_MESSAGE_RENDERED].filter(Boolean);
+   const renderOnlyEvents=[et.MESSAGE_RECEIVED].filter(Boolean);
+   const finalRenderEvents=[et.CHARACTER_MESSAGE_RENDERED].filter(Boolean);
    for(const event of new Set(fullSyncEvents)){
      const handler=()=>{
        hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); cancelAllIndependentFlights('chat-changed'); messageSourceRevisions.clear(); activeGlobalWorldInfoCapture=null;
@@ -6705,7 +7114,8 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
          // prefetch here used to race display_text/reasoning post-processing and
          // create an orphaned first request beside the real second request.
          queueMessageSync([last.i]);
-         scheduleMessageGeneration(last.i,420,true);
+         const existingPoll=generationPolls.get(generationPollKey(last.i));
+         if(existingPoll) existingPoll.queue?.(420); else scheduleMessageGeneration(last.i,420,true);
        } else globalThis.__rabbitMirrorPerfDiag?.mark?.('independent.eventNoOwner',{reason:last?'host:generation-finished-without-start':'host:generation-finished:fallback',event:String(event||'generation-finished')});
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
@@ -6741,6 +7151,28 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
            if(live && String(live.msg?.mes||'').trim() && !hasGenerationWorkFor(id,live.slot,live.sourceHash)) scheduleMessageGeneration(id,180,true);
          }
        } else globalThis.__rabbitMirrorPerfDiag?.mark?.('independent.eventNoOwner',{reason:'host:render-event:fallback',event:String(event||'render-event')});
+     };
+     es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
+   }
+   // CHARACTER_MESSAGE_RENDERED is the host's authoritative final正文 paint.
+   // It only shortens the stability observation for the exact matching source
+   // fingerprint; it never dispatches a request directly and any later正文
+   // mutation clears the confirmation before the paid path can run.
+   for(const event of new Set(finalRenderEvents)){
+     const handler=messageId=>{
+       const ctx=getContext();
+       const id=resolveHostEventMessageIndex(messageId,ctx,{fallbackLastAssistant:true});
+       if(Number.isInteger(id)&&id>=0){
+         const active=hostGenerationLooksActive();
+         if(active) ensureGenerationPlaceholderForIndex(id,true);
+         queueMessageSync([id]);
+         if(!suppressesAutomaticGeneration(ctx,id)){
+           const live=currentGenerationIdentity(id);
+           if(live && String(live.msg?.mes||'').trim()){
+             if(!confirmFinalRenderedGeneration(id) && !hasGenerationWorkFor(id,live.slot,live.sourceHash)) scheduleMessageGeneration(id,FINAL_RENDER_POLL_INTERVAL_MS,true,true);
+           }
+         }
+       } else globalThis.__rabbitMirrorPerfDiag?.mark?.('independent.eventNoOwner',{reason:'host:CHARACTER_MESSAGE_RENDERED:fallback',event:String(event||'CHARACTER_MESSAGE_RENDERED')});
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }

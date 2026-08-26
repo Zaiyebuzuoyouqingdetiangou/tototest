@@ -10,6 +10,7 @@ const style = read('style.css');
 const ui = read('src/ui.js');
 const independent = read('src/independentApi.js');
 const sanitizer = read('src/outputSanitizer.js');
+const mobileModal = read('src/mobileModalHotfix.js');
 
 // Body-level desktop dialogs retain the settings button contract without inheriting
 // the settings drawer's layout containment.
@@ -18,6 +19,8 @@ assert.match(style, /\.rabbit-mirror-advanced-modal button\.menu_button\.rh-adva
 assert.doesNotMatch(ui, /SmartThemeBodyColorText/);
 assert.match(ui, /id="rh_advanced_modal_card"[^\n]*background:var\(--SmartThemeBlurTintColor[^\n]*color:var\(--SmartThemeBodyColor/);
 assert.match(ui, /id="rh_world_info_prompt_modal"[\s\S]*background:var\(--SmartThemeBlurTintColor[^\n]*color:var\(--SmartThemeBodyColor/);
+assert.match(mobileModal, /TARGET_IDS = \['rh_advanced_modal', 'rh_world_info_prompt_modal', 'rh_independent_tag_filter_modal'\]/);
+assert.match(mobileModal, /rh_independent_tag_filter_close/);
 
 // Forced resay must enter the existing loading renderer. That renderer is the one
 // which preserves current ready details and installs exactly one aria-live status.
