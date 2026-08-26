@@ -136,14 +136,14 @@ function writeLegacyStore(store) {
 }
 
 function saveMetadataSoon(context) {
-    try {
-        const result = context?.saveMetadata?.();
-        if (result && typeof result.catch === 'function') {
-            result.catch(error => console.warn('[RabbitMirror] Failed to save feedback cat chat metadata:', error));
-        }
-    } catch (error) {
-        console.warn('[RabbitMirror] Failed to save feedback cat chat metadata:', error);
-    }
+    // CRITICAL CHAT-SAFETY BOUNDARY:
+    // Do not call context.saveMetadata() here. In SillyTavern that API delegates
+    // to saveChatConditional() and therefore writes the whole current chat, not
+    // only metadata. Feedback Cat state already lives in the mutable chatMetadata
+    // object and is mirrored to localStorage below, so an extension-owned full-chat
+    // save is unnecessary and unsafe while a chat is still loading. The next normal
+    // host chat save can persist the metadata without RabbitMirror forcing it.
+    return !!context;
 }
 
 function normalizeState(value) {

@@ -1,4 +1,4 @@
-const LIGHT_BOOT_VERSION = '1.4.9-contextboundary1';
+const LIGHT_BOOT_VERSION = '1.4.9-chatsafety1';
 const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.30.17';
 const bootStartedAt = (() => { try { return performance.now(); } catch { return Date.now(); } })();
 const bootEntries = [];
@@ -67,23 +67,23 @@ async function loadModule(name, specifier) {
 }
 
 const SPECS = Object.freeze({
-    performanceDiagnostics: './src/performanceDiagnostics.js?rmv=1.4.9-subapifix1',
-    settings: './src/settings.js?rmv=1.4.9-subapifix1',
-    storage: './src/storage.js?rmv=1.4.9-subapifix1',
-    generationGuard: './src/generationGuard.js?rmv=1.4.9-subapifix1',
-    feedbackCat: './src/feedbackCat.js?rmv=1.4.9-subapifix1',
-    independentSecurityGuard: './src/independentSecurityGuard.js?rmv=1.4.9-contextboundary1',
-    injector: './src/injector.js?rmv=1.4.9-subapifix1',
-    outputSanitizer: './src/outputSanitizer.js?rmv=1.4.9-subapifix1',
+    performanceDiagnostics: './src/performanceDiagnostics.js?rmv=1.4.9-chatsafety1',
+    settings: './src/settings.js?rmv=1.4.9-chatsafety1',
+    storage: './src/storage.js?rmv=1.4.9-chatsafety1',
+    generationGuard: './src/generationGuard.js?rmv=1.4.9-chatsafety1',
+    feedbackCat: './src/feedbackCat.js?rmv=1.4.9-chatsafety1',
+    independentSecurityGuard: './src/independentSecurityGuard.js?rmv=1.4.9-chatsafety1',
+    injector: './src/injector.js?rmv=1.4.9-chatsafety1',
+    outputSanitizer: './src/outputSanitizer.js?rmv=1.4.9-chatsafety1',
     checkedSelectorRepair: './src/checkedSelectorRepair.js?rmv=1.4.30.26',
-    visualScanner: './src/visualScanner.js?rmv=1.4.9-subapifix1',
-    renderedVisualFeedbackHotfix: './src/renderedVisualFeedbackHotfix.js?rmv=1.4.9-subapifix1',
-    independentApi: './src/independentApi.js?rmv=1.4.9-contextboundary1',
-    touchTheater: './src/touchTheater.js?rmv=1.4.9-subapifix1',
+    visualScanner: './src/visualScanner.js?rmv=1.4.9-chatsafety1',
+    renderedVisualFeedbackHotfix: './src/renderedVisualFeedbackHotfix.js?rmv=1.4.9-chatsafety1',
+    independentApi: './src/independentApi.js?rmv=1.4.9-chatsafety1',
+    touchTheater: './src/touchTheater.js?rmv=1.4.9-chatsafety1',
     mobileModalHotfix: './src/mobileModalHotfix.js?rmv=1.4.30.19',
     profileSelectorHotfix: './src/independentProfileSelectorHotfix.js?rmv=1.4.7-test',
     maintenanceRecommendationHotfix: './src/maintenanceRecommendationHotfix.js?rmv=1.4.5',
-    ui: './src/ui.js?rmv=1.4.9-subapifix1',
+    ui: './src/ui.js?rmv=1.4.9-chatsafety1',
 });
 
 globalThis.__rabbitMirrorRuntimeVersion = RABBIT_MIRROR_RUNTIME_VERSION;

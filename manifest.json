@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.9-test-multiface-step1-contextboundary1",
+  "js": "index.js?rmv=1.4.9-test-multiface-step1-chatsafety1",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.9-test-multiface-step1-contextboundary1",
+  "version": "1.4.9-test-multiface-step1-chatsafety1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版｜ContextBoundary1：基于 SubApiFix1；独立 API 不再读取或重新注入作者注释，只保留当前聊天可见正文、角色卡摘要、Persona 摘要，以及用户允许且本轮主生成实际激活的世界书。上下文层数继续由用户自行设置；读取记忆插件设置与既有记忆扫描逻辑不变。保留 LightBoot、PerfFix 与副 API 524/不完整响应手动重试修复。"
+  "description": "兔子镜测试版｜ChatSafety1：基于 ContextBoundary1；新增聊天持久化安全边界，兔子镜/挨打猫不再主动调用 SillyTavern 的整份聊天保存接口，只更新自身 chatMetadata 与 localStorage，由酒馆正常保存流程自然持久化。保留 LightBoot、PerfFix、副 API 524/不完整响应安全重试、紧上下文边界与用户自定义上下文层数。"
 }

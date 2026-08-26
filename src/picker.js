@@ -14,8 +14,8 @@ import {
     setPendingComboBatch,
     clearPendingComboBatch,
     clearPendingCombo,
-} from './storage.js?rmv=1.4.9-subapifix1';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.4.9-subapifix1';
+} from './storage.js?rmv=1.4.9-chatsafety1';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.4.9-chatsafety1';
 
 function randomUnit() {
     try {

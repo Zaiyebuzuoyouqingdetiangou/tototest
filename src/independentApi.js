@@ -1,12 +1,12 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.9-subapifix1';
-import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-contextboundary1';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-subapifix1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.9-subapifix1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapifix1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-subapifix1';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-subapifix1';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-subapifix1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-subapifix1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.9-chatsafety1';
+import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-chatsafety1';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-chatsafety1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, activateRabbitMirrorInteractionRescue, activateRabbitMirrorIndependentMobileSpatialRescue, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, installMaintenanceHorizontalClipRescue, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate } from './outputSanitizer.js?rmv=1.4.9-chatsafety1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-chatsafety1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-chatsafety1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-chatsafety1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-chatsafety1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-chatsafety1';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
 const RUNTIME_VERSION = '1.4.30.17';
@@ -309,22 +309,20 @@ function readChatOutputMetadata(ctx=getContext()){
  const metadata=chatMetadataObject(ctx); if(!metadata) return emptyChatOutputMetadata();
  return normalizeChatOutputMetadata(metadata[CHAT_OUTPUT_METADATA_KEY]);
 }
-const chatMetadataSaveChains=new Map();
 function saveChatOutputMetadata(ctx=getContext()){
- const save=ctx?.saveMetadata;
- if(typeof save!=='function') return false;
- // Chat metadata writes are deliberately fire-and-forget from the generation
- // path, but writes for the same chat must not race each other. Per-chat queues
- // prevent a slower earlier save from landing after a newer repair snapshot,
- // while unrelated chats never block one another.
- const key=String(chatKey(ctx)||'chat');
- const previous=chatMetadataSaveChains.get(key)||Promise.resolve();
- const next=previous
-  .catch(()=>{})
-  .then(()=>save.call(ctx))
-  .catch(error=>console.warn('[RabbitMirror] 独立 API 跨设备兔子镜保存失败:',error));
- chatMetadataSaveChains.set(key,next);
- next.finally(()=>{ if(chatMetadataSaveChains.get(key)===next) chatMetadataSaveChains.delete(key); });
+ const metadata=chatMetadataObject(ctx);
+ if(!metadata) return false;
+ // CRITICAL CHAT-SAFETY BOUNDARY:
+ // SillyTavern's context.saveMetadata() delegates to saveChatConditional(), which
+ // serializes the entire currently loaded chat. RabbitMirror must never trigger
+ // that whole-chat write merely to persist its own auxiliary metadata: during a
+ // slow/failed chat load the in-memory chat can be temporarily empty or partial,
+ // and forcing a save at that moment could overwrite a complete server chat.
+ //
+ // The chatMetadata object is live and has already been updated by the caller.
+ // RabbitMirror also keeps an immediate localStorage fallback. The host's next
+ // ordinary, user-owned chat save may persist this metadata naturally; RabbitMirror
+ // itself does not initiate a chat save.
  return true;
 }
 function chatOwnerKey(index,swipe=0){

@@ -1,3 +1,9 @@
+## 1.4.9-test-multiface-step1-chatsafety1
+
+- Chat persistence safety: RabbitMirror no longer calls SillyTavern `context.saveMetadata()` for independent-output or Feedback Cat metadata. That host API delegates to a whole-chat save.
+- RabbitMirror now limits itself to its own in-memory `chatMetadata` namespace plus localStorage fallback; normal SillyTavern saves may persist metadata later.
+- No change to user-configurable independent context layers, memory-provider settings, LightBoot/PerfFix, or SubApiFix retry semantics.
+
 # ContextBoundary1
 
 - 独立 API 上下文不再读取 `authorNote` / `note`，Security Guard 对旧版敏感聚合上下文也不再重新注入当前作者注释；旧版兼容净化只允许保留经过识别的“本轮实际激活世界书”。

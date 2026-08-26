@@ -11,8 +11,8 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const COHORT = '1.4.9-subapifix1';
-const CONTEXT_BOUNDARY_COHORT = '1.4.9-contextboundary1';
+const COHORT = '1.4.9-chatsafety1';
+const CONTEXT_BOUNDARY_COHORT = '1.4.9-chatsafety1';
 
 // 本阶段 cache cohort：源码内容变化的模块（settings/storage/picker）
 // 加上所有直接或间接 import 它们的父模块。
@@ -22,6 +22,8 @@ const COHORT_MODULES = [
     'src/generationGuard.js',
     'src/feedbackCat.js',
     'src/injector.js',
+    'src/independentApi.js',
+    'src/independentSecurityGuard.js',
     'src/outputSanitizer.js',
     'src/performanceDiagnostics.js',
     'src/paletteCooldown.js',
@@ -88,7 +90,7 @@ for (const edge of edges) {
     parentsOf.get(edge.target).add(edge.from);
 }
 const leaks = [];
-const ALLOWED_NEW_BOUNDARY_PARENTS = new Set(['src/independentApi.js']);
+const ALLOWED_NEW_BOUNDARY_PARENTS = new Set();
 for (const target of COHORT_MODULES) {
     for (const parent of parentsOf.get(target) || []) {
         if (!COHORT_MODULES.includes(parent) && !ALLOWED_NEW_BOUNDARY_PARENTS.has(parent)) leaks.push(`${parent} imports cohort module ${target}`);
@@ -104,7 +106,7 @@ assert.deepEqual(
     'cohort 外模块不应被改成本阶段缓存键',
 );
 
-// 4b. ContextBoundary1 只改 independentApi / independentSecurityGuard；所有入站 URL 必须使用新键。
+// 4b. ChatSafety1 keeps the context-boundary modules in the same cache cohort.
 const CONTEXT_BOUNDARY_MODULES = ['src/independentApi.js', 'src/independentSecurityGuard.js'];
 const boundaryStale = edges.filter(edge => CONTEXT_BOUNDARY_MODULES.includes(edge.target) && edge.rmv !== CONTEXT_BOUNDARY_COHORT);
 assert.deepEqual(
