@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.9-test-multiface-step1-goldenmerge1",
+  "js": "index.js?rmv=1.4.9-test-multiface-step1-goldenmerge2",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.9-test-multiface-step1-goldenmerge1",
+  "version": "1.4.9-test-multiface-step1-goldenmerge2",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版｜GoldenMerge1：以真机确认丝滑的 1.4.30.14 为性能参考，在 ChatSafety1 功能/安全基线上恢复单一宿主对齐核心启动；移除 LightBoot 逐模块串行 await/yield 与运行时性能诊断，兼容 hotfix 改为空闲后小体积加载。保留 PerfFix（正常生命周期无全聊天 syncAll）、ChatSafety、紧上下文边界、读取记忆插件设置、副 API 524/不完整响应安全手动重试及模型拉取修复。"
+  "description": "兔子镜测试版｜GoldenMerge2：以 1.4.30.14 丝滑启动骨架为性能参考，保留 ChatSafety/PerfFix/SubApiFix/紧上下文边界；取消 GoldenMerge1 首屏后定时批量加载兼容层，移动端弹窗、连接配置、维修建议、checked 修复与渲染视觉反馈仅在首次进入对应界面/交互时按需加载，不在进入酒馆或长聊天时启动额外 Observer。"
 }

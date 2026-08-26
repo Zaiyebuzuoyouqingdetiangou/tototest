@@ -1829,3 +1829,12 @@
 - Independent context bundle includes chat messages, available stored reasoning fields, character card, Persona, world-info/author-note and extension-prompt context when exposed by SillyTavern.
 - Added external presentation for follow-current-API mode without rewriting stored chat message text.
 - Preserved safe auto-patrol as an opt-in test feature.
+
+## GoldenMerge2
+- 性能参考：1.4.30.14 真机丝滑基线。
+- 保留 GoldenMerge1 的 1.4.30.14 核心一次初始化骨架；取消核心完成后 1.2~3.5 秒内一次性 Promise.all 导入 5 个兼容 hotfix。
+- mobile modal 仅在移动端进入兔子镜设置时加载。
+- independent profile selector 仅在首次进入独立 API 设置区域时加载。
+- maintenance recommendation / checked selector repair / rendered visual feedback 仅在首次操作兔子镜时加载。
+- 因而未使用对应功能时，不安装这些兼容层的长期 MutationObserver / document 全局监听器。
+- PerfFix（正常生命周期无 syncAll）、ChatSafety（不主动整份保存聊天）、ContextBoundary、524/non-stream 手动重试、完整兔子镜判定、模型拉取修复全部保留。

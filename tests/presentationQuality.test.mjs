@@ -111,6 +111,6 @@ assert.match(visualScanner, /missing_visual_program/);
 assert.match(indexSource, /\.\/src\/ui\.js\?rmv=1\.4\.9-chatsafety1/);
 assert.match(uiSource, /\.\/injector\.js\?rmv=1\.4\.9-chatsafety1/);
 assert.match(uiSource, /\.\/independentApi\.js\?rmv=1\.4\.9-chatsafety1/);
-assert.equal(manifest.version, '1.4.9-test-multiface-step1-goldenmerge1');
+assert.equal(manifest.version, '1.4.9-test-multiface-step1-goldenmerge2');
 
 console.log('presentationQuality tests passed');
