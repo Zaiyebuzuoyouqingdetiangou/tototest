@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.9-test-multiface-step1-chatsafety1",
+  "js": "index.js?rmv=1.4.9-test-multiface-step1-goldenmerge1",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.9-test-multiface-step1-chatsafety1",
+  "version": "1.4.9-test-multiface-step1-goldenmerge1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版｜ChatSafety1：基于 ContextBoundary1；新增聊天持久化安全边界，兔子镜/挨打猫不再主动调用 SillyTavern 的整份聊天保存接口，只更新自身 chatMetadata 与 localStorage，由酒馆正常保存流程自然持久化。保留 LightBoot、PerfFix、副 API 524/不完整响应安全重试、紧上下文边界与用户自定义上下文层数。"
+  "description": "兔子镜测试版｜GoldenMerge1：以真机确认丝滑的 1.4.30.14 为性能参考，在 ChatSafety1 功能/安全基线上恢复单一宿主对齐核心启动；移除 LightBoot 逐模块串行 await/yield 与运行时性能诊断，兼容 hotfix 改为空闲后小体积加载。保留 PerfFix（正常生命周期无全聊天 syncAll）、ChatSafety、紧上下文边界、读取记忆插件设置、副 API 524/不完整响应安全手动重试及模型拉取修复。"
 }

@@ -2,16 +2,16 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = fs.readFileSync(path.join(root, 'index.js'), 'utf8');
-assert.match(source, /rabbitMirrorLightBootSummary/);
-assert.match(source, /async function loadModule/);
-assert.match(source, /requestIdleCallback/);
-assert.match(source, /export async function rabbitMirrorGenerateInterceptor/);
-assert.match(source, /if \(!runtimeReady && !runtimeCancelled\) await bootstrapRuntime\(\)/);
-assert.match(source, /const mod = await ensureInjector\(\)/);
-assert.match(source, /runtime\.bootstrap\.total/);
-assert.doesNotMatch(source, /^import\s+/m, 'light boot entry must not use eager static imports');
-assert.doesNotMatch(source, /^const\s+\w+Mod\s*=\s*await\s+loadModule/m, 'entry top level must not await project modules');
-assert.doesNotMatch(source, /request\.body|response\.body|localStorage|sessionStorage/, 'light boot diagnostics must not inspect user data');
-console.log('lightBoot tests passed');
+
+assert.match(source, /GOLDEN_MERGE_VERSION/);
+assert.match(source, /^import \{ initRabbitMirrorUI/m, 'core runtime should use one host-aligned static module graph');
+assert.match(source, /^import \{ rabbitMirrorGenerateInterceptor/m);
+assert.match(source, /initRabbitMirrorIndependentSecurityGuard\(\{ getSettings, updateSettings \}\);/);
+assert.match(source, /requestIdleCallback\(run, \{ timeout: 3500 \}\)/, 'only optional compatibility layers should be deferred');
+assert.doesNotMatch(source, /rabbitMirrorLightBootSummary|async function loadModule|async function bootstrapRuntime|idleYield\(/, 'serialized LightBoot loader must not return');
+assert.doesNotMatch(source, /performanceDiagnostics\.js/, 'performance diagnostics must not participate in runtime boot');
+assert.doesNotMatch(source, /request\.body|response\.body|sessionStorage/, 'boot entry must not inspect user request/response data');
+console.log('golden merge loader tests passed');

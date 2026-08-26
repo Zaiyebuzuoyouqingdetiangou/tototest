@@ -1,3 +1,12 @@
+# GoldenMerge1
+
+- 以 1.4.30.14 真机丝滑版本为性能骨架参考，核心模块恢复为宿主对齐的一次模块图/一次初始化，不再使用 LightBoot 的逐模块串行动态导入。
+- `performanceDiagnostics` 不再参与运行时启动，所有现存可选诊断钩子保持空操作。
+- mobile/profile/maintenance/checked/rendered 五个兼容层保留，但改为核心就绪后的空闲小体积加载。
+- 保留 PerfFix：正常启动、CHAT_CHANGED、后台恢复、source 切换不调用 `syncAll()`，历史继续最近 6 条 + 可视区懒恢复。
+- 保留 ChatSafety：RabbitMirror 不主动调用 SillyTavern 整份聊天保存接口。
+- 保留 ContextBoundary、记忆插件设置、SubApiFix1 的 524/non-stream 手动重试与不完整兔子镜判定。
+
 ## 1.4.9-test-multiface-step1-chatsafety1
 
 - Chat persistence safety: RabbitMirror no longer calls SillyTavern `context.saveMetadata()` for independent-output or Feedback Cat metadata. That host API delegates to a whole-chat save.
