@@ -397,9 +397,16 @@ function normalizeTouchTheaterRuntime(theater) {
 }
 
 function normalizeExistingTouchTheaters() {
-    if (typeof document === 'undefined' || !document.querySelectorAll) return;
-    const finish = globalThis.__rabbitMirrorPerfDiag?.begin?.('touchTheater.normalizeExisting', {}, 0);
-    const theaters = [...document.querySelectorAll(TOUCH_THEATER_SELECTOR)];
+    if (typeof document === 'undefined') return;
+    const finish = globalThis.__rabbitMirrorPerfDiag?.begin?.('touchTheater.normalizeExisting', { bounded: true }, 0);
+    const chat = document.querySelector?.('#chat');
+    const theaters = [];
+    for (let message = chat?.lastElementChild, examined = 0; message && examined < 6; message = message.previousElementSibling) {
+        if (!message.matches?.('.mes[mesid], [mesid].mes')) continue;
+        examined += 1;
+        if (message.matches?.(TOUCH_THEATER_SELECTOR)) theaters.push(message);
+        for (const theater of message.querySelectorAll?.(TOUCH_THEATER_SELECTOR) || []) theaters.push(theater);
+    }
     let rabbitTheaters = 0;
     for (const theater of theaters) {
         if (!theater.closest?.(RABBIT_MIRROR_SELECTOR)) continue;

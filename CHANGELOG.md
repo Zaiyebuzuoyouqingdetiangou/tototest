@@ -1,3 +1,18 @@
+## 1.4.9-test-multiface-step1-externaldiag1
+
+- 新增与兔子镜内部「全链路诊断」完全分离的「外部代码／宿主性能诊断」。原维修兔全链路诊断保持原样。
+- 外部诊断只观察 SillyTavern 本体、其他扩展、浏览器主线程、Resource Timing 和同源 `/api` 网络，不读取兔子镜内部生成/维修 start/complete/persist。
+- 自动记录外部 JS/CSS 资源耗时、Long Animation Frame 外部脚本归因、LongTask/event-loop stall、聊天 DOM 0~10 秒装载、发送→宿主事件→generate→AI 首字，以及维修兔点击后的 10 秒外部阻塞窗口。
+- 当浏览器只把长帧归因到 RabbitMirror 时，外部报告只提示“改用内部全链路诊断”，不继续把两套诊断混在一起。
+- 不覆盖 `fetch`，不保存聊天正文、Prompt、API Key、请求/响应 body。
+
+## 1.4.9-test-multiface-step1-goldenmerge3
+
+- 修复 GoldenMerge2 的按需兼容层事件递归：删除全局 `toggle` 加载器和人工 `toggle` 回放，避免 `toggle → lazy load → replay toggle → toggle` 无限闭环造成浏览器事件风暴/卡死。
+- 可选兼容层仅由真实用户 `pointerover` / `pointerdown` / `focusin` 意图预热；合成事件 (`isTrusted === false`) 不触发加载。
+- 维护兔推荐、checked selector 修复、渲染视觉反馈、独立 API profile selector、移动端 modal 均保留；未使用时不参与酒馆启动。
+- 保留 GoldenMerge 性能骨架、PerfFix（正常生命周期无 `syncAll()`）、ChatSafety、紧上下文边界、副 API 524/不完整响应安全手动重试与模型拉取修复。
+
 # GoldenMerge1
 
 - 以 1.4.30.14 真机丝滑版本为性能骨架参考，核心模块恢复为宿主对齐的一次模块图/一次初始化，不再使用 LightBoot 的逐模块串行动态导入。
@@ -1830,7 +1845,7 @@
 - Added external presentation for follow-current-API mode without rewriting stored chat message text.
 - Preserved safe auto-patrol as an opt-in test feature.
 
-## GoldenMerge2
+## GoldenMerge3
 - 性能参考：1.4.30.14 真机丝滑基线。
 - 保留 GoldenMerge1 的 1.4.30.14 核心一次初始化骨架；取消核心完成后 1.2~3.5 秒内一次性 Promise.all 导入 5 个兼容 hotfix。
 - mobile modal 仅在移动端进入兔子镜设置时加载。

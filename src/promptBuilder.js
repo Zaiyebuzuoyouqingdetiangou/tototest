@@ -734,7 +734,9 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
     const visualSceneryMode = !!(settings.forceVisualScenery || hasVisualScenery(combo));
     const tarotRulesText = isTarotRelated(combo) ? TAROT_IMAGE_RULES : '';
     const touchTheaterRulesText = isTouchTheaterRelated(combo) ? TOUCH_THEATER_RULES : '';
-    const memoryMaterial = hasSharedMemoryTheme(combo)
+    // The user's memory-provider setting remains intact for the main API, but the
+    // independent API has a stricter data boundary and must not read plugin memory.
+    const memoryMaterial = String(generationType || 'normal') !== 'independent' && hasSharedMemoryTheme(combo)
         ? readSelectedMemoryForPrompt(settings, settings.memoryMaxChars || 2200)
         : null;
     const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, touchTheaterRulesText, directive, memoryMaterial, activeFeedback, generationType });

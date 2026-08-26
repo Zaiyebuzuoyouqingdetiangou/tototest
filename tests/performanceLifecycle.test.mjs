@@ -37,7 +37,8 @@ assert.match(sanitizer, /captureStartupBaseline[\s\S]*maintenanceAutoSafeSignatu
 
 assert.match(independent, /const STARTUP_SYNC_IMMEDIATE_MESSAGES=6/);
 assert.doesNotMatch(independent, /STARTUP_SYNC_CHUNK_MESSAGES/, 'cold startup must not pump the entire history');
-assert.match(independent, /IntersectionObserver/);
+const startupSync = independent.slice(independent.indexOf('function installStartupHistoryLazySync'), independent.indexOf('let queuedIndices='));
+assert.doesNotMatch(startupSync, /IntersectionObserver|assistantMessages\(|querySelectorAll/, 'startup history sync must remain bounded and observer-light');
 assert.match(independent, /installStartupHistoryLazySync/);
 assert.doesNotMatch(independent, /syncAll\('(?:reconfigureRuntime|background-resume|passive-recovery|host:CHAT_CHANGED|host:MESSAGE_SWIPED:fallback|host:render-event:fallback|host:generation-finished:fallback)'/, 'normal lifecycle must never fall back to an all-chat sync');
 assert.match(independent, /function resolveHostEventMessageIndex\(/);
@@ -50,11 +51,11 @@ assert.doesNotMatch(sanitizerInit, /\n\s*installMaintenanceRabbitsInChatDom\(\);
 const index = read('index.js');
 // multiface-step1 起 ui.js 进入本阶段 cache cohort：不再断言旧的 1.4.30.25 键，
 // 改为断言 cohort 完整性（详见 cacheBustClosure.test.mjs）。
-assert.match(index, /\.\/src\/ui\.js\?rmv=1\.4\.9-chatsafety1/, 'ui.js must load from the multiface-step1 cache cohort');
+assert.match(index, /\.\/src\/ui\.js\?rmv=1\.4\.9-securityfix2/, 'SecurityFix2 UI parent must use its dedicated cache key');
 assert.doesNotMatch(index, /\.\/src\/ui\.js\?rmv=1\.4\.30\.2[0-9]/, 'stale 1.4.30.x UI cache key must not survive');
 assert.match(index, /\.\/src\/checkedSelectorRepair\.js\?rmv=1\.4\.30\.26/, 'formal checked-selector repair must be present in the test baseline');
 assert.match(index, /\.\/src\/maintenanceRecommendationHotfix\.js\?rmv=1\.4\.5/, 'formal maintenance recommendation must be present in the test baseline');
-assert.equal(manifest.js, 'index.js?rmv=1.4.9-test-multiface-step1-goldenmerge2');
-assert.equal(manifest.version, '1.4.9-test-multiface-step1-goldenmerge2');
+assert.equal(manifest.js, 'index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix2');
+assert.equal(manifest.version, '1.4.9-test-multiface-step1-externaldiag1-securityfix2');
 
 console.log('performance lifecycle tests passed');

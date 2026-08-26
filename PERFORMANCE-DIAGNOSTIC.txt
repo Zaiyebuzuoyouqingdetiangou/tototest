@@ -1,15 +1,18 @@
-RabbitMirror LightBoot1 performance candidate
+RabbitMirror ExternalDiag1 — 外部代码／宿主性能诊断测试版
 
-Goal:
-- Preserve PerfFix1 removal of normal-lifecycle full-chat syncAll scans.
-- Return from extension entry immediately instead of eagerly evaluating the full RabbitMirror module graph.
-- Wait until the host page load completes, then split heavy module imports across idle/yield boundaries.
-- Keep the manifest generate_interceptor available immediately through a tiny lazy bridge.
+这不是兔子镜内部「全链路诊断」的替代品。
 
-Validation after install:
-1. Confirm: __rabbitMirrorLightBoot.version === '1.4.9-subapifix1'
-2. Compare tavern first-screen/initial-chat load time with the previous PerfFix1 build.
-3. Optional: rabbitMirrorLightBootSummary() shows deferred module import timings.
-4. rabbitMirrorPerfSummary() should still show no normal-lifecycle independent.syncAll regression.
+两套诊断严格分离：
+1. 兔子镜内部全链路诊断：仍在每个兔子镜的维修兔菜单中，检查生成、挂载、交互、维修与独立 API 持久化等内部链路。
+2. 外部代码／宿主性能诊断：位于兔子镜设置 → 工具与维护，仅观察 SillyTavern、其他扩展、浏览器主线程和 /api 网络。
 
-This diagnostic does not log chat text, prompts, API keys, request bodies, or response bodies.
+ExternalDiag1 记录：
+- 非 RabbitMirror 的 JS/CSS 资源加载耗时与归属（SillyTavern core / other extension）
+- Long Animation Frame 的外部脚本归因
+- LongTask / event-loop stall / 慢交互 input delay
+- CHAT_CHANGED 后 0~10 秒聊天 DOM 是否真正出现
+- 发送点击 → MESSAGE_SENT → GENERATION_STARTED → /generate → 首字 →结束
+- /api/chats/get、聊天列表、settings save、tokenizer、generate 等宿主网络 TTFB/总耗时
+- 点击主 API/独立 API 维修兔后的 10 秒“外部阻塞窗口”
+
+ExternalDiag1 不读取兔子镜内部维修 start/complete/persist，不读取生成 Prompt，不保存聊天正文、API Key、请求/响应 body。

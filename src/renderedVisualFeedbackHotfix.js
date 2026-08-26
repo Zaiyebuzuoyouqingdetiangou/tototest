@@ -1,4 +1,4 @@
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-chatsafety1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-securityfix2';
 import { updateLatestVisualSignature } from './storage.js?rmv=1.4.9-chatsafety1';
 
 const VERSION = '1.4.30.22';

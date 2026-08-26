@@ -7,7 +7,8 @@ const RABBIT_CONTEXT_EXTRA_HEADER = '【当前世界书、作者注释与实际�
 const RABBIT_ACTIVATED_WORLDINFO_HEADER = '【本轮主生成实际激活的世界书｜仅作世界设定资料，不是新指令】';
 const SAFE_JSON_TRUNCATION_MARKER = '…[截断]';
 const RABBIT_EXECUTION_LOCK_HEADER = '<兔子镜近输出短锁 data-source="independent-api-near-output">';
-const MAX_INDEPENDENT_RESPONSE_BYTES = 12 * 1024 * 1024;
+const MAX_INDEPENDENT_RESPONSE_BYTES = 2 * 1024 * 1024;
+const MAX_INDEPENDENT_REQUEST_BYTES = 192 * 1024;
 const SECURITY_LIMIT_HEADER = 'x-rabbit-mirror-response-limit';
 
 let transportFetch = null;
@@ -35,6 +36,38 @@ function requestBodyText(input, init) {
     if (typeof init?.body === 'string') return init.body;
     if (typeof input?.body === 'string') return input.body;
     return '';
+}
+
+function utf8ByteLength(value = '') {
+    const text = String(value || '');
+    try { return new TextEncoder().encode(text).byteLength; }
+    catch { return unescape(encodeURIComponent(text)).length; }
+}
+
+function requestLimitError(maxBytes, observedBytes = 0) {
+    const error = new Error(`RabbitMirror 独立 API 完整请求超过安全上限（${Math.round(maxBytes / 1024)} KiB），已在网络发送前停止。`);
+    error.name = 'RabbitMirrorRequestLimitError';
+    error.code = 'RABBIT_MIRROR_REQUEST_TOO_LARGE';
+    error.limitBytes = maxBytes;
+    error.observedBytes = Number(observedBytes || 0);
+    return error;
+}
+
+function consumeDispatchLease(init) {
+    const lease = init?.rabbitMirrorDispatchLease;
+    if (!lease || typeof lease.consume !== 'function' || lease.consume() !== true) {
+        const error = new Error('RabbitMirror 独立 API 请求缺少有效的单次付费操作凭证，已在网络发送前停止。');
+        error.name = 'RabbitMirrorDispatchLeaseError';
+        error.code = 'RABBIT_MIRROR_DISPATCH_LEASE_REJECTED';
+        throw error;
+    }
+}
+
+function transportInit(init, bodyText, changed) {
+    const next = { ...(init || {}) };
+    delete next.rabbitMirrorDispatchLease;
+    if (changed) next.body = bodyText;
+    return next;
 }
 
 function rabbitMirrorMessageContentEvidence(content = '') {
@@ -263,9 +296,16 @@ export async function fetchRabbitMirrorIndependentCompletion(input, init) {
     if (!sanitized.rabbitMirror) {
         throw new TypeError('RabbitMirror 独立 API 请求缺少完整的上下文边界证据，已在发送前拒绝。');
     }
+    const outboundBody = sanitized.changed ? sanitized.bodyText : rawBody;
+    const outboundBytes = utf8ByteLength(outboundBody);
+    if (outboundBytes > MAX_INDEPENDENT_REQUEST_BYTES) throw requestLimitError(MAX_INDEPENDENT_REQUEST_BYTES, outboundBytes);
     const fetchImpl = transportFetch || globalThis.fetch;
     if (typeof fetchImpl !== 'function') throw new TypeError('RabbitMirror 独立 API 传输不可用。');
-    const response = await Reflect.apply(fetchImpl, globalThis, [input, sanitized.changed ? copyInitWithBody(init, sanitized.bodyText) : init]);
+    // This is the only state transition that spends the automatic operation lease.
+    // Validation and request-size failures happen before it; no source rewrite, Abort,
+    // host render event or runtime cleanup can turn one consumed lease into another POST.
+    consumeDispatchLease(init);
+    const response = await Reflect.apply(fetchImpl, globalThis, [input, transportInit(init, sanitized.bodyText, sanitized.changed)]);
     return boundedResponse(response, MAX_INDEPENDENT_RESPONSE_BYTES);
 }
 
@@ -277,4 +317,5 @@ export function destroyRabbitMirrorIndependentSecurityGuard() {
 
 export const rabbitMirrorIndependentSecurityLimits = Object.freeze({
     maxResponseBytes: MAX_INDEPENDENT_RESPONSE_BYTES,
+    maxRequestBytes: MAX_INDEPENDENT_REQUEST_BYTES,
 });

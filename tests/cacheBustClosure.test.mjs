@@ -12,7 +12,8 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const COHORT = '1.4.9-chatsafety1';
-const CONTEXT_BOUNDARY_COHORT = '1.4.9-chatsafety1';
+const CONTEXT_BOUNDARY_COHORT = '1.4.9-securityfix2';
+const SECURITY_FIX_COHORT = '1.4.9-securityfix2';
 
 // 本阶段 cache cohort：源码内容变化的模块（settings/storage/picker）
 // 加上所有直接或间接 import 它们的父模块。
@@ -34,8 +35,20 @@ const COHORT_MODULES = [
     'src/tokenMeter.js',
     'src/touchTheater.js',
     'src/storage.js',
-    'src/ui.js',
     'src/visualScanner.js',
+];
+
+const SECURITY_FIX_MODULES = [
+    'src/injector.js',
+    'src/promptBuilder.js',
+    'src/independentSecurityGuard.js',
+    'src/outputSanitizer.js',
+    'src/independentApi.js',
+    'src/touchTheater.js',
+    'src/ui.js',
+    'src/externalDiagnostics.js',
+    'src/visualScanner.js',
+    'src/renderedVisualFeedbackHotfix.js',
 ];
 
 function collectJsFiles(dir) {
@@ -49,7 +62,12 @@ function collectJsFiles(dir) {
     return out;
 }
 
-const IMPORT_RES = [/from\s+'(\.[^'?]+)(?:\?rmv=([\w.\-]+))?'/g, /import\(\s*'(\.[^'?]+)(?:\?rmv=([\w.\-]+))?'\s*\)/g, /:\s*'(\.[^'?]+)(?:\?rmv=([\w.\-]+))?'/g];
+const IMPORT_RES = [
+    /from\s+'(\.[^'?]+)(?:\?rmv=([\w.\-]+))?'/g,
+    /import\(\s*'(\.[^'?]+)(?:\?rmv=([\w.\-]+))?'\s*\)/g,
+    /loadOptional\([^,]+,\s*'(\.[^'?]+)(?:\?rmv=([\w.\-]+))?'/g,
+    /:\s*'(\.[^'?]+)(?:\?rmv=([\w.\-]+))?'/g,
+];
 const edges = [];
 for (const file of collectJsFiles(ROOT)) {
     const rel = relative(ROOT, file).split('\\').join('/');
@@ -65,12 +83,27 @@ for (const file of collectJsFiles(ROOT)) {
 assert.ok(edges.length > 0, 'import graph must not be empty');
 
 // 1. cohort 内模块的所有入站 URL 必须落在同一 cohort
-const stale = edges.filter(edge => COHORT_MODULES.includes(edge.target) && edge.rmv !== COHORT);
+const stale = edges.filter(edge => COHORT_MODULES.includes(edge.target)
+    && !SECURITY_FIX_MODULES.includes(edge.target)
+    && edge.rmv !== COHORT);
 assert.deepEqual(
     stale.map(edge => `${edge.from} -> ${edge.target}?rmv=${edge.rmv}`),
     [],
     `cohort 内模块必须全部使用 ?rmv=${COHORT}，否则父模块会命中旧缓存`,
 );
+
+
+// SecurityFix2 changes the independent boundary/startup/repair modules and therefore every parent
+// whose source import URL changed. All inbound URLs for those modules must use the new key.
+for (const target of SECURITY_FIX_MODULES) {
+    const fixEdges = edges.filter(edge => edge.target === target);
+    assert.ok(fixEdges.length > 0, `${target} must have an inbound runtime edge`);
+    assert.deepEqual(
+        [...new Set(fixEdges.map(edge => edge.rmv))],
+        [SECURITY_FIX_COHORT],
+        `${target} must use exactly one SecurityFix2 cache key`,
+    );
+}
 
 // 2. 任何模块都不得被两种不同的 ?rmv 键引用
 const keysByTarget = new Map();
@@ -90,8 +123,9 @@ for (const edge of edges) {
     parentsOf.get(edge.target).add(edge.from);
 }
 const leaks = [];
-const ALLOWED_NEW_BOUNDARY_PARENTS = new Set();
+const ALLOWED_NEW_BOUNDARY_PARENTS = new Set(['src/ui.js']);
 for (const target of COHORT_MODULES) {
+    if (SECURITY_FIX_MODULES.includes(target)) continue;
     for (const parent of parentsOf.get(target) || []) {
         if (!COHORT_MODULES.includes(parent) && !ALLOWED_NEW_BOUNDARY_PARENTS.has(parent)) leaks.push(`${parent} imports cohort module ${target}`);
     }
@@ -107,7 +141,7 @@ assert.deepEqual(
 );
 
 // 4b. ChatSafety1 keeps the context-boundary modules in the same cache cohort.
-const CONTEXT_BOUNDARY_MODULES = ['src/independentApi.js', 'src/independentSecurityGuard.js'];
+const CONTEXT_BOUNDARY_MODULES = ['src/independentSecurityGuard.js'];
 const boundaryStale = edges.filter(edge => CONTEXT_BOUNDARY_MODULES.includes(edge.target) && edge.rmv !== CONTEXT_BOUNDARY_COHORT);
 assert.deepEqual(
     boundaryStale.map(edge => `${edge.from} -> ${edge.target}?rmv=${edge.rmv}`),

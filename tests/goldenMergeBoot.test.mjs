@@ -6,16 +6,26 @@ const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 const index = fs.readFileSync(path.join(root, 'index.js'), 'utf8');
 const independent = fs.readFileSync(path.join(root, 'src', 'independentApi.js'), 'utf8');
 
-assert.match(index, /GOLDEN_MERGE_VERSION\s*=\s*'1\.4\.9-goldenmerge2'/);
+assert.match(index, /GOLDEN_MERGE_VERSION\s*=\s*'1\.4\.9-externaldiag1-securityfix2'/);
 assert.doesNotMatch(index, /performanceDiagnostics\.js/);
-assert.doesNotMatch(index, /async function bootstrapRuntime|modulePromises|idleYield\(/);
-assert.match(index, /import \{ initRabbitMirrorUI/);
+assert.doesNotMatch(index, /^import .*outputSanitizer|^import .*independentApi|^import .*ui\.js/m, 'heavy runtime must not be in the static bootstrap graph');
+assert.match(index, /import\('\.\/src\/ui\.js\?rmv=1\.4\.9-securityfix2'\)/);
+assert.match(index, /import\('\.\/src\/externalDiagnostics\.js\?rmv=1\.4\.9-securityfix2'\)/);
 assert.match(index, /initRabbitMirrorIndependentSecurityGuard\(\{ getSettings, updateSettings \}\);/);
-assert.match(index, /initRabbitMirrorUI\(\);[\s\S]*initOutputSanitizer\(\);[\s\S]*initVisualScanner\(\);[\s\S]*initIndependentRabbitMirror\(\);[\s\S]*initTouchTheaterBridge\(\);/);
-assert.doesNotMatch(index, /requestIdleCallback\(|setTimeout\(run,\s*1200\)|scheduleOptionalCompat/, 'no timer-driven optional compatibility batch may run after startup');
+assert.match(index, /output\.initOutputSanitizer[\s\S]*visual\.initVisualScanner[\s\S]*independent\.initIndependentRabbitMirror[\s\S]*touch\.initTouchTheaterBridge[\s\S]*ui\.initRabbitMirrorUI/);
+assert.match(index, /requestDeferredIdleCheck\(3500\)/, 'heavy runtime must wait through the fixed host startup window');
+assert.match(index, /deferredBootTimer\s*=\s*setTimeout\(/, 'deferred checks must remain timer-backed and cancellable');
+assert.match(index, /requestIdleCallback\(runDeferredBoot\)/);
+assert.doesNotMatch(index, /requestIdleCallback\(runDeferredBoot,\s*\{\s*timeout/);
+assert.match(index, /genuinely new empty chat needs no background DOM runtime[\s\S]{0,120}return '';/);
+assert.match(index, /prewarmRabbitMirrorGenerationRuntime/);
+assert.doesNotMatch(index, /host-send-intent|host-send-focus/, 'send must not trigger the heavy module graph');
 assert.match(index, /installOnDemandCompatTriggers\(\)/);
 assert.match(index, /loadProfileSelector\(\)/);
-assert.match(index, /loadMirrorInteractionCompat\(event\)/);
+assert.match(index, /loadMirrorVisualCompat\(\)/);
+assert.match(index, /loadMaintenanceCompat\(\)/);
+assert.doesNotMatch(index, /addEventListener\(['\"]toggle['\"]/);
+assert.doesNotMatch(index, /void ensureExternalDiagnostics\(/, 'external diagnostics must remain opt-in');
 
 // PerfFix must stay: syncAll exists only as a dormant/manual helper, not a normal lifecycle call.
 const syncAllExecutableCalls = independent.split('\n').filter(line => !line.trim().startsWith('//') && /\bsyncAll\s*\(/.test(line));

@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.9-test-multiface-step1-goldenmerge2",
-  "css": "style.css?rmv=1.4.30.17",
+  "js": "index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix2",
+  "css": "style.css?rmv=1.4.30.18",
   "author": "Toto",
-  "version": "1.4.9-test-multiface-step1-goldenmerge2",
+  "version": "1.4.9-test-multiface-step1-externaldiag1-securityfix2",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版｜GoldenMerge2：以 1.4.30.14 丝滑启动骨架为性能参考，保留 ChatSafety/PerfFix/SubApiFix/紧上下文边界；取消 GoldenMerge1 首屏后定时批量加载兼容层，移动端弹窗、连接配置、维修建议、checked 修复与渲染视觉反馈仅在首次进入对应界面/交互时按需加载，不在进入酒馆或长聊天时启动额外 Observer。"
+  "description": "兔子镜测试版｜ExternalDiag1 SecurityFix2：延后重型运行时并按需启用外部诊断；限制独立 API 上下文、输出复杂度与每轮实际请求；收窄维修兔到 live DOM 单次修复和有界回放。"
 }

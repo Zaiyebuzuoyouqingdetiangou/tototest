@@ -22,9 +22,9 @@ const sandbox = {
     safeJson: (value, max) => JSON.stringify(value ?? null).slice(0, max),
     globalWorldInfoContextView: () => ({ block: '' }),
     independentContextChatMetadata: () => ({}),
-    reasoningOf: m => String(m?.reasoning || ''),
-    CONTEXT_TRANSCRIPT_BUDGET: 52000,
-    CONTEXT_TOTAL_BUDGET: 76000,
+    CONTEXT_TRANSCRIPT_BUDGET: 12000,
+    CONTEXT_TOTAL_BUDGET: 20000,
+    GLOBAL_WORLD_INFO_CONTEXT_BUDGET: 6000,
     globalThis: {},
 };
 vm.createContext(sandbox);
@@ -75,9 +75,9 @@ const bundle = sandbox.globalThis.__bundle;
     currentSettings = { independentContextMaxLayers: 20 };
     const chat = Array.from({ length: 20 }, (_, i) => ({ is_user: i % 2 === 0, mes: `M${i}-` + '甲'.repeat(10000) }));
     const result = bundle({ chat }, 19);
-    assert.ok(result.layers < 20, '52k transcript character ceiling must still stop a large context before the layer limit');
-    assert.ok(result.transcriptChars <= 52000, `transcript must remain under 52k, got ${result.transcriptChars}`);
-    assert.ok(result.text.length <= 76000, `total context must remain under 76k, got ${result.text.length}`);
+    assert.ok(result.layers < 20, '12k transcript character ceiling must stop a large context before the layer limit');
+    assert.ok(result.transcriptChars <= 12000, `transcript must remain under 12k, got ${result.transcriptChars}`);
+    assert.ok(result.text.length <= 20000, `total context must remain under 20k, got ${result.text.length}`);
 }
 
 
@@ -117,6 +117,22 @@ const bundle = sandbox.globalThis.__bundle;
     assert.ok(result.referenceContextChars < 9000);
 }
 
+{
+    currentSettings = { independentContextMaxLayers: 1 };
+    const result = bundle({ chat: [{ is_user: false, mes: 'RAW_FALLBACK', extra: { display_text: '<div>VISIBLE</div><div hidden>HIDDEN_SECRET</div><script>CODE_SECRET</script>' } }] }, 0);
+    assert.match(result.text, /VISIBLE/);
+    assert.doesNotMatch(result.text, /HIDDEN_SECRET|CODE_SECRET|RAW_FALLBACK/);
+}
+
+assert.doesNotMatch(independentSource, /message\?\.reasoning\s*\?\?|m\?\.reasoning\s*\?\?|reasoning_content\s*\?\?|extra\?\.thoughts\s*\?\?/, 'independent runtime must not read reasoning/thought fields');
+assert.match(independentSource, /MAX_INDEPENDENT_REQUEST_CHARS = 32000/);
+assert.match(independentSource, /const directiveStart=Math\.max\(0,index-3\)/);
+assert.match(independentSource, /mes:canonicalVisibleMessageText\(message,directiveStart\+offset\)\.text/);
+assert.match(independentSource, /if\(live\.available\)[\s\S]{0,300}source:'live-dom'/, 'browser context must prefer the rendered DOM');
+assert.match(independentSource, /if\(typeof document!=='undefined'\) return \{text:'',filteredRabbitMirrorChars:0,source:'not-rendered'\}/, 'non-rendered browser history must fail closed');
+assert.match(independentSource, /DETAILS' && !node\.open/, 'closed details bodies must not enter independent context');
+assert.match(independentSource, /\.displayNone, \.display-none, \.hidden, \.invisible/, 'common host hidden classes must be excluded');
+
 assert.match(settingsSource, /independentContextMaxLayers:\s*20/);
 assert.match(settingsSource, /memoryScanEnabled:\s*false/);
 assert.match(settingsSource, /memoryProviderIds:\s*\[\]/);
@@ -125,7 +141,7 @@ assert.match(settingsSource, /Math\.max\(1,\s*Math\.min\(200,/);
 assert.match(uiSource, /id="rh_independent_context_layers"/);
 assert.match(uiSource, /先过滤历史兔子镜/);
 assert.match(uiSource, /不读取模型 reasoning \/ reasoning_content \/ thoughts/);
-assert.match(uiSource, /52,000 字符聊天与 76,000 字符总上下文上限保护/);
+assert.match(uiSource, /12,000 字符聊天正文、20,000 字符上下文和 32,000 字符完整请求上限保护/);
 assert.match(tokenSource, /independentContextLayers/);
 assert.match(tokenSource, /filteredRabbitMirrorChars/);
 

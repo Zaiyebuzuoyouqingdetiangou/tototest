@@ -1,6 +1,5 @@
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import { MODULE_NAME, getSettings } from './settings.js?rmv=1.4.9-chatsafety1';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-chatsafety1';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
@@ -9,11 +8,36 @@ import {
     markFeedbackCatInjected,
 } from './feedbackCat.js?rmv=1.4.9-chatsafety1';
 import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.4.9-chatsafety1';
-import { attachRabbitMirrorGenerationSelection, beginRabbitMirrorGenerationAttempt } from './generationGuard.js?rmv=1.4.9-chatsafety1';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
 let generationInvocationSequence = 0;
+let promptBuilderPromise = null;
+let generationGuardPromise = null;
+
+function loadPromptBuilder() {
+    if (!promptBuilderPromise) {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.4.9-securityfix2').catch(error => {
+            promptBuilderPromise = null;
+            throw error;
+        });
+    }
+    return promptBuilderPromise;
+}
+
+function loadGenerationGuard() {
+    if (!generationGuardPromise) {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.4.9-chatsafety1').catch(error => {
+            generationGuardPromise = null;
+            throw error;
+        });
+    }
+    return generationGuardPromise;
+}
+
+export function prewarmRabbitMirrorGenerationRuntime() {
+    return Promise.all([loadPromptBuilder(), loadGenerationGuard()]).then(() => true);
+}
 
 function createGenerationScopeKey(type) {
     generationInvocationSequence += 1;
@@ -59,6 +83,10 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     // 未选择反馈时不追加任何字符，基础 Prompt 保持逐字不变。
     clearFeedbackCatExtensionPrompt();
     const generationScopeKey = createGenerationScopeKey(type);
+    const [{ buildRabbitMirrorPromptDetails }, { attachRabbitMirrorGenerationSelection, beginRabbitMirrorGenerationAttempt }] = await Promise.all([
+        loadPromptBuilder(),
+        loadGenerationGuard(),
+    ]);
     beginRabbitMirrorGenerationAttempt(_chat, generationScopeKey);
     const promptDetails = buildRabbitMirrorPromptDetails(settings, type, null, generationScopeKey, { chat: _chat });
     attachRabbitMirrorGenerationSelection(promptDetails.metadata);
