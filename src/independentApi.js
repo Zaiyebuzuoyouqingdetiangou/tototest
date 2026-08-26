@@ -1,7 +1,7 @@
 import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, updateSettings } from './settings.js?rmv=1.4.9-chatsafety1';
 import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-securityfix2';
 import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-securityfix2';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.4.9-securityfix2';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.4.9-securityfix3';
 import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-securityfix2';
 import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-chatsafety1';
 import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-chatsafety1';
@@ -9,7 +9,7 @@ import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-chatsafety1';
 import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-chatsafety1';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
-const RUNTIME_VERSION = '1.4.30.18';
+const RUNTIME_VERSION = '1.4.30.19';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -5437,15 +5437,12 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  if(el){
   collapseDuplicateIdentityHosts(el,key,'independent',sourceHash);
   // A manual resay should not blank a perfectly good mirror while the new paid
-  // request is still running. Keep the old ready work visible; the action toast
-  // already tells the user that resay is in progress. Automatic first-time
-  // generation still shows the loading placeholder normally.
-  if(!(force && previousReadyRecord?.html)){
-   ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
-  }
+  // request is still running. The existing loading renderer keeps ready details
+  // mounted and adds one aria-live resay status instead of replacing the mirror.
+  ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
  }
  const runId=++generationSequence; const controller=new AbortController(); let stale=false;
- const flight={task:null,runId,key,slot,index,sourceHash,revision,cancelled:false,controller,baseSlot,dispatchLease,timedOut:false,timeoutTimer:0};
+ const flight={task:null,runId,key,slot,index,sourceHash,revision,manual:!!force,cancelled:false,controller,baseSlot,dispatchLease,timedOut:false,timeoutTimer:0};
  const stillCurrent=()=>{
   const live=currentGenerationIdentity(index); const active=pending.get(slot);
   return currentRuntime() && runtimeMode()==='independent' && live && live.slot===slot && live.key===key && live.sourceHash===sourceHash && live.revision===revision && active?.runId===runId && active?.revision===revision && !flight.cancelled && globalFlights().get(flightKey)===flight;
@@ -5539,7 +5536,7 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   // own Swipe/resay/generation events; the same正文 remains single-shot.
  });
  flight.task=task; globalFlights().set(flightKey,flight);
- pending.set(slot,{task,runId,key,sourceHash,revision,controller,dispatchLease,cancelled:false,baseSlot});
+ pending.set(slot,{task,runId,key,sourceHash,revision,manual:!!force,controller,dispatchLease,cancelled:false,baseSlot});
  await task;
 }
 
@@ -6219,10 +6216,24 @@ function syncMessages(indices=null){
          keep.dataset.rmAwaitingFreshSource='true';
          keep.dataset.rmFreshSourceStatus='waiting';
        }
+       const activePending=pending.get(slot);
+       const manualResayPending=!!(activePending?.manual
+        && !activePending.cancelled
+        && String(activePending.sourceHash||'')===String(sourceHash||'')
+        && Number(activePending.revision)===Number(observed.revision));
        if(saved?.html && (ownerLocked?.record || savedRecordMatchesObserved(saved,observed))){
          if(!ownerLocked?.record){ setOwnerLockForBase(baseSlot,slot,sourceHash); writePersistedOwner(ctx,i,m,saved,{overwrite:false}); ownerLocked={record:saved,lock:{slot}}; }
          const host=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash);
-         if(host){ rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,sourceHash); host.hidden=false; clearExternalHostFreshSourceState(host); }
+         if(host){
+          rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,sourceHash);
+          host.hidden=false;
+          if(manualResayPending){
+           // Pointer/focus history sync may remount the persisted old owner while a
+           // paid manual resay is still active. Re-enter loading immediately so the
+           // old ready details stay visible but never look idle before that flight ends.
+           ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
+          } else clearExternalHostFreshSourceState(host);
+         }
        } else if(keep && !hostIsStale){
          placeExternalHost(el,keep,keep.dataset.rmKey||key,'independent');
          refreshExistingExternalDetails(keep,key,'independent');

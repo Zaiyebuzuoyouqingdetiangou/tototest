@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix2",
-  "css": "style.css?rmv=1.4.30.18",
+  "js": "index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix3",
+  "css": "style.css?rmv=1.4.30.19",
   "author": "Toto",
-  "version": "1.4.9-test-multiface-step1-externaldiag1-securityfix2",
+  "version": "1.4.9-test-multiface-step1-externaldiag1-securityfix3",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版｜ExternalDiag1 SecurityFix2：延后重型运行时并按需启用外部诊断；限制独立 API 上下文、输出复杂度与每轮实际请求；收窄维修兔到 live DOM 单次修复和有界回放。"
+  "description": "兔子镜测试版｜ExternalDiag1 SecurityFix3：修复桌面高级设置、独立 API 重说状态与维修兔跨父层 checked 识别；保留 SecurityFix2 的性能、上下文和单次请求边界。"
 }

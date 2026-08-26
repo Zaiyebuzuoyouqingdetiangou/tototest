@@ -127,8 +127,11 @@ toto[data-rabbit-mirror="true"] summary {
     box-sizing: border-box;
 }
 
-/* 手机与桌面端设置按钮统一横排，避免全局主题把长按钮压成逐字竖排。 */
-.rabbit-mirror-settings button.menu_button {
+/* 手机与桌面端设置按钮统一横排，避免全局主题把长按钮压成逐字竖排。
+ * 高级设置与世界书提示会被 ui.js 移到 body，不能只依赖 settings 祖先。 */
+.rabbit-mirror-settings button.menu_button,
+.rabbit-mirror-advanced-modal button.menu_button,
+#rh_world_info_prompt_modal button.menu_button {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -141,6 +144,26 @@ toto[data-rabbit-mirror="true"] summary {
     word-break: keep-all !important;
     overflow-wrap: normal !important;
     line-height: 1.35 !important;
+}
+.rabbit-mirror-advanced-modal button.menu_button.rh-advanced-choice {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 66px !important;
+    padding: 11px 12px !important;
+    text-align: left !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: anywhere !important;
+}
+.rabbit-mirror-advanced-modal button.menu_button.rh-advanced-choice > span {
+    display: block !important;
+    min-width: 0 !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: anywhere !important;
 }
 .rabbit-mirror-settings .rabbit-mirror-emergency,
 .rabbit-mirror-settings .rabbit-mirror-regex-helper,

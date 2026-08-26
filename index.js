@@ -7,8 +7,8 @@ import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependen
 // SecurityFix2 leaves only the prompt interceptor and request guard in the parser-critical
 // graph. The 1.8 MiB UI/sanitizer/independent runtime graph is imported after the host has
 // received a paint/idle opportunity, or immediately after explicit RabbitMirror intent.
-const GOLDEN_MERGE_VERSION = '1.4.9-externaldiag1-securityfix2';
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.30.18';
+const GOLDEN_MERGE_VERSION = '1.4.9-externaldiag1-securityfix3';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.30.19';
 let runtimeCancelled = false;
 let deferredRuntimePromise = null;
 let deferredRuntimeModules = null;
@@ -55,11 +55,11 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.4.9-securityfix2'),
+        import('./src/outputSanitizer.js?rmv=1.4.9-securityfix3'),
         import('./src/visualScanner.js?rmv=1.4.9-securityfix2'),
-        import('./src/independentApi.js?rmv=1.4.9-securityfix2'),
+        import('./src/independentApi.js?rmv=1.4.9-securityfix3'),
         import('./src/touchTheater.js?rmv=1.4.9-securityfix2'),
-        import('./src/ui.js?rmv=1.4.9-securityfix2'),
+        import('./src/ui.js?rmv=1.4.9-securityfix3'),
     ]).then(async ([output, visual, independent, touch, ui]) => {
         if (runtimeCancelled) return null;
         deferredRuntimeModules = { output, visual, independent, touch, ui };
@@ -254,7 +254,7 @@ function mobileLike() {
 
 function loadMobileModalCompat() {
     if (!mobileLike()) return Promise.resolve(null);
-    return ensureDeferredCoreRuntime('mobile-settings-intent').then(() => loadOptional('mobileModal', './src/mobileModalHotfix.js?rmv=1.4.30.19', mod => mod.initRabbitMirrorMobileModalHotfix?.()));
+    return ensureDeferredCoreRuntime('mobile-settings-intent').then(() => loadOptional('mobileModal', './src/mobileModalHotfix.js?rmv=1.4.9-securityfix3', mod => mod.initRabbitMirrorMobileModalHotfix?.()));
 }
 
 function isRabbitMirrorSurface(target) {

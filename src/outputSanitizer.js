@@ -16,7 +16,7 @@ import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.22';
 
 
-const RUNTIME_VERSION = '1.4.30.18';
+const RUNTIME_VERSION = '1.4.30.19';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -1177,6 +1177,7 @@ function buildCheckedSelectorNeedles(input) {
         const idSubject = `(?:#${escapedId}|\\[\\s*id\\s*=\\s*["']${escapedId}["']\\s*\\])`;
         needles.push({
             source: 'id',
+            subjectSelector: `#${escapeCssIdentifier(input.id)}`,
             pattern: new RegExp(`${idSubject}\\s*:checked\\s*([+~])\\s*([^,{]+)`, 'i'),
         });
     }
@@ -1186,6 +1187,7 @@ function buildCheckedSelectorNeedles(input) {
         const escapedClass = escapeRegExp(className);
         needles.push({
             source: 'class-local',
+            subjectSelector: `.${className}`,
             pattern: new RegExp(`\\.${escapedClass}:checked\\s*([+~])\\s*([^,{]+)`, 'i'),
         });
     }
@@ -1211,6 +1213,7 @@ function matchGenericLocalCheckedSelector(selector, input) {
         }
         return {
             source: 'generic-local',
+            subjectSelector: subject,
             relation: match[2],
             rawTargetSelector: match[3],
         };
@@ -1323,6 +1326,7 @@ function parseCheckedRulesFromText(toto, input) {
                     if (!selectorMatch) continue;
                     parsedRules.push({
                         source: needle.source,
+                        subjectSelector: needle.subjectSelector,
                         relation: selectorMatch[1],
                         rawTargetSelector: selectorMatch[2],
                     });
@@ -1339,7 +1343,7 @@ function parseCheckedRulesFromText(toto, input) {
                     const key = `${parsedRule.relation}|${targetSelector}|${pseudoElement}|${JSON.stringify(styleMap)}`;
                     if (seen.has(key)) continue;
                     seen.add(key);
-                    results.push({ source: parsedRule.source, relation: parsedRule.relation, targetSelector, pseudoElement, styleMap });
+                    results.push({ source: parsedRule.source, subjectSelector: parsedRule.subjectSelector || '', relation: parsedRule.relation, targetSelector, pseudoElement, styleMap });
                 }
             }
         }
@@ -1403,6 +1407,28 @@ function getCrossContainerTargetsForCheckedRule(root, targetSelector) {
     } catch {
         return [];
     }
+}
+
+function getProvableCrossParentTargetsForCheckedRule(root, input, rule) {
+    if (!root?.querySelectorAll || !input || !rule) return [];
+    if (rule.source === 'id') return getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
+    if (rule.source !== 'class-local') return [];
+
+    // A class subject may be promoted beyond its local label/container only when it
+    // names exactly one checkable control and exactly one content-bearing target in
+    // this mirror. Shared radio/tab classes and generic input selectors stay local.
+    const subjectSelector = String(rule.subjectSelector || '').trim();
+    if (!/^\.[_a-zA-Z][\w-]*$/.test(subjectSelector)) return [];
+    let subjects = [];
+    try { subjects = [...root.querySelectorAll(subjectSelector)]; } catch { return []; }
+    if (subjects.length !== 1 || subjects[0] !== input || !inputHasAssociatedLabel(root, input)) return [];
+
+    const targets = getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
+    if (targets.length !== 1) return [];
+    const target = targets[0];
+    if (!target || target === input || input.parentElement?.contains?.(target)) return [];
+    if (!checkedTargetCarriesResultContent(target)) return [];
+    return targets;
 }
 
 function getCollapsedCompoundDescendantTargetsForCheckedRule(root, input, rule) {
@@ -1531,6 +1557,8 @@ function resolveTargetsForCheckedRule(root, input, rule) {
             targets = getLabelProxyTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
             if (targets.length) return targets;
         }
+        targets = getProvableCrossParentTargetsForCheckedRule(root, input, rule);
+        if (targets.length) return targets;
     } else {
         targets = getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
         if (targets.length) return targets;
@@ -1550,9 +1578,9 @@ function findCrossParentCheckedRuleFallbackCandidates(root) {
         let ruleCount = 0;
         let targetCount = 0;
         for (const rule of parseCheckedRulesFromText(root, input)) {
-            if (rule.source !== 'id') continue;
+            if (rule.source !== 'id' && rule.source !== 'class-local') continue;
             if (getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector).length) continue;
-            const targets = getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
+            const targets = getProvableCrossParentTargetsForCheckedRule(root, input, rule);
             if (!targets.length) continue;
             ruleCount += 1;
             targetCount += targets.length;
@@ -12176,7 +12204,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.4.30.17-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = `${RUNTIME_VERSION}-FULL-CHAIN`;
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -15981,6 +16009,13 @@ function buildMaintenanceFindings(root, {
             evidence: [`fillInChoiceCandidateCount=${Number(interaction.fillInChoiceCandidateCount)}`], confidence: 0.99,
         });
     }
+    if (Number(interaction.unresolvedCheckedRuleCount) > 0) {
+        add({
+            id: 'unresolved-checked-target', stage: 'interaction', mode: 'interaction',
+            label: '存在无法命中真实目标的 checked 规则，当前交互不能判定为正常或已修复',
+            evidence: [`unresolvedCheckedRuleCount=${Number(interaction.unresolvedCheckedRuleCount)}`], confidence: 0.99,
+        });
+    }
     if (Number(interaction.crossParentCheckedRuleCandidateCount) > 0) {
         add({
             id: 'cross-parent-checked-target', stage: 'interaction', mode: 'interaction',
@@ -16110,7 +16145,7 @@ function inspectMaintenanceRabbit(root) {
     } catch (error) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
-        interaction = { checkedControlsLost: false, stateControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, missingCheckedSubjectClassCandidateCount: 0, missingCheckedSubjectClassRescueCount: 0, missingCheckedSubjectClassMissingCount: 0, radioGroupLossCandidateCount: 0, radioGroupRescueCount: 0, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, staticChoiceSelectionCandidateCount: 0, staticChoiceSelectionRescueCount: 0, structuredStaticDisclosureCandidateCount: 0, structuredStaticDisclosureRescueCount: 0, fillInChoiceCandidateCount: 0, fillInChoiceRescueCount: 0, focusWithinPersistentCandidateCount: 0, focusWithinPersistentRescueCount: 0, focusWithinPersistentMissingCount: 0, rawScriptTimelineCandidateCount: 0, rawScriptTimelineRescueCount: 0, rawScriptTimelineMissingCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, detachedCheckedHasRuleCandidateCount: 0, detachedCheckedHasRuleRescueCount: 0, detachedCheckedHasRuleMissingCount: 0, pairedCheckedStateCandidateCount: 0, pairedCheckedStateRescueCount: 0, pairedCheckedStateMissingCount: 0, exclusiveStackedStateCandidateCount: 0, exclusiveStackedStateRescueCount: 0, exclusiveStackedStateMissingCount: 0, channelDialCycleCandidateCount: 0, channelDialCycleRescueCount: 0, channelDialCycleMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
+        interaction = { checkedControlsLost: false, stateControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, missingCheckedSubjectClassCandidateCount: 0, missingCheckedSubjectClassRescueCount: 0, missingCheckedSubjectClassMissingCount: 0, radioGroupLossCandidateCount: 0, radioGroupRescueCount: 0, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, unresolvedCheckedRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, staticChoiceSelectionCandidateCount: 0, staticChoiceSelectionRescueCount: 0, structuredStaticDisclosureCandidateCount: 0, structuredStaticDisclosureRescueCount: 0, fillInChoiceCandidateCount: 0, fillInChoiceRescueCount: 0, focusWithinPersistentCandidateCount: 0, focusWithinPersistentRescueCount: 0, focusWithinPersistentMissingCount: 0, rawScriptTimelineCandidateCount: 0, rawScriptTimelineRescueCount: 0, rawScriptTimelineMissingCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, detachedCheckedHasRuleCandidateCount: 0, detachedCheckedHasRuleRescueCount: 0, detachedCheckedHasRuleMissingCount: 0, pairedCheckedStateCandidateCount: 0, pairedCheckedStateRescueCount: 0, pairedCheckedStateMissingCount: 0, exclusiveStackedStateCandidateCount: 0, exclusiveStackedStateRescueCount: 0, exclusiveStackedStateMissingCount: 0, channelDialCycleCandidateCount: 0, channelDialCycleRescueCount: 0, channelDialCycleMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
     }
     let textContrastCandidateCount = 0;
     try {
@@ -20845,7 +20880,9 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         const fillInChoiceCount = Number.parseInt(target.getAttribute?.(FILL_IN_CHOICE_COUNT_ATTR) || '0', 10) || 0;
         detectInteractionCapabilities(target);
         const depthAfter = maintenanceCheckedInteractionDepth(target);
-        const meaningfulCheckedRoute = depthAfter.checkedRuleCount > 0 && !depthAfter.checkedSelectionOnly;
+        const meaningfulCheckedRoute = depthAfter.meaningfulCheckedRuleCount > 0
+            && depthAfter.unresolvedCheckedRuleCount === 0
+            && !depthAfter.checkedSelectionOnly;
         const genuinelyRescued = selectionFallbackCount > 0
             || disabledChoiceRepairCount > 0
             || inertActionRepairCount > 0
@@ -21478,9 +21515,13 @@ function runMaintenanceUserRepair(root, button, mode) {
                 unrecoverable: !!sourceResult.unrecoverable,
                 reason: String(sourceResult.reason || ''),
             };
+            const executedRepairCount = (libraryResult.executed || [])
+                .filter(entry => entry?.id !== 'interaction-id-scope')
+                .reduce((sum, entry) => sum + Math.max(0, Number(entry?.count) || 0), 0);
+            const actualRepairApplied = !!sourceResult.changed || executedRepairCount > 0;
             liveRoot.dataset.rabbitMirrorMaintenanceModules = JSON.stringify(libraryResult);
             rememberFollowMaintenanceRepair(liveRoot, effectiveMode, libraryResult);
-            if (sourceResult.unrecoverable) liveButton.removeAttribute(MAINTENANCE_REPAIR_ATTR);
+            if (sourceResult.unrecoverable || !actualRepairApplied) liveButton.removeAttribute(MAINTENANCE_REPAIR_ATTR);
             else liveButton.setAttribute(MAINTENANCE_REPAIR_ATTR, 'true');
             scheduleMaintenanceScopedFollowups(
                 liveRoot,
@@ -21502,9 +21543,14 @@ function runMaintenanceUserRepair(root, button, mode) {
                     afterButton.removeAttribute(MAINTENANCE_REPAIR_ATTR);
                     setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.unknown, '本次生成不完整，未计为修复成功；请重新生成该条');
                 } else if (after.state === MAINTENANCE_STATES.repairable) {
+                    afterButton.removeAttribute(MAINTENANCE_REPAIR_ATTR);
                     setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.repairable, `已尝试维修，请实际确认；仍检测到：${after.reason}`);
                 } else if (after.state === MAINTENANCE_STATES.unknown) {
+                    afterButton.removeAttribute(MAINTENANCE_REPAIR_ATTR);
                     setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.unknown, `已尝试维修；仍无法安全确认：${after.reason}`);
+                } else if (!actualRepairApplied) {
+                    afterButton.removeAttribute(MAINTENANCE_REPAIR_ATTR);
+                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.unknown, '未命中任何可安全执行的维修路线，未标记为已维修');
                 } else {
                     const autoNote = mode === 'auto' ? `（自动选择：${effectiveMode}）` : '';
                     // 1.3.62: 排版类修复原本无论如何都报“已执行”。窄屏样式表在宽屏上不可能生效，

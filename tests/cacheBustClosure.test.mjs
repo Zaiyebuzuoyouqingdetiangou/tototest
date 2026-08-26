@@ -13,7 +13,8 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const COHORT = '1.4.9-chatsafety1';
 const CONTEXT_BOUNDARY_COHORT = '1.4.9-securityfix2';
-const SECURITY_FIX_COHORT = '1.4.9-securityfix2';
+const SECURITY_FIX2_COHORT = '1.4.9-securityfix2';
+const SECURITY_FIX3_COHORT = '1.4.9-securityfix3';
 
 // 本阶段 cache cohort：源码内容变化的模块（settings/storage/picker）
 // 加上所有直接或间接 import 它们的父模块。
@@ -38,17 +39,21 @@ const COHORT_MODULES = [
     'src/visualScanner.js',
 ];
 
-const SECURITY_FIX_MODULES = [
+const SECURITY_FIX2_MODULES = [
     'src/injector.js',
     'src/promptBuilder.js',
     'src/independentSecurityGuard.js',
-    'src/outputSanitizer.js',
-    'src/independentApi.js',
     'src/touchTheater.js',
-    'src/ui.js',
     'src/externalDiagnostics.js',
     'src/visualScanner.js',
     'src/renderedVisualFeedbackHotfix.js',
+];
+
+const SECURITY_FIX3_MODULES = [
+    'src/outputSanitizer.js',
+    'src/independentApi.js',
+    'src/ui.js',
+    'src/mobileModalHotfix.js',
 ];
 
 function collectJsFiles(dir) {
@@ -84,7 +89,8 @@ assert.ok(edges.length > 0, 'import graph must not be empty');
 
 // 1. cohort 内模块的所有入站 URL 必须落在同一 cohort
 const stale = edges.filter(edge => COHORT_MODULES.includes(edge.target)
-    && !SECURITY_FIX_MODULES.includes(edge.target)
+    && !SECURITY_FIX2_MODULES.includes(edge.target)
+    && !SECURITY_FIX3_MODULES.includes(edge.target)
     && edge.rmv !== COHORT);
 assert.deepEqual(
     stale.map(edge => `${edge.from} -> ${edge.target}?rmv=${edge.rmv}`),
@@ -93,15 +99,25 @@ assert.deepEqual(
 );
 
 
-// SecurityFix2 changes the independent boundary/startup/repair modules and therefore every parent
-// whose source import URL changed. All inbound URLs for those modules must use the new key.
-for (const target of SECURITY_FIX_MODULES) {
+// SecurityFix2 modules not changed in this round keep one closed cache key.
+for (const target of SECURITY_FIX2_MODULES) {
     const fixEdges = edges.filter(edge => edge.target === target);
     assert.ok(fixEdges.length > 0, `${target} must have an inbound runtime edge`);
     assert.deepEqual(
         [...new Set(fixEdges.map(edge => edge.rmv))],
-        [SECURITY_FIX_COHORT],
+        [SECURITY_FIX2_COHORT],
         `${target} must use exactly one SecurityFix2 cache key`,
+    );
+}
+
+// SecurityFix3 changes the desktop modal, resay renderer and maintenance runtime.
+for (const target of SECURITY_FIX3_MODULES) {
+    const fixEdges = edges.filter(edge => edge.target === target);
+    assert.ok(fixEdges.length > 0, `${target} must have an inbound runtime edge`);
+    assert.deepEqual(
+        [...new Set(fixEdges.map(edge => edge.rmv))],
+        [SECURITY_FIX3_COHORT],
+        `${target} must use exactly one SecurityFix3 cache key`,
     );
 }
 
@@ -125,7 +141,7 @@ for (const edge of edges) {
 const leaks = [];
 const ALLOWED_NEW_BOUNDARY_PARENTS = new Set(['src/ui.js']);
 for (const target of COHORT_MODULES) {
-    if (SECURITY_FIX_MODULES.includes(target)) continue;
+    if (SECURITY_FIX2_MODULES.includes(target) || SECURITY_FIX3_MODULES.includes(target)) continue;
     for (const parent of parentsOf.get(target) || []) {
         if (!COHORT_MODULES.includes(parent) && !ALLOWED_NEW_BOUNDARY_PARENTS.has(parent)) leaks.push(`${parent} imports cohort module ${target}`);
     }
