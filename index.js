@@ -1,14 +1,14 @@
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.4.9-tagscan1';
-import { clearLastCombo } from './src/storage.js?rmv=1.4.9-tagscan1';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.4.9-tagscan1';
-import { getSettings, updateSettings } from './src/settings.js?rmv=1.4.9-tagscan1';
-import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.4.9-tagscan1';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.4.9-subapitag2';
+import { clearLastCombo } from './src/storage.js?rmv=1.4.9-subapitag2';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.4.9-subapitag2';
+import { getSettings, updateSettings } from './src/settings.js?rmv=1.4.9-subapitag2';
+import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.4.9-subapitag2';
 
 // SecurityFix2 leaves only the prompt interceptor and request guard in the parser-critical
 // graph. The 1.8 MiB UI/sanitizer/independent runtime graph is imported after the host has
 // received a paint/idle opportunity, or immediately after explicit RabbitMirror intent.
-const GOLDEN_MERGE_VERSION = '1.4.9-externaldiag1-securityfix5-tagscan1';
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.30.21';
+const GOLDEN_MERGE_VERSION = '1.4.9-externaldiag1-securityfix6-subapitag2';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.30.22';
 let runtimeCancelled = false;
 let deferredRuntimePromise = null;
 let deferredRuntimeModules = null;
@@ -37,6 +37,10 @@ globalThis.__rabbitMirrorGoldenMerge = {
     deferredReady: () => !!deferredRuntimeModules,
     optionalLoaded: () => [...optionalModules.keys()],
 };
+// The lightweight generation interceptor calls this without awaiting it when
+// independent mode is selected. That closes the cold-start event gap without
+// making the host's main generation wait for the 1.8 MiB UI/runtime graph.
+globalThis.__rabbitMirrorEnsureDeferredCoreRuntime = ensureDeferredCoreRuntime;
 
 function captureDeferredBootBoundary() {
     try {
@@ -55,11 +59,11 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.4.9-tagscan1'),
-        import('./src/visualScanner.js?rmv=1.4.9-tagscan1'),
-        import('./src/independentApi.js?rmv=1.4.9-tagscan1'),
-        import('./src/touchTheater.js?rmv=1.4.9-tagscan1'),
-        import('./src/ui.js?rmv=1.4.9-tagscan1'),
+        import('./src/outputSanitizer.js?rmv=1.4.9-subapitag2'),
+        import('./src/visualScanner.js?rmv=1.4.9-subapitag2'),
+        import('./src/independentApi.js?rmv=1.4.9-subapitag2'),
+        import('./src/touchTheater.js?rmv=1.4.9-subapitag2'),
+        import('./src/ui.js?rmv=1.4.9-subapitag2'),
     ]).then(async ([output, visual, independent, touch, ui]) => {
         if (runtimeCancelled) return null;
         deferredRuntimeModules = { output, visual, independent, touch, ui };
@@ -239,7 +243,7 @@ function loadMirrorVisualCompat() {
     if (!deferredRuntimeModules) return Promise.resolve(null);
     return Promise.all([
         loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.4.30.26', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
-        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.4.9-tagscan1', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
+        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.4.9-subapitag2', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
     ]);
 }
 
@@ -254,7 +258,7 @@ function mobileLike() {
 
 function loadMobileModalCompat() {
     if (!mobileLike()) return Promise.resolve(null);
-    return ensureDeferredCoreRuntime('mobile-settings-intent').then(() => loadOptional('mobileModal', './src/mobileModalHotfix.js?rmv=1.4.9-tagscan1', mod => mod.initRabbitMirrorMobileModalHotfix?.()));
+    return ensureDeferredCoreRuntime('mobile-settings-intent').then(() => loadOptional('mobileModal', './src/mobileModalHotfix.js?rmv=1.4.9-subapitag2', mod => mod.initRabbitMirrorMobileModalHotfix?.()));
 }
 
 function isRabbitMirrorSurface(target) {
@@ -317,7 +321,7 @@ async function ensureExternalDiagnostics() {
     if (runtimeCancelled) return null;
     if (externalDiagnosticsApi) return externalDiagnosticsApi;
     if (externalDiagnosticsPromise) return externalDiagnosticsPromise;
-    externalDiagnosticsPromise = import('./src/externalDiagnostics.js?rmv=1.4.9-tagscan1').then(mod => {
+    externalDiagnosticsPromise = import('./src/externalDiagnostics.js?rmv=1.4.9-subapitag2').then(mod => {
         if (runtimeCancelled) return null;
         externalDiagnosticsModule = mod;
         externalDiagnosticsApi = mod.initRabbitMirrorExternalDiagnostics?.() || null;
@@ -333,7 +337,7 @@ function disableExternalDiagnostics() {
 }
 
 function clearDeferredGenerationSnapshots() {
-    void import('./src/generationGuard.js?rmv=1.4.9-tagscan1')
+    void import('./src/generationGuard.js?rmv=1.4.9-subapitag2')
         .then(mod => mod.clearRabbitMirrorGenerationSnapshots?.())
         .catch(() => {});
 }
@@ -360,6 +364,7 @@ jQuery(() => {
     captureDeferredBootBoundary();
     initFeedbackCatPromptSync(() => getSettings().feedbackCatEnabled !== false);
     globalThis.__rabbitMirrorFeedbackCatSyncCleanup = destroyFeedbackCatPromptSync;
+    initIndependentGenerationIntentBridge();
     initRabbitMirrorIndependentSecurityGuard({ getSettings, updateSettings });
     installOnDemandCompatTriggers();
     scheduleDeferredCoreRuntime();
@@ -383,6 +388,7 @@ export function onDisable() {
     removeOnDemandCompatTriggers();
     destroyOptionalCompat();
     destroyFeedbackCatPromptSync();
+    destroyIndependentGenerationIntentBridge({ clearIntents: true });
     clearRabbitMirrorPrompt();
     deferredRuntimeModules?.ui?.destroyRabbitMirrorUI?.();
     deferredRuntimeModules?.output?.destroyOutputSanitizer?.();
@@ -392,6 +398,9 @@ export function onDisable() {
     destroyRabbitMirrorIndependentSecurityGuard();
     clearDeferredGenerationSnapshots();
     disableExternalDiagnostics();
+    if (globalThis.__rabbitMirrorEnsureDeferredCoreRuntime === ensureDeferredCoreRuntime) {
+        try { delete globalThis.__rabbitMirrorEnsureDeferredCoreRuntime; } catch {}
+    }
     try { delete globalThis.__rabbitMirrorEnsureExternalDiag; } catch {}
     try { delete globalThis.__rabbitMirrorDisableExternalDiag; } catch {}
 }

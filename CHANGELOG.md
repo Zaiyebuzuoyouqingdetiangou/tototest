@@ -1,9 +1,11 @@
-## 1.4.9-test-multiface-step1-externaldiag1-securityfix5-tagscan1
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2
 
-- “副 API 正文标签过滤”窗口新增“扫描当前聊天标签”：只扫描当前已加载聊天的可见 `.mes_text`，汇总自定义标签名与出现次数。
-- 扫描结果只进入本次弹窗的临时候选；不会自动勾选、不会自动保存，也不会修改原正文。只有用户明确勾选并点击保存后，才从下一轮副 API 上下文副本中生效。
-- 扫描排除隐藏节点、闭合 `details` 正文、兔子镜自身 DOM、工具入口、代码块示例、普通 HTML/SVG/MathML 标签；真实自定义元素与正文中可见的普通/二次转义标签均可识别。
-- 长聊天扫描按帧分批，并限制为最多 500 条已渲染消息、20,000 个节点、256,000 个可见文本字符与 100 种候选；关闭弹窗、再次扫描或聊天切换会取消旧任务。
+- 修复独立 API 在外层生成期间遇到工具调用／嵌套 `GENERATION_STARTED` 时清空 owner，导致结束事件无法授权、三轮甚至持续不发 POST 的断链；嵌套开始只复用已存在 owner，单独嵌套与 dry-run 仍默认拒绝。
+- 轻量生成拦截器在独立模式下记录当前聊天与酒馆原始尾正文指纹，并立即、非阻塞地唤醒延迟运行时；轻量事件桥再写入结束／最终渲染证明。冷运行时只有匹配当前 chat + tail + final 正文的 intent 能授权一次生成，流式中间片段、quiet／impersonate 与历史重绘都不能认领。
+- 标签扫描从当前聊天窗口已挂载楼层映射到对应 `mes` / `extra.display_text` 正文源，同时与可见 DOM 结果合并；修复宿主剥掉未知 wrapper 后只能扫描到 `<content>` 的问题，不读取 reasoning、历史 swipe、metadata 或扩展提示。
+- 被宿主剥掉 wrapper 但保留子文本时，只有源正文与 live DOM 的可见字符投影一致才使用源标签边界过滤；不匹配时继续使用 live DOM，禁止 raw source 兜底泄漏隐藏正文。
+- “独立 API 生成方式”“自动读取最近 X 层”“检索与过滤 <> 正文标签”集中到独立 API 常驻分区；扫描只生成候选，必须由用户勾选并保存。
+- 保留 SecurityFix4 的最终正文快路、真正单 Response SSE/NDJSON 流、单次请求小缓存与单次付费 lease；不修改原聊天、主 API、美化 Prompt 或最终渲染规则。
 
 ## 1.4.9-test-multiface-step1-externaldiag1-securityfix4-contextspeed1
 
