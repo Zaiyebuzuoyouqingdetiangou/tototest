@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.9-tagscan1';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.9-tagscan1';
+import { getSettings } from './settings.js?rmv=1.4.9-subapitag2';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.9-subapitag2';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,14 +9,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.4.9-tagscan1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-tagscan1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.9-tagscan1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.9-tagscan1';
+} from './feedbackCat.js?rmv=1.4.9-subapitag2';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapitag2';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.9-subapitag2';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.9-subapitag2';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.22';
 
 
-const RUNTIME_VERSION = '1.4.30.21';
+const RUNTIME_VERSION = '1.4.30.22';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -15365,7 +15365,7 @@ function maintenanceStylelessStructuredInfo(root, full = null) {
         && controlKinds.safeChoiceOnly
         && elementCount >= 8;
 
-    // 1.4.30.22: authored rule count alone is not evidence that the browser received an
+    // 1.4.30.20: authored rule count alone is not evidence that the browser received an
     // effective visual program. Empty/non-matching rules and a few type-only declarations
     // used to suppress this rescue, while three native radios also failed the old <=1 gate.
     // Continue to fail closed for text inputs, buttons, selects and textareas; only a bounded
@@ -21409,7 +21409,7 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
         ['missing-checked-control-class', installMissingCheckedSubjectClassRescue],
         ['webkit-3d-flip-compat', installWebKit3DFlipRescue],
         ['visual-scenery-mobile-overflow', installVisualSceneryMobileNarrativeOverflowRescue],
-        // 1.4.30.22: this path is now fail-closed to a bounded radio/checkbox narrative and
+        // 1.4.30.20: this path is now fail-closed to a bounded radio/checkbox narrative and
         // applies typography/choice spacing only—no generic card shell and no state mutation.
         ['styleless-structured-rescue', installMaintenanceStylelessStructuredRescue],
         // 1.3.102: 两类高置信排版修复进入自动安全层，但只在真实展开、可测布局下运行。

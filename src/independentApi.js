@@ -1,15 +1,15 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.4.9-tagscan1';
-import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-tagscan1';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-tagscan1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.4.9-tagscan1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-tagscan1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-tagscan1';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-tagscan1';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-tagscan1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-tagscan1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.4.9-subapitag2';
+import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-subapitag2';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-subapitag2';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.4.9-subapitag2';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapitag2';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-subapitag2';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-subapitag2';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-subapitag2';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-subapitag2';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
-const RUNTIME_VERSION = '1.4.30.21';
+const RUNTIME_VERSION = '1.4.30.22';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -74,6 +74,9 @@ const CHAT_OUTPUT_METADATA_KEY = 'rabbit_mirror_independent_outputs_v2';
 const CHAT_OUTPUT_METADATA_SCHEMA = 2;
 const HISTORY_PANEL_ATTR = 'data-rabbit-mirror-history-panel';
 const ACTION_BRIDGE_KEY = '__rabbitMirrorIndependentActionsV1';
+const INDEPENDENT_GENERATION_INTENTS_KEY = '__rabbitMirrorIndependentGenerationIntents';
+const INDEPENDENT_GENERATION_INTENT_TTL_MS = 5 * 60 * 1000;
+const INDEPENDENT_GENERATION_INTENT_TYPES = new Set(['normal','continue','swipe','regenerate']);
 let hostModule = null;
 let generationSequence = 0;
 let observer = null;
@@ -1331,8 +1334,30 @@ function decodeIndependentTagDiscoveryEntities(value=''){
   .replace(/&(?:amp;){0,3}(?:lt|#0*60|#x0*3c);/gi,'<')
   .replace(/&(?:amp;){0,3}(?:gt|#0*62|#x0*3e);/gi,'>');
 }
-function discoverIndependentContextTagNamesInText(value='',counts=new Map(),state={}){
- const source=decodeIndependentTagDiscoveryEntities(value);
+function stripIndependentTagScanMarkdownCode(value=''){
+ const lines=String(value||'').split(/\r?\n/); const output=[]; let fenceChar=''; let fenceLength=0;
+ for(const line of lines){
+  const fence=line.match(/^[ \t]{0,3}(`{3,}|~{3,})/);
+  if(fenceChar){
+   if(fence && fence[1][0]===fenceChar && fence[1].length>=fenceLength){ fenceChar=''; fenceLength=0; }
+   output.push(''); continue;
+  }
+  if(fence){ fenceChar=fence[1][0]; fenceLength=fence[1].length; output.push(''); continue; }
+  let clean='';
+  for(let cursor=0;cursor<line.length;){
+   if(line[cursor]!=='`'){ clean+=line[cursor]; cursor+=1; continue; }
+   let width=1; while(line[cursor+width]==='`') width+=1;
+   const marker='`'.repeat(width); const close=line.indexOf(marker,cursor+width);
+   if(close<0){ clean+=marker; cursor+=width; continue; }
+   clean+=' '; cursor=close+width;
+  }
+  output.push(clean);
+ }
+ return output.join('\n');
+}
+function discoverIndependentContextTagNamesInText(value='',counts=new Map(),state={},options={}){
+ const decoded=decodeIndependentTagDiscoveryEntities(value);
+ const source=options?.markdown===true?stripIndependentTagScanMarkdownCode(decoded):decoded;
  const blockedStack=[];
  for(let cursor=0;cursor<source.length;){
   const start=source.indexOf('<',cursor);
@@ -1355,6 +1380,38 @@ function discoverIndependentContextTagNamesInText(value='',counts=new Map(),stat
   cursor=token.end;
  }
  return counts;
+}
+function mergeIndependentTagScanCounts(target,candidate,state={}){
+ for(const [name,count] of candidate||[]){
+  const tag=normalizedIndependentDiscoveredTagName(name); if(!tag) continue;
+  if(!target.has(tag) && target.size>=INDEPENDENT_TAG_SCAN_MAX_UNIQUE_TAGS){ state.truncated=true; continue; }
+  target.set(tag,Math.max(Number(target.get(tag)||0),Number(count||0)));
+ }
+ return target;
+}
+function addIndependentTagScanCounts(target,candidate,state={}){
+ for(const [name,count] of candidate||[]){
+  const tag=normalizedIndependentDiscoveredTagName(name); if(!tag) continue;
+  if(!target.has(tag) && target.size>=INDEPENDENT_TAG_SCAN_MAX_UNIQUE_TAGS){ state.truncated=true; continue; }
+  target.set(tag,Number(target.get(tag)||0)+Number(count||0));
+ }
+ return target;
+}
+function discoverIndependentContextTagsFromMessage(message,state={},maxChars=INDEPENDENT_TAG_SCAN_MAX_TEXT_CHARS){
+ const representations=[];
+ const display=typeof message?.extra?.display_text==='string'?String(message.extra.display_text):'';
+ const body=typeof message?.mes==='string'?String(message.mes):'';
+ if(display.trim()) representations.push(display);
+ if(body.trim() && body!==display) representations.push(body);
+ const combined=new Map(); let scannedTextChars=0;
+ for(const source of representations){
+  const remaining=Math.max(0,Number(maxChars||0)-scannedTextChars); if(!remaining){ state.truncated=true; break; }
+  const bounded=source.slice(0,remaining); scannedTextChars+=bounded.length;
+  if(bounded.length<source.length) state.truncated=true;
+  const local=new Map(); discoverIndependentContextTagNamesInText(bounded,local,state,{markdown:true});
+  mergeIndependentTagScanCounts(combined,local,state);
+ }
+ return {counts:combined,scannedTextChars};
 }
 function independentTagScanHidden(node){
  if(!node || node.nodeType!==1) return false;
@@ -1382,7 +1439,7 @@ function yieldIndependentTagScanFrame(){
 }
 async function scanCurrentChatIndependentContextTags({signal}={}){
  if(typeof document==='undefined' || !document.querySelectorAll) return {available:false,tags:[],scannedMessages:0,scannedNodes:0,scannedTextChars:0,truncated:false};
- const chatRoot=document.querySelector('#chat');
+ const chatRoot=document.querySelector('#chat'); const ctx=getContext(); const chat=Array.isArray(ctx?.chat)?ctx.chat:[]; const ownerChat=chatKey(ctx);
  if(!chatRoot) return {available:false,tags:[],scannedMessages:0,scannedNodes:0,scannedTextChars:0,truncated:false};
  const allBodies=[...chatRoot.querySelectorAll('.mes[mesid] .mes_text')].filter(body=>{
   const owner=body?.closest?.('.mes[mesid]');
@@ -1395,7 +1452,8 @@ async function scanCurrentChatIndependentContextTags({signal}={}){
  let sliceStarted=typeof performance!=='undefined' && performance.now?performance.now():Date.now();
  const ensureCurrent=()=>{
   if(signal?.aborted) throw independentTagScanAbortError();
-  if(document.querySelector('#chat')!==chatRoot) throw independentTagScanAbortError('聊天已切换，请重新扫描');
+  const current=getContext();
+  if(document.querySelector('#chat')!==chatRoot || chatKey(current)!==ownerChat) throw independentTagScanAbortError('聊天已切换，请重新扫描');
  };
  const maybeYield=async force=>{
   const now=typeof performance!=='undefined' && performance.now?performance.now():Date.now();
@@ -1403,54 +1461,55 @@ async function scanCurrentChatIndependentContextTags({signal}={}){
   await yieldIndependentTagScanFrame(); ensureCurrent(); workSinceYield=0;
   sliceStarted=typeof performance!=='undefined' && performance.now?performance.now():Date.now();
  };
- outer: for(const body of bodies){
+ outer: for(const bodyElement of bodies){
   ensureCurrent();
-  if(!body?.isConnected || body.closest?.('#chat')!==chatRoot) throw independentTagScanAbortError('聊天正文已变化，请重新扫描');
+  if(!bodyElement?.isConnected || bodyElement.closest?.('#chat')!==chatRoot) throw independentTagScanAbortError('聊天正文已变化，请重新扫描');
+  const owner=bodyElement.closest?.('.mes[mesid]'); const messageIndex=Number(owner?.getAttribute?.('mesid'));
+  if(!Number.isInteger(messageIndex) || messageIndex<0 || !chat[messageIndex]) continue;
   let blockedByAncestor=false;
-  for(let ancestor=body;ancestor && ancestor!==chatRoot;ancestor=ancestor.parentElement){
+  for(let ancestor=bodyElement;ancestor && ancestor!==chatRoot;ancestor=ancestor.parentElement){
    if(ancestor.matches?.(INDEPENDENT_TAG_SCAN_BLOCKED_SELECTOR) || independentTagScanHidden(ancestor)){ blockedByAncestor=true; break; }
   }
   if(blockedByAncestor) continue;
-  const stack=[{node:body,depth:0,literalAllowed:true}];
+  const sourceScan=discoverIndependentContextTagsFromMessage(chat[messageIndex],state,Math.max(0,INDEPENDENT_TAG_SCAN_MAX_TEXT_CHARS-scannedTextChars));
+  const messageCounts=sourceScan.counts; scannedTextChars+=sourceScan.scannedTextChars;
+  if(scannedTextChars>=INDEPENDENT_TAG_SCAN_MAX_TEXT_CHARS){ state.truncated=true; reasons.add('text'); }
+  const domCounts=new Map(); const stack=[{node:bodyElement,depth:0,literalAllowed:true}];
+  let stopAfterMessage=false;
   while(stack.length){
    ensureCurrent();
-   if(scannedNodes>=INDEPENDENT_TAG_SCAN_MAX_NODES){ state.truncated=true; reasons.add('nodes'); break outer; }
+   if(scannedNodes>=INDEPENDENT_TAG_SCAN_MAX_NODES){ state.truncated=true; reasons.add('nodes'); stopAfterMessage=true; break; }
    const {node,depth,literalAllowed}=stack.pop(); scannedNodes+=1; workSinceYield+=1;
    if(depth>40){ state.truncated=true; reasons.add('depth'); continue; }
    if(node?.nodeType===3){
-    if(!literalAllowed) { await maybeYield(false); continue; }
-    const remaining=INDEPENDENT_TAG_SCAN_MAX_TEXT_CHARS-scannedTextChars;
-    if(remaining<=0){ state.truncated=true; reasons.add('text'); await maybeYield(false); continue; }
-    const raw=String(node.nodeValue||''); const text=raw.slice(0,remaining);
-    scannedTextChars+=text.length;
-    if(text.length<raw.length){ state.truncated=true; reasons.add('text'); }
-    const before=counts.size;
-    discoverIndependentContextTagNamesInText(text,counts,state);
-    if(state.truncated && counts.size===INDEPENDENT_TAG_SCAN_MAX_UNIQUE_TAGS && counts.size===before) reasons.add('tags');
+    if(literalAllowed && scannedTextChars<INDEPENDENT_TAG_SCAN_MAX_TEXT_CHARS){
+     const remaining=INDEPENDENT_TAG_SCAN_MAX_TEXT_CHARS-scannedTextChars; const raw=String(node.nodeValue||''); const text=raw.slice(0,remaining);
+     scannedTextChars+=text.length; if(text.length<raw.length){ state.truncated=true; reasons.add('text'); }
+     discoverIndependentContextTagNamesInText(text,domCounts,state);
+    }
     await maybeYield(false); continue;
    }
-   if(node?.nodeType!==1) { await maybeYield(false); continue; }
-   if(node!==body && (node.matches?.(INDEPENDENT_TAG_SCAN_BLOCKED_SELECTOR) || independentTagScanHidden(node))){ await maybeYield(false); continue; }
+   if(node?.nodeType!==1){ await maybeYield(false); continue; }
+   if(node!==bodyElement && (node.matches?.(INDEPENDENT_TAG_SCAN_BLOCKED_SELECTOR) || independentTagScanHidden(node))){ await maybeYield(false); continue; }
    const localName=String(node.localName||node.tagName||'').toLowerCase();
-   if(INDEPENDENT_TAG_SCAN_SKIP_SUBTREES.has(localName) || INDEPENDENT_TAG_SCAN_SKIP_CODE_SUBTREES.has(localName)) { await maybeYield(false); continue; }
-   if(node!==body && (!node.namespaceURI || node.namespaceURI==='http://www.w3.org/1999/xhtml')){
-    const recorded=recordIndependentDiscoveredTag(counts,localName);
-    if(recorded.truncated){ state.truncated=true; reasons.add('tags'); }
+   if(INDEPENDENT_TAG_SCAN_SKIP_SUBTREES.has(localName) || INDEPENDENT_TAG_SCAN_SKIP_CODE_SUBTREES.has(localName)){ await maybeYield(false); continue; }
+   if(node!==bodyElement && (!node.namespaceURI || node.namespaceURI==='http://www.w3.org/1999/xhtml')){
+    const recorded=recordIndependentDiscoveredTag(domCounts,localName); if(recorded.truncated){ state.truncated=true; reasons.add('tags'); }
    }
    let children=[...(node.childNodes||[])];
    if(String(node.tagName||'').toUpperCase()==='DETAILS' && !node.open){
-    const summary=children.find(child=>child?.nodeType===1 && String(child.tagName||'').toUpperCase()==='SUMMARY');
-    children=summary?[summary]:[];
+    const summary=children.find(child=>child?.nodeType===1 && String(child.tagName||'').toUpperCase()==='SUMMARY'); children=summary?[summary]:[];
    }
    for(let child=children.length-1;child>=0;child-=1) stack.push({node:children[child],depth:depth+1,literalAllowed});
    await maybeYield(false);
   }
-  scannedMessages+=1;
-  if(scannedMessages%20===0) await maybeYield(true);
+  mergeIndependentTagScanCounts(messageCounts,domCounts,state); addIndependentTagScanCounts(counts,messageCounts,state);
+  scannedMessages+=1; if(scannedMessages%20===0) await maybeYield(true);
+  if(stopAfterMessage) break outer;
  }
  ensureCurrent();
  const tags=[...counts.entries()].map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count || a.name.localeCompare(b.name));
- return {available:true,tags,scannedMessages,scannedNodes,scannedTextChars,truncated:state.truncated,reasons:[...reasons],currentRenderedOnly:true};
+ return {available:true,tags,scannedMessages,scannedNodes,scannedTextChars,truncated:state.truncated,reasons:[...reasons],currentChatMessageSources:true,currentRenderedOnly:false};
 }
 function stripInvisibleIndependentContextMarkup(value='',excludedTags=new Set()){
  let source=String(value||'').replace(/<!--[\s\S]*?-->/g,' ');
@@ -1516,9 +1575,49 @@ function liveVisibleIndependentMessageText(index,excludedTags=new Set()){
   return {available:true,text:parts.join('').replace(/[ \t]+\n/g,'\n').replace(/\n[ \t]+/g,'\n').replace(/[ \t]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim(),filteredExcludedTagChars,filteredExcludedTags:[...filteredExcludedTags]};
  }catch{return {available:true,text:''};}
 }
+function normalizedIndependentVisibleComparison(value=''){
+ // HTML rendering may add/remove only boundary whitespace around an unknown wrapper.
+ // Ignore whitespace for the equivalence proof, but never ignore visible characters.
+ return String(value||'').replace(/\s+/g,'');
+}
+function verifiedSourceTagFilteringForLiveText(message,liveUnfilteredText='',excludedTags=new Set()){
+ if(!(excludedTags instanceof Set) || !excludedTags.size) return null;
+ const display=typeof message?.extra?.display_text==='string'?String(message.extra.display_text):'';
+ const body=typeof message?.mes==='string'?String(message.mes):'';
+ const candidates=[];
+ if(display.trim()) candidates.push({value:display,source:'display'});
+ if(body.trim() && body!==display) candidates.push({value:body,source:'mes'});
+ const expected=normalizedIndependentVisibleComparison(liveUnfilteredText);
+ for(const candidate of candidates){
+  const historical=stripHistoricalRabbitMirrorBlocks(candidate.value);
+  const selected=stripInvisibleIndependentContextMarkup(historical.text,excludedTags);
+  if(!selected.filteredExcludedTags.length) continue;
+  const unfiltered=stripInvisibleIndependentContextMarkup(historical.text,new Set());
+  if(normalizedIndependentVisibleComparison(unfiltered.text)!==expected) continue;
+  return {
+   text:String(selected.text||'').replace(/\s+/g,' ').trim(),
+   filteredRabbitMirrorChars:historical.filteredRabbitMirrorChars,
+   filteredExcludedTagChars:selected.filteredExcludedTagChars,
+   filteredExcludedTags:selected.filteredExcludedTags,
+   source:`live-dom+verified-${candidate.source}-tags`,
+  };
+ }
+ return null;
+}
 function canonicalVisibleMessageText(message,index,excludedTags=independentContextExcludedTagSet()){
  const live=liveVisibleIndependentMessageText(index,excludedTags);
  if(live.available){
+  // Some hosts remove an unknown wrapper (for example <thinking>) but keep its child text.
+  // Use source markup only when its unfiltered visible projection exactly matches the live
+  // DOM text. This preserves live DOM as the content authority while recovering the tag
+  // boundary needed to remove a user-selected block.
+  if(excludedTags.size && !(live.filteredExcludedTags||[]).length){
+   const liveUnfiltered=liveVisibleIndependentMessageText(index,new Set());
+   if(liveUnfiltered.available){
+    const verified=verifiedSourceTagFilteringForLiveText(message,liveUnfiltered.text,excludedTags);
+    if(verified) return verified;
+   }
+  }
   const configured=stripConfiguredIndependentTagBlocks(live.text,excludedTags);
   const filtered=stripHistoricalRabbitMirrorBlocks(configured.text);
   return {text:String(filtered.text||'').replace(/\s+/g,' ').trim(),filteredRabbitMirrorChars:filtered.filteredRabbitMirrorChars,filteredExcludedTagChars:Number(live.filteredExcludedTagChars||0)+configured.filteredExcludedTagChars,filteredExcludedTags:[...new Set([...(live.filteredExcludedTags||[]),...configured.filteredExcludedTags])],source:'live-dom'};
@@ -6380,6 +6479,49 @@ function passiveObservedIdentity(ctx,index,msg){
 function automaticCutoverVersionToken(msg){
  return `${swipeId(msg)}:${messageBodyFingerprint(msg)}`;
 }
+function deferredIndependentGenerationIntents(){
+ const now=Date.now();
+ const source=Array.isArray(globalThis[INDEPENDENT_GENERATION_INTENTS_KEY])?globalThis[INDEPENDENT_GENERATION_INTENTS_KEY]:[];
+ const current=source.filter(intent=>intent
+  && INDEPENDENT_GENERATION_INTENT_TYPES.has(String(intent.type||''))
+  && now-Number(intent.startedAt||0)<=INDEPENDENT_GENERATION_INTENT_TTL_MS);
+ if(current.length!==source.length) globalThis[INDEPENDENT_GENERATION_INTENTS_KEY]=current;
+ return current;
+}
+function deferredIndependentIntentCandidateIndex(intent,ctx=getContext()){
+ if(!intent || String(intent.chatKey||'')!==chatKey(ctx)) return null;
+ const chat=Array.isArray(ctx?.chat)?ctx.chat:[];
+ const tailIndex=Number(intent.tailIndex);
+ if(!Number.isInteger(tailIndex) || tailIndex<0) return null;
+ const tail=chat[tailIndex];
+ if(String(intent.tailRole||'')==='user'){
+  if(!tail?.is_user || messageBodyFingerprint(tail)!==String(intent.tailBodyHash||'')) return null;
+  const candidate=chat[tailIndex+1];
+  return candidate && !candidate.is_user && String(candidate.mes||'').trim() ? tailIndex+1 : null;
+ }
+ if(String(intent.tailRole||'')==='assistant'){
+  if(!tail || tail.is_user || !String(tail.mes||'').trim()) return null;
+  const changed=messageBodyFingerprint(tail)!==String(intent.tailBodyHash||'') || swipeId(tail)!==Number(intent.tailSwipeId||0);
+  return changed?tailIndex:null;
+ }
+ return null;
+}
+function deferredIndependentIntentHasFinalProof(intent,ctx,index){
+ const normalized=Number(index); const message=ctx?.chat?.[normalized];
+ return Number(intent?.finalIndex)===normalized
+  && Number(intent?.completedAt)>0
+  && !!message && !message.is_user
+  && messageBodyFingerprint(message)===String(intent?.finalBodyHash||'');
+}
+function claimDeferredIndependentGenerationIntent(ctx,index,reason='deferred-generation-intent',{requireFinalProof=false}={}){
+ const normalized=Number(index); const source=deferredIndependentGenerationIntents();
+ const matching=source.filter(intent=>deferredIndependentIntentCandidateIndex(intent,ctx)===normalized
+  && (!requireFinalProof || deferredIndependentIntentHasFinalProof(intent,ctx,normalized)));
+ if(!matching.length || !unlockAutomaticGenerationCutover(ctx,normalized,reason)) return false;
+ const consumedIds=new Set(matching.map(intent=>String(intent.id||'')));
+ globalThis[INDEPENDENT_GENERATION_INTENTS_KEY]=source.filter(intent=>!consumedIds.has(String(intent.id||'')));
+ return true;
+}
 function ensureAutomaticGenerationCutover(ctx=getContext()){
  const ownerChat=chatKey(ctx);
  if(automaticGenerationCutovers.has(ownerChat)) return automaticGenerationCutovers.get(ownerChat);
@@ -6391,7 +6533,12 @@ function ensureAutomaticGenerationCutover(ctx=getContext()){
 }
 function beginAutomaticHostGeneration(ctx,type='',nested=false,dryRun=false){
  const cutover=ensureAutomaticGenerationCutover(ctx);
- cutover.activeHostGeneration=(!nested && dryRun!==true)
+ // Tool-call recursion emits another GENERATION_STARTED before the outer owner
+ // finishes. That nested start belongs to the same visible assistant reply and
+ // must not erase the outer authorization proof. A dry run with no outer owner
+ // remains default-denied.
+ if(nested) return !!cutover.activeHostGeneration;
+ cutover.activeHostGeneration=dryRun!==true
   ? {type:String(type||'normal').trim().toLowerCase(),startedAt:Date.now()}
   : null;
  return !!cutover.activeHostGeneration;
@@ -6420,6 +6567,31 @@ function suppressesAutomaticGeneration(ctx,index){
  return String(authorization.token||'')!==automaticCutoverVersionToken(msg);
 }
 function clearAutomaticGenerationCutovers(){ automaticGenerationCutovers.clear(); }
+function recoverDeferredIndependentGenerations(){
+ if(!currentRuntime() || runtimeMode()!=='independent' || hostGenerationLooksActive()) return 0;
+ const ctx=getContext(); const candidates=new Set();
+ for(const intent of deferredIndependentGenerationIntents()){
+  const index=deferredIndependentIntentCandidateIndex(intent,ctx);
+  if(Number.isInteger(index)&&index>=0) candidates.add(index);
+ }
+ let recovered=0;
+ for(const index of candidates){
+  const msg=ctx.chat?.[index];
+  if(!msg || msg.is_user || !messageElement(index)) continue;
+  // A cold runtime can initialize after the first streaming fragment but before
+  // final paint. Recovery therefore requires completion proof captured by the
+  // lightweight bridge plus the same final正文 hash; nonempty partial text alone
+  // is never enough to consume an intent.
+  if(!claimDeferredIndependentGenerationIntent(ctx,index,'deferred-runtime-recovery',{requireFinalProof:true})) continue;
+  recovered+=1;
+  advanceOperationEpochForBase(messageBaseSlotKey(ctx,index,msg),'deferred-runtime-recovery',automaticCutoverVersionToken(msg));
+  ensureGenerationPlaceholderForIndex(index,hostGenerationLooksActive());
+  queueMessageSync([index]);
+  const finalRendered=!hostGenerationLooksActive() && !!liveVisibleIndependentMessageText(index,independentContextExcludedTagSet()).text;
+  scheduleMessageGeneration(index,finalRendered?FINAL_RENDER_POLL_INTERVAL_MS:GENERATION_PLACEHOLDER_POLL_INTERVAL_MS,true,finalRendered);
+ }
+ return recovered;
+}
 function hasExistingFollowRabbitMirror(ctx,index,msg){
  const el=messageElement(index);
  if(el){
@@ -7100,7 +7272,9 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
        const finishedContext=getContext();
        finishGlobalWorldInfoCapture(finishedContext);
        const last=lastAssistantMessage(finishedContext);
-       const authorized=finishAutomaticHostGeneration(finishedContext,last?.i ?? -1);
+       const lifecycleAuthorized=finishAutomaticHostGeneration(finishedContext,last?.i ?? -1);
+       const deferredAuthorized=last ? claimDeferredIndependentGenerationIntent(finishedContext,last.i,'host-generation-finished-deferred') : false;
+       const authorized=lifecycleAuthorized || deferredAuthorized;
        if(last && authorized){
          advanceOperationEpochForBase(
           messageBaseSlotKey(finishedContext,last.i,last.m),
@@ -7166,6 +7340,20 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
          const active=hostGenerationLooksActive();
          if(active) ensureGenerationPlaceholderForIndex(id,true);
          queueMessageSync([id]);
+         // Some WebViews omit GENERATION_ENDED/STOPPED, and a cold deferred
+         // runtime can miss GENERATION_STARTED as well. This event is the host's
+         // exact final paint, so it may close only an observed active lifecycle or
+         // the exact generation intent captured by the lightweight interceptor.
+         // Historical renders have neither proof and remain default-denied.
+         // Do not bind the unscoped active lifecycle to this render id: a host or
+         // extension may repaint an old message while a new reply is generating.
+         // Only the interceptor's chat + tail role/hash proof may authorize this
+         // exact id when END/STOP is missing.
+         const deferredAuthorized=claimDeferredIndependentGenerationIntent(ctx,id,'final-render-deferred');
+         if(deferredAuthorized){
+           const message=ctx.chat?.[id];
+           if(message && !message.is_user) advanceOperationEpochForBase(messageBaseSlotKey(ctx,id,message),'host-final-render',automaticCutoverVersionToken(message));
+         }
          if(!suppressesAutomaticGeneration(ctx,id)){
            const live=currentGenerationIdentity(id);
            if(live && String(live.msg?.mes||'').trim()){
@@ -7310,6 +7498,7 @@ export async function initIndependentRabbitMirror(){
  installExternalGeometryListeners();
  installBackgroundLifecycleListeners();
  await reconfigureRuntime({coldStart:!hotUpdate});
+ recoverDeferredIndependentGenerations();
  // Hot updates never restart historical loading/error placeholders. Only a
  // genuinely new assistant reply or an explicit manual retry may issue a POST.
 }
