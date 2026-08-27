@@ -1,5 +1,5 @@
-import { getSettings, updateSettings } from './settings.js?rmv=1.4.9-subapitag2';
-import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.4.9-subapitag2';
+import { getSettings, updateSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
 import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.4.30.17';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.4.30.17';
 

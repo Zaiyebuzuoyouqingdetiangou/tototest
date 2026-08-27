@@ -1,15 +1,15 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.4.9-subapitag2';
-import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-subapitag2';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-subapitag2';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.4.9-subapitag2';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapitag2';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-subapitag2';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-subapitag2';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-subapitag2';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-subapitag2';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
-const RUNTIME_VERSION = '1.4.30.22';
+const RUNTIME_VERSION = '1.4.30.23';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -1675,9 +1675,10 @@ function independentPersonaContext(ctx){
 function contextBundle(ctx,targetIndex,globalWorldInfoSnapshot=null,preparedGlobalWorldInfoView=null,budgetOverride=CONTEXT_TOTAL_BUDGET,readVisible=null){
  const chat=Array.isArray(ctx.chat)?ctx.chat:[];
  const char=ctx.characters?.[ctx.characterId] || ctx.character || null;
+ const settings=getSettings();
  // Keep only compact role/persona references. Never serialize authorNote/extensionPrompts/chatMetadata/worldInfo wholesale.
- const charJson=independentCharacterContext(char);
- const personaJson=independentPersonaContext(ctx);
+ const charJson=settings?.independentReadCharacterCardSummary===false?'':independentCharacterContext(char);
+ const personaJson=settings?.independentReadPersonaSummary===false?'':independentPersonaContext(ctx);
  const globalView=preparedGlobalWorldInfoView || globalWorldInfoContextView(globalWorldInfoSnapshot);
  const capturedWorldInfoBlock=clipIndependentContextText(String(globalView?.block||''),GLOBAL_WORLD_INFO_CONTEXT_BUDGET+500);
  const referenceParts=[];
@@ -1686,7 +1687,7 @@ function contextBundle(ctx,targetIndex,globalWorldInfoSnapshot=null,preparedGlob
  const referenceBlock=referenceParts.length?`\n\n${referenceParts.join('\n\n')}`:'';
  const fixedSuffix=`${referenceBlock}${capturedWorldInfoBlock}`;
  const transcriptHeader='【当前聊天逐轮正文】\n';
- const configuredLayers=Number(getSettings()?.independentContextMaxLayers);
+ const configuredLayers=Number(settings?.independentContextMaxLayers);
  const maxLayers=Math.max(1,Math.min(200,Number.isFinite(configuredLayers)?Math.round(configuredLayers):20));
  const totalBudget=Math.max(8000,Math.min(CONTEXT_TOTAL_BUDGET,Number(budgetOverride)||CONTEXT_TOTAL_BUDGET));
  const transcriptBudget=Math.max(4000,Math.min(CONTEXT_TRANSCRIPT_BUDGET,totalBudget-fixedSuffix.length-transcriptHeader.length-512));
@@ -6199,7 +6200,12 @@ function persistIndependentRepairFromEvent(event) {
   : detail.root?.closest?.(`[${SOURCE_ATTR}][data-rm-source="independent"]`);
  // 1.3.52: 这里原本全是静默 return false。维修保存失败时界面上没有任何痕迹，
  // “修好了但刷新又坏”与“压根没保存过”无法区分。改为统一记录放弃原因。
- const abort=reason=>{ console.debug('[RabbitMirror] independent repair not persisted:',reason); return false; };
+ const abort=reason=>{
+  detail.persisted=false;
+  detail.persistenceReason=String(reason||'unknown');
+  console.debug('[RabbitMirror] independent repair not persisted:',reason);
+  return false;
+ };
  if(!host?.isConnected) return abort('host missing or detached');
  if(host.dataset.rmState!=='ready') return abort(`host state=${host.dataset.rmState||'unknown'}`);
  const index=messageIndexForExternalHost(host);
@@ -6207,7 +6213,8 @@ function persistIndependentRepairFromEvent(event) {
  const identity=currentGenerationIdentity(index);
  if(!identity) return abort(`generation identity unavailable for index ${index}`);
  const mountedSource=String(host.dataset.rmSourceHash||'');
- if(mountedSource && mountedSource!==identity.sourceHash) return abort('mounted sourceHash no longer matches current source');
+ if(!mountedSource) return abort('mounted sourceHash missing');
+ if(mountedSource!==identity.sourceHash) return abort('mounted sourceHash no longer matches current source');
  const details=readyDetailsFromHost(host);
  if(!details) return abort('no usable ready <details> in host');
  details.setAttribute(MAINTENANCE_PERSISTED_LAYOUT_ATTR,'true');
@@ -6238,9 +6245,15 @@ function persistIndependentRepairFromEvent(event) {
   repairedByMaintenance:true,
  };
  saveRecordForSlot(store,identity.slot,repaired);
- writeStore(store);
+ if(!writeStore(store)) return abort('local repaired mirror store write failed');
+ const stored=findSavedRecord(readStore(),identity.slot,identity.legacySlots||[]);
+ if(String(stored?.html||'')!==html) return abort('local repaired mirror store read-back mismatch');
  setOwnerLockForBase(identity.baseSlot,identity.slot,identity.sourceHash);
+ const savedOwnerLock=ownerLockForBase(identity.baseSlot);
+ if(String(savedOwnerLock?.slot||'')!==identity.slot || String(savedOwnerLock?.sourceHash||'')!==identity.sourceHash) return abort('owner lock read-back mismatch');
  writePersistedOwner(identity.ctx,identity.index,identity.msg,repaired,{overwrite:true});
+ const persistedOwner=persistedOwnerForMessage(identity.ctx,identity.index,identity.msg);
+ if(String(persistedOwner?.html||'')!==html || String(persistedOwner?.sourceHash||'')!==identity.sourceHash) return abort('chat metadata read-back mismatch');
  host.__rabbitMirrorIndependentSource=html;
  host.__rabbitMirrorIndependentInitialSource=initialHtml||html;
  host.dataset.rmSourceHash=identity.sourceHash;
@@ -6250,6 +6263,8 @@ function persistIndependentRepairFromEvent(event) {
  host.hidden=false;
  clearExternalHostFreshSourceState(host);
  scheduleExternalShellTint(host,html);
+ detail.persisted=true;
+ detail.persistenceReason='';
  return true;
 }
 function installRepairPersistenceListener(){

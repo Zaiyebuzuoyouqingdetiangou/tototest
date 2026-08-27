@@ -1,15 +1,15 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.4.9-subapitag2';
-import { clearLastCombo } from './storage.js?rmv=1.4.9-subapitag2';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.9-subapitag2';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.9-subapitag2';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.9-subapitag2';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { clearLastCombo } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.9-subapitag2';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.4.9-subapitag2';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.9-subapitag2';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
 
-const SETTINGS_UI_VERSION = '1.4.30.22-subapitag2';
-const RUNTIME_VERSION = '1.4.30.22';
+const SETTINGS_UI_VERSION = '1.4.30.23-subapitag2-advancedui1';
+const RUNTIME_VERSION = '1.4.30.23';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -398,8 +398,15 @@ export function initRabbitMirrorUI() {
             .filter((_, panel) => {
                 const $panel = $(panel);
                 const $advanced = $('body > #rh_advanced_modal');
-                return $panel.find('#rh_enabled').length
+                const $worldPrompt = $('body > #rh_world_info_prompt_modal');
+                const $tagFilter = $('body > #rh_independent_tag_filter_modal');
+                return $panel.attr('data-rabbit-mirror-ui-ready') === 'true'
+                    && $advanced.length === 1
+                    && $worldPrompt.length === 1
+                    && $tagFilter.length === 1
+                    && $panel.find('#rh_enabled').length
                     && $panel.find('#rh_advanced_open').length
+                    && $panel.find('#rh_independent_advanced_open').length
                     && $panel.find('#rh_blacklist_enabled').length
                     && $panel.find('#rh_favorite_summary').length
                     && $advanced.find('#rh_feedback_cat').length
@@ -410,8 +417,20 @@ export function initRabbitMirrorUI() {
                     && $advanced.find('#rh_worldview_lock').length
                     && $advanced.find('#rh_advanced_back_top').length
                     && $advanced.find('#rh_advanced_page_worldinfo').length
+                    && $advanced.find('#rh_independent_context_layers').length
+                    && $advanced.find('#rh_independent_include_character_summary').length
+                    && $advanced.find('#rh_independent_include_persona_summary').length
+                    && $advanced.find('#rh_independent_tag_filter_open').length
+                    && $advanced.find('#rh_independent_read_global_world_info').length
+                    && $advanced.find('#rh_world_info_book_filters').length
+                    && $advanced.find('#rh_world_info_books_fetch').length
+                    && $advanced.find('#rh_world_info_all_book_filters').length
                     && $panel.find('#rh_independent_api_section').length
-                    && $('body > #rh_independent_tag_filter_modal #rh_independent_tag_filter_scan').length;
+                    && $worldPrompt.find('#rh_world_info_prompt_close').length
+                    && $worldPrompt.find('#rh_world_info_prompt_enable').length
+                    && $worldPrompt.find('#rh_world_info_prompt_disable').length
+                    && $tagFilter.find('#rh_independent_tag_filter_scan').length
+                    && $tagFilter.find('#rh_independent_tag_filter_save').length;
             });
         if (existing.length === 1 && currentPanels.length === 1) { finishUiInit?.({ outcome: 'already-mounted' }); return; }
         // A hot reload may leave the old settings DOM alive even after manifest.json has updated.
@@ -431,10 +450,10 @@ export function initRabbitMirrorUI() {
     uiMountRetryCount = 0;
 
     const html = `
-<div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
+<div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.22</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.23</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -443,6 +462,15 @@ export function initRabbitMirrorUI() {
         <div class="rabbit-mirror-subnote" style="margin:-2px 0 0 26px;opacity:.72;font-size:12px;line-height:1.45;">使用说明：勾选自动注入开关，添加不发送小剧场正则即可。</div>
       </div>
 
+      <div id="rh_token_meter" class="rabbit-mirror-token-meter" aria-live="polite">
+        <div class="rabbit-mirror-token-meter-head">
+          <b>本轮兔子镜 Token</b>
+          <span data-rh-token-meter-main>尚无生成记录</span>
+        </div>
+        <div data-rh-token-meter-exact class="rabbit-mirror-token-meter-exact">下一轮生成后更新。</div>
+        <div data-rh-token-meter-detail class="rabbit-mirror-token-meter-detail">只统计兔子镜自己的 Prompt。</div>
+        <div class="rabbit-mirror-token-meter-note">Token 是估算值。</div>
+      </div>
 
       <details class="rabbit-mirror-section" open>
         <summary><span>兔子镜生成方式</span><span class="rabbit-mirror-section-note">二选一</span></summary>
@@ -459,7 +487,7 @@ export function initRabbitMirrorUI() {
       </details>
 
       <details class="rabbit-mirror-section" id="rh_independent_api_section" open>
-        <summary><span>独立 API</span><span class="rabbit-mirror-section-note">生成方式・读取层数・标签过滤</span></summary>
+        <summary><span>独立 API</span><span class="rabbit-mirror-section-note">连接・模型・高级设置</span></summary>
         <div class="rabbit-mirror-section-content">
           <div id="rh_independent_mode_status" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb,var(--SmartThemeBorderColor) 65%,transparent);opacity:.78;font-size:11px;line-height:1.45;">正在读取当前生成模式……</div>
           <div id="rh_independent_api_fields" style="display:grid;gap:9px;">
@@ -501,37 +529,16 @@ export function initRabbitMirrorUI() {
               <label>最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
             </div>
             <div style="padding:10px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:10px;">
-              <div style="font-weight:700;font-size:12px;margin-bottom:7px;">自动读取最近 X 层</div>
-              <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;">
-              <label>自动读取最近 <input id="rh_independent_context_layers" class="text_pole" type="number" min="1" max="200" step="1" inputmode="numeric" style="width:76px;"> 层</label>
-              </div>
-              <div style="opacity:.66;font-size:11px;line-height:1.45;margin-top:6px;">每次仍以生成当下的当前正文为准；小缓存只在本次请求内复用，完成后立即销毁。</div>
+              <div style="font-weight:700;font-size:12px;margin-bottom:5px;">独立 API 高级设置</div>
+              <div style="opacity:.68;font-size:11px;line-height:1.45;margin-bottom:8px;">读取层数、角色卡 / Persona、世界书和正文标签过滤都放在这里。</div>
+              <button id="rh_independent_advanced_open" class="menu_button" type="button" style="font-weight:700;">打开独立 API 高级设置</button>
             </div>
-            <div style="padding:10px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:10px;">
-              <div style="font-weight:700;font-size:12px;margin-bottom:7px;">检索与过滤 &lt;&gt; 正文标签</div>
-              <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;">
-                <button id="rh_independent_tag_filter_open" class="menu_button" type="button">扫描与管理正文标签</button>
-                <span id="rh_independent_tag_filter_summary" style="opacity:.72;font-size:11px;line-height:1.4;">尚未设置</span>
-              </div>
-              <div style="opacity:.66;font-size:11px;line-height:1.45;margin-top:6px;">扫描当前聊天已加载的正文源与可见正文；扫描结果由你勾选并保存后才会过滤。</div>
-            </div>
-            <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议 <b>1.0</b>；独立 API 会先过滤历史兔子镜和你指定的标签区块，只读取聊天可见正文，不读取模型 reasoning / reasoning_content / thoughts；再读取最近 X 层聊天。过滤只作用于发给副 API 的临时副本，不改酒馆正文。无论填写多少，仍受 12,000 字符聊天正文、20,000 字符上下文和 32,000 字符完整请求上限保护。</div>
+            <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议 <b>1.0</b>。副 API 只读取你允许的可见内容；历史兔子镜、隐藏推理和你勾选过滤的标签不会发送。过滤不会改酒馆正文；内容太长时会自动裁剪（聊天正文 12,000 / 上下文 20,000 / 完整请求 32,000 字符）。</div>
             <div id="rh_independent_api_diagnostic" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);opacity:.78;font-size:11px;line-height:1.5;word-break:break-word;">最近请求：暂无记录</div>
             <div style="opacity:.66;font-size:11px;line-height:1.45;">一键配置时不保存 API Key；旧手动模式仍按原逻辑保存在当前 SillyTavern 扩展设置里。</div>
           </div>
         </div>
       </details>
-
-
-      <div id="rh_token_meter" class="rabbit-mirror-token-meter" aria-live="polite">
-        <div class="rabbit-mirror-token-meter-head">
-          <b>本轮兔子镜 Token</b>
-          <span data-rh-token-meter-main>尚无生成记录</span>
-        </div>
-        <div data-rh-token-meter-exact class="rabbit-mirror-token-meter-exact">下一轮生成后更新。</div>
-        <div data-rh-token-meter-detail class="rabbit-mirror-token-meter-detail">只统计兔子镜自己的 Prompt。</div>
-        <div class="rabbit-mirror-token-meter-note">Token 是估算值。</div>
-      </div>
 
       <details class="rabbit-mirror-section rabbit-mirror-tools">
         <summary><span>工具与维护</span><span class="rabbit-mirror-section-note">正则・清理・重置</span></summary>
@@ -598,7 +605,7 @@ export function initRabbitMirrorUI() {
             <button class="menu_button rh-advanced-choice" type="button" data-page="generation" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🎛️ 生成与抽取</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">抽取模式、参考内容、世界观锁与冷却</span></button>
             <button class="menu_button rh-advanced-choice" type="button" data-page="visual" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🎨 个性化视觉提示词</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">额外视觉偏好、避雷与通用视觉规则</span></button>
             <button class="menu_button rh-advanced-choice" type="button" data-page="memory" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🧠 共同回忆资料来源</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">扫描并选择可读取的记忆资料接口</span></button>
-            <button class="menu_button rh-advanced-choice" type="button" data-page="worldinfo" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">📚 独立 API 世界书</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">开关世界书读取并选择当前聊天相关世界书</span></button>
+            <button class="menu_button rh-advanced-choice" type="button" data-page="worldinfo" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🔌 独立 API</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">读取范围、角色 / Persona、世界书与正文标签</span></button>
             <button class="menu_button rh-advanced-choice" type="button" data-page="repair" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🐈‍⬛🐇 挨打猫与维修兔</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">美化反馈、维修兔与自动巡逻</span></button>
           </div>
 
@@ -661,9 +668,28 @@ export function initRabbitMirrorUI() {
             <div id="rh_memory_scan_results" style="margin-top:8px;"></div>
           </div>
 
-          <div id="rh_advanced_page_worldinfo" class="rh-advanced-page" data-title="独立 API 世界书" style="display:none;">
+          <div id="rh_advanced_page_worldinfo" class="rh-advanced-page" data-title="独立 API" style="display:none;">
             <div style="padding:10px 11px;margin-bottom:12px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:12px;background:color-mix(in srgb,currentColor 5%,transparent);">
-              <label class="checkbox_label" style="font-weight:700;"><input id="rh_independent_read_global_world_info" type="checkbox"> 读取世界书</label>
+              <div style="font-weight:700;font-size:12px;margin-bottom:7px;">读取范围</div>
+              <label>最近 <input id="rh_independent_context_layers" class="text_pole" type="number" min="1" max="200" step="1" inputmode="numeric" style="width:76px;"> 层可见聊天正文</label>
+              <div class="rabbit-mirror-subnote" style="margin:6px 0 0;opacity:.72;font-size:11px;line-height:1.5;">只读取最近 X 层可见正文。历史兔子镜和隐藏推理始终不会发送；小缓存只在本次请求内复用，完成后立即销毁。</div>
+            </div>
+            <div style="padding:10px 11px;margin-bottom:12px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:12px;background:color-mix(in srgb,currentColor 5%,transparent);">
+              <div style="font-weight:700;font-size:12px;margin-bottom:7px;">附加资料</div>
+              <label class="checkbox_label"><input id="rh_independent_include_character_summary" type="checkbox"> 角色卡摘要（推荐开启）</label>
+              <label class="checkbox_label"><input id="rh_independent_include_persona_summary" type="checkbox"> Persona 摘要（推荐开启）</label>
+              <div class="rabbit-mirror-subnote" style="margin:4px 0 0 26px;opacity:.72;font-size:11px;line-height:1.5;">只带入紧凑摘要，不会把整张角色卡或其它隐藏提示整包塞给副 API。</div>
+            </div>
+            <div style="padding:10px 11px;margin-bottom:12px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:12px;background:color-mix(in srgb,currentColor 5%,transparent);">
+              <div style="font-weight:700;font-size:12px;margin-bottom:7px;">正文标签过滤</div>
+              <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;">
+                <button id="rh_independent_tag_filter_open" class="menu_button" type="button">扫描与管理正文标签</button>
+                <span id="rh_independent_tag_filter_summary" style="opacity:.72;font-size:11px;line-height:1.4;">尚未设置</span>
+              </div>
+              <div class="rabbit-mirror-subnote" style="margin:6px 0 0;opacity:.72;font-size:11px;line-height:1.5;">从上面的聊天正文副本里删掉你勾选的标签内容。只影响副 API 临时副本，不会改酒馆正文。</div>
+            </div>
+            <div style="padding:10px 11px;margin-bottom:12px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:12px;background:color-mix(in srgb,currentColor 5%,transparent);">
+              <label class="checkbox_label" style="font-weight:700;"><input id="rh_independent_read_global_world_info" type="checkbox"> 读取本轮已激活的世界书</label>
               <div class="rabbit-mirror-subnote" style="margin:2px 0 0 26px;opacity:.72;font-size:11px;line-height:1.5;">进入当前角色聊天后，优先显示酒馆为当前聊天加载过的角色／聊天／Persona／当前全局世界书；真正发送时仍只复用主生成本轮实际激活的条目，不会重新扫描或重掷概率。</div>
             </div>
             <div style="margin:7px 0 4px;font-size:12px;font-weight:700;opacity:.86;">当前聊天相关世界书</div>
@@ -704,7 +730,7 @@ export function initRabbitMirrorUI() {
 <div id="rh_world_info_prompt_modal" role="dialog" aria-modal="true" aria-label="独立 API 世界书设置" aria-hidden="true" style="display:none;position:fixed;inset:0;z-index:2147483001;background:rgba(8,10,14,.62);box-sizing:border-box;padding-top:max(24px,calc(env(safe-area-inset-top) + 14px));padding-right:max(12px,calc(env(safe-area-inset-right) + 8px));padding-bottom:max(24px,calc(env(safe-area-inset-bottom) + 14px));padding-left:max(12px,calc(env(safe-area-inset-left) + 8px));align-items:center;justify-content:center;overflow:hidden;pointer-events:auto;">
   <div style="width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 76px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:hidden;background:var(--SmartThemeBlurTintColor,#202226);color:var(--SmartThemeBodyColor,#ddd);border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:18px;box-shadow:0 22px 70px rgba(0,0,0,.42);display:flex;flex-direction:column;">
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 40px;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent);">
-      <div><b style="font-size:15px;">独立 API 是否读取世界书？</b><div style="opacity:.65;font-size:11px;line-height:1.35;margin-top:2px;">之后也可以在「高级设置 → 独立 API 世界书」随时修改</div></div>
+      <div><b style="font-size:15px;">独立 API 是否读取世界书？</b><div style="opacity:.65;font-size:11px;line-height:1.35;margin-top:2px;">之后也可以在「高级设置 → 独立 API」随时修改</div></div>
       <button id="rh_world_info_prompt_close" class="menu_button" type="button" aria-label="关闭" style="width:38px;min-width:38px;height:38px;padding:0;border-radius:12px;font-size:20px;line-height:1;">×</button>
     </div>
     <div style="padding:15px;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;">
@@ -827,6 +853,8 @@ export function initRabbitMirrorUI() {
     };
     renderIndependentConnectionStatus();
     checked('#rh_independent_read_global_world_info', settings.independentReadGlobalWorldInfo === true);
+    checked('#rh_independent_include_character_summary', settings.independentReadCharacterCardSummary !== false);
+    checked('#rh_independent_include_persona_summary', settings.independentReadPersonaSummary !== false);
     installWorldInfoBookVisibilityObserver();
     const syncGenerationModeFields = () => {
         const independent = getSettings().generationSource === 'independent';
@@ -852,7 +880,7 @@ export function initRabbitMirrorUI() {
     globalThis.__rabbitMirrorBlacklistUiCleanup = () => globalThis.removeEventListener?.(BLACKLIST_CHANGED_EVENT, blacklistListener);
     checked('#rh_feedback_cat', settings.feedbackCatEnabled);
     checked('#rh_maintenance_rabbit', settings.maintenanceRabbitEnabled);
-    checked('#rh_maintenance_auto_safe', settings.maintenanceRabbitAutoSafeEnabled);
+    checked('#rh_maintenance_auto_safe', settings.maintenanceRabbitAutoSafeEnabled === true && settings.maintenanceRabbitAutoSafeConsent === true);
     $('#rh_sampling_mode').val(settings.samplingMode || 'classic');
     $('#rh_raw_policy').val(settings.rawPolicy || 'balanced');
     checked('#rh_user_directive', settings.userDirectivePriority);
@@ -895,10 +923,9 @@ export function initRabbitMirrorUI() {
     $('#rh_advanced_modal').on('click', function (event) {
         if (event.target === this) closeAdvancedModal();
     });
-    $('.rh-advanced-choice').on('click', function () {
-        const page = String($(this).data('page') || '');
+    const showAdvancedPage = page => {
         const target = $(`#rh_advanced_page_${page}`);
-        if (!target.length) return;
+        if (!target.length) return false;
         $('#rh_advanced_menu').hide();
         $('.rh-advanced-page').hide();
         target.show();
@@ -908,6 +935,15 @@ export function initRabbitMirrorUI() {
         const scroll = document.getElementById('rh_advanced_scroll');
         if (scroll) scroll.scrollTop = 0;
         if (page === 'worldinfo') renderWorldInfoBookSettings({ current: true, all: false });
+        return true;
+    };
+    $('.rh-advanced-choice').on('click', function () {
+        showAdvancedPage(String($(this).data('page') || ''));
+    });
+    $('#rh_independent_advanced_open').on('click', () => {
+        showAdvancedMenu();
+        setAdvancedOpen(true);
+        showAdvancedPage('worldinfo');
     });
 
     const setWorldInfoPromptOpen = open => {
@@ -1022,6 +1058,12 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_read_global_world_info').on('change', e => {
         updateSettings({ independentReadGlobalWorldInfo: e.target.checked === true });
         toastr?.info?.(e.target.checked ? '已开启世界书读取，从下一轮生效。' : '已关闭世界书读取，从下一轮生效。');
+    });
+    $('#rh_independent_include_character_summary').on('change', e => {
+        updateSettings({ independentReadCharacterCardSummary: e.target.checked === true });
+    });
+    $('#rh_independent_include_persona_summary').on('change', e => {
+        updateSettings({ independentReadPersonaSummary: e.target.checked === true });
     });
     $('#rh_world_info_all_books').on('toggle', function () {
         if (this.open) renderWorldInfoBookSettings({ current: false, all: true });
@@ -1194,7 +1236,7 @@ export function initRabbitMirrorUI() {
         const enabled = !!e.target.checked;
         updateSettings({
             maintenanceRabbitEnabled: enabled,
-            ...(enabled ? {} : { maintenanceRabbitAutoSafeEnabled: false }),
+            ...(enabled ? {} : { maintenanceRabbitAutoSafeEnabled: false, maintenanceRabbitAutoSafeConsent: false }),
         });
         if (!enabled) {
             checked('#rh_maintenance_auto_safe', false);
@@ -1211,6 +1253,7 @@ export function initRabbitMirrorUI() {
         updateSettings({
             maintenanceRabbitEnabled: enabled ? true : getSettings().maintenanceRabbitEnabled,
             maintenanceRabbitAutoSafeEnabled: enabled,
+            maintenanceRabbitAutoSafeConsent: enabled,
         });
         configureMaintenanceAutoSafeMode(enabled);
         refreshMaintenanceRabbits();
@@ -1443,6 +1486,7 @@ export function initRabbitMirrorUI() {
         resetSettings();
         location.reload();
     });
+    $('#rabbit_mirror_theater_settings').attr('data-rabbit-mirror-ui-ready', 'true');
     finishUiInit?.({ outcome: 'mounted' });
 }
 

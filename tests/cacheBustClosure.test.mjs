@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const RELEASE_COHORT = '1.4.9-subapitag2';
+const RELEASE_COHORT = '1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
 const REQUIRED_RELEASE_MODULES = [
     'src/settings.js',
     'src/tokenMeter.js',
@@ -19,6 +19,7 @@ const REQUIRED_RELEASE_MODULES = [
     'src/ui.js',
     'src/outputSanitizer.js',
     'src/injector.js',
+    'src/independentProfileSelectorHotfix.js',
     'src/promptBuilder.js',
     'src/visualScanner.js',
     'src/blacklist.js',

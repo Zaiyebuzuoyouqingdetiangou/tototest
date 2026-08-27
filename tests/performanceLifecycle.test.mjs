@@ -33,7 +33,14 @@ assert.match(profile, /rabbitMirrorProfilesReady/);
 const startupGuard = sanitizer.match(/function initializeMaintenanceAutoSafeStartupGuard\(\) \{[\s\S]*?\n\}/)?.[0] || '';
 assert.ok(startupGuard);
 assert.doesNotMatch(startupGuard, /captureMaintenanceAutoSafeBaseline\(\)/, 'startup guard must not rescan the full chat');
-assert.match(sanitizer, /captureStartupBaseline[\s\S]*maintenanceAutoSafeSignature\(root\)/);
+assert.doesNotMatch(sanitizer, /captureStartupBaseline/, 'startup must not retain a hidden full-chat maintenance baseline pass');
+assert.doesNotMatch(sanitizer, /function captureMaintenanceAutoSafeBaseline/, 'full-chat automatic-repair baseline helper must stay removed');
+const autoSafeMessageScheduler = sanitizer.slice(
+    sanitizer.indexOf('function scheduleMaintenanceAutoSafeForMessageIndex'),
+    sanitizer.indexOf('function installMaintenanceAutoSafeOpenPatrol'),
+);
+assert.ok(autoSafeMessageScheduler, 'current-message automatic patrol scheduler must exist');
+assert.match(autoSafeMessageScheduler, /if \(!isMaintenanceAutoSafeEnabled\(\)\) return false;/, 'automatic patrol must be a no-op until the user explicitly opts in');
 
 assert.match(independent, /const STARTUP_SYNC_IMMEDIATE_MESSAGES=6/);
 assert.doesNotMatch(independent, /STARTUP_SYNC_CHUNK_MESSAGES/, 'cold startup must not pump the entire history');
@@ -58,11 +65,11 @@ assert.doesNotMatch(sanitizerInit, /\n\s*installMaintenanceRabbitsInChatDom\(\);
 const index = read('index.js');
 // multiface-step1 起 ui.js 进入本阶段 cache cohort：不再断言旧的 1.4.30.25 键，
 // 改为断言 cohort 完整性（详见 cacheBustClosure.test.mjs）。
-assert.match(index, /\.\/src\/ui\.js\?rmv=1\.4\.9-subapitag2/, 'SecurityFix3 UI parent must use its dedicated cache key');
+assert.match(index, /\.\/src\/ui\.js\?rmv=1\.4\.9-subapitag2-advancedui1/, 'AdvancedUI1 UI parent must use its dedicated cache key');
 assert.doesNotMatch(index, /\.\/src\/ui\.js\?rmv=1\.4\.30\.2[0-9]/, 'stale 1.4.30.x UI cache key must not survive');
 assert.match(index, /\.\/src\/checkedSelectorRepair\.js\?rmv=1\.4\.30\.26/, 'formal checked-selector repair must be present in the test baseline');
 assert.match(index, /\.\/src\/maintenanceRecommendationHotfix\.js\?rmv=1\.4\.5/, 'formal maintenance recommendation must be present in the test baseline');
-assert.equal(manifest.js, 'index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2');
-assert.equal(manifest.version, '1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2');
+assert.equal(manifest.js, 'index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1');
+assert.equal(manifest.version, '1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1');
 
 console.log('performance lifecycle tests passed');

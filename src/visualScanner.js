@@ -1,12 +1,12 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=1.4.9-subapitag2';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.4.9-subapitag2';
-import { getSettings } from './settings.js?rmv=1.4.9-subapitag2';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { getSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
 import {
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.4.9-subapitag2';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.4.30.22';
+} from './generationGuard.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.4.30.23';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';

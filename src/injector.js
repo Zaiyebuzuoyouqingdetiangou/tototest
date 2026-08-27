@@ -1,14 +1,14 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.4.9-subapitag2';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.4.9-subapitag2';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.4.9-subapitag2';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.9-subapitag2';
+} from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -18,6 +18,7 @@ let promptBuilderPromise = null;
 let generationGuardPromise = null;
 
 const INDEPENDENT_GENERATION_INTENTS_KEY = '__rabbitMirrorIndependentGenerationIntents';
+const INDEPENDENT_GENERATION_INTENT_BRIDGE_CLEANUP_KEY = '__rabbitMirrorIndependentGenerationIntentBridgeCleanup';
 const INDEPENDENT_GENERATION_INTENT_TTL_MS = 5 * 60 * 1000;
 const INDEPENDENT_GENERATION_INTENT_MAX = 8;
 const INDEPENDENT_GENERATION_INTENT_TYPES = new Set(['normal', 'continue', 'swipe', 'regenerate']);
@@ -46,7 +47,9 @@ function currentIndependentGenerationIntents() {
     const source = Array.isArray(globalThis[INDEPENDENT_GENERATION_INTENTS_KEY])
         ? globalThis[INDEPENDENT_GENERATION_INTENTS_KEY]
         : [];
-    return source.filter(item => item && now - Number(item.startedAt || 0) <= INDEPENDENT_GENERATION_INTENT_TTL_MS);
+    const current = source.filter(item => item && now - Number(item.startedAt || 0) <= INDEPENDENT_GENERATION_INTENT_TTL_MS);
+    if (current.length !== source.length) globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = current;
+    return current;
 }
 
 function independentIntentCandidateIndex(intent, chat) {
@@ -82,15 +85,18 @@ function resolveIndependentIntentCompletionIndex(payload, chat) {
 }
 
 function markIndependentGenerationIntentCompleted(payload, reason = 'host-completed') {
+    const intents = currentIndependentGenerationIntents();
+    if (!intents.length) return false;
     const chat = currentIndependentIntentChat();
     const chatKey = String(getCurrentChatKey(chat) || '');
+    if (!chatKey || !intents.some(intent => String(intent?.chatKey || '') === chatKey)) return false;
     const index = resolveIndependentIntentCompletionIndex(payload, chat);
-    if (!chatKey || !Number.isInteger(index)) return false;
+    if (!Number.isInteger(index)) return false;
     const message = chat[index];
     const finalBodyHash = hashIndependentIntentText(message?.mes || '');
     if (!finalBodyHash || !String(message?.mes || '').trim()) return false;
     let changed = false;
-    const next = currentIndependentGenerationIntents().map(intent => {
+    const next = intents.map(intent => {
         if (String(intent.chatKey || '') !== chatKey || independentIntentCandidateIndex(intent, chat) !== index) return intent;
         changed = true;
         return Object.freeze({
@@ -139,6 +145,7 @@ function recordIndependentGenerationIntent(chat, type = '') {
 }
 
 export function initIndependentGenerationIntentBridge() {
+    try { globalThis[INDEPENDENT_GENERATION_INTENT_BRIDGE_CLEANUP_KEY]?.(); } catch {}
     destroyIndependentGenerationIntentBridge();
     const bindings = [
         [event_types?.GENERATION_ENDED, payload => markIndependentGenerationIntentCompleted(payload, 'generation-ended')],
@@ -151,6 +158,7 @@ export function initIndependentGenerationIntentBridge() {
             independentIntentBridgeSubscriptions.push({ event, handler });
         } catch {}
     }
+    globalThis[INDEPENDENT_GENERATION_INTENT_BRIDGE_CLEANUP_KEY] = destroyIndependentGenerationIntentBridge;
 }
 
 export function destroyIndependentGenerationIntentBridge({ clearIntents = false } = {}) {
@@ -158,6 +166,9 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
         try { eventSource?.off?.(event, handler); } catch {}
     }
     independentIntentBridgeSubscriptions = [];
+    if (globalThis[INDEPENDENT_GENERATION_INTENT_BRIDGE_CLEANUP_KEY] === destroyIndependentGenerationIntentBridge) {
+        try { delete globalThis[INDEPENDENT_GENERATION_INTENT_BRIDGE_CLEANUP_KEY]; } catch {}
+    }
     if (clearIntents) {
         try { delete globalThis[INDEPENDENT_GENERATION_INTENTS_KEY]; } catch {}
     }
@@ -165,7 +176,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.4.9-subapitag2').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -175,7 +186,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.4.9-subapitag2').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1').catch(error => {
             generationGuardPromise = null;
             throw error;
         });
@@ -211,7 +222,9 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         // Capture this exact host generation before returning so a fast model cannot
         // finish before the deferred event subscribers exist. Loading is fire-and-forget:
         // it never blocks or joins the host's paid main-generation request.
-        recordIndependentGenerationIntent(_chat, type);
+        if (settings.enabled && settings.autoRabbitMirrorInjection && settings.mode !== 'off') {
+            recordIndependentGenerationIntent(_chat, type);
+        }
         clearRabbitMirrorPrompt('independent-api', type);
         return;
     }

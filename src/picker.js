@@ -14,8 +14,8 @@ import {
     setPendingComboBatch,
     clearPendingComboBatch,
     clearPendingCombo,
-} from './storage.js?rmv=1.4.9-subapitag2';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.4.9-subapitag2';
+} from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
 
 function randomUnit() {
     try {
@@ -853,4 +853,3 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
     if (scopeKey) cachedPick = { scopeKey, payload };
     return payload;
 }
-

@@ -81,6 +81,8 @@ export const defaultSettings = Object.freeze({
     independentApiMaxTokens: 30000,
     independentContextMaxLayers: 20,
     independentContextExcludedTags: [...DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS],
+    independentReadCharacterCardSummary: true,
+    independentReadPersonaSummary: true,
     independentDisplayMode: 'external',
     independentReadGlobalWorldInfo: false,
     independentWorldInfoDisabledBooks: [],
@@ -101,7 +103,8 @@ export const defaultSettings = Object.freeze({
     rabbitMirrorFaceCount: 1,
     richFormatBias: false,
     maintenanceRabbitEnabled: true,
-    maintenanceRabbitAutoSafeEnabled: true,
+    maintenanceRabbitAutoSafeEnabled: false,
+    maintenanceRabbitAutoSafeConsent: false,
     feedbackCatEnabled: true,
     visualPromptEditingEnabled: false,
     visualPrompt: DEFAULT_VISUAL_PROMPT,
@@ -161,6 +164,8 @@ export function getSettings() {
         settings.independentContextMaxLayers = Math.max(1, Math.min(200, Number.isFinite(contextLayers) ? Math.round(contextLayers) : 20));
     }
     settings.independentContextExcludedTags = normalizeIndependentContextExcludedTags(settings.independentContextExcludedTags);
+    settings.independentReadCharacterCardSummary = settings.independentReadCharacterCardSummary !== false;
+    settings.independentReadPersonaSummary = settings.independentReadPersonaSummary !== false;
 
     if (settings.showCot === undefined && settings.showWonderland !== undefined) {
         settings.showCot = !!settings.showWonderland;
@@ -213,8 +218,13 @@ export function getSettings() {
         settings.maintenanceRabbitEnabled = legacyRescueWasEnabled || defaultSettings.maintenanceRabbitEnabled;
     }
     settings.maintenanceRabbitEnabled = !!settings.maintenanceRabbitEnabled;
-    settings.maintenanceRabbitAutoSafeEnabled = !!settings.maintenanceRabbitAutoSafeEnabled;
-    if (!settings.maintenanceRabbitEnabled) settings.maintenanceRabbitAutoSafeEnabled = false;
+    settings.maintenanceRabbitAutoSafeConsent = settings.maintenanceRabbitAutoSafeConsent === true;
+    settings.maintenanceRabbitAutoSafeEnabled = settings.maintenanceRabbitAutoSafeConsent === true
+        && settings.maintenanceRabbitAutoSafeEnabled === true;
+    if (!settings.maintenanceRabbitEnabled) {
+        settings.maintenanceRabbitAutoSafeEnabled = false;
+        settings.maintenanceRabbitAutoSafeConsent = false;
+    }
     settings.feedbackCatEnabled = settings.feedbackCatEnabled !== false;
     settings.visualPromptEditingEnabled = !!settings.visualPromptEditingEnabled;
     const normalizeVisualSetting = (value, fallback, maxChars) => {
@@ -249,6 +259,9 @@ export function updateSettings(patch) {
     const safePatch = patch && typeof patch === 'object' ? { ...patch } : {};
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentContextExcludedTags')) {
         safePatch.independentContextExcludedTags = normalizeIndependentContextExcludedTags(safePatch.independentContextExcludedTags);
+    }
+    for (const key of ['independentReadCharacterCardSummary', 'independentReadPersonaSummary']) {
+        if (Object.prototype.hasOwnProperty.call(safePatch, key)) safePatch[key] = safePatch[key] !== false;
     }
     const keys = Object.keys(safePatch).slice(0, 24);
     const changedKeys = keys.filter(key => {

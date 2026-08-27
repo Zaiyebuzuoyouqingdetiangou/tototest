@@ -130,6 +130,7 @@ const injectorIntentStart = injectorSource.indexOf("const INDEPENDENT_GENERATION
 const injectorIntentEnd = injectorSource.indexOf('\nfunction loadPromptBuilder()', injectorIntentStart);
 assert.ok(injectorIntentStart >= 0 && injectorIntentEnd > injectorIntentStart, 'lightweight intent bridge block must exist');
 const liveRawChat = [{ is_user: false, mes: 'RAW_CURRENT_ASSISTANT', swipe_id: 0 }];
+let rawContextReads = 0;
 const injectorSandbox = {
     Date: { now: () => 777 },
     Math,
@@ -141,7 +142,7 @@ const injectorSandbox = {
     event_types: {},
     getCurrentChatKey: () => 'chat:raw-proof',
     independentGenerationIntentSequence: 0,
-    globalThis: { SillyTavern: { getContext: () => ({ chat: liveRawChat }) } },
+    globalThis: { SillyTavern: { getContext: () => { rawContextReads += 1; return { chat: liveRawChat }; } } },
 };
 vm.createContext(injectorSandbox);
 vm.runInContext(`${injectorSource.slice(injectorIntentStart, injectorIntentEnd).replace(/^export /gm, '')}
@@ -156,5 +157,91 @@ assert.equal(injectorSandbox.globalThis.markIntentCompleted(0, 'character-render
 const completedIntent = injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents[0];
 assert.equal(completedIntent.finalIndex, 0);
 assert.equal(completedIntent.finalBodyHash, injectorSandbox.globalThis.intentHash('FINAL_RAW_ASSISTANT'), 'lightweight final-render proof must bind the exact final raw正文 hash');
+injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents = [];
+const readsAfterCompletion = rawContextReads;
+assert.equal(injectorSandbox.globalThis.markIntentCompleted(0, 'no-intent'), false);
+assert.equal(rawContextReads, readsAfterCompletion, 'host completion events with no pending intent must not read or scan the current chat');
+
+function extractFunction(sourceText, name) {
+    const start = sourceText.indexOf(`function ${name}(`);
+    const asyncStart = sourceText.indexOf(`async function ${name}(`);
+    const exportAsyncStart = sourceText.indexOf(`export async function ${name}(`);
+    const actualStart = [start, asyncStart, exportAsyncStart].filter(value => value >= 0).sort((a, b) => a - b)[0];
+    assert.ok(Number.isInteger(actualStart), `missing ${name}`);
+    const bodyStart = sourceText.indexOf('{', actualStart);
+    let depth = 0;
+    for (let index = bodyStart; index < sourceText.length; index += 1) {
+        if (sourceText[index] === '{') depth += 1;
+        else if (sourceText[index] === '}') {
+            depth -= 1;
+            if (depth === 0) return sourceText.slice(actualStart, index + 1).replace(/^export\s+/, '');
+        }
+    }
+    throw new Error(`unterminated ${name}`);
+}
+
+{
+    const activeHandlers = new Map();
+    let onCount = 0;
+    let offCount = 0;
+    let oldCleanupCalls = 0;
+    const eventSource = {
+        on(event, handler) { onCount += 1; activeHandlers.set(handler, event); },
+        off(_event, handler) { offCount += 1; activeHandlers.delete(handler); },
+    };
+    const bridgeSandbox = {
+        Date: { now: () => 777 }, Math, Number, Object, String, Set,
+        eventSource,
+        event_types: { GENERATION_ENDED: 'END', GENERATION_STOPPED: 'STOP', CHARACTER_MESSAGE_RENDERED: 'RENDER' },
+        getCurrentChatKey: () => 'chat:bridge',
+        globalThis: { __rabbitMirrorIndependentGenerationIntentBridgeCleanup: () => { oldCleanupCalls += 1; } },
+    };
+    vm.createContext(bridgeSandbox);
+    vm.runInContext(`${injectorSource.slice(injectorIntentStart, injectorIntentEnd).replace(/^export /gm, '')}
+globalThis.initBridge=initIndependentGenerationIntentBridge;
+globalThis.destroyBridge=destroyIndependentGenerationIntentBridge;`, bridgeSandbox);
+    bridgeSandbox.globalThis.initBridge();
+    assert.equal(oldCleanupCalls, 1, 'new cache-busted module must hand off cleanup to the previous module');
+    assert.equal(activeHandlers.size, 3);
+    bridgeSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents = [{ id: 'keep-me', startedAt: 777, type: 'normal' }];
+    bridgeSandbox.globalThis.initBridge();
+    assert.equal(activeHandlers.size, 3, 'repeated init must replace, not stack, the three host listeners');
+    assert.equal(offCount, 3);
+    assert.equal(bridgeSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents.length, 1, 'hot update cleanup must preserve pending intent proof');
+    bridgeSandbox.globalThis.destroyBridge({ clearIntents: true });
+    assert.equal(activeHandlers.size, 0);
+    assert.equal(onCount, 6);
+    assert.equal(offCount, 6);
+    assert.equal(bridgeSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents, undefined);
+}
+
+{
+    let settings = { generationSource: 'independent', enabled: false, autoRabbitMirrorInjection: true, mode: 'random' };
+    let recordCount = 0;
+    let clearCount = 0;
+    const interceptorSandbox = {
+        globalThis: {},
+        getSettings: () => settings,
+        recordIndependentGenerationIntent: () => { recordCount += 1; },
+        clearRabbitMirrorPrompt: () => { clearCount += 1; },
+    };
+    vm.createContext(interceptorSandbox);
+    vm.runInContext(`${extractFunction(injectorSource, 'rabbitMirrorGenerateInterceptor')}
+globalThis.intercept=rabbitMirrorGenerateInterceptor;`, interceptorSandbox);
+    for (const patch of [
+        { enabled: false, autoRabbitMirrorInjection: true, mode: 'random' },
+        { enabled: true, autoRabbitMirrorInjection: false, mode: 'random' },
+        { enabled: true, autoRabbitMirrorInjection: true, mode: 'off' },
+    ]) {
+        settings = { generationSource: 'independent', ...patch };
+        await interceptorSandbox.globalThis.intercept([], 0, null, 'normal');
+    }
+    assert.equal(recordCount, 0, 'disabled independent generation must not wake the deferred runtime');
+    assert.equal(clearCount, 3, 'disabled independent generation must still clear any stale main prompt');
+    settings = { generationSource: 'independent', enabled: true, autoRabbitMirrorInjection: true, mode: 'random' };
+    await interceptorSandbox.globalThis.intercept([], 0, null, 'normal');
+    assert.equal(recordCount, 1);
+    assert.equal(clearCount, 4);
+}
 
 console.log('independent operation lease: one paid dispatch per host-operation epoch passed');

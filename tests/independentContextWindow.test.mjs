@@ -46,6 +46,7 @@ globalThis.__strip = stripHistoricalRabbitMirrorBlocks;
 globalThis.__bundle = contextBundle;
 globalThis.__reader = createIndependentVisibleTextReader;
 globalThis.__stripConfigured = stripConfiguredIndependentTagBlocks;
+globalThis.__discoverText = discoverIndependentContextTagNamesInText;
 globalThis.__discoverTags = discoverIndependentContextTagsFromMessage;
 globalThis.__verifiedSourceTags = verifiedSourceTagFilteringForLiveText;`, sandbox);
 
@@ -53,6 +54,7 @@ const strip = sandbox.globalThis.__strip;
 const bundle = sandbox.globalThis.__bundle;
 const createReader = sandbox.globalThis.__reader;
 const stripConfigured = sandbox.globalThis.__stripConfigured;
+const discoverText = sandbox.globalThis.__discoverText;
 const discoverTags = sandbox.globalThis.__discoverTags;
 const verifiedSourceTags = sandbox.globalThis.__verifiedSourceTags;
 
@@ -133,9 +135,78 @@ const verifiedSourceTags = sandbox.globalThis.__verifiedSourceTags;
     const result = bundle(ctx, 0);
     assert.equal(result.layers, 1);
     assert.match(result.text, /ONE_VISIBLE_LAYER/);
+    assert.match(result.text, /【当前角色卡摘要】/);
+    assert.match(result.text, /【当前 Persona 摘要】/);
     assert.doesNotMatch(result.text, /AUTHOR_NOTE_SHOULD_NOT_LEAK|EXTENSION_PROMPT_SHOULD_NOT_LEAK|CHAT_METADATA_SHOULD_NOT_LEAK|WORLD_INFO_SHOULD_NOT_LEAK/);
     assert.ok(result.text.length < 12000, `one-layer compact context should stay small, got ${result.text.length}`);
     assert.ok(result.referenceContextChars < 9000);
+}
+
+{
+    currentSettings = {
+        independentContextMaxLayers: 1,
+        independentContextExcludedTags: [],
+        independentReadCharacterCardSummary: false,
+        independentReadPersonaSummary: false,
+    };
+    const ctx = {
+        chat: [{ is_user: false, mes: 'VISIBLE_WITHOUT_REFERENCES' }],
+        characterId: 0,
+        characters: [{ name: 'CHARACTER_NAME', description: 'CHARACTER_DESCRIPTION' }],
+        name1: 'PERSONA_NAME',
+        powerUserSettings: { persona_description: 'PERSONA_DESCRIPTION' },
+    };
+    const result = bundle(ctx, 0);
+    assert.match(result.text, /VISIBLE_WITHOUT_REFERENCES/);
+    assert.doesNotMatch(result.text, /CHARACTER_NAME|CHARACTER_DESCRIPTION|PERSONA_NAME|PERSONA_DESCRIPTION/);
+    assert.equal(result.referenceContextChars, 0, 'disabling both optional summaries must keep visible chat while removing references');
+}
+
+for (const optionCase of [
+    { character: false, persona: true, absent: /CHARACTER_ONLY_SECRET/, present: /PERSONA_ONLY_SECRET/ },
+    { character: true, persona: false, absent: /PERSONA_ONLY_SECRET/, present: /CHARACTER_ONLY_SECRET/ },
+]) {
+    currentSettings = {
+        independentContextMaxLayers: 1,
+        independentContextExcludedTags: [],
+        independentReadCharacterCardSummary: optionCase.character,
+        independentReadPersonaSummary: optionCase.persona,
+    };
+    const result = bundle({
+        chat: [{ is_user: false, mes: 'VISIBLE_OPTION_MATRIX' }],
+        characterId: 0,
+        characters: [{ name: 'CHARACTER_ONLY_SECRET' }],
+        name1: 'PERSONA_ONLY_SECRET',
+    }, 0);
+    assert.match(result.text, /VISIBLE_OPTION_MATRIX/);
+    assert.match(result.text, optionCase.present);
+    assert.doesNotMatch(result.text, optionCase.absent);
+}
+
+{
+    const chat = Array.from({ length: 18 }, (_, index) => ({
+        is_user: index % 2 === 0,
+        mes: `LAYER_${index}_` + '正文'.repeat(700),
+    }));
+    const ctx = {
+        chat,
+        characterId: 0,
+        characters: [{ name: 'A', description: 'D'.repeat(5000), personality: 'P'.repeat(4000), scenario: 'S'.repeat(3000) }],
+        name1: 'U',
+        powerUserSettings: { persona_description: 'PERSONA'.repeat(2000) },
+    };
+    currentSettings = { independentContextMaxLayers: 18, independentContextExcludedTags: [] };
+    const preparedWorldInfo = { block: `\n\n【本轮已激活世界书】\n${'W'.repeat(5800)}` };
+    const enabled = bundle(ctx, chat.length - 1, null, preparedWorldInfo);
+    currentSettings = {
+        independentContextMaxLayers: 18,
+        independentContextExcludedTags: [],
+        independentReadCharacterCardSummary: false,
+        independentReadPersonaSummary: false,
+    };
+    const disabled = bundle(ctx, chat.length - 1, null, preparedWorldInfo);
+    assert.ok(disabled.transcriptChars > enabled.transcriptChars, 'when the 20k context budget is shared with world info, disabling optional summaries should release budget to more recent visible chat正文');
+    assert.ok(disabled.transcriptChars <= 12000 && disabled.text.length <= 20000);
 }
 
 {
@@ -166,6 +237,22 @@ const verifiedSourceTags = sandbox.globalThis.__verifiedSourceTags;
     assert.equal(stripConfigured('&amp;lt;thinking&amp;gt;TWO&amp;lt;/thinking&amp;gt;VISIBLE', selected).text, 'VISIBLE');
     assert.equal(stripConfigured('BEFORE<thinking note="unterminated>SECRET', selected).text, 'BEFORE', 'recognized malformed selected-tag prefix must fail closed');
     assert.equal(stripConfigured('&lt;ordinary&gt;KEEP&lt;/ordinary&gt;', selected).text, '&lt;ordinary&gt;KEEP&lt;/ordinary&gt;', 'unselected encoded tags must remain ordinary visible text');
+}
+
+{
+    const state = {};
+    const counts = discoverText('<Thinking data-x="1">A</Thinking>&lt;UpdateVariable&gt;B&lt;/UpdateVariable&gt;&amp;lt;UpdateVarible&amp;gt;C&amp;lt;/UpdateVarible&amp;gt;<analysis/><ANALYSIS>X</ANALYSIS>', new Map(), state);
+    assert.deepEqual([...counts.entries()], [
+        ['thinking', 1],
+        ['updatevariable', 1],
+        ['updatevarible', 1],
+        ['analysis', 2],
+    ], 'scan parser must count real, escaped and double-escaped custom opening tags case-insensitively');
+}
+
+{
+    const counts = discoverText('<div><span>LAYOUT</span></div><details><summary>X</summary></details><toto><private-tag>OLD_MIRROR</private-tag></toto><script><secret-tag>CODE</secret-tag></script><!-- <comment-tag> -->');
+    assert.deepEqual([...counts.entries()], [], 'ordinary layout, reserved RabbitMirror, executable subtrees and comments must not become scan candidates');
 }
 
 {
@@ -214,39 +301,86 @@ assert.match(independentSource, /MAX_INDEPENDENT_REQUEST_CHARS = 32000/);
 assert.match(independentSource, /const directiveStart=Math\.max\(0,index-3\)/);
 assert.match(independentSource, /mes:directiveStart\+offset===index\?targetVisibleAtStart\.text:readVisible\(message,directiveStart\+offset\)\.text/);
 assert.match(independentSource, /const targetVisibleAtStart=readVisible\(msg,index\);[\s\S]{0,220}本次未发送副 API 请求/, 'target正文 must be freshly checked before prompt selection and network dispatch');
+assert.match(independentSource, /const independentUserLead='请根据以下当前聊天可见正文、紧凑角色卡、Persona 与本轮已激活世界书生成兔子镜：';/, 'independent user lead must retain the protected baseline wording');
 assert.match(independentSource, /if\(live\.available\)[\s\S]{0,2200}source:'live-dom'/, 'browser context must prefer the rendered DOM');
 assert.match(independentSource, /normalizedIndependentVisibleComparison\(unfiltered\.text\)!==expected/, 'source tag boundaries may be used only after exact live-visible equivalence');
 assert.match(independentSource, /discoverIndependentContextTagsFromMessage\(chat\[messageIndex\]/, 'tag scan must map each mounted current-chat body back to its current message正文 source');
 assert.match(independentSource, /if\(typeof document!=='undefined'\) return \{text:'',filteredRabbitMirrorChars:0,filteredExcludedTagChars:0,filteredExcludedTags:\[\],source:'not-rendered'\}/, 'non-rendered browser history must fail closed');
 assert.match(independentSource, /DETAILS' && !node\.open/, 'closed details bodies must not enter independent context');
 assert.match(independentSource, /\.displayNone, \.display-none, \.hidden, \.invisible/, 'common host hidden classes must be excluded');
+const tagScanStart = independentSource.indexOf('async function scanCurrentChatIndependentContextTags');
+const tagScanEnd = independentSource.indexOf('function stripInvisibleIndependentContextMarkup', tagScanStart);
+assert.ok(tagScanStart >= 0 && tagScanEnd > tagScanStart, 'bounded current-chat tag scanner must exist');
+const tagScanSource = independentSource.slice(tagScanStart, tagScanEnd);
+assert.match(tagScanSource, /querySelectorAll\('\.mes\[mesid\] \.mes_text'\)/, 'scanner must stay inside rendered message bodies');
+assert.match(tagScanSource, /owner\.parentElement===chatRoot && owner\.querySelector\?\.\('\.mes_text'\)===body/, 'scanner must accept only the primary body of direct current-chat messages');
+assert.match(tagScanSource, /INDEPENDENT_TAG_SCAN_MAX_MESSAGES/);
+assert.match(tagScanSource, /INDEPENDENT_TAG_SCAN_MAX_NODES/);
+assert.match(tagScanSource, /INDEPENDENT_TAG_SCAN_MAX_TEXT_CHARS/);
+assert.match(independentSource, /INDEPENDENT_TAG_SCAN_SKIP_CODE_SUBTREES=new Set\(\['code','pre','textarea','kbd','samp'\]\)/, 'code examples must not become scan candidates');
+assert.match(tagScanSource, /await maybeYield/, 'large scans must yield between bounded slices');
+assert.match(tagScanSource, /signal\?\.aborted/);
+assert.doesNotMatch(tagScanSource, /reasoning_content|\.reasoning\b|\.thoughts\b/, 'scanner may map mounted bodies to chat records but must never read reasoning fields');
+assert.doesNotMatch(tagScanSource, /innerHTML|insertAdjacentHTML|querySelector\(`[^`]*\$\{(?:tag|name)/, 'discovered names must not enter HTML or dynamic selectors');
 
 assert.match(settingsSource, /independentContextMaxLayers:\s*20/);
 assert.match(settingsSource, /independentContextExcludedTags:\s*\[\.\.\.DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS\]/);
+assert.match(settingsSource, /independentReadCharacterCardSummary:\s*true/);
+assert.match(settingsSource, /independentReadPersonaSummary:\s*true/);
+assert.match(settingsSource, /independentReadCharacterCardSummary\s*=\s*settings\.independentReadCharacterCardSummary\s*!==\s*false/);
+assert.match(settingsSource, /independentReadPersonaSummary\s*=\s*settings\.independentReadPersonaSummary\s*!==\s*false/);
 assert.match(settingsSource, /INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT\s*=\s*32/);
 assert.match(settingsSource, /memoryScanEnabled:\s*false/);
 assert.match(settingsSource, /memoryProviderIds:\s*\[\]/);
 assert.match(settingsSource, /memoryMaxChars:\s*2200/);
 assert.match(settingsSource, /Math\.max\(1,\s*Math\.min\(200,/);
 assert.match(uiSource, /id="rh_independent_context_layers"/);
+assert.match(uiSource, /id="rh_independent_include_character_summary"/);
+assert.match(uiSource, /id="rh_independent_include_persona_summary"/);
+assert.match(uiSource, /checked\('#rh_independent_include_character_summary',\s*settings\.independentReadCharacterCardSummary\s*!==\s*false\)/);
+assert.match(uiSource, /checked\('#rh_independent_include_persona_summary',\s*settings\.independentReadPersonaSummary\s*!==\s*false\)/);
+assert.match(uiSource, /\$\('#rh_independent_include_character_summary'\)\.on\('change',[\s\S]{0,180}independentReadCharacterCardSummary/);
+assert.match(uiSource, /\$\('#rh_independent_include_persona_summary'\)\.on\('change',[\s\S]{0,180}independentReadPersonaSummary/);
 assert.match(uiSource, /id="rh_independent_tag_filter_modal"/);
 assert.match(uiSource, /扫描与管理正文标签/);
 assert.match(uiSource, /id="rh_independent_api_section"/);
+assert.match(uiSource, /id="rh_independent_advanced_open"/);
+assert.match(uiSource, /data-page="worldinfo"[^>]*>[\s\S]{0,220}🔌 独立 API/);
+assert.match(uiSource, /id="rh_advanced_page_worldinfo"[^>]*data-title="独立 API"/);
 assert.match(uiSource, /独立 API 生成方式/);
-assert.match(uiSource, /自动读取最近 X 层/);
-assert.match(uiSource, /检索与过滤 &lt;&gt; 正文标签/);
+assert.match(uiSource, /读取范围/);
+assert.match(uiSource, /正文标签过滤/);
 assert.match(uiSource, /id="rh_independent_tag_filter_scan"/);
 assert.match(uiSource, /扫描当前聊天已加载的正文源与可见正文/);
+assert.ok(uiSource.indexOf('id="rh_token_meter"') < uiSource.indexOf('<span>兔子镜生成方式<\/span>'), 'Token meter must sit below auto injection and above generation mode');
+const independentMainStart = uiSource.indexOf('id="rh_independent_api_section"');
+const advancedModalStart = uiSource.indexOf('id="rh_advanced_modal"', independentMainStart);
+assert.ok(independentMainStart >= 0 && advancedModalStart > independentMainStart);
+const independentMain = uiSource.slice(independentMainStart, advancedModalStart);
+assert.doesNotMatch(independentMain, /id="rh_independent_context_layers"|id="rh_independent_tag_filter_open"/, 'context range and tag filtering belong in independent advanced settings');
 assert.match(uiSource, /\$\('#rh_independent_api_fields'\)\.show\(\)/, 'independent settings must remain visible and preconfigurable in follow mode');
 assert.doesNotMatch(uiSource, /\$\('#rh_independent_api_fields'\)\.toggle\(independent\)/, 'generation source must no longer hide the independent settings section');
 const scanHandlerStart = uiSource.indexOf("$('#rh_independent_tag_filter_scan').on('click'");
 const scanHandlerEnd = uiSource.indexOf("$('#rh_independent_tag_filter_save').on('click'", scanHandlerStart);
 assert.ok(scanHandlerStart >= 0 && scanHandlerEnd > scanHandlerStart, 'tag scan and explicit save handlers must both exist');
 assert.doesNotMatch(uiSource.slice(scanHandlerStart, scanHandlerEnd), /updateSettings\(/, 'scanning must not auto-select or persist any tag');
+assert.match(uiSource.slice(scanHandlerEnd, scanHandlerEnd + 320), /normalizeIndependentContextExcludedTags/, 'explicit save must revalidate selected tag names');
+const completenessStart = uiSource.indexOf('const currentPanels = existing.filter');
+const completenessEnd = uiSource.indexOf('if (existing.length === 1', completenessStart);
+const completeness = uiSource.slice(completenessStart, completenessEnd);
+for (const id of [
+    'rh_independent_advanced_open',
+    'rh_independent_context_layers',
+    'rh_independent_include_character_summary',
+    'rh_independent_include_persona_summary',
+    'rh_independent_tag_filter_open',
+    'rh_independent_tag_filter_scan',
+    'rh_independent_tag_filter_save',
+]) assert.match(completeness, new RegExp(`#${id}\\b`), `same-version DOM completeness must require #${id}`);
 assert.match(uiSource, /不接受正则/);
-assert.match(uiSource, /先过滤历史兔子镜/);
-assert.match(uiSource, /不读取模型 reasoning \/ reasoning_content \/ thoughts/);
-assert.match(uiSource, /12,000 字符聊天正文、20,000 字符上下文和 32,000 字符完整请求上限保护/);
+assert.match(uiSource, /副 API 只读取你允许的可见内容/);
+assert.match(uiSource, /历史兔子镜、隐藏推理和你勾选过滤的标签不会发送/);
+assert.match(uiSource, /聊天正文 12,000 \/ 上下文 20,000 \/ 完整请求 32,000 字符/);
 assert.match(tokenSource, /independentContextLayers/);
 assert.match(tokenSource, /filteredRabbitMirrorChars/);
 assert.match(tokenSource, /filteredContextTagChars/);

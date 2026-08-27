@@ -1,3 +1,20 @@
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1
+
+- 修复跟随当前 API 的维修兔在同标题多镜面、快速切聊天／Swipe／编辑和重复点击时可能命中错误目标或并发执行的问题；延迟维修现在绑定 chat、消息、Swipe、正文指纹和镜面身份，失配即停止。
+- “只巡逻”和自动安全巡逻统一经过 2,200 节点复杂度预算；自动巡逻默认关闭，只有用户明确勾选同意后才接入当前新消息，不扫历史，不新增常驻轮询、Observer 或网络请求。
+- 所有维修模式的错误与部分失败统一附带问题类别 emoji（源码、样式、排版、交互、语言、API、诊断、执行或超限），独立维修保存失败也会直接提示。
+- 独立生成关闭时不再唤醒重运行时；宿主完成事件没有待处理 intent 时不读取聊天；cache-bust 热更新会先卸载旧监听，避免同一监听叠加。
+- 恢复受保护的副 API Prompt 前导句，并补齐 AdvancedUI1 控件的同版本 DOM 完整性检查；不改变随机池、美化 Prompt、Token 口径、请求次数、上下文上限或输出净化边界。
+- 补充维修目标隔离、错误 emoji、意图桥清理、标签扫描安全、角色卡／Persona 预算释放和 UI 完整性的定向非回归测试。
+
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1
+
+- 将“本轮兔子镜 Token”移动到“兔子镜自动注入”下方；只移动设置布局，不改变统计口径。
+- 独立 API 主区保留连接、模型、温度、最大输出与生成位置，将最近 X 层、角色卡／Persona 摘要、世界书和正文标签集中到“高级设置 → 独立 API”。
+- 新增默认开启的角色卡摘要与 Persona 摘要开关；只有用户明确关闭时才从副 API 临时上下文移除，对旧设置保持兼容。
+- 设置说明改成简短大白话；历史兔子镜、隐藏推理、作者注释、扩展提示与聊天元数据的硬边界不改。
+- 不新增常驻监听、轮询、定时器或网络请求；世界书完整列表与正文标签仍只在用户主动操作时按需读取。
+
 ## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2
 
 - 修复独立 API 在外层生成期间遇到工具调用／嵌套 `GENERATION_STARTED` 时清空 owner，导致结束事件无法授权、三轮甚至持续不发 POST 的断链；嵌套开始只复用已存在 owner，单独嵌套与 dry-run 仍默认拒绝。
