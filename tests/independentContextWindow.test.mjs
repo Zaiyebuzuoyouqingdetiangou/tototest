@@ -10,6 +10,7 @@ const independentSource = readFileSync(resolve(ROOT, 'src/independentApi.js'), '
 const settingsSource = readFileSync(resolve(ROOT, 'src/settings.js'), 'utf8');
 const uiSource = readFileSync(resolve(ROOT, 'src/ui.js'), 'utf8');
 const tokenSource = readFileSync(resolve(ROOT, 'src/tokenMeter.js'), 'utf8');
+const styleSource = readFileSync(resolve(ROOT, 'style.css'), 'utf8');
 
 const tagSettingStart = settingsSource.indexOf('export const INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT');
 const tagSettingEnd = settingsSource.indexOf('const LEGACY_FORMAT_ID_ALIASES', tagSettingStart);
@@ -352,7 +353,18 @@ assert.match(uiSource, /读取范围/);
 assert.match(uiSource, /正文标签过滤/);
 assert.match(uiSource, /id="rh_independent_tag_filter_scan"/);
 assert.match(uiSource, /扫描当前聊天已加载的正文源与可见正文/);
-assert.ok(uiSource.indexOf('id="rh_token_meter"') < uiSource.indexOf('<span>兔子镜生成方式<\/span>'), 'Token meter must sit below auto injection and above generation mode');
+const advancedLauncherMatches = uiSource.match(/id="rh_advanced_open"/g) || [];
+assert.equal(advancedLauncherMatches.length, 1, 'CleanUI must move, not duplicate, the global advanced launcher');
+assert.match(uiSource, /class="rabbit-mirror-primary-row"[\s\S]{0,900}id="rh_advanced_open"[^>]*aria-controls="rh_advanced_modal"/, 'the same advanced launcher must remain visible beside the primary toggle');
+assert.match(uiSource, /<details id="rh_token_meter" class="rabbit-mirror-token-meter"[^>]*>[\s\S]{0,260}<summary class="rabbit-mirror-token-meter-head">/, 'Token details must retain a compact always-visible summary');
+assert.ok(uiSource.indexOf('id="rh_advanced_open"') < uiSource.indexOf('id="rh_token_meter"'), 'advanced launcher must sit in the primary row above Token');
+assert.ok(uiSource.indexOf('id="rh_token_meter"') < uiSource.indexOf('<span>生成方式<\/span>'), 'Token meter must sit below auto injection and above generation mode');
+assert.match(uiSource, /<details class="rabbit-mirror-section">\s*<summary><span>生成方式<\/span>/, 'generation details must start collapsed to keep the main panel compact');
+assert.match(uiSource, /<details class="rabbit-mirror-section" id="rh_independent_api_section">/, 'independent API details must start collapsed but remain directly available');
+assert.match(uiSource, /class="rabbit-mirror-independent-advanced-row"[\s\S]{0,500}id="rh_independent_advanced_open"/, 'independent context/privacy shortcut must remain available');
+assert.match(styleSource, /rabbit-mirror-token-meter\[open\][\s\S]{0,320}transform:\s*rotate\(90deg\)/);
+assert.match(styleSource, /button\.menu_button\.rabbit-mirror-advanced-launch/);
+assert.doesNotMatch(styleSource, /#f7f1e7|#cdbda8/, 'Token meter must inherit the active SillyTavern theme instead of forcing the old beige card');
 const independentMainStart = uiSource.indexOf('id="rh_independent_api_section"');
 const advancedModalStart = uiSource.indexOf('id="rh_advanced_modal"', independentMainStart);
 assert.ok(independentMainStart >= 0 && advancedModalStart > independentMainStart);
@@ -369,6 +381,7 @@ const completenessStart = uiSource.indexOf('const currentPanels = existing.filte
 const completenessEnd = uiSource.indexOf('if (existing.length === 1', completenessStart);
 const completeness = uiSource.slice(completenessStart, completenessEnd);
 for (const id of [
+    'rh_advanced_open',
     'rh_independent_advanced_open',
     'rh_independent_context_layers',
     'rh_independent_include_character_summary',
@@ -377,6 +390,8 @@ for (const id of [
     'rh_independent_tag_filter_scan',
     'rh_independent_tag_filter_save',
 ]) assert.match(completeness, new RegExp(`#${id}\\b`), `same-version DOM completeness must require #${id}`);
+assert.match(completeness, /rabbit-mirror-primary-row/, 'same-version DOM completeness must require the CleanUI primary row');
+assert.match(completeness, /#rh_token_meter > summary/, 'same-version DOM completeness must require the compact Token summary');
 assert.match(uiSource, /不接受正则/);
 assert.match(uiSource, /副 API 只读取你允许的可见内容/);
 assert.match(uiSource, /历史兔子镜、隐藏推理和你勾选过滤的标签不会发送/);

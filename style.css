@@ -114,7 +114,23 @@
     gap: 6px;
     margin-top: 10px;
 }
-.rabbit-mirror-toto-watermark{margin-left:8px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.45;border:1px solid var(--SmartThemeBorderColor);border-radius:999px;padding:1px 6px;vertical-align:middle;}
+.rabbit-mirror-settings .rabbit-mirror-drawer-header {
+    gap: 8px;
+}
+.rabbit-mirror-settings .rabbit-mirror-toto-watermark {
+    flex: 0 0 auto;
+    margin-left: auto;
+    margin-right: 2px;
+    padding: 1px 6px;
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor, currentColor) 72%, transparent);
+    border-radius: 999px;
+    font-size: 9px;
+    letter-spacing: .08em;
+    line-height: 1.35;
+    text-transform: uppercase;
+    opacity: .42;
+    vertical-align: middle;
+}
 
 toto[data-rabbit-mirror="true"] details {
     display: block;
@@ -171,17 +187,61 @@ toto[data-rabbit-mirror="true"] summary {
     min-width: 0;
 }
 
-/* 0.32.68 TEST：新增源码恢复链，针对 TH/高亮代码壳瞬时重绘当前显示层。 */
+/* 1.4.30.27 CleanUI1：主面板只重排既有入口与信息层级。 */
 .rabbit-mirror-settings .rabbit-mirror-primary-toggle {
-    padding: 2px 2px 8px;
+    box-sizing: border-box;
+    min-width: 0;
+    margin: 2px 0 8px;
+    padding: 10px;
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor, currentColor) 78%, transparent);
+    border-radius: 12px;
+    background: color-mix(in srgb, currentColor 4%, transparent);
+}
+.rabbit-mirror-settings .rabbit-mirror-primary-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+.rabbit-mirror-settings label.rabbit-mirror-enable-control {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 0;
+    margin: 0;
+}
+.rabbit-mirror-settings .rabbit-mirror-enable-control > input {
+    flex: 0 0 auto;
+    margin-top: 3px;
+}
+.rabbit-mirror-settings .rabbit-mirror-enable-copy {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    line-height: 1.35;
+}
+.rabbit-mirror-settings .rabbit-mirror-enable-copy > small {
+    font-size: 11px;
+    font-weight: 400;
+    opacity: .64;
+}
+.rabbit-mirror-settings button.menu_button.rabbit-mirror-advanced-launch {
+    flex: 0 0 auto;
+    min-height: 34px !important;
+    padding: 6px 10px !important;
+    border-radius: 999px !important;
+    font-size: 12px !important;
+    font-weight: 650 !important;
 }
 .rabbit-mirror-settings .rabbit-mirror-section {
     display: block;
     box-sizing: border-box;
     min-width: 0;
-    margin: 8px 0;
-    border: 1px solid var(--SmartThemeBorderColor);
-    border-radius: 8px;
+    margin: 6px 0;
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor, currentColor) 78%, transparent);
+    border-radius: 11px;
+    background: color-mix(in srgb, currentColor 2.5%, transparent);
     overflow: hidden;
 }
 .rabbit-mirror-settings .rabbit-mirror-section > summary {
@@ -190,10 +250,11 @@ toto[data-rabbit-mirror="true"] summary {
     gap: 8px;
     box-sizing: border-box;
     min-width: 0;
-    padding: 9px 10px;
+    min-height: 40px;
+    padding: 8px 10px;
     cursor: pointer;
     list-style: none;
-    font-weight: 600;
+    font-weight: 650;
     user-select: none;
 }
 .rabbit-mirror-settings .rabbit-mirror-section > summary::-webkit-details-marker {
@@ -207,13 +268,14 @@ toto[data-rabbit-mirror="true"] summary {
     line-height: 1;
     opacity: .68;
     transform: rotate(0deg);
-    transition: transform .16s ease;
+    transition: none;
 }
 .rabbit-mirror-settings .rabbit-mirror-section[open] > summary::after {
     transform: rotate(90deg);
 }
 .rabbit-mirror-settings .rabbit-mirror-section[open] > summary {
-    border-bottom: 1px solid var(--SmartThemeBorderColor);
+    border-bottom: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor, currentColor) 68%, transparent);
+    background: color-mix(in srgb, currentColor 2.5%, transparent);
 }
 .rabbit-mirror-settings .rabbit-mirror-section-note {
     min-width: 0;
@@ -228,8 +290,37 @@ toto[data-rabbit-mirror="true"] summary {
 .rabbit-mirror-settings .rabbit-mirror-section-content {
     box-sizing: border-box;
     min-width: 0;
-    padding: 2px 10px 10px;
+    padding: 3px 10px 11px;
     line-height: 1.55;
+}
+.rabbit-mirror-settings .rabbit-mirror-independent-advanced-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, currentColor 2.5%, transparent);
+}
+.rabbit-mirror-settings .rabbit-mirror-independent-advanced-copy {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    font-size: 12px;
+    line-height: 1.4;
+}
+.rabbit-mirror-settings .rabbit-mirror-independent-advanced-copy > span {
+    font-size: 11px;
+    opacity: .64;
+}
+.rabbit-mirror-settings #rh_independent_advanced_open {
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 5px 9px;
+    font-size: 11px;
+    font-weight: 650;
 }
 .rabbit-mirror-settings .rabbit-mirror-section .rabbit-mirror-regex-helper {
     min-width: 0;
@@ -466,27 +557,66 @@ toto[data-rabbit-mirror="true"] summary {
 }
 
 
-/* 0.33.86: per-generation RabbitMirror injection token estimate. */
+/* 1.4.30.27 CleanUI1：Token 总数常显，明细按需展开。 */
 .rabbit-mirror-token-meter {
-  margin: 10px 0 12px !important;
-  padding: 10px 12px !important;
-  border: 1px solid #cdbda8 !important;
-  border-radius: 8px !important;
-  background: #f7f1e7 !important;
-  color: #382f28 !important;
-  box-shadow: 0 1px 0 rgba(255,255,255,.82) inset, 0 2px 8px rgba(69,52,38,.08) !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  margin: 0 0 7px !important;
+  padding: 0 !important;
+  border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor, currentColor) 68%, transparent) !important;
+  border-radius: 10px !important;
+  background: color-mix(in srgb, currentColor 2.5%, transparent) !important;
+  color: inherit !important;
+  box-shadow: none !important;
   line-height: 1.45 !important;
+  overflow: hidden !important;
 }
 .rabbit-mirror-token-meter-head {
   display: flex !important;
-  align-items: baseline !important;
-  justify-content: space-between !important;
-  gap: 10px !important;
+  align-items: center !important;
+  gap: 8px !important;
+  box-sizing: border-box !important;
+  min-height: 36px !important;
+  padding: 7px 9px !important;
+  cursor: pointer !important;
+  list-style: none !important;
   flex-wrap: wrap !important;
+  user-select: none !important;
+}
+.rabbit-mirror-token-meter-head::-webkit-details-marker {
+  display: none !important;
+}
+.rabbit-mirror-token-meter-head::after {
+  content: '›' !important;
+  flex: 0 0 auto !important;
+  font-size: 16px !important;
+  line-height: 1 !important;
+  opacity: .55 !important;
+  transform: rotate(0deg) !important;
+}
+.rabbit-mirror-token-meter[open] > .rabbit-mirror-token-meter-head::after {
+  transform: rotate(90deg) !important;
+}
+.rabbit-mirror-token-meter[open] > .rabbit-mirror-token-meter-head {
+  border-bottom: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor, currentColor) 60%, transparent) !important;
+}
+.rabbit-mirror-token-meter-label {
+  flex: 0 0 auto !important;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+  opacity: .68 !important;
 }
 .rabbit-mirror-token-meter-head [data-rh-token-meter-main] {
+  flex: 1 1 170px !important;
+  min-width: 0 !important;
   font-weight: 700 !important;
   font-variant-numeric: tabular-nums !important;
+  text-align: right !important;
+  overflow-wrap: anywhere !important;
+}
+.rabbit-mirror-token-meter-body {
+  padding: 3px 9px 9px !important;
 }
 .rabbit-mirror-token-meter-exact,
 .rabbit-mirror-token-meter-detail,
@@ -495,9 +625,26 @@ toto[data-rabbit-mirror="true"] summary {
   font-size: 12px !important;
   overflow-wrap: anywhere !important;
 }
-.rabbit-mirror-token-meter-exact { color: #4a3f36 !important; opacity: 1 !important; }
-.rabbit-mirror-token-meter-detail { color: #65574b !important; opacity: 1 !important; }
-.rabbit-mirror-token-meter-note { color: #77685b !important; opacity: 1 !important; font-size: 11px !important; }
+.rabbit-mirror-token-meter-exact { color: inherit !important; opacity: .86 !important; }
+.rabbit-mirror-token-meter-detail { color: inherit !important; opacity: .7 !important; }
+.rabbit-mirror-token-meter-note { color: inherit !important; opacity: .56 !important; font-size: 11px !important; }
+
+@media (max-width: 420px) {
+  .rabbit-mirror-settings .rabbit-mirror-primary-row,
+  .rabbit-mirror-settings .rabbit-mirror-independent-advanced-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .rabbit-mirror-settings button.menu_button.rabbit-mirror-advanced-launch {
+    margin-left: 26px;
+  }
+  .rabbit-mirror-settings #rh_independent_advanced_open {
+    margin-left: auto;
+  }
+  .rabbit-mirror-settings .rabbit-mirror-section-note {
+    max-width: 46%;
+  }
+}
 
 
 /* RabbitMirror message-level native details external presentation (test). */

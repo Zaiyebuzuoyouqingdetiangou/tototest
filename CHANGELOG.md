@@ -1,5 +1,8 @@
-## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1
 
+- 设置主面板改为紧凑、主题自适应布局：同一个“高级设置”总入口整合到自动注入开关旁，不复制 ID、不改变弹窗和事件链。
+- Token 总数保持常显，原有精确范围与组成明细改为按需展开；统计口径及更新逻辑不变。
+- 独立 API 的读取内容入口压缩为横排，生成方式、独立 API、工具维护、收藏与黑名单分区默认收起并降低视觉权重；不新增动画、Observer、定时器、网络请求或聊天扫描。
 - 修复跟随当前 API 的维修兔在同标题多镜面、快速切聊天／Swipe／编辑和重复点击时可能命中错误目标或并发执行的问题；延迟维修现在绑定 chat、消息、Swipe、正文指纹和镜面身份，失配即停止。
 - “只巡逻”和自动安全巡逻统一经过 2,200 节点复杂度预算；自动巡逻默认关闭，只有用户明确勾选同意后才接入当前新消息，不扫历史，不新增常驻轮询、Observer 或网络请求。
 - 所有维修模式的错误与部分失败统一附带问题类别 emoji（源码、样式、排版、交互、语言、API、诊断、执行或超限），独立维修保存失败也会直接提示。

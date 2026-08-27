@@ -1,15 +1,15 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
-import { clearLastCombo } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
+import { clearLastCombo } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
 
-const SETTINGS_UI_VERSION = '1.4.30.23-subapitag2-advancedui1';
-const RUNTIME_VERSION = '1.4.30.23';
+const SETTINGS_UI_VERSION = '1.4.30.27-subapitag2-advancedui1-cleanui1';
+const RUNTIME_VERSION = '1.4.30.27';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -404,9 +404,11 @@ export function initRabbitMirrorUI() {
                     && $advanced.length === 1
                     && $worldPrompt.length === 1
                     && $tagFilter.length === 1
-                    && $panel.find('#rh_enabled').length
-                    && $panel.find('#rh_advanced_open').length
-                    && $panel.find('#rh_independent_advanced_open').length
+                    && $panel.find('#rh_enabled').length === 1
+                    && $panel.find('#rh_advanced_open').length === 1
+                    && $panel.find('#rh_independent_advanced_open').length === 1
+                    && $panel.find('.rabbit-mirror-primary-row').length === 1
+                    && $panel.find('#rh_token_meter > summary').length === 1
                     && $panel.find('#rh_blacklist_enabled').length
                     && $panel.find('#rh_favorite_summary').length
                     && $advanced.find('#rh_feedback_cat').length
@@ -452,28 +454,35 @@ export function initRabbitMirrorUI() {
     const html = `
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
-    <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.23</span>
+    <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.27</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
       <div class="rabbit-mirror-primary-toggle">
-        <label class="checkbox_label"><input id="rh_enabled" type="checkbox"> 兔子镜自动注入</label>
-        <div class="rabbit-mirror-subnote" style="margin:-2px 0 0 26px;opacity:.72;font-size:12px;line-height:1.45;">使用说明：勾选自动注入开关，添加不发送小剧场正则即可。</div>
-      </div>
-
-      <div id="rh_token_meter" class="rabbit-mirror-token-meter" aria-live="polite">
-        <div class="rabbit-mirror-token-meter-head">
-          <b>本轮兔子镜 Token</b>
-          <span data-rh-token-meter-main>尚无生成记录</span>
+        <div class="rabbit-mirror-primary-row">
+          <label class="checkbox_label rabbit-mirror-enable-control">
+            <input id="rh_enabled" type="checkbox">
+            <span class="rabbit-mirror-enable-copy"><b>兔子镜自动注入</b><small>随回复生成；首次使用请配置不发送正则。</small></span>
+          </label>
+          <button id="rh_advanced_open" class="menu_button rabbit-mirror-advanced-launch" type="button" aria-haspopup="dialog" aria-controls="rh_advanced_modal">高级设置</button>
         </div>
-        <div data-rh-token-meter-exact class="rabbit-mirror-token-meter-exact">下一轮生成后更新。</div>
-        <div data-rh-token-meter-detail class="rabbit-mirror-token-meter-detail">只统计兔子镜自己的 Prompt。</div>
-        <div class="rabbit-mirror-token-meter-note">Token 是估算值。</div>
       </div>
 
-      <details class="rabbit-mirror-section" open>
-        <summary><span>兔子镜生成方式</span><span class="rabbit-mirror-section-note">二选一</span></summary>
+      <details id="rh_token_meter" class="rabbit-mirror-token-meter" aria-live="polite">
+        <summary class="rabbit-mirror-token-meter-head">
+          <span class="rabbit-mirror-token-meter-label">本轮 Token</span>
+          <span data-rh-token-meter-main>尚无生成记录</span>
+        </summary>
+        <div class="rabbit-mirror-token-meter-body">
+          <div data-rh-token-meter-exact class="rabbit-mirror-token-meter-exact">下一轮生成后更新。</div>
+          <div data-rh-token-meter-detail class="rabbit-mirror-token-meter-detail">只统计兔子镜自己的 Prompt。</div>
+          <div class="rabbit-mirror-token-meter-note">Token 是估算值。</div>
+        </div>
+      </details>
+
+      <details class="rabbit-mirror-section">
+        <summary><span>生成方式</span><span class="rabbit-mirror-section-note">跟随 / 独立</span></summary>
         <div class="rabbit-mirror-section-content">
           <label class="checkbox_label"><input name="rh_generation_source" id="rh_generation_follow" type="radio" value="follow"> 跟随当前 API</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.72;font-size:12px;line-height:1.45;">跟着当前回复一起生成兔子镜。</div>
@@ -486,8 +495,8 @@ export function initRabbitMirrorUI() {
         </div>
       </details>
 
-      <details class="rabbit-mirror-section" id="rh_independent_api_section" open>
-        <summary><span>独立 API</span><span class="rabbit-mirror-section-note">连接・模型・高级设置</span></summary>
+      <details class="rabbit-mirror-section" id="rh_independent_api_section">
+        <summary><span>独立 API</span><span class="rabbit-mirror-section-note">连接 · 模型 · 上下文</span></summary>
         <div class="rabbit-mirror-section-content">
           <div id="rh_independent_mode_status" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb,var(--SmartThemeBorderColor) 65%,transparent);opacity:.78;font-size:11px;line-height:1.45;">正在读取当前生成模式……</div>
           <div id="rh_independent_api_fields" style="display:grid;gap:9px;">
@@ -528,10 +537,9 @@ export function initRabbitMirrorUI() {
               <label>温度 <input id="rh_independent_temperature" class="text_pole" type="number" min="0" max="2" step="0.1" style="width:82px;"></label>
               <label>最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
             </div>
-            <div style="padding:10px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:10px;">
-              <div style="font-weight:700;font-size:12px;margin-bottom:5px;">独立 API 高级设置</div>
-              <div style="opacity:.68;font-size:11px;line-height:1.45;margin-bottom:8px;">读取层数、角色卡 / Persona、世界书和正文标签过滤都放在这里。</div>
-              <button id="rh_independent_advanced_open" class="menu_button" type="button" style="font-weight:700;">打开独立 API 高级设置</button>
+            <div class="rabbit-mirror-independent-advanced-row">
+              <div class="rabbit-mirror-independent-advanced-copy"><b>读取内容与隐私</b><span>聊天层数、角色卡 / Persona、世界书与正文标签过滤</span></div>
+              <button id="rh_independent_advanced_open" class="menu_button" type="button">管理读取内容</button>
             </div>
             <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议 <b>1.0</b>。副 API 只读取你允许的可见内容；历史兔子镜、隐藏推理和你勾选过滤的标签不会发送。过滤不会改酒馆正文；内容太长时会自动裁剪（聊天正文 12,000 / 上下文 20,000 / 完整请求 32,000 字符）。</div>
             <div id="rh_independent_api_diagnostic" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);opacity:.78;font-size:11px;line-height:1.5;word-break:break-word;">最近请求：暂无记录</div>
@@ -541,7 +549,7 @@ export function initRabbitMirrorUI() {
       </details>
 
       <details class="rabbit-mirror-section rabbit-mirror-tools">
-        <summary><span>工具与维护</span><span class="rabbit-mirror-section-note">正则・清理・重置</span></summary>
+        <summary><span>工具与维护</span><span class="rabbit-mirror-section-note">正则 · 诊断 · 重置</span></summary>
         <div class="rabbit-mirror-section-content">
           <div class="rabbit-mirror-regex-helper">
             <div style="font-weight:600;margin-bottom:6px;">不发送小剧场正则</div>
@@ -570,7 +578,7 @@ export function initRabbitMirrorUI() {
       </details>
 
       <details id="rh_random_preference_section" class="rabbit-mirror-section">
-        <summary><span>黑名单和收藏室</span><span class="rabbit-mirror-section-note">随机偏好</span></summary>
+        <summary><span>收藏与黑名单</span><span class="rabbit-mirror-section-note">随机偏好</span></summary>
         <div class="rabbit-mirror-section-content">
           <div style="padding-bottom:10px;border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent);">
             <label class="checkbox_label" style="font-weight:700;"><input id="rh_blacklist_enabled" type="checkbox"> 🚫 启用抽签黑名单</label>
@@ -585,13 +593,6 @@ export function initRabbitMirrorUI() {
           </div>
         </div>
       </details>
-
-      <div class="rabbit-mirror-section" style="padding:10px 12px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-          <div><b>高级</b><div style="opacity:.68;font-size:11px;line-height:1.45;margin-top:2px;">抽取、参考内容、视觉、世界书、回忆资料、挨打猫与维修兔等集中在这里。</div></div>
-          <button id="rh_advanced_open" class="menu_button" type="button" style="font-weight:700;">打开高级设置</button>
-        </div>
-      </div>
 
       <div id="rh_advanced_modal" class="rabbit-mirror-advanced-modal" role="dialog" aria-modal="true" aria-label="兔子镜高级设置" aria-hidden="true" style="display:none;position:fixed;inset:0;z-index:2147483000;background:rgba(8,10,14,.62);box-sizing:border-box;padding-top:max(24px,calc(env(safe-area-inset-top) + 14px));padding-right:max(12px,calc(env(safe-area-inset-right) + 8px));padding-bottom:max(24px,calc(env(safe-area-inset-bottom) + 14px));padding-left:max(12px,calc(env(safe-area-inset-left) + 8px));align-items:center;justify-content:center;overflow:hidden;pointer-events:auto;">
         <div id="rh_advanced_modal_card" style="width:min(760px,calc(100vw - 24px));max-width:100%;max-height:88vh;max-height:calc(100dvh - 76px - env(safe-area-inset-top) - env(safe-area-inset-bottom));display:flex;flex-direction:column;min-height:0;overflow:hidden;background:var(--SmartThemeBlurTintColor,#202226);color:var(--SmartThemeBodyColor,#ddd);border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:18px;box-shadow:0 22px 70px rgba(0,0,0,.42);box-sizing:border-box;pointer-events:auto;">
