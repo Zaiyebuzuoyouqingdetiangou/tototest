@@ -46,13 +46,15 @@ globalThis.__strip = stripHistoricalRabbitMirrorBlocks;
 globalThis.__bundle = contextBundle;
 globalThis.__reader = createIndependentVisibleTextReader;
 globalThis.__stripConfigured = stripConfiguredIndependentTagBlocks;
-globalThis.__discoverTags = discoverIndependentContextTagNamesInText;`, sandbox);
+globalThis.__discoverTags = discoverIndependentContextTagsFromMessage;
+globalThis.__verifiedSourceTags = verifiedSourceTagFilteringForLiveText;`, sandbox);
 
 const strip = sandbox.globalThis.__strip;
 const bundle = sandbox.globalThis.__bundle;
 const createReader = sandbox.globalThis.__reader;
 const stripConfigured = sandbox.globalThis.__stripConfigured;
 const discoverTags = sandbox.globalThis.__discoverTags;
+const verifiedSourceTags = sandbox.globalThis.__verifiedSourceTags;
 
 {
     const source = '正文A<toto data-x="1"><style>.x{}</style>镜子1</toto>正文B<TOTO>镜子2</TOTO>正文C';
@@ -167,20 +169,24 @@ const discoverTags = sandbox.globalThis.__discoverTags;
 }
 
 {
-    const state = {};
-    const counts = discoverTags('<Thinking data-x="1">A</Thinking>&lt;UpdateVariable&gt;B&lt;/UpdateVariable&gt;&amp;lt;UpdateVarible&amp;gt;C&amp;lt;/UpdateVarible&amp;gt;<analysis/><ANALYSIS>X</ANALYSIS>', new Map(), state);
-    assert.deepEqual([...counts.entries()], [
-        ['thinking', 1],
-        ['updatevariable', 1],
-        ['updatevarible', 1],
-        ['analysis', 2],
-    ], 'scan parser must count real, escaped and double-escaped custom opening tags case-insensitively');
-    assert.equal(state.truncated, undefined);
+    const discovered = discoverTags({
+        mes: '<thinking>隐去</thinking><UpdateVariable name="x">1</UpdateVariable>\n`<fake>示例</fake>`',
+        extra: { display_text: '<content>正文</content><UpdateVarible>2</UpdateVarible>\n```html\n<demo>示例</demo>\n```' },
+        reasoning: '<reasoningsecret>绝不扫描</reasoningsecret>',
+    }, {}, 256000);
+    const names = [...discovered.counts.keys()].sort();
+    assert.deepEqual(names, ['content', 'thinking', 'updatevariable', 'updatevarible']);
+    assert.equal(discovered.counts.has('fake'), false, 'inline code examples must not become filter candidates');
+    assert.equal(discovered.counts.has('demo'), false, 'fenced code examples must not become filter candidates');
+    assert.equal(discovered.counts.has('reasoningsecret'), false, 'reasoning fields must never be scanned');
 }
 
 {
-    const counts = discoverTags('<div><span>LAYOUT</span></div><details><summary>X</summary></details><toto><private-tag>OLD_MIRROR</private-tag></toto><script><secret-tag>CODE</secret-tag></script><!-- <comment-tag> -->');
-    assert.deepEqual([...counts.entries()], [], 'ordinary layout, reserved RabbitMirror, executable subtrees and comments must not become scan candidates');
+    const selected = vm.runInContext('new Set(["thinking"])', sandbox);
+    const verified = verifiedSourceTags({ mes: 'A<thinking>SECRET</thinking>B' }, 'ASECRETB', selected);
+    assert.equal(verified.text, 'AB', 'a stripped wrapper may be recovered only when raw and live visible projections match exactly');
+    assert.deepEqual([...verified.filteredExcludedTags], ['thinking']);
+    assert.equal(verifiedSourceTags({ mes: 'A<thinking>SECRET</thinking>B' }, 'DIFFERENT', selected), null, 'source markup must not replace a mismatched live正文');
 }
 
 {
@@ -208,24 +214,12 @@ assert.match(independentSource, /MAX_INDEPENDENT_REQUEST_CHARS = 32000/);
 assert.match(independentSource, /const directiveStart=Math\.max\(0,index-3\)/);
 assert.match(independentSource, /mes:directiveStart\+offset===index\?targetVisibleAtStart\.text:readVisible\(message,directiveStart\+offset\)\.text/);
 assert.match(independentSource, /const targetVisibleAtStart=readVisible\(msg,index\);[\s\S]{0,220}本次未发送副 API 请求/, 'target正文 must be freshly checked before prompt selection and network dispatch');
-assert.match(independentSource, /if\(live\.available\)[\s\S]{0,900}source:'live-dom'/, 'browser context must prefer the rendered DOM');
+assert.match(independentSource, /if\(live\.available\)[\s\S]{0,2200}source:'live-dom'/, 'browser context must prefer the rendered DOM');
+assert.match(independentSource, /normalizedIndependentVisibleComparison\(unfiltered\.text\)!==expected/, 'source tag boundaries may be used only after exact live-visible equivalence');
+assert.match(independentSource, /discoverIndependentContextTagsFromMessage\(chat\[messageIndex\]/, 'tag scan must map each mounted current-chat body back to its current message正文 source');
 assert.match(independentSource, /if\(typeof document!=='undefined'\) return \{text:'',filteredRabbitMirrorChars:0,filteredExcludedTagChars:0,filteredExcludedTags:\[\],source:'not-rendered'\}/, 'non-rendered browser history must fail closed');
 assert.match(independentSource, /DETAILS' && !node\.open/, 'closed details bodies must not enter independent context');
 assert.match(independentSource, /\.displayNone, \.display-none, \.hidden, \.invisible/, 'common host hidden classes must be excluded');
-const tagScanStart = independentSource.indexOf('async function scanCurrentChatIndependentContextTags');
-const tagScanEnd = independentSource.indexOf('function stripInvisibleIndependentContextMarkup', tagScanStart);
-assert.ok(tagScanStart >= 0 && tagScanEnd > tagScanStart, 'bounded current-chat tag scanner must exist');
-const tagScanSource = independentSource.slice(tagScanStart, tagScanEnd);
-assert.match(tagScanSource, /querySelectorAll\('\.mes\[mesid\] \.mes_text'\)/, 'scanner must stay inside rendered message bodies');
-assert.match(tagScanSource, /owner\.parentElement===chatRoot && owner\.querySelector\?\.\('\.mes_text'\)===body/, 'scanner must accept only the primary body of direct current-chat messages');
-assert.match(tagScanSource, /INDEPENDENT_TAG_SCAN_MAX_MESSAGES/);
-assert.match(tagScanSource, /INDEPENDENT_TAG_SCAN_MAX_NODES/);
-assert.match(tagScanSource, /INDEPENDENT_TAG_SCAN_MAX_TEXT_CHARS/);
-assert.match(independentSource, /INDEPENDENT_TAG_SCAN_SKIP_CODE_SUBTREES=new Set\(\['code','pre','textarea','kbd','samp'\]\)/, 'code examples must not become scan candidates');
-assert.match(tagScanSource, /await maybeYield/, 'large scans must yield between bounded slices');
-assert.match(tagScanSource, /signal\?\.aborted/);
-assert.doesNotMatch(tagScanSource, /ctx\.chat|reasoning_content|\.reasoning\b|\.thoughts\b/, 'scanner must not read chat records or reasoning fields');
-assert.doesNotMatch(tagScanSource, /innerHTML|insertAdjacentHTML|querySelector\(`[^`]*\$\{(?:tag|name)/, 'discovered names must not enter HTML or dynamic selectors');
 
 assert.match(settingsSource, /independentContextMaxLayers:\s*20/);
 assert.match(settingsSource, /independentContextExcludedTags:\s*\[\.\.\.DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS\]/);
@@ -236,15 +230,19 @@ assert.match(settingsSource, /memoryMaxChars:\s*2200/);
 assert.match(settingsSource, /Math\.max\(1,\s*Math\.min\(200,/);
 assert.match(uiSource, /id="rh_independent_context_layers"/);
 assert.match(uiSource, /id="rh_independent_tag_filter_modal"/);
+assert.match(uiSource, /扫描与管理正文标签/);
+assert.match(uiSource, /id="rh_independent_api_section"/);
+assert.match(uiSource, /独立 API 生成方式/);
+assert.match(uiSource, /自动读取最近 X 层/);
+assert.match(uiSource, /检索与过滤 &lt;&gt; 正文标签/);
 assert.match(uiSource, /id="rh_independent_tag_filter_scan"/);
-assert.match(uiSource, /id="rh_independent_tag_filter_scan_status"/);
-assert.match(uiSource, /扫描到 \$\{tagFilterDetected\.size\} 种、\$\{total\} 个自定义标签；尚未自动勾选。/);
-const scanUiStart = uiSource.indexOf("$('#rh_independent_tag_filter_scan').on('click'");
-const scanUiEnd = uiSource.indexOf("$('#rh_independent_tag_filter_save').on('click'", scanUiStart);
-assert.ok(scanUiStart >= 0 && scanUiEnd > scanUiStart);
-assert.doesNotMatch(uiSource.slice(scanUiStart, scanUiEnd), /updateSettings\(/, 'scanning or checking candidates must not auto-save filter settings');
-assert.match(uiSource.slice(scanUiEnd, scanUiEnd + 320), /normalizeIndependentContextExcludedTags/, 'explicit save must revalidate selected tag names');
-assert.match(uiSource, /管理正文标签过滤/);
+assert.match(uiSource, /扫描当前聊天已加载的正文源与可见正文/);
+assert.match(uiSource, /\$\('#rh_independent_api_fields'\)\.show\(\)/, 'independent settings must remain visible and preconfigurable in follow mode');
+assert.doesNotMatch(uiSource, /\$\('#rh_independent_api_fields'\)\.toggle\(independent\)/, 'generation source must no longer hide the independent settings section');
+const scanHandlerStart = uiSource.indexOf("$('#rh_independent_tag_filter_scan').on('click'");
+const scanHandlerEnd = uiSource.indexOf("$('#rh_independent_tag_filter_save').on('click'", scanHandlerStart);
+assert.ok(scanHandlerStart >= 0 && scanHandlerEnd > scanHandlerStart, 'tag scan and explicit save handlers must both exist');
+assert.doesNotMatch(uiSource.slice(scanHandlerStart, scanHandlerEnd), /updateSettings\(/, 'scanning must not auto-select or persist any tag');
 assert.match(uiSource, /不接受正则/);
 assert.match(uiSource, /先过滤历史兔子镜/);
 assert.match(uiSource, /不读取模型 reasoning \/ reasoning_content \/ thoughts/);

@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const RELEASE_COHORT = '1.4.9-tagscan1';
+const RELEASE_COHORT = '1.4.9-subapitag2';
 const REQUIRED_RELEASE_MODULES = [
     'src/settings.js',
     'src/tokenMeter.js',
@@ -70,7 +70,7 @@ for (const target of REQUIRED_RELEASE_MODULES) {
     assert.deepEqual(
         [...new Set(fixEdges.map(edge => edge.rmv))],
         [RELEASE_COHORT],
-        `${target} must use exactly one ContextSpeed1 cache key`,
+        `${target} must use exactly one SubApiTag2 cache key`,
     );
 }
 
@@ -94,4 +94,4 @@ for (const file of collectJsFiles(ROOT)) {
 }
 assert.equal(runtimeVersions.has(RELEASE_COHORT), false, 'RUNTIME_VERSION 不是发布缓存键，不得改成 cohort 串');
 
-console.log(`cacheBustClosure: ${edges.length} 条 import 边，ContextSpeed1 单一 cache cohort 通过`);
+console.log(`cacheBustClosure: ${edges.length} 条 import 边，SubApiTag2 单一 cache cohort 通过`);
