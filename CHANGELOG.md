@@ -1,3 +1,20 @@
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2
+
+- 独立 API 的 Connection Manager 模式改走 SillyTavern 1.18.0 官方按 Profile 请求服务；正文 Profile A 与兔子镜 Profile B 可以不同，生成不会切换 A，也不再由兔子镜手工投影 B 的密钥、端点、代理或 PPP。
+- Profile 模型列表会用 B 自己的 Secret、URL 与命名代理请求 SillyTavern `/status`；不会读取正文 A 的 headers、密钥或当前代理，也不会切换 A。远端不支持或失败时仅回退 B 已保存模型，手填模型 ID 继续可用。
+- 修复 `[DONE]` 后取消 reader 导致宿主后端记录 `AbortError`、错误 MIME 流等待 EOF，以及完整响应后上游裸 Abort 被当成本地取消的问题；所有恢复只使用同一次付费响应，不自动重发。
+- 成功、失败、超时、配置／来源切换和运行时取消统一结算 loading UI；裸传输 Abort 不再静默留下永久“生成中”。
+- Connection Manager 通道继续执行请求清洗、单次 dispatch lease、192 KiB 请求与 2 MiB 响应上限；响应统计包含累计可见正文和隐藏 reasoning／swipes／state，安全上限及普通异常不能被完整标签恢复。
+- 一键 Connection Profile 入口明确标注仅支持 SillyTavern 1.18.0 及以上，并在运行时拦截缺少 Profile `secret-id` 支持的旧版；扩展整体最低版本恢复为 1.13.0，旧版手动独立 API 不受影响。
+- 保留 WidthFix1 的 iPhone／Safari 首次展开宽度救援、启动性能、美化及全部既有安全边界。
+
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1
+
+- 修复 iPhone／Safari 独立 API 纯外置镜面首次展开时，`summary` 已铺满而正文直接根仍保持 shrink-to-fit 窄列、必须横竖屏一次才恢复的问题。
+- 将既有、带作者尺寸意图豁免的 auto-root width rescue 接入首次展开后的现成 post-paint 路径，覆盖已展开、折叠后首次展开及历史镜面首次展开。
+- 不新增 Observer、轮询、监听器、网络请求或全聊天扫描；显式窄宽、定位、浮动和有意窄媒介继续保持原样。
+- 新增 440px iPhone、366px 承载区、227px 正文根的生命周期回归，以及作者尺寸意图不得被拉宽的反例。
+
 ## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1
 
 - 设置主面板改为紧凑、主题自适应布局：同一个“高级设置”总入口整合到自动注入开关旁，不复制 ID、不改变弹窗和事件链。

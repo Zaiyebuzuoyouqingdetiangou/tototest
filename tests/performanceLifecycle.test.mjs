@@ -17,11 +17,19 @@ assert.match(guard, /boundedStreamingBody\(response\.body, safeMax\)/);
 assert.doesNotMatch(guard, /const chunks = \[\][\s\S]{0,500}while \(true\)/);
 
 const guardedGenerateCalls = independent.match(/fetchRabbitMirrorIndependentCompletion\(ST_CUSTOM_GENERATE_ENDPOINT/g) || [];
-assert.equal(guardedGenerateCalls.length, 2, 'both independent Chat Completion transports must use the guard');
+assert.equal(guardedGenerateCalls.length, 2, 'manual Chat Completion transports must keep using the fetch guard');
 assert.doesNotMatch(independent, /return await fetch\(ST_CUSTOM_GENERATE_ENDPOINT/);
-assert.doesNotMatch(independent, /payload\.zai_endpoint=apiUrl|payload\.siliconflow_endpoint=apiUrl|payload\.workers_ai_account_id=apiUrl/, 'api-url must not be copied into provider enum/account fields');
-assert.match(independent, /if\(apiMap\.source==='custom'\) payload\.custom_url=apiUrl/);
-assert.match(independent, /payload\.reverse_proxy=apiUrl/);
+assert.match(independent, /if\(apiMap\.source==='zai'\) payload\.zai_endpoint=apiUrl/);
+assert.match(independent, /if\(apiMap\.source==='siliconflow'\) payload\.siliconflow_endpoint=apiUrl/);
+assert.doesNotMatch(independent, /payload\.workers_ai_account_id=apiUrl/, 'Profile api-url is not a Workers AI account ID');
+assert.match(independent, /ConnectionManagerRequestService/);
+assert.match(independent, /requestIndependentConnectionProfileCompletion/);
+assert.match(independent, /authorizeRabbitMirrorIndependentServiceRequest/);
+assert.match(independent, /service\.sendRequest\(profileId,messages,maxTokens/);
+const profileStatusPayload = independent.slice(independent.indexOf('function independentConnectionPayload'), independent.indexOf('function independentDiagnosticBase'));
+assert.doesNotMatch(profileStatusPayload, /chatCompletionSettings|oai_settings|selected_proxy/, 'Profile B diagnostics must not inherit active正文 Profile A transport settings');
+assert.match(profileStatusPayload, /profile\?\.proxy/);
+assert.match(profileStatusPayload, /payload\.reverse_proxy=proxyUrl/);
 assert.match(independent, /saved-fallback/);
 
 
@@ -69,7 +77,7 @@ assert.match(index, /\.\/src\/ui\.js\?rmv=1\.4\.9-subapitag2-advancedui1/, 'Adva
 assert.doesNotMatch(index, /\.\/src\/ui\.js\?rmv=1\.4\.30\.2[0-9]/, 'stale 1.4.30.x UI cache key must not survive');
 assert.match(index, /\.\/src\/checkedSelectorRepair\.js\?rmv=1\.4\.30\.26/, 'formal checked-selector repair must be present in the test baseline');
 assert.match(index, /\.\/src\/maintenanceRecommendationHotfix\.js\?rmv=1\.4\.5/, 'formal maintenance recommendation must be present in the test baseline');
-assert.equal(manifest.js, 'index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1');
-assert.equal(manifest.version, '1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1');
+assert.equal(manifest.js, 'index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2');
+assert.equal(manifest.version, '1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2');
 
 console.log('performance lifecycle tests passed');

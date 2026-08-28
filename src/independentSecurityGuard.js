@@ -63,6 +63,19 @@ function consumeDispatchLease(init) {
     }
 }
 
+function prepareRabbitMirrorIndependentRequest(bodyText = '') {
+    clearDormantLegacyApiKey();
+    const rawBody = String(bodyText || '');
+    const sanitized = sanitizeRabbitMirrorCompletionBody(rawBody);
+    if (!sanitized.rabbitMirror) {
+        throw new TypeError('RabbitMirror 独立 API 请求缺少完整的上下文边界证据，已在发送前拒绝。');
+    }
+    const outboundBody = sanitized.changed ? sanitized.bodyText : rawBody;
+    const outboundBytes = utf8ByteLength(outboundBody);
+    if (outboundBytes > MAX_INDEPENDENT_REQUEST_BYTES) throw requestLimitError(MAX_INDEPENDENT_REQUEST_BYTES, outboundBytes);
+    return { bodyText: outboundBody, changed: sanitized.changed, bytes: outboundBytes };
+}
+
 function transportInit(init, bodyText, changed) {
     const next = { ...(init || {}) };
     delete next.rabbitMirrorDispatchLease;
@@ -290,23 +303,57 @@ export function initRabbitMirrorIndependentSecurityGuard({ getSettings, updateSe
 
 export async function fetchRabbitMirrorIndependentCompletion(input, init) {
     if (!isGenerateEndpoint(input)) throw new TypeError('RabbitMirror 独立 API Guard 只允许 SillyTavern Chat Completion 生成端点。');
-    clearDormantLegacyApiKey();
     const rawBody = requestBodyText(input, init);
-    const sanitized = sanitizeRabbitMirrorCompletionBody(rawBody);
-    if (!sanitized.rabbitMirror) {
-        throw new TypeError('RabbitMirror 独立 API 请求缺少完整的上下文边界证据，已在发送前拒绝。');
-    }
-    const outboundBody = sanitized.changed ? sanitized.bodyText : rawBody;
-    const outboundBytes = utf8ByteLength(outboundBody);
-    if (outboundBytes > MAX_INDEPENDENT_REQUEST_BYTES) throw requestLimitError(MAX_INDEPENDENT_REQUEST_BYTES, outboundBytes);
+    const prepared = prepareRabbitMirrorIndependentRequest(rawBody);
     const fetchImpl = transportFetch || globalThis.fetch;
     if (typeof fetchImpl !== 'function') throw new TypeError('RabbitMirror 独立 API 传输不可用。');
     // This is the only state transition that spends the automatic operation lease.
     // Validation and request-size failures happen before it; no source rewrite, Abort,
     // host render event or runtime cleanup can turn one consumed lease into another POST.
     consumeDispatchLease(init);
-    const response = await Reflect.apply(fetchImpl, globalThis, [input, transportInit(init, sanitized.bodyText, sanitized.changed)]);
+    const response = await Reflect.apply(fetchImpl, globalThis, [input, transportInit(init, prepared.bodyText, prepared.changed)]);
     return boundedResponse(response, MAX_INDEPENDENT_RESPONSE_BYTES);
+}
+
+// Connection Manager owns the selected Profile's endpoint, proxy, PPP and Secret.
+// This preflight preserves RabbitMirror's privacy/size/single-dispatch boundary
+// without monkey-patching global fetch or copying a raw API key out of SillyTavern.
+export function authorizeRabbitMirrorIndependentServiceRequest(payload, dispatchLease) {
+    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload || {});
+    const prepared = prepareRabbitMirrorIndependentRequest(rawBody);
+    consumeDispatchLease({ rabbitMirrorDispatchLease: dispatchLease });
+    try { return JSON.parse(prepared.bodyText); }
+    catch { throw new TypeError('RabbitMirror 独立 API 请求在安全清洗后无法解析。'); }
+}
+
+export function assertRabbitMirrorIndependentResponseText(value = '') {
+    let text = '';
+    if (typeof value === 'string') text = value;
+    else if (value == null) text = '';
+    else {
+        // Connection Manager promotes only `text` to the visible result, but a
+        // provider frame can also retain reasoning, alternate swipes and state.
+        // Count the complete app-visible response object so those hidden fields
+        // cannot bypass RabbitMirror's 2 MiB response boundary.
+        const seen = new WeakSet();
+        try {
+            text = JSON.stringify(value, (_key, nested) => {
+                if (typeof nested === 'bigint') return String(nested);
+                if (nested && typeof nested === 'object') {
+                    if (seen.has(nested)) return '[Circular]';
+                    seen.add(nested);
+                }
+                return nested;
+            }) ?? String(value);
+        } catch (cause) {
+            const error = new TypeError('RabbitMirror 无法安全计算独立 API 响应大小，已停止接收该响应。');
+            try { error.cause = cause; } catch {}
+            throw error;
+        }
+    }
+    const observedBytes = utf8ByteLength(text);
+    if (observedBytes > MAX_INDEPENDENT_RESPONSE_BYTES) throw responseLimitError(MAX_INDEPENDENT_RESPONSE_BYTES, observedBytes);
+    return text;
 }
 
 export function destroyRabbitMirrorIndependentSecurityGuard() {

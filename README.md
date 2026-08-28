@@ -1,4 +1,27 @@
-# 兔子镜测试版 AdvancedUI1 Stability1 RepairEmoji1 CleanUI1
+# 兔子镜测试版 AdvancedUI1 Stability1 RepairEmoji1 CleanUI1 WidthFix1 ApiFix2
+
+## ApiFix2 / 1.4.30.30
+
+本候选同时修复“正文使用 Connection Profile A、兔子镜选择 Profile B 后无法生成”、“一键配置后不能从 B 拉取模型”与“服务端已经完成，兔子镜仍长期显示生成中”。
+
+- 酒馆连接模式改用 SillyTavern 1.18.0 起提供的 Connection Manager 单请求服务，直接把兔子镜选定的 Profile B 交给宿主解析；不再手工拼接 B 的 URL、Secret、代理和厂商端点，也不会临时切换正文当前 Profile A。
+- API Key 继续只由 SillyTavern Secrets 管理。兔子镜仅保存 Profile ID 和模型选择，不读取、复制或持久化明文 Key。
+- Profile 模式的“拉取模型”会用 B 自己的 Secret、URL 与命名代理请求 SillyTavern `/status`，不读取正文 A 的全局连接数据，也不切换 A；不支持模型列表的厂商或请求失败时，只回退到 B 已保存的模型并明确提示。
+- Connection Profile 一键配置及不同 Profile 请求明确标注“仅支持 SillyTavern 1.18.0 及以上版本”；扩展整体最低版本恢复为 1.13.0，旧版仍可使用手动 OpenAI 兼容独立 API。
+- 流式响应收到 `[DONE]` 后不再调用 `reader.cancel()`；即使 MIME 被错误标成 JSON／纯文本，也按本次请求的 `stream` 设定从同一个 Response 增量解析，不发第二次请求。
+- 只有“插件未主动取消、上游以 `AbortError` 结束、且同一次响应已包含完整兔子镜”时才安全收成。响应超限、普通传输错误和半截成品全部明确失败，不会被完整标签误判。
+- 成功、失败、五分钟超时、设置切换、生成来源切换及运行时取消都会把 loading 壳结算为 ready 或可见错误；不再留下永久“正在生成”。
+- 继续维持一次用户动作最多一条付费生成请求、192 KiB 请求／2 MiB 响应边界且不自动重试；Connection Manager 响应上限同时统计可见正文、reasoning、swipes 与 state。
+- WidthFix1 的 iPhone／Safari 首次展开宽度修复、既有美化、启动性能和独立 API 生成链完整保留。
+
+## WidthFix1 / 1.4.30.28
+
+本候选只修复 iPhone／Safari 的独立 API 纯外置镜面首次展开窄面：已有的安全宽度救援过去只在横竖屏或真实视口宽度变化后执行，现在会在镜面首次展开并完成一帧绘制后自动执行。
+
+- 覆盖生成后已展开、折叠后首次展开及历史镜面首次展开，不要求用户解除方向锁或手动旋屏。
+- 继续复用既有的手机端、外置、正文根比例和普通流式布局判定；只在正文根异常低于承载区宽度时处理。
+- 明确 `width`、`inline-size`、窄 `max-width`、绝对定位、浮动或水平外边距等作者尺寸意图继续豁免，票据、手机、证件及其他有意窄媒介不会被强拉宽。
+- 不新增 Observer、轮询、网络请求或全聊天扫描；不修改 Prompt、生成次数、独立 API 请求链、维修兔、挨打猫或 Touch Theater。
 
 ## CleanUI1 / 1.4.30.27
 

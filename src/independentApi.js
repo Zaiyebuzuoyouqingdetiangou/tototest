@@ -1,15 +1,15 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
-import { fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
-const RUNTIME_VERSION = '1.4.30.27';
+const RUNTIME_VERSION = '1.4.30.30';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -78,6 +78,8 @@ const INDEPENDENT_GENERATION_INTENTS_KEY = '__rabbitMirrorIndependentGenerationI
 const INDEPENDENT_GENERATION_INTENT_TTL_MS = 5 * 60 * 1000;
 const INDEPENDENT_GENERATION_INTENT_TYPES = new Set(['normal','continue','swipe','regenerate']);
 let hostModule = null;
+let hostOpenAiModule = null;
+let cachedSillyTavernVersion = '';
 let generationSequence = 0;
 let observer = null;
 let syncRunning = false;
@@ -684,6 +686,49 @@ export { API_REQUEST_DIAGNOSTIC_EVENT, scanCurrentChatIndependentContextTags };
 function hashText(text=''){ let h=2166136261; for(const ch of String(text)){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619);} return (h>>>0).toString(36); }
 function getContext(){ try { return globalThis.SillyTavern?.getContext?.() || {}; } catch { return {}; } }
 function normalizeIndependentConnectionText(value,max=1000){ return String(value??'').replace(/\r\n?/g,'\n').replace(/\u0000/g,'').trim().slice(0,max); }
+function independentSemver(value=''){
+ const match=String(value||'').match(/(?:^|[^0-9])(\d+)\.(\d+)\.(\d+)(?:[^0-9]|$)/);
+ return match ? match.slice(1,4).map(Number) : null;
+}
+function independentSemverAtLeast(value,minimum=[1,18,0]){
+ const parsed=independentSemver(value); if(!parsed) return false;
+ for(let index=0;index<3;index+=1){
+  if(parsed[index]>minimum[index]) return true;
+  if(parsed[index]<minimum[index]) return false;
+ }
+ return true;
+}
+function independentConnectionManagerHasProfileSecrets(service){
+ if(typeof service?.sendRequest!=='function') return false;
+ try{
+  const source=Function.prototype.toString.call(service.sendRequest);
+  return /\bsecret_id\s*:/.test(source) && /profile\s*\[\s*['"]secret-id['"]\s*\]/.test(source);
+ }catch{return false;}
+}
+async function readIndependentSillyTavernVersion(){
+ if(cachedSillyTavernVersion) return cachedSillyTavernVersion;
+ try{
+  hostModule=hostModule || await import('../../../../../script.js');
+  const candidates=[hostModule?.displayVersion,hostModule?.CLIENT_VERSION];
+  const known=candidates.find(value=>independentSemver(value));
+  if(known){ cachedSillyTavernVersion=String(known); return cachedSillyTavernVersion; }
+ }catch{}
+ const controller=new AbortController(); const timeoutId=setTimeout(()=>controller.abort(),3000);
+ try{
+  const response=await fetch('/version',{method:'GET',credentials:'same-origin',cache:'no-cache',signal:controller.signal});
+  const data=response.ok?await response.json():null;
+  if(independentSemver(data?.pkgVersion)){ cachedSillyTavernVersion=String(data.pkgVersion); return cachedSillyTavernVersion; }
+ }catch{}finally{ clearTimeout(timeoutId); }
+ return '';
+}
+async function assertIndependentConnectionProfileSupport(service){
+ // 1.18.0 added request-level Connection Profile secret-id forwarding. 1.16
+ // and 1.17 already expose sendRequest(), so method presence alone is unsafe.
+ if(independentConnectionManagerHasProfileSecrets(service)) return true;
+ const version=await readIndependentSillyTavernVersion();
+ if(independentSemverAtLeast(version) && typeof service?.sendRequest==='function') return true;
+ throw new Error('酒馆 Connection Profile 一键配置仅支持 SillyTavern 1.18.0 及以上版本；旧版请使用手动 OpenAI 兼容接口。');
+}
 function independentConnectionManagerSettings(ctx=getContext()){
  const manager=ctx?.extensionSettings?.connectionManager;
  if(!manager || !Array.isArray(manager.profiles)) throw new Error('当前 SillyTavern 没有可用的 Connection Manager 配置，请先启用官方 Connection Manager。');
@@ -694,13 +739,14 @@ function rawIndependentConnectionProfile(profileId,ctx=getContext()){
  const manager=independentConnectionManagerSettings(ctx);
  return manager.profiles.find(item=>String(item?.id||'')===String(profileId||''))||null;
 }
-function validatedIndependentConnectionProfile(profileId,ctx=getContext()){
+async function validatedIndependentConnectionProfile(profileId,ctx=getContext()){
  const id=normalizeIndependentConnectionText(profileId,160);
  if(!id) return null;
  const profile=rawIndependentConnectionProfile(id,ctx);
  if(!profile) throw new Error('兔子镜引用的酒馆连接已不存在，请重新一键配置。');
  const service=ctx?.ConnectionManagerRequestService;
- if(!service?.validateProfile) throw new Error('当前 SillyTavern 没有 Connection Manager 校验接口。');
+ if(!service?.validateProfile || typeof service?.sendRequest!=='function') throw new Error('当前 SillyTavern 的 Connection Manager 不支持按 Profile 安全发送请求。请升级到 SillyTavern 1.18.0 或更高版本。');
+ await assertIndependentConnectionProfileSupport(service);
  const apiMap=service.validateProfile(profile);
  // RabbitMirror's existing independent request body is Chat Completions shaped.
  // Do not silently convert it to Text Completion or another request family here.
@@ -725,7 +771,7 @@ async function readCurrentIndependentSlashSetting(command,ctx=getContext()){
 export function getIndependentConnectionProfiles(){
  try{
   const ctx=getContext(); const service=ctx?.ConnectionManagerRequestService;
-  if(!service?.getSupportedProfiles) return [];
+  if(!service?.getSupportedProfiles || !independentConnectionManagerHasProfileSecrets(service)) return [];
   const manager=independentConnectionManagerSettings(ctx);
   return service.getSupportedProfiles().map(item=>{
    const id=normalizeIndependentConnectionText(item?.id,160); const raw=manager.profiles.find(profile=>String(profile?.id||'')===id);
@@ -738,10 +784,11 @@ export function getIndependentConnectionProfiles(){
 export async function importCurrentSillyTavernConnection(){
  const ctx=getContext(); const manager=independentConnectionManagerSettings(ctx); const service=ctx?.ConnectionManagerRequestService;
  if(!service?.validateProfile) throw new Error('当前 SillyTavern 未提供 Connection Manager Request Service。');
+ await assertIndependentConnectionProfileSupport(service);
  const selectedId=normalizeIndependentConnectionText(manager.selectedProfile,160);
  if(selectedId){
   try{
-   const selected=validatedIndependentConnectionProfile(selectedId,ctx);
+   const selected=await validatedIndependentConnectionProfile(selectedId,ctx);
    const model=normalizeIndependentConnectionText(selected?.profile?.model,240);
    updateSettings({independentConnectionProfileId:selectedId,...(model?{independentApiModel:model}:{})});
    return {id:selectedId,name:normalizeIndependentConnectionText(selected?.profile?.name,180)||'当前连接',model,created:false};
@@ -785,22 +832,41 @@ function savedIndependentModelsForProfile(profileId,ctx=getContext()){
 export function getIndependentSavedModels(){
  const st=getSettings(); return savedIndependentModelsForProfile(st?.independentConnectionProfileId,getContext());
 }
-function independentConnectionPayload(runtime){
+function independentConnectionPayload(runtime,proxyPresets=[]){
  if(!runtime) return null;
- const {profile,apiMap,ctx}=runtime;
+ const {profile,apiMap}=runtime;
  const apiUrl=normalizeIndependentConnectionText(profile?.['api-url'],2000);
  const payload={chat_completion_source:apiMap.source,secret_id:normalizeIndependentConnectionText(profile?.['secret-id'],240)||undefined};
- // Connection Manager's api-url is a URL. Never copy it into provider enum/account fields.
- // For OpenAI-compatible providers it is the reverse proxy/base endpoint; custom keeps custom_url.
+ // Build the non-generating /status request from Profile B only. Never read
+ // any globally active正文 transport state here.
  if(apiUrl){
   if(apiMap.source==='custom') payload.custom_url=apiUrl;
-  else if(['openai','mistralai','deepseek','xai','moonshot','makersuite','claude'].includes(String(apiMap.source||''))) payload.reverse_proxy=apiUrl;
+  if(apiMap.source==='vertexai') payload.vertexai_region=apiUrl;
+  if(apiMap.source==='zai') payload.zai_endpoint=apiUrl;
+  if(apiMap.source==='siliconflow') payload.siliconflow_endpoint=apiUrl;
+  if(apiMap.source==='minimax') payload.minimax_endpoint=apiUrl;
+ }
+ const proxyName=normalizeIndependentConnectionText(profile?.proxy,240);
+ if(proxyName && proxyName.toLowerCase()!=='none'){
+  const proxy=(Array.isArray(proxyPresets)?proxyPresets:[]).find(item=>String(item?.name||'')===proxyName);
+  if(!proxy) throw independentModelListError(`酒馆连接指定的代理「${proxyName}」无法安全解析；已停止远端拉取。`,'MODEL_LIST_PROFILE_PROXY');
+  const proxyUrl=normalizeIndependentConnectionText(proxy?.url,2000);
+  const proxyPassword=normalizeIndependentConnectionText(proxy?.password,1000);
+  if(proxyUrl) payload.reverse_proxy=proxyUrl;
+  if(proxyPassword) payload.proxy_password=proxyPassword;
  }
  if(apiMap.source==='custom'){
-  payload.custom_include_headers=normalizeIndependentConnectionText(ctx?.chatCompletionSettings?.custom_include_headers,8000)||undefined;
-  payload.custom_include_body=''; payload.custom_exclude_body='';
+  // Connection Profile does not store custom headers. Empty is deliberate:
+  // borrowing the active正文 Profile A headers would cross credentials.
+  payload.custom_include_headers=''; payload.custom_include_body=''; payload.custom_exclude_body='';
  }
  return payload;
+}
+async function independentConnectionProxyPresets(){
+ try{
+  hostOpenAiModule=hostOpenAiModule || await import('../../../../openai.js');
+  return Array.isArray(hostOpenAiModule?.proxies)?hostOpenAiModule.proxies:[];
+ }catch{return [];}
 }
 function independentDiagnosticBase(st=getSettings()){
  const id=normalizeIndependentConnectionText(st?.independentConnectionProfileId,160);
@@ -1836,8 +1902,9 @@ async function fetchIndependentUrl(url,options={}){
  const method=String(options.method||'GET').toUpperCase();
  const st=getSettings();
  const connectionId=normalizeIndependentConnectionText(st?.independentConnectionProfileId,160);
- const connectionRuntime=connectionId?validatedIndependentConnectionProfile(connectionId):null;
- const connectionPayload=connectionRuntime?independentConnectionPayload(connectionRuntime):null;
+ const connectionRuntime=connectionId?await validatedIndependentConnectionProfile(connectionId):null;
+ const proxyPresets=connectionRuntime?await independentConnectionProxyPresets():[];
+ const connectionPayload=connectionRuntime?independentConnectionPayload(connectionRuntime,proxyPresets):null;
  const customUrl=connectionRuntime?'':customApiBaseFromUrl(url);
  if(!connectionRuntime && !customUrl) throw new Error('独立 API 地址无效');
  const requestHeaders=await serverRequestHeaders();
@@ -1977,12 +2044,13 @@ export async function fetchIndependentModels(){
  const st=getSettings();
  const connectionId=normalizeIndependentConnectionText(st.independentConnectionProfileId,160);
  const savedModels=connectionId?savedIndependentModelsForProfile(connectionId,getContext()):[];
+ if(connectionId) await validatedIndependentConnectionProfile(connectionId);
  const url=connectionId?'/models':endpoint(st.independentApiBaseUrl,'/models');
  if(!url) throw independentModelListError('请先一键配置酒馆 API，或在高级选项填写手动 API 地址','MODEL_LIST_CONFIG');
  const controller=new AbortController();
  const timeoutId=setTimeout(()=>controller.abort(),INDEPENDENT_MODEL_LIST_TIMEOUT_MS);
  try{
-  const r=await fetchIndependentUrl(url,{method:'GET',headers:headers(st),signal:controller.signal});
+  const r=await fetchIndependentUrl(url,{method:'GET',headers:connectionId?{}:headers(st),signal:controller.signal});
   const payload=await readIndependentResponsePayload(r);
   if(!r.ok){
    const detail=compactIndependentPayloadError(payload.json) || String(payload.raw||'').trim().slice(0,180);
@@ -2124,7 +2192,7 @@ function incrementalIndependentStreamState(kind='sse'){
   state.dataLines=[];
  };
  const consumeLine=line=>{
-  if(state.kind==='ndjson'){
+  if(state.kind==='ndjson' || (state.kind==='auto' && line && !line.startsWith(':') && !/^data(?:\s*:|$)/.test(line))){
    consumeJson(line); return;
   }
   if(!line){ flushSseEvent(); return; }
@@ -2154,12 +2222,13 @@ function incrementalIndependentStreamState(kind='sse'){
  return {
   state,
   push(text){ const chunk=String(text||''); if(chunk) state.rawChunks.push(chunk); state.lineBuffer+=chunk; drainLines(false); },
-  finish(){ drainLines(true); if(state.kind==='sse') flushSseEvent(); return {raw:state.rawChunks.join(''),payload:state.payload,text:state.text.trim(),streamed:true}; },
+  finish(){ drainLines(true); if(state.kind!=='ndjson') flushSseEvent(); return {raw:state.rawChunks.join(''),payload:state.payload,text:state.text.trim(),streamed:true}; },
  };
 }
-async function readApiResponse(response){
+async function readApiResponse(response,{expectedStream=false,signal=null}={}){
  const contentType=String(response.headers?.get?.('content-type')||'').toLowerCase();
- const streamKind=/text\/event-stream/.test(contentType)?'sse':(/application\/(?:x-)?ndjson/.test(contentType)?'ndjson':'');
+ const declaredStreamKind=/text\/event-stream/.test(contentType)?'sse':(/application\/(?:x-)?ndjson/.test(contentType)?'ndjson':'');
+ const streamKind=declaredStreamKind || (expectedStream?'auto':'');
  const reader=streamKind && typeof response.body?.getReader==='function' ? response.body.getReader() : null;
  if(reader){
   const decoder=new TextDecoder(); const incremental=incrementalIndependentStreamState(streamKind);
@@ -2168,15 +2237,29 @@ async function readApiResponse(response){
     const {done,value}=await reader.read();
     if(done) break;
     incremental.push(decoder.decode(value,{stream:true}));
-    if(incremental.state.done){ try{ await reader.cancel('rabbit-mirror-stream-done'); }catch{} break; }
+    // [DONE] is a successful protocol terminal, not a cancellation. Cancelling
+    // the reader here closes SillyTavern's request socket and can make its
+    // backend abort an already successful provider request. Return immediately
+    // from the same response instead; never wait for cancel() or a second fetch.
+    if(incremental.state.done) break;
    }
    incremental.push(decoder.decode());
    const parsed=incremental.finish();
    if(!parsed.text){
-    const fallback=streamKind==='ndjson'?parseNdjsonPayload(parsed.raw):parseSsePayload(parsed.raw);
+    const fallback=streamKind==='ndjson' || (streamKind==='auto'&&!/^\s*(?:data|event|id|retry)\s*:/m.test(parsed.raw))?parseNdjsonPayload(parsed.raw):parseSsePayload(parsed.raw);
     parsed.payload=parsed.payload||fallback.payload; parsed.text=fallback.text;
    }
    return {...parsed,contentType};
+  }catch(error){
+   try{ incremental.push(decoder.decode()); }catch{}
+   const partial=incremental.finish();
+   if(partial?.raw || partial?.text){
+    try{ error.partialResult={...partial,contentType,terminatedAfterComplete:false}; }catch{}
+   }
+   if(signal?.aborted && error && typeof error==='object'){
+    try{ error.rabbitMirrorLocalAbort=true; }catch{}
+   }
+   throw error;
   }finally{ try{ reader.releaseLock?.(); }catch{} }
  }
  const raw=await response.text();
@@ -2200,6 +2283,17 @@ function extractMirrorInner(raw){
  const hasRabbitMirrorOpening=/<toto\b[^>]*>/i.test(cleaned);
  if(details && (hasRabbitMirrorOpening || /兔子镜|RabbitMirror/i.test(details[0]))) return details[0].trim();
  return '';
+}
+function recoverableCompletedIndependentAbort(error,signal,text){
+ // Salvage only a transport-origin AbortError from this same paid response.
+ // Local cancellation, response limits, parser failures and ordinary provider
+ // errors remain terminal even when their partial text happens to look complete.
+ return !signal?.aborted
+  && !error?.rabbitMirrorLocalAbort
+  && error?.name==='AbortError'
+  && error?.code!=='RABBIT_MIRROR_RESPONSE_TOO_LARGE'
+  && !!text
+  && !!extractMirrorInner(text);
 }
 function responseFinishReason(payload){ return String(payload?.choices?.[0]?.finish_reason ?? payload?.stop_reason ?? payload?.candidates?.[0]?.finishReason ?? '').trim(); }
 function independentRequestProfiles(st,systemPrompt,userPrompt,options={}){
@@ -2329,6 +2423,84 @@ function responsePayloadErrorText(payload){
  }
  return String(error||'').trim();
 }
+async function requestIndependentConnectionProfileCompletion(runtime,profile,options){
+ options=options||{};
+ const service=runtime?.ctx?.ConnectionManagerRequestService;
+ const profileId=normalizeIndependentConnectionText(runtime?.id,160);
+ if(!profileId || typeof service?.sendRequest!=='function') throw new Error('当前 SillyTavern 无法按兔子镜选定的 Connection Profile 发送请求。请升级到 SillyTavern 1.18.0 或更高版本。');
+ const rawBody=profile?.body && typeof profile.body==='object' ? profile.body : {};
+ const body=authorizeRabbitMirrorIndependentServiceRequest(rawBody,options.dispatchLease);
+ const messages=Array.isArray(body?.messages)?body.messages:[];
+ if(!messages.length) throw new Error('兔子镜独立 API 请求缺少有效的 system/user 消息。');
+ const stream=body.stream!==false;
+ const maxTokens=Math.max(1,Number(body.max_tokens ?? body.max_completion_tokens ?? options.maxTokens)||12000);
+ // Connection Manager owns endpoint/secret/proxy/PPP. Only RabbitMirror's
+ // generation choices may override the selected Profile, never transport state.
+ const overrides={
+  model:normalizeIndependentConnectionText(body.model,240),
+  stream,
+  max_tokens:Object.prototype.hasOwnProperty.call(body,'max_tokens')?body.max_tokens:undefined,
+ };
+ if(Object.prototype.hasOwnProperty.call(body,'max_completion_tokens')) overrides.max_completion_tokens=body.max_completion_tokens;
+ if(Object.prototype.hasOwnProperty.call(body,'temperature')) overrides.temperature=body.temperature;
+ let serviceResult;
+ serviceResult=await service.sendRequest(profileId,messages,maxTokens,{
+  stream,
+  signal:options.signal||null,
+  extractData:true,
+  includePreset:false,
+  includeInstruct:false,
+ },overrides);
+ let text=''; let terminatedAfterComplete=false; const observedHidden={};
+ if(stream){
+  if(typeof serviceResult!=='function') throw new Error('Connection Manager 没有返回可读取的流式结果。');
+  const generator=serviceResult();
+  if(!generator || typeof generator[Symbol.asyncIterator]!=='function') throw new Error('Connection Manager 返回的流式结果格式无效。');
+  try{
+   for await(const frame of generator){
+    const incoming=textFromContent(frame?.text ?? frame?.content ?? '');
+    if(incoming) text=mergeIndependentStreamText(text,incoming);
+    const hiddenKeys=frame && typeof frame==='object'
+     ? Object.keys(frame).filter(key=>key!=='text' && key!=='content' && frame[key]!=null)
+     : [];
+    if(hiddenKeys.length){
+     // Keep one cumulative logical response snapshot, not every token frame.
+     // This covers reasoning/swipes/state without retaining an O(frame-count)
+     // history. String fields support both cumulative and delta-style relays.
+     for(const key of hiddenKeys){
+      const value=frame[key];
+      observedHidden[key]=typeof value==='string'
+       ? mergeIndependentStreamText(String(observedHidden[key]||''),value)
+       : value;
+     }
+     assertRabbitMirrorIndependentResponseText({text,...observedHidden});
+    }else if(Object.keys(observedHidden).length){
+     assertRabbitMirrorIndependentResponseText({text,...observedHidden});
+    }else assertRabbitMirrorIndependentResponseText(text);
+   }
+  }catch(error){
+   // Some relays close a successful stream with AbortError after the complete
+   // RabbitMirror has already arrived. Preserve only a structurally complete
+   // result from this same paid response; callIndependentApi still applies the
+   // full sanitizer, body, CSS-program and complexity acceptance gates.
+   if(recoverableCompletedIndependentAbort(error,options.signal,text)) terminatedAfterComplete=true;
+   else {
+    if(text){
+     try{ error.partialResult={raw:text,payload:null,text,streamed:true,contentType:'connection-manager',terminatedAfterComplete:false}; }catch{}
+    }
+    throw error;
+   }
+  }
+ }else{
+  text=textFromContent(serviceResult?.content ?? serviceResult);
+  assertRabbitMirrorIndependentResponseText(serviceResult && typeof serviceResult==='object' ? serviceResult : text);
+ }
+ const payload={choices:[{message:{content:text}}]};
+ return {
+  response:{ok:true,status:200,statusText:'OK'},
+  result:{raw:text,payload,text,streamed:stream,contentType:'connection-manager',terminatedAfterComplete},
+ };
+}
 async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={}){
  const attempts=[];
  const rememberedProfile=getRememberedApiProfile(st);
@@ -2352,11 +2524,31 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
  };
  const diagnosticContext=options.diagnosticContext && typeof options.diagnosticContext==='object' ? options.diagnosticContext : {};
  const transportFailure=(error,kind='transport')=>{
-  const detail=String(error?.message||error||'网络连接失败').slice(0,280);
+  // Connection Manager intentionally wraps provider failures. Classify a
+  // bounded cause chain so an inner 401/403 is not mistaken for a stream
+  // compatibility issue, while keeping the user-visible detail to the safe
+  // outer message (provider errors can echo credential fragments).
+  const evidence=[]; const seenErrors=new Set(); let cursor=error;
+  for(let depth=0;cursor && depth<4 && !seenErrors.has(cursor);depth+=1){
+   seenErrors.add(cursor);
+   for(const value of [cursor?.name,cursor?.message,cursor?.code,cursor?.status,cursor?.statusCode,cursor?.statusText]){
+    const part=String(value??'').trim(); if(part) evidence.push(part);
+   }
+   cursor=cursor?.cause;
+  }
+  const classification=evidence.join(' · ');
+  const detail=String(error?.message||error||'网络连接失败')
+   .replace(/Bearer\s+\S+/gi,'Bearer [已隐藏]')
+   .replace(/\b(?:sk-[A-Za-z0-9_-]{10,}|AIza[A-Za-z0-9_-]{16,})\b/g,'[已隐藏凭据]')
+   .slice(0,280);
+  const profileAuthFailure=!!connectionId && /(?:\b401\b|\b403\b|unauthori[sz]ed|forbidden|access[ _-]?token|api[ _-]?key|secret)/i.test(classification);
+  const responseBoundaryFailure=/RABBIT_MIRROR_RESPONSE_TOO_LARGE/.test(classification);
   // Never retry automatically: the upstream may already have started billing.
   // A streamed transport failure only stages an exact same-parameter non-stream
   // profile for the player's explicit retry.
-  const next=profileUsesStreaming(profile.name) ? stageCompatibility(`${kind}-stream-failure`,true) : '';
+  const next=profileUsesStreaming(profile.name) && !profileAuthFailure && !responseBoundaryFailure
+   ? stageCompatibility(`${kind}-stream-failure`,true)
+   : '';
   attempts.push({profile:profile.name,status:0,detail,kind});
   const requestDiagnostic=publishIndependentApiRequestDiagnostic({
    ok:false,status:0,model:String(st.independentApiModel||''),baseUrl:independentDiagnosticBase(st),
@@ -2368,23 +2560,43 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
   const retryHint=next
    ? `；本轮只发送了 1 次生成请求，不会自动重发。点击“重新生成兔子镜”时将只把 stream 改为 false，尝试：${next}`
    : '；本轮只发送了 1 次生成请求，不会自动重发，请手动重试。';
-  const wrapped=new Error(`副 API 网络／响应流失败：${detail}${retryHint}`);
+  const profileHint=profileAuthFailure
+   ? '；请在 Connection Manager 中激活并重新保存兔子镜所选 Profile，确认它绑定了自己的 Secret，再切回正文连接。兔子镜不会读取或复制密钥'
+   : '';
+  const wrapped=new Error(`副 API 网络／响应流失败：${detail}${profileHint}${retryHint}`);
   wrapped.rabbitMirrorRequestDiagnostic=requestDiagnostic;
   try{ wrapped.cause=error; }catch{}
   return wrapped;
  };
  let r=null; let result=null;
- try{
-  r=await fetchIndependentUrl(url,{method:'POST',headers:headers(st),body:JSON.stringify(profile.body),signal:options.signal,dispatchLease:options.dispatchLease});
- }catch(error){
-  if(options.signal?.aborted || error?.name==='AbortError') throw error;
-  throw transportFailure(error,'transport-fetch');
- }
- try{
-  result=await readApiResponse(r);
- }catch(error){
-  if(options.signal?.aborted || error?.name==='AbortError') throw error;
-  throw transportFailure(error,'transport-body');
+ if(connectionId){
+  try{
+   const runtime=await validatedIndependentConnectionProfile(connectionId);
+   const completed=await requestIndependentConnectionProfileCompletion(runtime,profile,{...options,maxTokens:Number(st.independentApiMaxTokens)||12000});
+   r=completed.response; result=completed.result;
+  }catch(error){
+   if(options.signal?.aborted) throw error;
+   const partial=error?.partialResult;
+   if(recoverableCompletedIndependentAbort(error,options.signal,partial?.text)){
+    r={ok:true,status:200,statusText:'OK'};
+    result={...partial,terminatedAfterComplete:true};
+   }else throw transportFailure(error,'transport-profile');
+  }
+ }else{
+  try{
+   r=await fetchIndependentUrl(url,{method:'POST',headers:headers(st),body:JSON.stringify(profile.body),signal:options.signal,dispatchLease:options.dispatchLease});
+  }catch(error){
+   if(options.signal?.aborted) throw error;
+   throw transportFailure(error,'transport-fetch');
+  }
+  try{
+   result=await readApiResponse(r,{expectedStream:profile.body?.stream!==false,signal:options.signal});
+  }catch(error){
+   if(options.signal?.aborted) throw error;
+   const partial=error?.partialResult;
+   if(recoverableCompletedIndependentAbort(error,options.signal,partial?.text)) result={...partial,terminatedAfterComplete:true};
+   else throw transportFailure(error,'transport-body');
+  }
  }
  attempts.push({profile:profile.name,status:r.status,detail:String(result.raw||'').slice(0,280),kind:'response'});
  const diagnosticBase={
@@ -4155,7 +4367,14 @@ function scheduleExternalInteractionActivationAfterOpenPaint(host,details,onTogg
  externalInteractionActivationScheduledDetails.add(details);
  const run=()=>{
   externalInteractionActivationScheduledDetails.delete(details);
-  if(!details?.isConnected || !details.open || externalInteractionActivatedDetails.has(details)) return;
+  if(!host?.isConnected || !details?.isConnected || !details.open || host.querySelector?.(':scope > details')!==details || externalInteractionActivatedDetails.has(details)) return;
+  // Safari can leave the direct content root in a shrink-to-fit width on the
+  // first pure-external paint even though <summary> and ::details-content are
+  // already full width. The existing rescue used to run only after a real
+  // resize/orientation change, so most users never reached it. Reuse the same
+  // guarded, author-sizing-aware repair once after the first open paint.
+  try{ rescueIndependentExternalAutoRootWidth(host); }
+  catch(error){ console.debug('[RabbitMirror] external auto-root width rescue skipped:',error); }
   if(activateExternalInteractionTools(host,details)){
    const boundToggle=onToggle||externalInteractionActivationHandlers.get(details);
    if(boundToggle) details.removeEventListener?.('toggle',boundToggle,false);
@@ -4165,7 +4384,8 @@ function scheduleExternalInteractionActivationAfterOpenPaint(host,details,onTogg
  // The old path ran the entire interaction rescue library synchronously inside the
  // native <details> toggle event. On complex mirrors Safari cannot paint the opened
  // body until that scan finishes, so a successful tap looks like a dead/cancelled tap.
- // Yield one paint first; internal controls are still rehydrated immediately after it.
+ // Yield one paint first; internal controls and the guarded Safari width repair
+ // are still rehydrated immediately after it.
  if(typeof requestAnimationFrame==='function') requestAnimationFrame(()=>setTimeout(run,0));
  else setTimeout(run,0);
  return true;
@@ -4220,7 +4440,9 @@ function ensureExternalTools(host){
  // ownership markers even when the complete interaction library is not rerun on
  // this upgrade. Apply the cheap structural grid-span migration independently.
  try{ if(details) repairRabbitMirrorPersistedExclusiveGridSpan(details); }catch(error){ console.debug('[RabbitMirror] persisted stacked-grid migration skipped:',error); }
- // Layout rescue is explicit Maintenance Rabbit work; mounting tools is read-only.
+ // General layout rescue remains explicit Maintenance Rabbit work. The only
+ // automatic write here is the guarded Safari auto-root correction scheduled
+ // once after a pure-external mirror is actually opened.
  try{ refreshRabbitMirrorToolsInScope(host,{historyRestoreLight}); }catch(error){ console.debug('[RabbitMirror] external tool preparation skipped:',error); }
  removeIndependentResayButtons(host);
 }
@@ -5809,12 +6031,34 @@ function currentGenerationIdentity(index){
  const observed=observeMessageSourceRevision(ctx,index,msg);
  return {ctx,msg,slot:observed.slot,baseSlot:messageBaseSlotKey(ctx,index,msg),legacySlots:observed.legacySlots||[],key:recordKey(ctx,index,msg),sourceHash:observed.sourceHash,bodyHash:observed.bodyHash,displayHash:observed.displayHash,reasoningHash:observed.reasoningHash,revision:observed.revision};
 }
+function settleCancelledIndependentFlightUi(flight,reason='cancelled'){
+ if(!flight || flight.uiSettled) return false;
+ const host=flight.loadingHost;
+ const liveEl=messageElement(Number(flight.index));
+ if(flight.manual && flight.previousReadyRecord?.html && liveEl){
+  ensureExternalUi(liveEl,flight.key,flight.previousReadyRecord.html,'ready','independent',flight.sourceHash);
+  flight.uiSettled=true;
+  return true;
+ }
+ if(host?.isConnected && host.dataset?.rmState==='loading'){
+  const identity=currentGenerationIdentity(Number(flight.index));
+  const sameOwner=identity && identity.key===flight.key && identity.sourceHash===flight.sourceHash;
+  if(sameOwner && liveEl && String(reason||'')==='api-settings-changed'){
+   ensureExternalUi(liveEl,flight.key,'独立 API 设置在生成期间发生变化，本次已取消且不会自动重发。请确认新连接后手动重新生成兔子镜。','error','independent',flight.sourceHash);
+  }else host.remove?.();
+  flight.uiSettled=true;
+  return true;
+ }
+ flight.uiSettled=true;
+ return false;
+}
 function abortFlight(flight,reason='cancelled'){
  if(!flight) return;
  flight.cancelled=true; flight.cancelReason=reason;
  if(flight.timeoutTimer){ clearTimeout(flight.timeoutTimer); flight.timeoutTimer=0; }
  try{ flight.dispatchLease?.release?.(); }catch{}
  try{ flight.controller?.abort?.(reason); }catch{}
+ settleCancelledIndependentFlightUi(flight,reason);
 }
 function cancelFlightsForSlot(slot,exceptSourceHash=''){
  for(const [id,flight] of globalFlights()){
@@ -5922,13 +6166,19 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  }
  const existing=pending.get(slot);
  if(!force && existing && existing.sourceHash===sourceHash && existing.revision===revision){
-  if(el) ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
+  if(el){
+   const remounted=ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
+   if(remounted) existing.loadingHost=remounted;
+  }
   existing.task?.finally?.(()=>queueMessageSync([index]));
   return existing.task;
  }
  const flightKey=flightIdentity(slot,sourceHash); const shared=globalFlights().get(flightKey);
  if(!force && shared?.task){
-  if(el) ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
+  if(el){
+   const remounted=ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
+   if(remounted) shared.loadingHost=remounted;
+  }
   shared.task.finally?.(()=>queueMessageSync([index]));
   return shared.task;
  }
@@ -5942,25 +6192,32 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   if(!force && automaticDispatchAlreadyConsumed(baseSlot)) renderAutomaticDispatchConsumed(index,sourceHash);
   return null;
  }
+ let loadingHost=null;
  if(el){
   collapseDuplicateIdentityHosts(el,key,'independent',sourceHash);
   // A manual resay should not blank a perfectly good mirror while the new paid
   // request is still running. The existing loading renderer keeps ready details
   // mounted and adds one aria-live resay status instead of replacing the mirror.
-  ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
+  loadingHost=ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
  }
  const runId=++generationSequence; const controller=new AbortController(); let stale=false;
- const flight={task:null,runId,key,slot,index,sourceHash,revision,manual:!!force,cancelled:false,controller,baseSlot,dispatchLease,timedOut:false,timeoutTimer:0};
+ const flight={task:null,runId,key,slot,index,sourceHash,revision,manual:!!force,cancelled:false,controller,baseSlot,dispatchLease,timedOut:false,timeoutTimer:0,loadingHost,previousReadyRecord,uiSettled:false};
  const stillCurrent=()=>{
   const live=currentGenerationIdentity(index); const active=pending.get(slot);
   return currentRuntime() && runtimeMode()==='independent' && live && live.slot===slot && live.key===key && live.sourceHash===sourceHash && live.revision===revision && active?.runId===runId && active?.revision===revision && !flight.cancelled && globalFlights().get(flightKey)===flight;
  };
+ let timeoutReject=null;
+ const timeoutPromise=new Promise((resolve,reject)=>{ timeoutReject=reject; });
  flight.timeoutTimer=setTimeout(()=>{
   flight.timedOut=true;
+  const error=new Error('独立 API 生成超过 5 分钟，已停止本次等待。可在挨打猫中重说；本轮不会自动重新发送付费请求。');
+  error.name='RabbitMirrorIndependentTimeoutError'; error.code='RABBIT_MIRROR_INDEPENDENT_TIMEOUT';
   try{ controller.abort('independent-request-timeout'); }catch{}
+  timeoutReject?.(error);
  },INDEPENDENT_REQUEST_TIMEOUT_MS);
- const task=callIndependentApi(ctx,index,msg,controller.signal,{manualRetry:force,slot,dispatchLease}).then(result=>{
-  if(!stillCurrent()){ stale=true; return; }
+ const apiTask=callIndependentApi(ctx,index,msg,controller.signal,{manualRetry:force,slot,dispatchLease});
+ const task=Promise.race([apiTask,timeoutPromise]).then(result=>{
+  if(!stillCurrent()){ stale=true; settleCancelledIndependentFlightUi(flight,'stale-owner'); return; }
   // One chat+mesid+swipe owner accepts only its first successful automatic
   // result. Later DOM/source rewrites cannot replace A with B; explicit resay
   // clears this owner lock before starting.
@@ -6000,12 +6257,14 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   writePersistedOwner(ctx,index,msg,completed,{overwrite:true});
   const liveEl=messageElement(index);
   if(liveEl) ensureExternalUi(liveEl,key,html,'ready','independent',sourceHash);
+  flight.uiSettled=true;
   return completed;
  }).catch(err=>{
   if(flight.timedOut && stillCurrent()){
-   err=new Error('独立 API 生成超过 5 分钟，已停止本次等待。可在挨打猫中重说；旧请求不会继续占用当前兔子镜。');
-  } else if(err?.name==='AbortError' || controller.signal.aborted || !stillCurrent()){
+   err=new Error('独立 API 生成超过 5 分钟，已停止本次等待。可在挨打猫中重说；本轮不会自动重新发送付费请求。');
+  } else if(controller.signal.aborted || !stillCurrent()){
    stale=true;
+   settleCancelledIndependentFlightUi(flight,flight.cancelReason||'stale-owner');
    return;
   }
   markAutomaticFailureStop(slot,sourceHash,String(err?.message||err||'generation-failed'));
@@ -6019,6 +6278,7 @@ async function generateFor(index,msg,force=false,sourceAware=true){
      // error is still surfaced through the toast/log and the next manual retry
      // profile remains staged in diagnostics.
      ensureExternalUi(liveEl,key,previousReadyRecord.html,'ready','independent',sourceHash);
+     flight.uiSettled=true;
      toastr?.error?.(String(err?.message||err));
     } else {
      const liveHost=collapseDuplicateIdentityHosts(liveEl,key,'independent',sourceHash);
@@ -6029,8 +6289,10 @@ async function generateFor(index,msg,force=false,sourceAware=true){
       // placeholder that carries the exact owner identity, feedback cat and a
       // direct retry action. The previous ready HTML remains in cache/history.
       clearExternalHostFreshSourceState(liveHost);
-      ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
+     ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
+     flight.uiSettled=true;
      } else ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
+     flight.uiSettled=true;
     }
    }
   }
@@ -6039,12 +6301,13 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   if(flight.timeoutTimer){ clearTimeout(flight.timeoutTimer); flight.timeoutTimer=0; }
   if(pending.get(slot)?.runId===runId) pending.delete(slot);
   if(globalFlights().get(flightKey)===flight) globalFlights().delete(flightKey);
+  if(flight.loadingHost?.isConnected && flight.loadingHost.dataset?.rmState==='loading') settleCancelledIndependentFlightUi(flight,flight.cancelReason||'request-ended-without-terminal-ui');
   // Never turn a completed/cancelled request into another automatic paid
   // request from finally(). Genuine new正文 versions are scheduled by their
   // own Swipe/resay/generation events; the same正文 remains single-shot.
  });
  flight.task=task; globalFlights().set(flightKey,flight);
- pending.set(slot,{task,runId,key,sourceHash,revision,manual:!!force,controller,dispatchLease,cancelled:false,baseSlot});
+ pending.set(slot,flight);
  await task;
 }
 
@@ -7397,6 +7660,20 @@ function captureMountedIndependentPlaceholderIndices(){
  }
  return [...indices];
 }
+function settleMountedIndependentPlaceholders(indices,reason){
+ const ctx=getContext();
+ const message=String(reason||'runtime-changed')==='api-settings-changed'
+  ? '独立 API 设置在生成期间发生变化，本次等待已停止，且不会自动重新发送付费请求。请确认新连接后手动重新生成兔子镜。'
+  : '本次独立 API 生成已因页面／生成来源状态变化而停止，且不会自动重新发送付费请求。需要时请手动重新生成兔子镜。';
+ for(const index of Array.isArray(indices)?indices:[]){
+  const id=Number(index); const msg=Number.isInteger(id)&&id>=0?ctx.chat?.[id]:null; const el=msg?messageElement(id):null;
+  if(!msg || msg.is_user || typeof msg.mes!=='string' || !el) continue;
+  const loading=externalHostsOwnedByMesid(String(id)).some(host=>host.dataset.rmSource==='independent' && (host.dataset.rmState==='loading' || host.dataset.rmReplyGenerationPlaceholder==='true'));
+  if(!loading) continue;
+  const observed=observeMessageSourceRevision(ctx,id,msg);
+  ensureExternalUi(el,recordKey(ctx,id,msg),message,'error','independent',observed.sourceHash);
+ }
+}
 function captureMountedIndependentRecords(){
  const snapshots=[];
  const ctx=getContext();
@@ -7448,6 +7725,7 @@ async function reconfigureRuntime({coldStart=false}={}){
  if(!currentRuntime()) return;
  const sequence=++runtimeConfigSequence;
  clearPassiveRecoveryTimers();
+ const mountedIndependentPlaceholders=coldStart?[]:captureMountedIndependentPlaceholderIndices();
  const mountedIndependentSnapshots=coldStart?[]:captureMountedIndependentRecords();
  disconnectObserver(); unsubscribeHostEvents();
  const mode=runtimeMode();
@@ -7461,13 +7739,16 @@ async function reconfigureRuntime({coldStart=false}={}){
  const nextConfig=mode==='independent'?independentRequestConfigSignature():'';
  if(lastIndependentRequestConfig && nextConfig && nextConfig!==lastIndependentRequestConfig){
    clearScheduledGeneration(); cancelAllIndependentFlights('api-settings-changed');
+   settleMountedIndependentPlaceholders(mountedIndependentPlaceholders,'api-settings-changed');
  }
  if(mode!=='independent'){
    clearScheduledGeneration(); cancelAllIndependentFlights('generation-source-changed');
+   settleMountedIndependentPlaceholders(mountedIndependentPlaceholders,'generation-source-changed');
  }
  lastIndependentRequestConfig=nextConfig;
  if(mode==='off'||mode==='inline'){
    clearScheduledGeneration(); cancelAllIndependentFlights('mode-disabled');
+   settleMountedIndependentPlaceholders(mountedIndependentPlaceholders,'mode-disabled');
    if(mode==='inline'){
      document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(el=>restoreFollowInline(el));
      // Cold entry restores only the newest few owners synchronously and yields between

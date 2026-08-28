@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1",
-  "css": "style.css?rmv=1.4.30.27",
+  "js": "index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2",
+  "css": "style.css?rmv=1.4.30.30",
   "author": "Toto",
-  "version": "1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1",
+  "version": "1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版｜AdvancedUI1 稳定性修复：维修兔目标隔离、全模式问题 emoji、仅显式开启的当前消息有界自动巡逻与热更新清理；保留单次请求、Prompt、美化和性能边界。"
+  "description": "兔子镜测试版｜ApiFix2：1.18.0+ 可让兔子镜使用与正文不同的 Connection Profile 并真实拉取该连接模型；旧版仍可使用手动独立 API。"
 }

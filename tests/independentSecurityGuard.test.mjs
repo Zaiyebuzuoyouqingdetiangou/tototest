@@ -12,6 +12,8 @@ const {
     sanitizeRabbitMirrorCompletionBody,
     initRabbitMirrorIndependentSecurityGuard,
     fetchRabbitMirrorIndependentCompletion,
+    authorizeRabbitMirrorIndependentServiceRequest,
+    assertRabbitMirrorIndependentResponseText,
     destroyRabbitMirrorIndependentSecurityGuard,
     rabbitMirrorIndependentSecurityLimits,
 } = await import(moduleUrl);
@@ -66,6 +68,65 @@ const modernPayload = { model: 'x', messages: [{ role: 'user', content: modernPr
 const modernChecked = sanitizeRabbitMirrorCompletionBody(JSON.stringify(modernPayload));
 assert.equal(modernChecked.rabbitMirror, true, 'modern compact context must satisfy the guard');
 assert.equal(modernChecked.changed, false, 'modern compact context has no legacy sensitive aggregate to rewrite');
+
+// Connection Manager's official request service bypasses the dedicated fetch
+// transport, so its preflight must preserve the exact same privacy, request-size
+// and one-dispatch lease boundary before sendRequest() is allowed to run.
+let serviceLeaseConsumes = 0;
+const serviceLease = {
+    consume() {
+        serviceLeaseConsumes += 1;
+        return serviceLeaseConsumes === 1;
+    },
+};
+const servicePrepared = authorizeRabbitMirrorIndependentServiceRequest(payload, serviceLease);
+assert.equal(serviceLeaseConsumes, 1, 'one authorized service request must consume its lease exactly once');
+assert.equal(servicePrepared.model, 'x');
+assert.ok(servicePrepared.messages[1].content.includes('hello'));
+assert.ok(servicePrepared.messages[1].content.includes(world));
+assert.ok(servicePrepared.messages[1].content.includes(lock));
+assert.ok(!servicePrepared.messages[1].content.includes('PROMPT_SECRET'));
+assert.ok(!servicePrepared.messages[1].content.includes('META_SECRET'));
+assert.ok(!servicePrepared.messages[1].content.includes('"secret":"x"'));
+assert.ok(payload.messages[1].content.includes('PROMPT_SECRET'), 'service preflight must return a sanitized copy instead of mutating the caller payload');
+
+assert.throws(
+    () => authorizeRabbitMirrorIndependentServiceRequest(modernPayload),
+    error => error?.code === 'RABBIT_MIRROR_DISPATCH_LEASE_REJECTED',
+    'a service request without the operation lease must fail before sendRequest()',
+);
+
+let oversizedLeaseConsumes = 0;
+const oversizedPayload = {
+    ...modernPayload,
+    messages: [{ role: 'user', content: `${modernPrompt}\n${'x'.repeat(rabbitMirrorIndependentSecurityLimits.maxRequestBytes)}` }],
+};
+assert.throws(
+    () => authorizeRabbitMirrorIndependentServiceRequest(oversizedPayload, { consume: () => { oversizedLeaseConsumes += 1; return true; } }),
+    error => error?.code === 'RABBIT_MIRROR_REQUEST_TOO_LARGE'
+        && error?.limitBytes === rabbitMirrorIndependentSecurityLimits.maxRequestBytes
+        && error?.observedBytes > error?.limitBytes,
+    'Connection Manager service requests must retain the 192 KiB request ceiling',
+);
+assert.equal(oversizedLeaseConsumes, 0, 'request validation/size rejection must happen before spending the operation lease');
+
+assert.equal(assertRabbitMirrorIndependentResponseText('FRAME'), 'FRAME');
+assert.throws(
+    () => assertRabbitMirrorIndependentResponseText('x'.repeat(rabbitMirrorIndependentSecurityLimits.maxResponseBytes + 1)),
+    error => error?.code === 'RABBIT_MIRROR_RESPONSE_TOO_LARGE'
+        && error?.limitBytes === rabbitMirrorIndependentSecurityLimits.maxResponseBytes,
+    'Connection Manager frame accumulation must retain the 2 MiB response ceiling',
+);
+assert.throws(
+    () => assertRabbitMirrorIndependentResponseText({
+        content: 'VISIBLE',
+        reasoning: 'r'.repeat(rabbitMirrorIndependentSecurityLimits.maxResponseBytes),
+        swipes: ['HIDDEN_SWIPE'],
+        state: { hidden: 'HIDDEN_STATE' },
+    }),
+    error => error?.code === 'RABBIT_MIRROR_RESPONSE_TOO_LARGE',
+    'the response ceiling must count hidden reasoning/swipes/state, not only promoted visible content',
+);
 
 const unrelated = sanitizeRabbitMirrorCompletionBody(JSON.stringify({ messages: [{ role: 'user', content: 'hello' }] }));
 assert.equal(unrelated.rabbitMirror, false);

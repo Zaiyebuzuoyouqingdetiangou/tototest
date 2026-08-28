@@ -74,7 +74,10 @@ const source = readFileSync(resolve(ROOT, 'src/independentApi.js'), 'utf8');
     };
     vm.createContext(sandbox);
     vm.runInContext(`${source.slice(start, end)}\nglobalThis.requestIndependentCompletion=requestIndependentCompletion;`, sandbox);
-    const result = await sandbox.globalThis.requestIndependentCompletion({ independentApiModel: 'm', independentConnectionProfileId: 'p' }, 'S', 'U', {});
+    // This case exercises the legacy/manual OpenAI-compatible transport's HTTP
+    // 524 semantics. Connection Manager Profile mode has its own official
+    // sendRequest(B) adapter coverage in independentModelList.test.mjs.
+    const result = await sandbox.globalThis.requestIndependentCompletion({ independentApiModel: 'm', independentConnectionProfileId: '', independentApiBaseUrl: 'https://manual.example/v1' }, 'S', 'U', {});
     assert.equal(fetchCalls, 1, '524 must never trigger an automatic second paid request');
     assert.equal(staged, 'chat_system_user_full_nostream');
     assert.equal(forgotten, 'chat_system_user_full');

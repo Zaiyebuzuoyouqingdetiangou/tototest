@@ -1,15 +1,15 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
-import { clearLastCombo } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { clearLastCombo } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
 
-const SETTINGS_UI_VERSION = '1.4.30.27-subapitag2-advancedui1-cleanui1';
-const RUNTIME_VERSION = '1.4.30.27';
+const SETTINGS_UI_VERSION = '1.4.30.30-subapitag2-advancedui1-cleanui1-widthfix1-apifix2';
+const RUNTIME_VERSION = '1.4.30.30';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -455,7 +455,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.27</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.30</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -514,14 +514,15 @@ export function initRabbitMirrorUI() {
                 <button id="rh_independent_import_current" class="menu_button" type="button" style="font-weight:700;">从酒馆当前连接一键配置</button>
                 <span id="rh_independent_connection_status" style="opacity:.72;font-size:11px;line-height:1.4;">尚未配置</span>
               </div>
-              <div style="opacity:.66;font-size:11px;line-height:1.45;margin-top:5px;">直接复用 SillyTavern 当前 Chat Completion / Connection Manager 连接；API Key 继续由酒馆 Secrets 保管，不复制到兔子镜。</div>
+              <div style="opacity:.66;font-size:11px;line-height:1.45;margin-top:5px;">直接复用 SillyTavern Connection Manager 连接；兔子镜可以选择与正文不同的 Profile，生成时不会切换正文连接。API Key 继续由酒馆 Secrets 保管，不复制到兔子镜。</div>
+              <div style="opacity:.78;font-size:11px;line-height:1.45;margin-top:5px;">仅支持 SillyTavern 1.18.0 及以上版本；旧版请使用下方“手动 OpenAI 兼容接口”。</div>
             </div>
             <div class="flex-container" style="gap:7px;flex-wrap:wrap;">
               <button id="rh_independent_models" class="menu_button" type="button">拉取模型</button>
               <button id="rh_independent_test" class="menu_button" type="button">测试连接</button>
             </div>
             <select id="rh_independent_model_select" class="text_pole" aria-label="已拉取模型列表">
-              <option value="">先点击“拉取模型”获取完整列表</option>
+              <option value="">先点击“拉取模型”</option>
             </select>
             <input id="rh_independent_model" class="text_pole" type="text" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="模型 ID；可从上方完整列表选择，也可直接手动填写">
             <div style="opacity:.66;font-size:11px;line-height:1.45;">拉取后可从列表选模型；拉取失败也可以直接手填模型 ID。</div>
@@ -1158,7 +1159,7 @@ export function initRabbitMirrorUI() {
     const renderIndependentModelSelect = (models, currentModel='') => {
         const select=$('#rh_independent_model_select');
         const current=String(currentModel||'').trim();
-        select.empty().append($('<option>').val('').text(models.length ? `已拉取 ${models.length} 个模型，请选择` : '先点击“拉取模型”获取完整列表'));
+        select.empty().append($('<option>').val('').text(models.length ? `已拉取 ${models.length} 个模型，请选择` : '先点击“拉取模型”'));
         for(const id of models){
             select.append($('<option>').val(id).text(id));
         }
@@ -1198,7 +1199,8 @@ export function initRabbitMirrorUI() {
             if(diagnostic?.mode==='saved-fallback') {
                 toastr?.warning?.(`远端模型列表不可用；已显示酒馆连接中保存的 ${models.length} 个模型。${diagnostic.error||''}`);
             } else {
-                toastr?.success?.(`已拉取 ${models.length} 个模型；完整列表已显示在模型下拉框中`);
+                const profileHint=getSettings().independentConnectionProfileId ? '；使用兔子镜所选酒馆连接，正文当前连接没有切换' : '';
+                toastr?.success?.(`已拉取 ${models.length} 个模型；完整列表已显示在模型下拉框中${profileHint}`);
             }
         } catch(error) {
             // 远端 /models 卡住或失败时保留酒馆已保存模型与手动 ID，不让设置页无限等待。
@@ -1215,6 +1217,10 @@ export function initRabbitMirrorUI() {
         const result=await testIndependentConnection();
         if(result.verified) {
             toastr?.success?.(`模型列表端点可用；检测到 ${result.models.length} 个模型`);
+            return;
+        }
+        if(result.code==='MODEL_LIST_SAVED_FALLBACK') {
+            toastr?.warning?.(`远端模型列表不可用；已确认兔子镜仍保留该酒馆连接中保存的 ${result.models.length} 个模型。${result.error||''}`);
             return;
         }
         const manualModel=String($('#rh_independent_model').val() || result.manualModel || '').trim();

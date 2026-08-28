@@ -1,7 +1,7 @@
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
-import { updateLatestVisualSignature } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
 
-const VERSION = '1.4.30.27';
+const VERSION = '1.4.30.30';
 const HOST = '[data-rabbit-mirror-external-source]';
 const READY_INDEPENDENT = `${HOST}[data-rm-source="independent"][data-rm-state="ready"]`;
 const TOOL = '[data-rabbit-mirror-tool-entry-host]';
