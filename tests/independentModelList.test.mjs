@@ -165,6 +165,30 @@ test('Connection Manager stream factory calls profile B once, merges cumulative 
     assert.doesNotMatch(harness.adapterSource, /selectedProfile\s*=/, 'the adapter must never switch Connection Manager global state as a transport shortcut');
 });
 
+test('official SillyTavern 1.18 payload merge consumes RabbitMirror model B instead of Profile default A', async () => {
+    const complete = '<toto><details><summary>B</summary><div>READY</div></details></toto>';
+    let finalPayload = null;
+    const harness = connectionManagerAdapterHarness(async (profileId, messages, maxTokens, custom, overridePayload) => {
+        const profile = harness.manager.profiles.find(item => item.id === profileId);
+        // Mirrors SillyTavern 1.18 shared.js: profile.model is assigned first,
+        // then the fifth overridePayload is spread last.
+        finalPayload = {
+            stream: custom.stream,
+            messages,
+            max_tokens: maxTokens,
+            model: profile.model,
+            ...overridePayload,
+        };
+        return async function* streamFactory() { yield { text: complete }; };
+    });
+    const output = await harness.adapter(harness.runtime, harness.requestProfile, { dispatchLease: harness.dispatchLease });
+    assert.equal(harness.calls.length, 1);
+    assert.equal(finalPayload.model, 'model-b', 'the model reaching ChatCompletionService must be B, not Profile default A');
+    assert.equal(finalPayload.stream, true);
+    assert.equal(output.result.text, complete);
+    assert.equal(harness.manager.selectedProfile, 'profile-a', 'the正文 connection stays untouched');
+});
+
 test('Connection Manager rejects an incomplete stream Abort without a second request', async () => {
     const partial = '<toto><details><summary>B</summary><div>TRUNCATED';
     const nakedAbort = Object.assign(new Error('relay aborted an incomplete stream'), { name: 'AbortError' });
@@ -365,14 +389,15 @@ test('model pull returns B remote models and falls back only to B saved models o
         const sandbox = {
             String, Number, Object, Array, JSON, Error, Set, Response, AbortController,
             setTimeout, clearTimeout,
-            getSettings: () => ({ independentConnectionProfileId: 'profile-b', independentApiBaseUrl: '', independentApiKey: '' }),
+            getSettings: () => ({ independentConnectionProfileId: 'profile-a', independentApiBaseUrl: '', independentApiKey: '' }),
             getContext: () => ({}),
             normalizeIndependentConnectionText: value => String(value ?? '').trim(),
             savedIndependentModelsForProfile: () => ['b-saved'],
             validatedIndependentConnectionProfile: async id => ({ id }),
             endpoint: () => '',
             headers: () => ({}),
-            fetchIndependentUrl: async () => {
+            fetchIndependentUrl: async (url, options) => {
+                assert.equal(options.settings.independentConnectionProfileId, 'profile-b', 'explicit Profile pull must not inherit active Profile A');
                 if (fail) return new Response(JSON.stringify({ error: { message: 'B upstream unavailable' } }), { status: 502 });
                 return new Response(JSON.stringify({ data: [{ id: 'b-remote-2' }, { id: 'b-remote-1' }] }), { status: 200 });
             },
@@ -388,9 +413,10 @@ ${namedFunctionSource('independentPayloadHasError')}
 ${namedFunctionSource('independentModelId')}
 ${namedFunctionSource('extractIndependentModelList')}
 ${namedFunctionSource('readIndependentResponsePayload')}
+${namedFunctionSource('independentModelListSettings')}
 ${namedFunctionSource('fetchIndependentModels')}
 globalThis.pull=fetchIndependentModels;`, sandbox);
-        return { models: Array.from(await sandbox.globalThis.pull()), diagnostics };
+        return { models: Array.from(await sandbox.globalThis.pull({ mode: 'profile', profileId: 'profile-b' })), diagnostics };
     };
     const remote = await run();
     assert.deepEqual(remote.models, ['b-remote-1', 'b-remote-2']);
@@ -406,7 +432,7 @@ test('manual OpenAI-compatible model pull remains available without the Profile 
     const sandbox = {
         String, Number, Object, Array, JSON, Error, Set, Response, AbortController,
         setTimeout, clearTimeout,
-        getSettings: () => ({ independentConnectionProfileId: '', independentApiBaseUrl: 'https://manual.example/v1', independentApiKey: 'manual-key' }),
+        getSettings: () => ({ independentConnectionProfileId: 'profile-a', independentApiBaseUrl: 'https://old.example/v1', independentApiKey: '' }),
         getContext: () => ({}),
         normalizeIndependentConnectionText: value => String(value ?? '').trim(),
         savedIndependentModelsForProfile: () => [],
@@ -416,6 +442,8 @@ test('manual OpenAI-compatible model pull remains available without the Profile 
         fetchIndependentUrl: async (url, options) => {
             assert.equal(url, 'https://manual.example/v1/models');
             assert.equal(options.headers.Authorization, 'Bearer manual-key');
+            assert.equal(options.settings.independentConnectionProfileId, '', 'manual button must explicitly bypass the still-saved Profile A');
+            assert.equal(options.settings.independentApiBaseUrl, 'https://manual.example/v1');
             return new Response(JSON.stringify({ data: [{ id: 'manual-model' }] }), { status: 200 });
         },
         publishIndependentModelListDiagnostic: value => value,
@@ -430,10 +458,130 @@ ${namedFunctionSource('independentPayloadHasError')}
 ${namedFunctionSource('independentModelId')}
 ${namedFunctionSource('extractIndependentModelList')}
 ${namedFunctionSource('readIndependentResponsePayload')}
+${namedFunctionSource('independentModelListSettings')}
 ${namedFunctionSource('fetchIndependentModels')}
 globalThis.pull=fetchIndependentModels;`, sandbox);
-    assert.deepEqual(Array.from(await sandbox.globalThis.pull()), ['manual-model']);
+    assert.deepEqual(Array.from(await sandbox.globalThis.pull({ mode: 'manual', baseUrl: 'https://manual.example/v1', apiKey: 'manual-key' })), ['manual-model']);
     assert.equal(profileValidationCalls, 0);
+});
+
+test('re-importing the same Profile preserves an explicitly selected model B', async () => {
+    let patch = null;
+    const profile = { id: 'profile-a', name: 'Account A', model: 'model-a' };
+    const sandbox = {
+        String, Error,
+        getContext: () => ({
+            extensionSettings: { connectionManager: { selectedProfile: 'profile-a', profiles: [profile] } },
+            ConnectionManagerRequestService: { validateProfile() {}, sendRequest() {} },
+        }),
+        getSettings: () => ({ independentConnectionProfileId: 'profile-a', independentApiModel: 'model-b' }),
+        independentConnectionManagerSettings: ctx => ctx.extensionSettings.connectionManager,
+        assertIndependentConnectionProfileSupport: async () => true,
+        validatedIndependentConnectionProfile: async () => ({ profile }),
+        normalizeIndependentConnectionText: value => String(value ?? '').trim(),
+        updateSettings: value => { patch = value; },
+        globalThis: {},
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(`${namedFunctionSource('importCurrentSillyTavernConnection')}
+globalThis.importCurrent=importCurrentSillyTavernConnection;`, sandbox);
+    const result = await sandbox.globalThis.importCurrent();
+    assert.equal(result.model, 'model-b');
+    assert.equal(result.profileModel, 'model-a');
+    assert.equal(patch.independentConnectionProfileId, 'profile-a');
+    assert.equal(patch.independentApiModel, 'model-b', 're-import must not silently restore Profile default A');
+});
+
+test('a late one-click import cannot overwrite a newer manual connection choice', async () => {
+    let finishValidation;
+    const validation = new Promise(resolveValidation => { finishValidation = resolveValidation; });
+    const writes = [];
+    const profile = { id: 'profile-a', name: 'Account A', model: 'model-a' };
+    const sandbox = {
+        String, Error,
+        getContext: () => ({
+            extensionSettings: { connectionManager: { selectedProfile: 'profile-a', profiles: [profile] } },
+            ConnectionManagerRequestService: { validateProfile() {}, sendRequest() {} },
+        }),
+        getSettings: () => ({ independentConnectionProfileId: '', independentApiModel: 'manual-model' }),
+        independentConnectionManagerSettings: ctx => ctx.extensionSettings.connectionManager,
+        assertIndependentConnectionProfileSupport: async () => true,
+        validatedIndependentConnectionProfile: async () => validation,
+        normalizeIndependentConnectionText: value => String(value ?? '').trim(),
+        updateSettings: value => { writes.push(value); },
+        globalThis: {},
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(`${namedFunctionSource('importCurrentSillyTavernConnection')}
+globalThis.importCurrent=importCurrentSillyTavernConnection;`, sandbox);
+    let current = true;
+    const pending = sandbox.globalThis.importCurrent({ isCurrent: () => current });
+    await Promise.resolve();
+    current = false;
+    finishValidation({ profile });
+    await assert.rejects(
+        () => pending,
+        error => error?.code === 'INDEPENDENT_CONNECTION_SELECTION_SUPERSEDED',
+        'the earlier async import must be cancelled after the user chooses manual transport',
+    );
+    assert.equal(writes.length, 0, 'a superseded import must not write Profile A back into RabbitMirror settings');
+});
+
+test('a slow Profile-created event cannot write back after a later manual choice', async () => {
+    let releaseCreatedEvent;
+    let markCreatedEventStarted;
+    const createdEventFinished = new Promise(resolveEvent => { releaseCreatedEvent = resolveEvent; });
+    const createdEventStarted = new Promise(resolveStarted => { markCreatedEventStarted = resolveStarted; });
+    const manager = { selectedProfile: '', profiles: [] };
+    const settings = { independentConnectionProfileId: '', independentApiModel: 'manual-before' };
+    const writes = [];
+    const commandValues = {
+        api: 'custom', preset: '', 'api-url': 'https://a.example/v1', model: 'model-a',
+        proxy: '', 'prompt-post-processing': '', 'secret-id': 'secret-a',
+    };
+    const commands = Object.fromEntries(Object.entries(commandValues).map(([name, value]) => [name, { callback: async () => value }]));
+    const ctx = {
+        mainApi: 'openai',
+        uuidv4: () => 'created-profile-a',
+        extensionSettings: { connectionManager: manager },
+        SlashCommandParser: { commands },
+        ConnectionManagerRequestService: {
+            validateProfile: () => ({ selected: 'openai', source: 'custom' }),
+            sendRequest() {},
+        },
+        saveSettingsDebounced() {},
+        eventTypes: { CONNECTION_PROFILE_CREATED: 'created' },
+        eventSource: { emit: async () => { markCreatedEventStarted(); await createdEventFinished; } },
+    };
+    const sandbox = {
+        String, Error, Set, JSON,
+        getContext: () => ctx,
+        getSettings: () => settings,
+        independentConnectionManagerSettings: value => value.extensionSettings.connectionManager,
+        assertIndependentConnectionProfileSupport: async () => true,
+        normalizeIndependentConnectionText: value => String(value ?? '').trim(),
+        updateSettings: patch => { writes.push(patch); Object.assign(settings, patch); },
+        console,
+        globalThis: {},
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(`${namedFunctionSource('independentConnectionFingerprint')}
+${namedFunctionSource('uniqueIndependentImportedProfileName')}
+${namedFunctionSource('readCurrentIndependentSlashSetting')}
+${namedFunctionSource('importCurrentSillyTavernConnection')}
+globalThis.importCurrent=importCurrentSillyTavernConnection;`, sandbox);
+    let current = true;
+    const pending = sandbox.globalThis.importCurrent({ isCurrent: () => current });
+    await createdEventStarted;
+    assert.equal(settings.independentConnectionProfileId, 'created-profile-a', 'new Profile and RabbitMirror selection commit before the slow host event');
+    current = false;
+    Object.assign(settings, { independentConnectionProfileId: '', independentApiModel: 'manual-after' });
+    releaseCreatedEvent();
+    const result = await pending;
+    assert.equal(result.created, true);
+    assert.equal(writes.length, 1, 'the import must not perform a second late settings write after the host event');
+    assert.equal(settings.independentConnectionProfileId, '', 'the later manual transport choice remains active');
+    assert.equal(settings.independentApiModel, 'manual-after');
 });
 
 test('saved-model fallback is scoped to profile B transport and never mixes profile A', () => {
@@ -483,17 +631,56 @@ test('version and capability gates distinguish pre-1.18 service from secret-id c
     const sandbox = { String, Number, Array, Function, Error, globalThis: {} };
     vm.createContext(sandbox);
     vm.runInContext(`${source.slice(source.indexOf('function independentSemver('), source.indexOf('async function readIndependentSillyTavernVersion('))}
-globalThis.gates={independentSemverAtLeast,independentConnectionManagerHasProfileSecrets};`, sandbox);
+globalThis.gates={independentSemverAtLeast,independentConnectionManagerHasProfileSecrets,independentConnectionManagerSupportsRequestOverrides};`, sandbox);
     assert.equal(sandbox.globalThis.gates.independentSemverAtLeast('SillyTavern 1.17.0'), false);
     assert.equal(sandbox.globalThis.gates.independentSemverAtLeast('SillyTavern:1.18.0:release'), true);
     assert.equal(sandbox.globalThis.gates.independentSemverAtLeast('1.19.2'), true);
     const oldService = { sendRequest() { return { model: 'b' }; } };
-    const newService = { sendRequest() { return { secret_id: profile['secret-id'] }; } };
+    const newService = { sendRequest(profileId, prompt, maxTokens, custom = {}, overridePayload = {}) { return { secret_id: profile['secret-id'], model: profile.model, ...overridePayload }; } };
+    const staleService = { sendRequest() { return { secret_id: profile['secret-id'] }; } };
+    const reversedService = { sendRequest(profileId, prompt, maxTokens, custom = {}, overridePayload = {}) { return { secret_id: profile['secret-id'], ...overridePayload, model: profile.model }; } };
     assert.equal(sandbox.globalThis.gates.independentConnectionManagerHasProfileSecrets(oldService), false);
     assert.equal(sandbox.globalThis.gates.independentConnectionManagerHasProfileSecrets(newService), true);
+    assert.equal(sandbox.globalThis.gates.independentConnectionManagerSupportsRequestOverrides(newService), true);
+    assert.equal(sandbox.globalThis.gates.independentConnectionManagerSupportsRequestOverrides(staleService), false);
+    assert.equal(sandbox.globalThis.gates.independentConnectionManagerSupportsRequestOverrides(reversedService), false, 'Profile default written after overrides must fail closed');
 });
 
-const models = source.slice(source.indexOf('export async function fetchIndependentModels(){'), source.indexOf('export async function testIndependentConnection(){'));
+test('a 1.18 server with a stale Connection Manager frontend is blocked before a paid request can use model A', async () => {
+    const sandbox = { String, Number, Array, Function, Error, globalThis: {} };
+    vm.createContext(sandbox);
+    vm.runInContext(`${source.slice(source.indexOf('function independentSemver('), source.indexOf('async function readIndependentSillyTavernVersion('))}
+async function readIndependentSillyTavernVersion(){ return '1.18.0'; }
+${source.slice(source.indexOf('async function assertIndependentConnectionProfileSupport('), source.indexOf('function independentConnectionManagerSettings('))}
+globalThis.check=assertIndependentConnectionProfileSupport;`, sandbox);
+    const staleService = { sendRequest() { return { secret_id: profile['secret-id'], model: profile.model }; } };
+    await assert.rejects(
+        () => sandbox.globalThis.check(staleService),
+        /旧 Connection Manager|请求级模型切换/,
+        'a stale frontend must fail closed instead of silently sending Profile default model A',
+    );
+});
+
+test('late model-list responses cannot overwrite a newer transport or edited manual connection', () => {
+    const start = uiSource.indexOf('function independentModelPullSnapshotMatches(');
+    const end = uiSource.indexOf('function renderIndependentApiDiagnostic(', start);
+    assert.ok(start >= 0 && end > start);
+    const sandbox = { String, Number, globalThis: {} };
+    vm.createContext(sandbox);
+    vm.runInContext(`${uiSource.slice(start, end)}
+globalThis.matches=independentModelPullSnapshotMatches;`, sandbox);
+    const profileSnapshot = { epoch: 4, profileRevision: 2, activeProfileId: 'profile-a', source: { mode: 'profile', profileId: 'profile-a' } };
+    assert.equal(sandbox.globalThis.matches(profileSnapshot, { epoch: 4, profileRevision: 2, activeProfileId: 'profile-a' }), true);
+    assert.equal(sandbox.globalThis.matches(profileSnapshot, { epoch: 5, profileRevision: 2, activeProfileId: 'profile-a' }), false, 'a newer pull invalidates the old response');
+    assert.equal(sandbox.globalThis.matches(profileSnapshot, { epoch: 4, profileRevision: 3, activeProfileId: 'profile-a' }), false, 'a Profile selector change invalidates the old response');
+    assert.equal(sandbox.globalThis.matches(profileSnapshot, { epoch: 4, profileRevision: 2, activeProfileId: 'profile-b' }), false, 'Profile A response cannot refill the list after switching to B');
+    const manualSnapshot = { epoch: 7, profileRevision: 3, activeProfileId: 'profile-a', source: { mode: 'manual', baseUrl: 'https://one.example/v1', apiKey: 'key-one' } };
+    assert.equal(sandbox.globalThis.matches(manualSnapshot, { epoch: 7, profileRevision: 3, activeProfileId: 'profile-a', manualBaseUrl: 'https://one.example/v1', manualApiKey: 'key-one' }), true);
+    assert.equal(sandbox.globalThis.matches(manualSnapshot, { epoch: 7, profileRevision: 3, activeProfileId: 'profile-a', manualBaseUrl: 'https://two.example/v1', manualApiKey: 'key-two' }), false, 'edited manual URL/Key invalidates the old response');
+    assert.equal(sandbox.globalThis.matches(manualSnapshot, { epoch: 7, profileRevision: 3, activeProfileId: '', manualBaseUrl: 'https://one.example/v1', manualApiKey: 'key-one' }), false, 'switching transport while manual pull waits invalidates the response');
+});
+
+const models = source.slice(source.indexOf('export async function fetchIndependentModels('), source.indexOf('export async function testIndependentConnection('));
 assert.match(models, /savedIndependentModelsForProfile/);
 assert.match(models, /mode:'saved-fallback'/);
 assert.match(models, /return savedModels/);
@@ -502,6 +689,15 @@ assert.doesNotMatch(models, /mode:'profile-saved'/, 'Profile mode must not prete
 assert.match(source, /export function getLastIndependentModelListDiagnostic/);
 assert.equal(manifest.minimum_client_version, '1.13.0', '1.18 must gate only Connection Profile reuse, not the whole extension');
 assert.match(uiSource, /仅支持 SillyTavern 1\.18\.0 及以上版本；旧版请使用下方“手动 OpenAI 兼容接口”/);
-assert.match(uiSource, />拉取模型<\/button>/);
+assert.match(uiSource, /id="rh_independent_models"[^>]*>从此酒馆连接拉取模型<\/button>/);
+assert.match(uiSource, /id="rh_independent_manual_models"[^>]*>从此手动接口拉取模型<\/button>/);
+assert.match(uiSource, /updateSettings\(\{independentConnectionProfileId:String\(source\.profileId/);
+assert.match(uiSource, /independentConnectionProfileId:'',\s*independentApiBaseUrl:String\(source\.baseUrl/);
+assert.match(uiSource, /请求指定模型/);
+assert.match(uiSource, /syncIndependentProfileSelector\(String\(source\.profileId/);
+assert.match(uiSource, /syncIndependentProfileSelector\(''\)/);
+assert.match(uiSource, /importCurrentSillyTavernConnection\(\{\s*isCurrent:\(\)=>independentConnectionOperationIsCurrent\(connectionRevision\)/);
+assert.match(uiSource, /export function destroyRabbitMirrorUI\(\) \{\s*invalidateIndependentModelPull\(\);\s*beginIndependentConnectionOperation\(\);/);
+assert.ok((uiSource.match(/if\(!isCurrentRuntime\(\) \|\| !independentModelPullIsCurrent\(pullSnapshot\)\) return;/g) || []).length >= 4, 'late success and failure callbacks must stop after a runtime replacement');
 
 console.log('independentModelList: Profile B remote pull, A isolation, old-host manual fallback and single-dispatch contract covered');

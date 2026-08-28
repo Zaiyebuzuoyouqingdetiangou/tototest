@@ -1,15 +1,15 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
-import { assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
+import { assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
-const RUNTIME_VERSION = '1.4.30.30';
+const RUNTIME_VERSION = '1.4.30.31';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -705,6 +705,18 @@ function independentConnectionManagerHasProfileSecrets(service){
   return /\bsecret_id\s*:/.test(source) && /profile\s*\[\s*['"]secret-id['"]\s*\]/.test(source);
  }catch{return false;}
 }
+function independentConnectionManagerSupportsRequestOverrides(service){
+ if(typeof service?.sendRequest!=='function') return false;
+ try{
+  const source=Function.prototype.toString.call(service.sendRequest);
+  // Official SillyTavern 1.18 applies the fifth overridePayload after the
+  // Profile payload. Without that final spread, a selected model B silently
+  // falls back to the Profile's saved default model A.
+  const profileModelIndex=source.search(/\bmodel\s*:\s*profile(?:\.model|\s*\[\s*['"]model['"]\s*\])/);
+  const overrideSpreadIndex=source.search(/\.\.\.\s*overridePayload\b/);
+  return profileModelIndex>=0 && overrideSpreadIndex>profileModelIndex;
+ }catch{return false;}
+}
 async function readIndependentSillyTavernVersion(){
  if(cachedSillyTavernVersion) return cachedSillyTavernVersion;
  try{
@@ -724,9 +736,13 @@ async function readIndependentSillyTavernVersion(){
 async function assertIndependentConnectionProfileSupport(service){
  // 1.18.0 added request-level Connection Profile secret-id forwarding. 1.16
  // and 1.17 already expose sendRequest(), so method presence alone is unsafe.
- if(independentConnectionManagerHasProfileSecrets(service)) return true;
+ const hasProfileSecrets=independentConnectionManagerHasProfileSecrets(service);
+ const hasRequestOverrides=independentConnectionManagerSupportsRequestOverrides(service);
+ if(hasProfileSecrets && hasRequestOverrides) return true;
  const version=await readIndependentSillyTavernVersion();
- if(independentSemverAtLeast(version) && typeof service?.sendRequest==='function') return true;
+ if(independentSemverAtLeast(version) && (!hasProfileSecrets || !hasRequestOverrides)){
+  throw new Error('酒馆版本显示为 1.18.0 或更高，但当前页面仍加载了不完整的旧 Connection Manager（缺少 Profile Secret 或请求级模型切换能力）。请强制刷新酒馆页面后重试；本次不会发送请求，以免误用 Profile 默认模型或错误凭据。');
+ }
  throw new Error('酒馆 Connection Profile 一键配置仅支持 SillyTavern 1.18.0 及以上版本；旧版请使用手动 OpenAI 兼容接口。');
 }
 function independentConnectionManagerSettings(ctx=getContext()){
@@ -781,23 +797,44 @@ export function getIndependentConnectionProfiles(){
   }).filter(Boolean);
  }catch{return [];}
 }
-export async function importCurrentSillyTavernConnection(){
+export async function importCurrentSillyTavernConnection(options){
+ options=options||{};
+ const assertStillCurrent=()=>{
+  if(typeof options?.isCurrent!=='function') return;
+  let current=false;
+  try{ current=options.isCurrent()!==false; }catch{}
+  if(current) return;
+  const error=new Error('一键配置结果已取消：等待期间你已经选择了另一组连接。');
+  error.code='INDEPENDENT_CONNECTION_SELECTION_SUPERSEDED';
+  throw error;
+ };
  const ctx=getContext(); const manager=independentConnectionManagerSettings(ctx); const service=ctx?.ConnectionManagerRequestService;
  if(!service?.validateProfile) throw new Error('当前 SillyTavern 未提供 Connection Manager Request Service。');
  await assertIndependentConnectionProfileSupport(service);
+ assertStillCurrent();
  const selectedId=normalizeIndependentConnectionText(manager.selectedProfile,160);
  if(selectedId){
   try{
    const selected=await validatedIndependentConnectionProfile(selectedId,ctx);
+   assertStillCurrent();
    const model=normalizeIndependentConnectionText(selected?.profile?.model,240);
-   updateSettings({independentConnectionProfileId:selectedId,...(model?{independentApiModel:model}:{})});
-   return {id:selectedId,name:normalizeIndependentConnectionText(selected?.profile?.name,180)||'当前连接',model,created:false};
-  }catch{}
+   const current=getSettings();
+   const retainedModel=normalizeIndependentConnectionText(current?.independentConnectionProfileId,160)===selectedId
+    ? normalizeIndependentConnectionText(current?.independentApiModel,240)
+    : '';
+   const selectedModel=retainedModel||model;
+   updateSettings({independentConnectionProfileId:selectedId,...(selectedModel?{independentApiModel:selectedModel}:{})});
+   return {id:selectedId,name:normalizeIndependentConnectionText(selected?.profile?.name,180)||'当前连接',model:selectedModel,profileModel:model,created:false};
+  }catch(error){ if(error?.code==='INDEPENDENT_CONNECTION_SELECTION_SUPERSEDED') throw error; }
  }
  if(ctx?.mainApi!=='openai') throw new Error('当前酒馆主连接不是 Chat Completion，无法在不改变兔子镜副 API 请求格式的前提下一键复用。');
  const commands=['api','preset','api-url','model','proxy','prompt-post-processing','secret-id'];
  const profile={id:typeof ctx?.uuidv4==='function'?ctx.uuidv4():`rabbitmirror-${Date.now()}-${Math.random().toString(16).slice(2)}`,mode:'cc',exclude:[]};
- for(const command of commands){ const value=await readCurrentIndependentSlashSetting(command,ctx); if(value||command==='api-url') profile[command]=value; }
+ for(const command of commands){
+  const value=await readCurrentIndependentSlashSetting(command,ctx);
+  assertStillCurrent();
+  if(value||command==='api-url') profile[command]=value;
+ }
  if(!profile.api) throw new Error('没有读到当前酒馆 API 类型，请先确认主聊天 API 已连接。');
  const apiMap=service.validateProfile(profile);
  if(apiMap?.selected!=='openai'||!apiMap?.source) throw new Error('当前酒馆连接不是兔子镜现有副 API 可复用的 Chat Completion 类型。');
@@ -805,14 +842,25 @@ export async function importCurrentSillyTavernConnection(){
  const existing=manager.profiles.find(item=>independentConnectionFingerprint(item)===fingerprint);
  let target=existing;
  if(!target){
+  assertStillCurrent();
   const displayApi=normalizeIndependentConnectionText(profile.api,80)||'API'; const displayModel=normalizeIndependentConnectionText(profile.model,100);
   profile.name=uniqueIndependentImportedProfileName(manager,`兔子镜 · ${displayApi}${displayModel?` · ${displayModel}`:''}`);
   manager.profiles.push(profile); target=profile; ctx?.saveSettingsDebounced?.();
+ }
+ assertStillCurrent();
+ const id=normalizeIndependentConnectionText(target?.id,160); const model=normalizeIndependentConnectionText(target?.model,240);
+ const current=getSettings();
+ const retainedModel=normalizeIndependentConnectionText(current?.independentConnectionProfileId,160)===id
+  ? normalizeIndependentConnectionText(current?.independentApiModel,240)
+  : '';
+ const selectedModel=retainedModel||model;
+ updateSettings({independentConnectionProfileId:id,...(selectedModel?{independentApiModel:selectedModel}:{})});
+ if(!existing){
+  // Profile creation and RabbitMirror selection commit synchronously. The host
+  // event may be slow; a later manual/Profile choice must remain the last write.
   try{ await ctx?.eventSource?.emit?.(ctx?.eventTypes?.CONNECTION_PROFILE_CREATED,profile); }catch(error){ console.warn('[RabbitMirror] connection profile created event failed',error); }
  }
- const id=normalizeIndependentConnectionText(target?.id,160); const model=normalizeIndependentConnectionText(target?.model,240);
- updateSettings({independentConnectionProfileId:id,...(model?{independentApiModel:model}:{})});
- return {id,name:normalizeIndependentConnectionText(target?.name,180)||'兔子镜专用连接',model,created:!existing};
+ return {id,name:normalizeIndependentConnectionText(target?.name,180)||'兔子镜专用连接',model:selectedModel,profileModel:model,created:!existing};
 }
 function independentConnectionTransportFingerprint(profile){
  const keys=['mode','api','api-url','proxy','secret-id'];
@@ -1900,7 +1948,9 @@ function customApiBaseFromUrl(url=''){
 }
 async function fetchIndependentUrl(url,options={}){
  const method=String(options.method||'GET').toUpperCase();
- const st=getSettings();
+ // Model-list buttons may inspect either transport without first mutating the
+ // saved active transport. Generation calls keep using the live settings.
+ const st=options.settings && typeof options.settings==='object' ? options.settings : getSettings();
  const connectionId=normalizeIndependentConnectionText(st?.independentConnectionProfileId,160);
  const connectionRuntime=connectionId?await validatedIndependentConnectionProfile(connectionId):null;
  const proxyPresets=connectionRuntime?await independentConnectionProxyPresets():[];
@@ -2039,18 +2089,41 @@ function publishIndependentModelListDiagnostic(value={}){
  return lastIndependentModelListDiagnostic;
 }
 export function getLastIndependentModelListDiagnostic(){ return lastIndependentModelListDiagnostic?{...lastIndependentModelListDiagnostic}:null; }
-export async function fetchIndependentModels(){
+function independentModelListSettings(options){
+ options=options||{};
+ const current=getSettings();
+ const mode=String(options?.mode||'active').trim().toLowerCase();
+ if(mode==='profile'){
+  return {
+   ...current,
+   independentConnectionProfileId:normalizeIndependentConnectionText(options.profileId ?? current.independentConnectionProfileId,160),
+  };
+ }
+ if(mode==='manual'){
+  return {
+   ...current,
+   independentConnectionProfileId:'',
+   independentApiBaseUrl:String(options.baseUrl ?? current.independentApiBaseUrl ?? '').trim(),
+   independentApiKey:String(options.apiKey ?? current.independentApiKey ?? ''),
+  };
+ }
+ return current;
+}
+export async function fetchIndependentModels(options){
+ options=options||{};
  const perfEnd=globalThis.__rabbitMirrorPerfDiag?.begin?.('independent.fetchModels',{},0);
- const st=getSettings();
+ const requestedMode=String(options?.mode||'active').trim().toLowerCase();
+ const st=independentModelListSettings(options);
  const connectionId=normalizeIndependentConnectionText(st.independentConnectionProfileId,160);
+ if(requestedMode==='profile' && !connectionId) throw independentModelListError('请先一键配置或选择一个酒馆 Connection Profile','MODEL_LIST_PROFILE_CONFIG');
  const savedModels=connectionId?savedIndependentModelsForProfile(connectionId,getContext()):[];
  if(connectionId) await validatedIndependentConnectionProfile(connectionId);
  const url=connectionId?'/models':endpoint(st.independentApiBaseUrl,'/models');
- if(!url) throw independentModelListError('请先一键配置酒馆 API，或在高级选项填写手动 API 地址','MODEL_LIST_CONFIG');
+ if(!url) throw independentModelListError(requestedMode==='manual'?'请先填写手动 API 地址':'请先一键配置酒馆 API，或在高级选项填写手动 API 地址','MODEL_LIST_CONFIG');
  const controller=new AbortController();
  const timeoutId=setTimeout(()=>controller.abort(),INDEPENDENT_MODEL_LIST_TIMEOUT_MS);
  try{
-  const r=await fetchIndependentUrl(url,{method:'GET',headers:connectionId?{}:headers(st),signal:controller.signal});
+  const r=await fetchIndependentUrl(url,{method:'GET',headers:connectionId?{}:headers(st),signal:controller.signal,settings:st});
   const payload=await readIndependentResponsePayload(r);
   if(!r.ok){
    const detail=compactIndependentPayloadError(payload.json) || String(payload.raw||'').trim().slice(0,180);

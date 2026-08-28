@@ -44,6 +44,7 @@ function fakeNode(extra = {}) {
         addEventListener(type, callback) { listeners.set(type, callback); },
         removeEventListener(type) { listeners.delete(type); },
         dispatch(type, event = {}) { listeners.get(type)?.({ currentTarget: this, target: this, ...event }); },
+        appendChild(child) { this.options.push(child); child.parentElement = this; return child; },
         remove() { if (this.id) nodes.delete(this.id); },
         ...extra,
     };
@@ -61,6 +62,13 @@ const importButton = fakeNode({ id: 'rh_independent_import_current', parentEleme
 nodes.set(importButton.id, importButton);
 nodes.set('rh_independent_connection_status', fakeNode({ id: 'rh_independent_connection_status', textContent: '' }));
 nodes.set('rh_independent_model', fakeNode({ id: 'rh_independent_model' }));
+const modelSelect = fakeNode({ id: 'rh_independent_model_select', options: [fakeNode({ value: 'stale-model' })] });
+Object.defineProperty(modelSelect, 'innerHTML', {
+    get() { return this.__html || ''; },
+    set(value) { this.__html = value; if (value === '') this.options = []; },
+});
+nodes.set('rh_independent_model_select', modelSelect);
+nodes.set('rh_independent_model_list_source', fakeNode({ id: 'rh_independent_model_list_source', textContent: '' }));
 const watermark = fakeNode({ textContent: 'old' });
 
 globalThis.document = {
@@ -95,12 +103,17 @@ globalThis.MutationObserver = class MutationObserver { observe() {} disconnect()
 const source = fs.readFileSync(path.join(root, 'src', 'independentProfileSelectorHotfix.js'), 'utf8');
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
 const hotfix = await import(moduleUrl);
+const settings = { independentConnectionProfileId: 'p1', independentApiModel: 'm-b' };
+const profileRows = [
+    { id: 'p1', name: 'One', model: 'm1', api: 'custom' },
+    { id: 'p2', name: 'Two', model: 'm2', api: 'custom' },
+];
 hotfix.initRabbitMirrorIndependentProfileSelectorHotfix({
-    getSettings: () => ({ independentConnectionProfileId: 'p1' }),
-    updateSettings: () => {},
+    getSettings: () => settings,
+    updateSettings: patch => Object.assign(settings, patch),
     getIndependentConnectionProfiles: () => {
         counts.profiles += 1;
-        return [{ id: 'p1', name: 'One', model: 'm1', api: 'custom' }];
+        return profileRows;
     },
     refreshRabbitMirrorGenerationMode: () => {},
 });
@@ -114,6 +127,8 @@ runTimersThrough(0);
 assert.equal(counts.ensure, 1);
 assert.equal(counts.profiles, 1);
 assert.equal(counts.selectWrites, 1);
+assert.match(nodes.get('rh_independent_connection_status').textContent, /兔子镜请求模型：m-b/);
+assert.match(nodes.get('rh_independent_connection_status').textContent, /Profile 默认：m1/);
 
 // Repeated clicks in an already-hydrated independent area stay cheap.
 const areaTarget = { closest: selector => selector.includes('#rh_independent_api_fields') ? areaTarget : null };
@@ -133,9 +148,33 @@ runTimersThrough(Infinity);
 assert.equal(counts.profiles, 4);
 assert.equal(counts.selectWrites, 4);
 
+// Re-selecting the same Profile must preserve a model B explicitly chosen in RabbitMirror.
+const profileSelect = nodes.get('rh_independent_profile_select');
+profileSelect.value = 'p1';
+const revisionBefore = Number(globalThis.__rabbitMirrorIndependentProfileSourceRevision || 0);
+profileSelect.dispatch('change');
+assert.equal(settings.independentApiModel, 'm-b');
+assert.equal(nodes.get('rh_independent_model').value, 'm-b');
+assert.equal(Number(globalThis.__rabbitMirrorIndependentProfileSourceRevision || 0), revisionBefore + 1);
+
+// Switching to another Profile adopts its default once and clears the stale list.
+profileSelect.value = 'p2';
+profileSelect.dispatch('change');
+assert.equal(settings.independentConnectionProfileId, 'p2');
+assert.equal(settings.independentApiModel, 'm2');
+assert.equal(nodes.get('rh_independent_model_select').value, '');
+assert.equal(nodes.get('rh_independent_model_select').options.length, 1, 'switching source must remove every stale model option');
+assert.equal(nodes.get('rh_independent_model_select').options[0].value, '');
+assert.match(nodes.get('rh_independent_model_list_source').textContent, /旧来源模型列表已清空/);
+
+settings.independentConnectionProfileId = 'deleted-profile';
+nodes.get('rh_independent_profile_refresh').dispatch('click');
+assert.match(nodes.get('rh_independent_connection_status').textContent, /当前连接已失效/);
+
 hotfix.destroyRabbitMirrorIndependentProfileSelectorHotfix();
 globalThis.document = originalDocument;
 globalThis.MutationObserver = originalMutationObserver;
 globalThis.setTimeout = originalSetTimeout;
 globalThis.clearTimeout = originalClearTimeout;
+delete globalThis.__rabbitMirrorIndependentProfileSourceRevision;
 console.log('independentProfileSelectorHotfix tests passed');

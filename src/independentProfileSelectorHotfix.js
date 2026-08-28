@@ -1,4 +1,4 @@
-const RELEASE_VERSION = '1.4.30.30';
+const RELEASE_VERSION = '1.4.30.31';
 const ROW_ID = 'rh_independent_profile_selector_hotfix';
 const SELECT_ID = 'rh_independent_profile_select';
 const REFRESH_ID = 'rh_independent_profile_refresh';
@@ -60,9 +60,19 @@ function profileLabel(item) {
 function updateStatus(profile) {
     const status = document.getElementById('rh_independent_connection_status');
     if (!status) return;
-    status.textContent = profile
-        ? `已选择：${profile.name || '未命名连接'}${profile.model ? ` · ${profile.model}` : ''}`
-        : '尚未选择酒馆连接配置';
+    let actualModel = '';
+    try { actualModel = String(getSettingsRef?.()?.independentApiModel || '').trim(); } catch {}
+    if (!profile) {
+        if (selectedProfileId()) {
+            status.textContent = '当前连接已失效，请重新一键配置或选择酒馆连接';
+            return;
+        }
+        status.textContent = `当前连接：手动接口；兔子镜请求模型：${actualModel || '尚未填写'}`;
+        return;
+    }
+    const profileDefault = String(profile.model || '').trim();
+    const defaultHint = profileDefault && profileDefault !== actualModel ? `（Profile 默认：${profileDefault}）` : '';
+    status.textContent = `当前连接：${profile.name || '未命名连接'}；兔子镜请求模型：${actualModel || profileDefault || '尚未选择'}${defaultHint}`;
 }
 
 function syncModel(profile) {
@@ -81,6 +91,25 @@ function syncModel(profile) {
         }
         select.value = model;
     }
+}
+
+function clearModelListForSource(profile) {
+    const select = document.getElementById('rh_independent_model_select');
+    if (select) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = profile
+            ? `请从酒馆连接「${profile.name || '未命名连接'}」重新拉取模型`
+            : '请从酒馆连接或手动接口拉取模型';
+        select.innerHTML = '';
+        select.appendChild(option);
+        select.value = '';
+        if (select.dataset) select.dataset.rhModelSource = '';
+    }
+    const source = document.getElementById('rh_independent_model_list_source');
+    if (source) source.textContent = profile
+        ? `连接来源已切换为「${profile.name || '未命名连接'}」；旧来源模型列表已清空，请重新拉取。`
+        : '连接来源已切换；旧来源模型列表已清空。';
 }
 
 function renderProfileOptions({ force = false } = {}) {
@@ -108,11 +137,20 @@ function onProfileChange(event) {
     const select = event.currentTarget;
     const id = String(select?.value || '').trim();
     const match = profiles().find(item => String(item.id) === id) || null;
+    const previousId = selectedProfileId();
+    let previousModel = '';
+    try { previousModel = String(getSettingsRef?.()?.independentApiModel || '').trim(); } catch {}
+    const selectedModel = match && (id !== previousId || !previousModel)
+        ? String(match.model || '').trim()
+        : previousModel;
+    globalThis.__rabbitMirrorIndependentProfileSourceRevision = Number(globalThis.__rabbitMirrorIndependentProfileSourceRevision || 0) + 1;
+    globalThis.__rabbitMirrorIndependentConnectionOperationRevision = Number(globalThis.__rabbitMirrorIndependentConnectionOperationRevision || 0) + 1;
     const patch = { independentConnectionProfileId: id };
     if (id) patch.independentApiKey = '';
-    if (match?.model) patch.independentApiModel = String(match.model);
+    if (selectedModel) patch.independentApiModel = selectedModel;
     updateSettingsRef?.(patch);
-    if (match) syncModel(match);
+    if (match) syncModel({ ...match, model: selectedModel || match.model });
+    if (id !== previousId) clearModelListForSource(match);
     updateStatus(match);
     try { refreshModeRef?.(); } catch {}
 }

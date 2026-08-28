@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2",
-  "css": "style.css?rmv=1.4.30.30",
+  "js": "index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1",
+  "css": "style.css?rmv=1.4.30.31",
   "author": "Toto",
-  "version": "1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2",
+  "version": "1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版｜ApiFix2：1.18.0+ 可让兔子镜使用与正文不同的 Connection Profile 并真实拉取该连接模型；旧版仍可使用手动独立 API。"
+  "description": "兔子镜测试版｜ModelSelectFix1：酒馆 Profile 与手动接口分别拉取模型；所选来源和模型会一起生效，并明确显示兔子镜实际请求模型。"
 }

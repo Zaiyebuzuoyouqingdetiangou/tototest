@@ -7,11 +7,11 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const index = fs.readFileSync(path.join(root, 'index.js'), 'utf8');
 const independent = fs.readFileSync(path.join(root, 'src', 'independentApi.js'), 'utf8');
 
-assert.match(index, /GOLDEN_MERGE_VERSION\s*=\s*'1\.4\.9-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2'/);
+assert.match(index, /GOLDEN_MERGE_VERSION\s*=\s*'1\.4\.9-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1'/);
 assert.doesNotMatch(index, /performanceDiagnostics\.js/);
 assert.doesNotMatch(index, /^import .*outputSanitizer|^import .*independentApi|^import .*ui\.js/m, 'heavy runtime must not be in the static bootstrap graph');
-assert.match(index, /import\('\.\/src\/ui\.js\?rmv=1\.4\.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2'\)/);
-assert.match(index, /import\('\.\/src\/externalDiagnostics\.js\?rmv=1\.4\.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2'\)/);
+assert.match(index, /import\('\.\/src\/ui\.js\?rmv=1\.4\.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1'\)/);
+assert.match(index, /import\('\.\/src\/externalDiagnostics\.js\?rmv=1\.4\.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1'\)/);
 assert.match(index, /initRabbitMirrorIndependentSecurityGuard\(\{ getSettings, updateSettings \}\);/);
 assert.match(index, /output\.initOutputSanitizer[\s\S]*visual\.initVisualScanner[\s\S]*independent\.initIndependentRabbitMirror[\s\S]*touch\.initTouchTheaterBridge[\s\S]*ui\.initRabbitMirrorUI/);
 assert.match(index, /requestDeferredIdleCheck\(3500\)/, 'heavy runtime must wait through the fixed host startup window');

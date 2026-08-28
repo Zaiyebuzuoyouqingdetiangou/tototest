@@ -1,3 +1,14 @@
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1
+
+- 将酒馆 Connection Profile 与手动 OpenAI 兼容接口的模型拉取入口明确拆开；两者都只在用户点击时各发一次模型列表请求，不新增轮询、Observer 或后台网络请求。
+- 从模型列表选择条目时同时保存该列表的连接来源与模型；Profile A 拉到模型 B 后，兔子镜请求使用 A 的连接凭据与 B 的模型覆盖，正文当前连接不切换。
+- 手动模型拉取显式使用当时填写的 URL／Key，即使此前仍保存 Profile A 也不会误从 A 拉取；选中手动列表模型后才切换为该手动连接。
+- 状态区区分“当前连接”“兔子镜请求模型”和“Profile 默认模型”，最近请求诊断显示请求体指定的模型；切换来源时清空旧来源列表，避免旧列表混用。
+- 两种拉取与一键配置共用操作序号；后发操作、Profile／手动切换、热更新或手动 URL／Key／模型编辑都会让旧响应失效，慢请求不能覆盖用户后来选择的连接。动态 Profile 下拉与实际连接同步。
+- 再次导入或重选同一个 Profile 时保留用户已选模型；只有真正切换到另一个 Profile 时才采用新 Profile 默认模型。
+- 发送前验证当前 Connection Manager 前端确实会在 Profile 默认模型之后合并请求级模型覆盖；若服务器版本与旧浏览器模块混装，则在付费请求前阻止并提示强制刷新，不静默回退到 Profile 默认模型。
+- 新增官方 SillyTavern 1.18 请求合并语义、显式双来源拉取、同 Profile 模型持久化及旧列表隔离回归；保留单次请求、Secrets 隔离、Prompt、上下文预算与视觉生成逻辑。
+
 ## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2
 
 - 独立 API 的 Connection Manager 模式改走 SillyTavern 1.18.0 官方按 Profile 请求服务；正文 Profile A 与兔子镜 Profile B 可以不同，生成不会切换 A，也不再由兔子镜手工投影 B 的密钥、端点、代理或 PPP。

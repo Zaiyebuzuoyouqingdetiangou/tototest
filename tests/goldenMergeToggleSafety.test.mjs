@@ -7,7 +7,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const source = fs.readFileSync(path.join(root, 'index.js'), 'utf8');
 
-assert.match(source, /GOLDEN_MERGE_VERSION\s*=\s*'1\.4\.9-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2'/);
+assert.match(source, /GOLDEN_MERGE_VERSION\s*=\s*'1\.4\.9-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1'/);
 assert.doesNotMatch(source, /addEventListener\(['"]toggle['"]/, 'bootstrap must never install a global toggle loader');
 assert.doesNotMatch(source, /dispatchEvent\(new Event\(['"]toggle['"]\)\)/, 'bootstrap must never synthesize toggle to replay lazy loading');
 assert.doesNotMatch(source, /lazyToggleHandler/, 'recursive toggle loader state must be absent');

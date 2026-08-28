@@ -1,4 +1,16 @@
-# 兔子镜测试版 AdvancedUI1 Stability1 RepairEmoji1 CleanUI1 WidthFix1 ApiFix2
+# 兔子镜测试版 AdvancedUI1 Stability1 RepairEmoji1 CleanUI1 WidthFix1 ApiFix2 ModelSelectFix1
+
+## ModelSelectFix1 / 1.4.30.31
+
+本候选修复模型列表来源不清、Profile 默认模型 A 冒充兔子镜实际模型，以及填写手动接口后仍从 Profile A 拉取的问题。
+
+- 酒馆 Connection Profile 与手动 OpenAI 兼容接口各有一个明确的模型拉取按钮；两者均只在用户点击时请求，不新增后台请求、轮询或 Observer。
+- 从哪一个来源拉取并选择模型，就同时启用哪一个连接来源和该模型。使用 Profile A 的凭据时可让兔子镜请求模型 B，正文连接不会被切换。
+- 状态区显示“当前连接 / 兔子镜请求模型”，仅在不同时把 A 标为“Profile 默认”，不再把它误报为实际模型；最近请求诊断显示请求体指定模型。
+- 再次一键导入同一个 Profile 会保留已选择的 B；切换到另一个 Profile 才采用其默认模型，并清空旧来源的临时列表。
+- 慢速拉取或一键配置返回前若又切换连接、重新拉取、热更新或修改手动字段，旧结果会被丢弃；动态 Profile 下拉始终同步实际启用来源。
+- 如果 SillyTavern 服务器已是 1.18+、但页面仍缓存不支持正确覆盖顺序的旧 Connection Manager，兔子镜会在付费请求前阻止并提示强制刷新，不会静默使用 A。
+- 生成 Prompt、随机抽取、美化、上下文预算、单次付费请求、安全净化与其他模块未作功能修改。
 
 ## ApiFix2 / 1.4.30.30
 

@@ -1,15 +1,15 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
-import { clearLastCombo } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
+import { clearLastCombo } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
 
-const SETTINGS_UI_VERSION = '1.4.30.30-subapitag2-advancedui1-cleanui1-widthfix1-apifix2';
-const RUNTIME_VERSION = '1.4.30.30';
+const SETTINGS_UI_VERSION = '1.4.30.31-subapitag2-advancedui1-cleanui1-widthfix1-apifix2-modelselectfix1';
+const RUNTIME_VERSION = '1.4.30.31';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -220,6 +220,34 @@ function independentApiProfileLabel(diagnostic) {
     return `${status}｜${temp}｜${stream}`;
 }
 
+function independentModelPullSnapshotMatches(snapshot,state) {
+    state=state||{};
+    if(!snapshot || Number(snapshot.epoch)!==Number(state.epoch)) return false;
+    if(Number(snapshot.profileRevision)!==Number(state.profileRevision)) return false;
+    if(String(snapshot.activeProfileId||'').trim()!==String(state.activeProfileId||'').trim()) return false;
+    if(snapshot.source?.mode==='profile') return String(snapshot.source.profileId||'').trim()===String(state.activeProfileId||'').trim();
+    if(snapshot.source?.mode==='manual') return String(snapshot.source.baseUrl||'').trim()===String(state.manualBaseUrl||'').trim()
+        && String(snapshot.source.apiKey||'')===String(state.manualApiKey||'');
+    return false;
+}
+
+let independentModelPullEpoch = 0;
+
+function invalidateIndependentModelPull() {
+    independentModelPullEpoch += 1;
+}
+
+function beginIndependentConnectionOperation() {
+    const next = Number(globalThis.__rabbitMirrorIndependentConnectionOperationRevision || 0) + 1;
+    globalThis.__rabbitMirrorIndependentConnectionOperationRevision = next;
+    return next;
+}
+
+function independentConnectionOperationIsCurrent(revision) {
+    return isCurrentRuntime()
+        && Number(globalThis.__rabbitMirrorIndependentConnectionOperationRevision || 0) === Number(revision);
+}
+
 function renderIndependentApiDiagnostic(diagnostic = getLastIndependentApiRequestDiagnostic()) {
     const target = $('#rh_independent_api_diagnostic');
     if (!target.length) return;
@@ -227,11 +255,13 @@ function renderIndependentApiDiagnostic(diagnostic = getLastIndependentApiReques
     const attempts = '';
     const themes = Array.isArray(diagnostic?.themeLabels) ? diagnostic.themeLabels.join('＋') : '';
     const formats = Array.isArray(diagnostic?.formatLabels) ? diagnostic.formatLabels.join('＋') : '';
+    const requestedModel = String(diagnostic?.model || '').trim();
+    const model = requestedModel ? `<br><b>请求指定模型：</b>${escapeHtml(requestedModel)}` : '';
     const selection = themes || formats ? `<br><b>抽到：</b>${escapeHtml(themes || '仅当前语境')}｜${escapeHtml(formats || '未记录')}` : '';
     const worldInfo = diagnostic?.globalWorldInfoEnabled
         ? `<br><b>世界书：</b>${diagnostic.globalWorldInfoCaptured ? `已带入 ${formatMeterNumber(diagnostic.globalWorldInfoEntries)}／${formatMeterNumber(diagnostic.globalWorldInfoTotalEntries || diagnostic.globalWorldInfoEntries)} 条，${formatMeterNumber(diagnostic.globalWorldInfoChars)} 字符${diagnostic.globalWorldInfoTruncated ? '（已按独立预算裁剪）' : ''}` : '本轮无可用条目'}`
         : '<br><b>世界书：</b>关闭';
-    target.html(`<b>最近请求：</b>${escapeHtml(text)}${escapeHtml(attempts)}${selection}${worldInfo}`);
+    target.html(`<b>最近请求：</b>${escapeHtml(text)}${escapeHtml(attempts)}${model}${selection}${worldInfo}`);
 }
 
 
@@ -455,7 +485,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.30</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.31</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -516,22 +546,25 @@ export function initRabbitMirrorUI() {
               </div>
               <div style="opacity:.66;font-size:11px;line-height:1.45;margin-top:5px;">直接复用 SillyTavern Connection Manager 连接；兔子镜可以选择与正文不同的 Profile，生成时不会切换正文连接。API Key 继续由酒馆 Secrets 保管，不复制到兔子镜。</div>
               <div style="opacity:.78;font-size:11px;line-height:1.45;margin-top:5px;">仅支持 SillyTavern 1.18.0 及以上版本；旧版请使用下方“手动 OpenAI 兼容接口”。</div>
+              <button id="rh_independent_models" class="menu_button" type="button" style="margin-top:8px;">从此酒馆连接拉取模型</button>
             </div>
             <div class="flex-container" style="gap:7px;flex-wrap:wrap;">
-              <button id="rh_independent_models" class="menu_button" type="button">拉取模型</button>
               <button id="rh_independent_test" class="menu_button" type="button">测试连接</button>
             </div>
             <select id="rh_independent_model_select" class="text_pole" aria-label="已拉取模型列表">
-              <option value="">先点击“拉取模型”</option>
+              <option value="">请从酒馆连接或手动接口拉取模型</option>
             </select>
             <input id="rh_independent_model" class="text_pole" type="text" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="模型 ID；可从上方完整列表选择，也可直接手动填写">
-            <div style="opacity:.66;font-size:11px;line-height:1.45;">拉取后可从列表选模型；拉取失败也可以直接手填模型 ID。</div>
+            <div id="rh_independent_model_list_source" aria-live="polite" style="opacity:.7;font-size:11px;line-height:1.45;">模型列表尚未拉取。列表来源与当前实际模型会分别标明。</div>
             <details id="rh_independent_manual_legacy" style="margin-top:2px;">
               <summary style="cursor:pointer;font-size:11px;opacity:.7;">高级：手动 OpenAI 兼容接口（旧配置兼容）</summary>
               <div style="display:grid;gap:6px;padding-top:7px;">
                 <input id="rh_independent_base" class="text_pole" type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="API 地址">
                 <input id="rh_independent_key" class="text_pole" type="password" autocomplete="off" placeholder="API Key">
-                <button id="rh_independent_use_manual" class="menu_button" type="button">改用这组手动接口</button>
+                <div class="flex-container" style="gap:7px;flex-wrap:wrap;">
+                  <button id="rh_independent_manual_models" class="menu_button" type="button">从此手动接口拉取模型</button>
+                  <button id="rh_independent_use_manual" class="menu_button" type="button">改用这组手动接口</button>
+                </div>
               </div>
             </details>
             <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;padding:9px 10px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:9px;">
@@ -846,12 +879,16 @@ export function initRabbitMirrorUI() {
     };
     renderTagFilterSummary();
     const renderIndependentConnectionStatus = () => {
-        const currentId=String(getSettings().independentConnectionProfileId||'').trim();
+        const currentSettings=getSettings();
+        const currentId=String(currentSettings.independentConnectionProfileId||'').trim();
+        const actualModel=String(currentSettings.independentApiModel||'').trim();
         const profile=getIndependentConnectionProfiles().find(item=>item.id===currentId);
         const target=$('#rh_independent_connection_status');
-        if(!currentId){ target.text('当前：手动接口 / 尚未一键配置'); return; }
+        if(!currentId){ target.text(`当前连接：手动接口；兔子镜请求模型：${actualModel||'尚未填写'}`); return; }
         if(!profile){ target.text('当前连接已失效，请重新一键配置'); return; }
-        target.text(`当前：${profile.name}${profile.model?` · ${profile.model}`:''}`);
+        const profileDefault=String(profile.model||'').trim();
+        const defaultHint=profileDefault && profileDefault!==actualModel ? `（Profile 默认：${profileDefault}）` : '';
+        target.text(`当前连接：${profile.name}；兔子镜请求模型：${actualModel||profileDefault||'尚未选择'}${defaultHint}`);
     };
     renderIndependentConnectionStatus();
     checked('#rh_independent_read_global_world_info', settings.independentReadGlobalWorldInfo === true);
@@ -1108,21 +1145,34 @@ export function initRabbitMirrorUI() {
         toastr?.info?.(this.checked ? `已开启「${safeName}」。` : `已关闭「${safeName}」。`);
     });
     $('#rh_independent_import_current').on('click', async function () {
+        const connectionRevision=beginIndependentConnectionOperation();
+        invalidateIndependentModelPull();
         const button=$(this); button.prop('disabled',true);
         try {
-            const imported=await importCurrentSillyTavernConnection();
+            const imported=await importCurrentSillyTavernConnection({
+                isCurrent:()=>independentConnectionOperationIsCurrent(connectionRevision),
+            });
+            if(!independentConnectionOperationIsCurrent(connectionRevision)) return;
             const fresh=getSettings();
+            document.getElementById('rh_independent_profile_refresh')?.click?.();
+            syncIndependentProfileSelector(String(fresh.independentConnectionProfileId||''));
             $('#rh_independent_model').val(fresh.independentApiModel||imported?.model||'');
             renderIndependentConnectionStatus();
             const savedModels=getIndependentSavedModels();
-            renderIndependentModelSelect(savedModels,String($('#rh_independent_model').val()||''));
+            const source={mode:'profile',profileId:String(fresh.independentConnectionProfileId||''),label:String(imported?.name||'当前酒馆连接')};
+            renderIndependentModelSelect(savedModels,String($('#rh_independent_model').val()||''),source,{
+                statusText:savedModels.length?`已载入 ${savedModels.length} 个酒馆已保存模型；点击“从此酒馆连接拉取模型”可刷新完整列表。`:`已启用酒馆连接「${source.label}」；请点击按钮拉取模型。`,
+            });
             refreshRabbitMirrorGenerationMode();
             toastr?.success?.(`已一键配置酒馆连接：${String(imported?.name||'当前连接')}`);
         } catch(error) {
+            if(error?.code==='INDEPENDENT_CONNECTION_SELECTION_SUPERSEDED' || !isCurrentRuntime()) return;
             toastr?.error?.(`一键配置失败：${String(error?.message||error)}`);
         } finally { button.prop('disabled',false); }
     });
     $('#rh_independent_use_manual').on('click', () => {
+        beginIndependentConnectionOperation();
+        invalidateIndependentModelPull();
         const temperature=Number($('#rh_independent_temperature').val());
         const maxTokens=Number($('#rh_independent_max_tokens').val());
         const contextLayers=Number($('#rh_independent_context_layers').val());
@@ -1135,6 +1185,9 @@ export function initRabbitMirrorUI() {
             independentApiMaxTokens:Number.isFinite(maxTokens)&&maxTokens>0?maxTokens:30000,
             independentContextMaxLayers:Number.isFinite(contextLayers)&&contextLayers>0?contextLayers:20,
         });
+        syncIndependentProfileSelector('');
+        const source={mode:'manual',baseUrl:String($('#rh_independent_base').val()||'').trim(),apiKey:String($('#rh_independent_key').val()||''),label:'手动 OpenAI 兼容接口'};
+        renderIndependentModelSelect([],String($('#rh_independent_model').val()||''),source,{selectCurrent:false,statusText:'已切换为手动接口；请从此手动接口拉取模型，或继续使用手填模型 ID。'});
         renderIndependentConnectionStatus();
         refreshRabbitMirrorGenerationMode();
         toastr?.info?.('已切换为旧手动 OpenAI 兼容接口。');
@@ -1156,38 +1209,129 @@ export function initRabbitMirrorUI() {
     // Safari may emit repeated input/autofill events as the drawer opens, which made the UI stutter.
     $('#rh_independent_base, #rh_independent_key, #rh_independent_model').on('change blur', saveIndependentFields);
     $('#rh_independent_temperature, #rh_independent_max_tokens, #rh_independent_context_layers').on('change', saveIndependentFields);
-    const renderIndependentModelSelect = (models, currentModel='') => {
+    let independentModelListSource=null;
+    const independentProfileSourceRevision = () => Number(globalThis.__rabbitMirrorIndependentProfileSourceRevision||0);
+    const syncIndependentProfileSelector = profileId => {
+        const select=$('#rh_independent_profile_select');
+        if(!select.length) return;
+        select.val(String(profileId||'').trim());
+    };
+    const independentModelSourceKey = source => {
+        if(source?.mode==='profile') return `profile:${String(source.profileId||'').trim()}`;
+        if(source?.mode==='manual') return `manual:${String(source.baseUrl||'').trim()}`;
+        return '';
+    };
+    const independentModelSourceIsActive = source => {
+        const current=getSettings();
+        if(source?.mode==='profile') return String(current.independentConnectionProfileId||'').trim()===String(source.profileId||'').trim();
+        if(source?.mode==='manual') return !String(current.independentConnectionProfileId||'').trim()
+            && String(current.independentApiBaseUrl||'').trim()===String(source.baseUrl||'').trim();
+        return false;
+    };
+    const beginIndependentModelPull = source => ({
+        epoch:++independentModelPullEpoch,
+        profileRevision:independentProfileSourceRevision(),
+        activeProfileId:String(getSettings().independentConnectionProfileId||'').trim(),
+        source:{...source},
+    });
+    const independentModelPullIsCurrent = snapshot => {
+        return independentModelPullSnapshotMatches(snapshot,{
+            epoch:independentModelPullEpoch,
+            profileRevision:independentProfileSourceRevision(),
+            activeProfileId:String(getSettings().independentConnectionProfileId||'').trim(),
+            manualBaseUrl:String($('#rh_independent_base').val()||'').trim(),
+            manualApiKey:String($('#rh_independent_key').val()||''),
+        });
+    };
+    const renderIndependentModelSelect = (models, currentModel='', source=null, options={}) => {
         const select=$('#rh_independent_model_select');
         const current=String(currentModel||'').trim();
-        select.empty().append($('<option>').val('').text(models.length ? `已拉取 ${models.length} 个模型，请选择` : '先点击“拉取模型”'));
-        for(const id of models){
+        const safeModels=Array.isArray(models)?models:[];
+        independentModelListSource=source&&independentModelSourceKey(source)?{...source}:null;
+        const sourceKey=independentModelSourceKey(independentModelListSource);
+        select.attr('data-rh-model-source',sourceKey);
+        const placeholder=options.placeholderText || (safeModels.length
+            ? `已从${source?.label||'当前来源'}拉取 ${safeModels.length} 个模型，请选择`
+            : '请从酒馆连接或手动接口拉取模型');
+        select.empty().append($('<option>').val('').text(placeholder));
+        for(const id of safeModels){
             select.append($('<option>').val(id).text(id));
         }
         // 只有当前手动模型确实存在于列表时才选中；自定义 ID 保持在文本框，不伪装成列表项。
-        select.val(models.includes(current) ? current : '');
+        const selectCurrent=options.selectCurrent!==false && independentModelSourceIsActive(independentModelListSource);
+        select.val(selectCurrent && safeModels.includes(current) ? current : '');
+        const sourceText=options.statusText || (independentModelListSource
+            ? `模型列表来源：${independentModelListSource.label||'当前来源'}。选择列表模型时，会同时锁定这个连接来源。`
+            : '模型列表尚未拉取。列表来源与当前实际模型会分别标明。');
+        $('#rh_independent_model_list_source').text(sourceText);
     };
+    // Keystrokes only invalidate an in-flight list result; settings are still
+    // saved on change/blur, so mobile input keeps the existing low-work path.
+    $('#rh_independent_base, #rh_independent_key, #rh_independent_model').on('input', invalidateIndependentModelPull);
+    $('#rh_independent_base, #rh_independent_key').on('change blur', () => {
+        if(independentModelListSource?.mode!=='manual') return;
+        const baseUrl=String($('#rh_independent_base').val()||'').trim();
+        const apiKey=String($('#rh_independent_key').val()||'');
+        if(baseUrl===String(independentModelListSource.baseUrl||'').trim() && apiKey===String(independentModelListSource.apiKey||'')) return;
+        invalidateIndependentModelPull();
+        const source={mode:'manual',baseUrl,apiKey,label:'手动 OpenAI 兼容接口'};
+        renderIndependentModelSelect([],String($('#rh_independent_model').val()||''),source,{
+            selectCurrent:false,
+            statusText:'手动 API 地址或 Key 已改变；旧模型列表已清空，请重新拉取。',
+        });
+    });
     $('#rh_independent_model_select').on('change', e => {
         const model=String(e.target.value||'').trim();
         if(!model) return;
+        const source=independentModelListSource;
+        if(!source || String($(e.target).attr('data-rh-model-source')||'')!==independentModelSourceKey(source)) {
+            toastr?.warning?.('这份模型列表的连接来源已失效，请重新拉取后再选择。');
+            $(e.target).val('');
+            return;
+        }
+        beginIndependentConnectionOperation();
+        invalidateIndependentModelPull();
         $('#rh_independent_model').val(model);
-        updateSettings({independentApiModel:model});
+        if(source.mode==='profile') {
+            updateSettings({independentConnectionProfileId:String(source.profileId||'').trim(),independentApiKey:'',independentApiModel:model});
+            syncIndependentProfileSelector(String(source.profileId||'').trim());
+        } else {
+            updateSettings({
+                independentConnectionProfileId:'',
+                independentApiBaseUrl:String(source.baseUrl||'').trim(),
+                independentApiKey:String(source.apiKey||''),
+                independentApiModel:model,
+            });
+            syncIndependentProfileSelector('');
+        }
+        renderIndependentConnectionStatus();
+        refreshRabbitMirrorGenerationMode();
+        $('#rh_independent_model_list_source').text(`已选择：${source.label||'当前来源'} / ${model}。下一次兔子镜请求将使用此连接与模型。`);
     });
     $('#rh_independent_model').on('change blur', () => {
+        invalidateIndependentModelPull();
         const current=String($('#rh_independent_model').val()||'').trim();
         const select=$('#rh_independent_model_select');
         const exists=select.find('option').toArray().some(option=>String(option.value||'')===current);
         select.val(exists ? current : '');
+        renderIndependentConnectionStatus();
     });
     $('#rh_independent_models').on('click', async function () {
-        saveIndependentFields();
         const button=$(this); const originalText=button.text();
-        const current=String($('#rh_independent_model').val() || getSettings().independentApiModel || '').trim();
+        const currentSettings=getSettings();
+        const profileId=String(currentSettings.independentConnectionProfileId||'').trim();
+        const profile=getIndependentConnectionProfiles().find(item=>item.id===profileId);
+        if(!profileId || !profile){ toastr?.warning?.('请先一键配置或选择一个酒馆 Connection Profile。'); return; }
+        const source={mode:'profile',profileId,label:String(profile.name||'当前酒馆连接')};
+        const pullSnapshot=beginIndependentModelPull(source);
+        const current=String($('#rh_independent_model').val() || currentSettings.independentApiModel || '').trim();
         const savedModels=getIndependentSavedModels();
         button.prop('disabled',true).text('正在拉取…');
-        if(savedModels.length) renderIndependentModelSelect(savedModels,current);
+        renderIndependentModelSelect(savedModels,current,source,{statusText:`正在从酒馆连接「${source.label}」刷新模型列表…`});
         try {
-            const models=await fetchIndependentModels();
-            renderIndependentModelSelect(models,current);
+            const models=await fetchIndependentModels({mode:'profile',profileId});
+            if(!isCurrentRuntime() || !independentModelPullIsCurrent(pullSnapshot)) return;
+            renderIndependentModelSelect(models,current,source);
             if(current) {
                 $('#rh_independent_model').val(current);
             } else if(models[0]) {
@@ -1199,15 +1343,45 @@ export function initRabbitMirrorUI() {
             if(diagnostic?.mode==='saved-fallback') {
                 toastr?.warning?.(`远端模型列表不可用；已显示酒馆连接中保存的 ${models.length} 个模型。${diagnostic.error||''}`);
             } else {
-                const profileHint=getSettings().independentConnectionProfileId ? '；使用兔子镜所选酒馆连接，正文当前连接没有切换' : '';
-                toastr?.success?.(`已拉取 ${models.length} 个模型；完整列表已显示在模型下拉框中${profileHint}`);
+                toastr?.success?.(`已从酒馆连接「${source.label}」拉取 ${models.length} 个模型；选择后兔子镜会使用该模型，正文连接不会切换。`);
             }
         } catch(error) {
+            if(!isCurrentRuntime() || !independentModelPullIsCurrent(pullSnapshot)) return;
             // 远端 /models 卡住或失败时保留酒馆已保存模型与手动 ID，不让设置页无限等待。
-            renderIndependentModelSelect(savedModels,current);
+            renderIndependentModelSelect(savedModels,current,source,{statusText:savedModels.length?`远端拉取失败；已保留「${source.label}」的 ${savedModels.length} 个酒馆已保存模型。`:`从酒馆连接「${source.label}」拉取失败。`});
             if(current) $('#rh_independent_model').val(current);
             const fallbackText=savedModels.length ? `；已保留酒馆中已保存的 ${savedModels.length} 个模型` : '';
             toastr?.warning?.(`模型列表拉取失败${fallbackText}。${String(error?.message||error)}`);
+        } finally {
+            button.prop('disabled',false).text(originalText);
+        }
+    });
+    $('#rh_independent_manual_models').on('click', async function () {
+        const button=$(this); const originalText=button.text();
+        const baseUrl=String($('#rh_independent_base').val()||'').trim();
+        const apiKey=String($('#rh_independent_key').val()||'');
+        if(!baseUrl){ toastr?.warning?.('请先填写手动 API 地址。'); return; }
+        const source={mode:'manual',baseUrl,apiKey,label:'手动 OpenAI 兼容接口'};
+        const pullSnapshot=beginIndependentModelPull(source);
+        const current=String($('#rh_independent_model').val()||getSettings().independentApiModel||'').trim();
+        const sourceWasActive=independentModelSourceIsActive(source);
+        button.prop('disabled',true).text('正在拉取…');
+        renderIndependentModelSelect([],current,source,{selectCurrent:false,statusText:'正在从手动 API 地址拉取模型；不会借用当前酒馆 Profile。'});
+        try {
+            const models=await fetchIndependentModels({mode:'manual',baseUrl,apiKey});
+            if(!isCurrentRuntime() || !independentModelPullIsCurrent(pullSnapshot)) return;
+            renderIndependentModelSelect(models,current,source,{selectCurrent:sourceWasActive});
+            if(sourceWasActive && !current && models[0]){
+                $('#rh_independent_model').val(models[0]);
+                $('#rh_independent_model_select').val(models[0]);
+                updateSettings({independentConnectionProfileId:'',independentApiBaseUrl:baseUrl,independentApiKey:apiKey,independentApiModel:models[0]});
+                renderIndependentConnectionStatus();
+            }
+            toastr?.success?.(`已从手动接口拉取 ${models.length} 个模型；选择任一模型后会同时切换到这组手动连接。`);
+        } catch(error) {
+            if(!isCurrentRuntime() || !independentModelPullIsCurrent(pullSnapshot)) return;
+            renderIndependentModelSelect([],current,source,{selectCurrent:false,statusText:'从手动 API 地址拉取失败；手填模型 ID 仍会保留。'});
+            toastr?.warning?.(`手动接口模型列表拉取失败。${String(error?.message||error)}`);
         } finally {
             button.prop('disabled',false).text(originalText);
         }
@@ -1498,6 +1672,8 @@ export function initRabbitMirrorUI() {
 }
 
 export function destroyRabbitMirrorUI() {
+    invalidateIndependentModelPull();
+    beginIndependentConnectionOperation();
     try { globalThis.__rabbitMirrorTagFilterScanUiCleanup?.(); } catch {}
     globalThis.__rabbitMirrorTagFilterScanUiCleanup = null;
     $('#rh_advanced_modal, #rh_world_info_prompt_modal, #rh_independent_tag_filter_modal').remove();
