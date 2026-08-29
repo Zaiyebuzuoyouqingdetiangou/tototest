@@ -81,6 +81,9 @@ export const defaultSettings = Object.freeze({
     independentApiMaxTokens: 30000,
     independentContextMaxLayers: 20,
     independentContextExcludedTags: [...DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS],
+    // Follow mode shares the host request with the main reply, so tag isolation is
+    // instruction-only and must remain explicit opt-in to avoid permanent prompt cost.
+    followTagIsolationEnabled: false,
     independentReadCharacterCardSummary: true,
     independentReadPersonaSummary: true,
     independentDisplayMode: 'external',
@@ -164,6 +167,7 @@ export function getSettings() {
         settings.independentContextMaxLayers = Math.max(1, Math.min(200, Number.isFinite(contextLayers) ? Math.round(contextLayers) : 20));
     }
     settings.independentContextExcludedTags = normalizeIndependentContextExcludedTags(settings.independentContextExcludedTags);
+    settings.followTagIsolationEnabled = settings.followTagIsolationEnabled === true;
     settings.independentReadCharacterCardSummary = settings.independentReadCharacterCardSummary !== false;
     settings.independentReadPersonaSummary = settings.independentReadPersonaSummary !== false;
 
@@ -259,6 +263,9 @@ export function updateSettings(patch) {
     const safePatch = patch && typeof patch === 'object' ? { ...patch } : {};
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentContextExcludedTags')) {
         safePatch.independentContextExcludedTags = normalizeIndependentContextExcludedTags(safePatch.independentContextExcludedTags);
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'followTagIsolationEnabled')) {
+        safePatch.followTagIsolationEnabled = safePatch.followTagIsolationEnabled === true;
     }
     for (const key of ['independentReadCharacterCardSummary', 'independentReadPersonaSummary']) {
         if (Object.prototype.hasOwnProperty.call(safePatch, key)) safePatch[key] = safePatch[key] !== false;

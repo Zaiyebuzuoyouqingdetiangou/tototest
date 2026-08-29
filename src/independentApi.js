@@ -1,15 +1,15 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5-qualityfix1';
-import { assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5-qualityfix1';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.5-qualityfix1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5-qualityfix1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5-qualityfix1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.5-qualityfix1';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5-qualityfix1';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5-qualityfix1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5-qualityfix1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5-qualityfix3';
+import { assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5-qualityfix3';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.5-qualityfix3';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5-qualityfix3';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5-qualityfix3';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.5-qualityfix3';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5-qualityfix3';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5-qualityfix3';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5-qualityfix3';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
-const RUNTIME_VERSION = '1.5';
+const RUNTIME_VERSION = '1.5.2';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -796,7 +796,7 @@ async function assertIndependentConnectionProfileSupport(service){
  if(independentSemverAtLeast(version) && (!hasProfileSecrets || !hasRequestOverrides)){
   throw new Error('酒馆版本显示为 1.18.0 或更高，但当前页面仍加载了不完整的旧 Connection Manager（缺少 Profile Secret 或请求级模型切换能力）。请强制刷新酒馆页面后重试；本次不会发送请求，以免误用 Profile 默认模型或错误凭据。');
  }
- throw new Error('酒馆 Connection Profile 一键配置仅支持 SillyTavern 1.18.0 及以上版本；旧版请使用手动 OpenAI 兼容接口。');
+ throw new Error('酒馆 Connection Profile 一键配置仅支持 SillyTavern 1.18.0 及以上版本；这不影响兔子镜本体或手动 OpenAI 兼容独立 API。');
 }
 function independentConnectionManagerSettings(ctx=getContext()){
  const manager=ctx?.extensionSettings?.connectionManager;
@@ -814,7 +814,7 @@ async function validatedIndependentConnectionProfile(profileId,ctx=getContext())
  const profile=rawIndependentConnectionProfile(id,ctx);
  if(!profile) throw new Error('兔子镜引用的酒馆连接已不存在，请重新一键配置。');
  const service=ctx?.ConnectionManagerRequestService;
- if(!service?.validateProfile || typeof service?.sendRequest!=='function') throw new Error('当前 SillyTavern 的 Connection Manager 不支持按 Profile 安全发送请求。请升级到 SillyTavern 1.18.0 或更高版本。');
+ if(!service?.validateProfile || typeof service?.sendRequest!=='function') throw new Error('当前 SillyTavern 的 Connection Manager 不支持按 Profile 安全发送请求；这不影响手动 OpenAI 兼容独立 API。若要使用 Connection Profile，请升级到 SillyTavern 1.18.0 或更高版本。');
  await assertIndependentConnectionProfileSupport(service);
  const apiMap=service.validateProfile(profile);
  // RabbitMirror's existing independent request body is Chat Completions shaped.
@@ -2619,7 +2619,7 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
  options=options||{};
  const service=runtime?.ctx?.ConnectionManagerRequestService;
  const profileId=normalizeIndependentConnectionText(runtime?.id,160);
- if(!profileId || typeof service?.sendRequest!=='function') throw new Error('当前 SillyTavern 无法按兔子镜选定的 Connection Profile 发送请求。请升级到 SillyTavern 1.18.0 或更高版本。');
+ if(!profileId || typeof service?.sendRequest!=='function') throw new Error('当前 SillyTavern 无法按兔子镜选定的 Connection Profile 发送请求；这不影响手动 OpenAI 兼容独立 API。若要使用 Connection Profile，请升级到 SillyTavern 1.18.0 或更高版本。');
  const rawBody=profile?.body && typeof profile.body==='object' ? profile.body : {};
  const body=authorizeRabbitMirrorIndependentServiceRequest(rawBody,options.dispatchLease);
  const messages=Array.isArray(body?.messages)?body.messages:[];
@@ -3970,7 +3970,10 @@ function markExternalHostsAwaitingOwner(mesid=''){
  clearOrphanExternalHostTimer(id);
  const timer=setTimeout(()=>{
    orphanExternalHostTimers.delete(id);
-   if(messageElement(Number(id))) return;
+   if(messageElement(Number(id))){
+    queueMessageSync([Number(id)]);
+    return;
+   }
    for(const host of externalHostsOwnedByMesid(id)) host.remove();
  },1800);
  orphanExternalHostTimers.set(id,timer);
@@ -4669,6 +4672,21 @@ function readyDetailsFromHost(host){
  if(!host || host.dataset?.rmState!=='ready') return null;
  const details=host.querySelector?.(':scope > details');
  return usableReadyDetails(details) ? details : null;
+}
+function mountedIndependentReadyHostMatchesObserved(host,ctx,index,msg,observed,key=''){
+ if(!readyDetailsFromHost(host) || !observed) return false;
+ const dataset=host.dataset||{};
+ const expectedChat=chatKey(ctx);
+ const expectedMesid=String(Number(index));
+ const expectedSwipe=String(swipeId(msg));
+ const expectedKey=String(key||recordKey(ctx,index,msg));
+ const expectedSourceHash=String(observed.sourceHash||'');
+ return String(dataset.rmOwnerChat||'')===expectedChat
+  && String(dataset.rmOwnerMesid ?? dataset.rmExternalOwnerMessage ?? '')===expectedMesid
+  && String(dataset.rmOwnerSwipe ?? '')===expectedSwipe
+  && String(dataset.rmKey||'')===expectedKey
+  && !!expectedSourceHash
+  && String(dataset.rmSourceHash||'')===expectedSourceHash;
 }
 function readyRecordFromHost(host,observed,model=''){
  const details=readyDetailsFromHost(host);
@@ -6252,14 +6270,14 @@ function settleCancelledIndependentFlightUi(flight,reason='cancelled'){
  if(!flight || flight.uiSettled) return false;
  const host=flight.loadingHost;
  const liveEl=messageElement(Number(flight.index));
- if(flight.manual && flight.previousReadyRecord?.html && liveEl){
+ const identity=currentGenerationIdentity(Number(flight.index));
+ const sameOwner=identity && identity.key===flight.key && identity.sourceHash===flight.sourceHash;
+ if(flight.manual && flight.previousReadyRecord?.html && liveEl && sameOwner){
   ensureExternalUi(liveEl,flight.key,flight.previousReadyRecord.html,'ready','independent',flight.sourceHash);
   flight.uiSettled=true;
   return true;
  }
  if(host?.isConnected && host.dataset?.rmState==='loading'){
-  const identity=currentGenerationIdentity(Number(flight.index));
-  const sameOwner=identity && identity.key===flight.key && identity.sourceHash===flight.sourceHash;
   if(sameOwner && liveEl && String(reason||'')==='api-settings-changed'){
    ensureExternalUi(liveEl,flight.key,'独立 API 设置在生成期间发生变化，本次已取消且不会自动重发。请确认新连接后手动重新生成兔子镜。','error','independent',flight.sourceHash);
   }else host.remove?.();
@@ -6337,7 +6355,7 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  let store=readStore();
  const persistedOwner=persistedOwnerForMessage(ctx,index,msg);
  const persistedSuppressed=!!persistedOwner?.deleted;
- const persistedReady=!persistedSuppressed&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)?persistedOwner:null;
+ const persistedReady=!persistedSuppressed&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)&&savedRecordMatchesObserved(persistedOwner,observed)?persistedOwner:null;
  if(force){
   // Keep the last successful persisted owner and owner lock intact while a
   // paid resay is in flight. The force branch already bypasses the restore
@@ -6353,7 +6371,7 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   return persistedReady;
  } else if(!persistedSuppressed){
   const locked=lockedIndependentRecordForBase(baseSlot,store);
-  if(locked?.record?.html){
+  if(locked?.record?.html && savedRecordMatchesObserved(locked.record,observed)){
    if(el) ensureExternalUi(el,key,locked.record.html,'ready','independent',sourceHash);
    return locked.record;
   }
@@ -6363,7 +6381,9 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  let saved=persistedSuppressed&&!force?null:recoveredAtGeneration.saved;
  if(recoveredAtGeneration.storeChanged) writeStore(store);
  const mountedHost=el ? collapseDuplicateIdentityHosts(el,key,'independent',sourceHash) : null;
- const mountedReady=readyRecordFromHost(mountedHost,observed,st.independentApiModel);
+ const mountedReady=mountedIndependentReadyHostMatchesObserved(mountedHost,ctx,index,msg,observed,key)
+  ? readyRecordFromHost(mountedHost,observed,st.independentApiModel)
+  : null;
  if(mountedReady?.html && !force && !persistedSuppressed){
   const mountedSlot=String(mountedHost?.dataset?.rmKey||slot);
   const mountedStore=readStore();
@@ -6438,7 +6458,7 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   // clears this owner lock before starting.
   if(!force){
    const serverOwner=persistedOwnerForMessage(ctx,index,msg);
-   const serverRecord=serverOwner?.deleted?null:(serverOwner?.html&&independentStoredHtmlRestorable(serverOwner.html)?serverOwner:null);
+   const serverRecord=serverOwner?.deleted?null:(serverOwner?.html&&independentStoredHtmlRestorable(serverOwner.html)&&savedRecordMatchesObserved(serverOwner,observed)?serverOwner:null);
    if(serverRecord?.html){
     const serverSlot=chatPersistenceSlot(ctx,index,swipeId(msg),serverRecord)||slot;
     const liveStore=readStore(); if(!liveStore?.[serverSlot]?.html){ saveRecordForSlot(liveStore,serverSlot,serverRecord,{dropLegacy:false}); writeStore(liveStore); }
@@ -6447,7 +6467,7 @@ async function generateFor(index,msg,force=false,sourceAware=true){
     return serverRecord;
    }
    const locked=lockedIndependentRecordForBase(baseSlot,readStore());
-   if(locked?.record?.html){
+   if(locked?.record?.html && savedRecordMatchesObserved(locked.record,observed)){
     const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,locked.record.html,'ready','independent',sourceHash);
     return locked.record;
    }
@@ -7295,7 +7315,7 @@ function stopAutomaticHostGenerationSettlement(ctx,owner,reason='host-completion
   : '⚠️ 未收到当前正文的可靠结束信号，本轮未发送副 API 请求，已停止自动等待。确认正文已经完成后，请点击“重新生成兔子镜”。';
  markAutomaticFailureStop(live.slot,live.sourceHash,reason);
  const existing=collapseDuplicateIdentityHosts(el,live.key,'independent',live.sourceHash);
- if(readyDetailsFromHost(existing) && existing.dataset?.rmSourceHash===live.sourceHash){
+ if(mountedIndependentReadyHostMatchesObserved(existing,live.ctx,index,live.msg,live,live.key)){
   existing.dataset.rmState='ready'; clearIndependentResayStatus(existing);
   globalThis.toastr?.warning?.(message);
   return true;
@@ -7461,15 +7481,15 @@ function restoreIndependentMirrorPassively(ctx,store,el,index,msg){
   return recovered.storeChanged;
  }
  if(keep){
-  const mountedSource=String(keep.dataset.rmSourceHash||'');
-  if(!mountedSource || mountedSource===observed.sourceHash || mountedSource===observed.bodyHash){
+  if(mountedIndependentReadyHostMatchesObserved(keep,ctx,index,msg,observed,key)){
    placeExternalHost(el,keep,keep.dataset.rmKey||key,'independent');
    keep.hidden=false;
    clearExternalHostFreshSourceState(keep);
    refreshExistingExternalDetails(keep,key,'independent');
   }else{
-   // The old mirror belongs to another正文 version. Keep its cache/history but
-   // never display it beside a changed正文 while the follow API is active.
+   // The old mirror belongs to another chat, Swipe or正文 version. Keep its
+   // cache/history but never display it beside the current正文 while the follow
+   // API is active.
    keep.hidden=true;
   }
  }
@@ -7511,7 +7531,7 @@ function syncMessages(indices=null){
        const persistedSuppressed=!!persistedOwner?.deleted;
        cancelSupersededFlightsForBase(baseSlot,sourceHash);
        cancelFlightsForSlot(slot,sourceHash);
-       const persistedReady=!persistedSuppressed&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)?persistedOwner:null;
+       const persistedReady=!persistedSuppressed&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)&&savedRecordMatchesObserved(persistedOwner,observed)?persistedOwner:null;
        if(persistedSuppressed) clearOwnerLockForBase(baseSlot);
        let ownerLocked=null;
        if(persistedReady){
@@ -7519,7 +7539,10 @@ function syncMessages(indices=null){
         if(!store?.[persistedSlot]?.html){ saveRecordForSlot(store,persistedSlot,persistedReady,{dropLegacy:false}); storeChanged=true; }
         setOwnerLockForBase(baseSlot,persistedSlot,String(persistedReady.sourceHash||persistedReady.bodyHash||sourceHash));
         ownerLocked={record:persistedReady,lock:{slot:persistedSlot}};
-       } else if(!persistedSuppressed) ownerLocked=lockedIndependentRecordForBase(baseSlot,store);
+       } else if(!persistedSuppressed){
+        const locked=lockedIndependentRecordForBase(baseSlot,store);
+        if(locked?.record?.html && savedRecordMatchesObserved(locked.record,observed)) ownerLocked=locked;
+       }
        const recoveredAtSync=persistedSuppressed?{saved:null,storeChanged:false}:ownerLocked?.record ? {saved:ownerLocked.record,storeChanged:false} : recoverSavedRecord(store,slot,observed);
        let saved=recoveredAtSync.saved;
        if(recoveredAtSync.storeChanged) storeChanged=true;
@@ -7533,11 +7556,12 @@ function syncMessages(indices=null){
          keep=ensureExternalUi(el,key,'独立 API 生成失败。可直接重新生成兔子镜，或打开挨打猫后重说。','error','independent',sourceHash);
        }
        if(keep?.dataset?.rmState==='ready' && !usableReadyDetails(keep.querySelector?.(':scope > details'))){ keep.remove(); keep=null; }
-       // A completed mirror already mounted for this chat+mesid+swipe is the
-       // user's visible A, even when a status bar or another extension has since
-       // rewritten the underlying mes fingerprint. Seed the stable owner lock
-       // from that visible result instead of requesting/repainting a B.
-       const mountedReadyAtSync=!persistedSuppressed && !ownerLocked?.record && keep?.dataset?.rmState==='ready' ? readyRecordFromHost(keep,observed,st.independentApiModel) : null;
+       // A mounted ready mirror may seed the stable owner only while its stamped
+       // chat+mesid+swipe+sourceHash still exactly matches the current正文. A DOM
+       // replacement preserves that identity; a Swipe or正文 change must fall
+       // through to the existing stale-source/new-generation path instead.
+       const mountedReadyMatchesObserved=mountedIndependentReadyHostMatchesObserved(keep,ctx,i,m,observed,key);
+       const mountedReadyAtSync=!persistedSuppressed && !ownerLocked?.record && mountedReadyMatchesObserved ? readyRecordFromHost(keep,observed,st.independentApiModel) : null;
        if(mountedReadyAtSync?.html && !ownerLocked?.record){
          const mountedSlot=String(keep?.dataset?.rmKey||slot);
          const previous=store?.[mountedSlot];
@@ -7572,7 +7596,8 @@ function syncMessages(indices=null){
          keep=ensureReplyGenerationPlaceholder(el,key,sourceHash,true);
        }
        const hostSourceHash=String(keep?.dataset?.rmSourceHash||'');
-       let hostIsStale=!!(keep && hostSourceHash && hostSourceHash!==sourceHash);
+       const mountedReadyIdentityStale=!!(readyDetailsFromHost(keep) && !mountedReadyMatchesObserved);
+       let hostIsStale=!!(keep && (mountedReadyIdentityStale || (hostSourceHash && hostSourceHash!==sourceHash)));
        const keepIsReplyPlaceholder=!!(keep && (keep.dataset.rmReplyGenerationPlaceholder==='true' || (keep.dataset.rmState==='loading' && keep.querySelector?.(':scope > details.rabbit-mirror-external-placeholder'))));
        if(keepIsReplyPlaceholder && !saved?.html && automaticGenerationSuppressed){
          keep.remove();

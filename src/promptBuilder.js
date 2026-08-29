@@ -1,12 +1,12 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.17';
 import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.17';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.30.17';
-import { pickCombination } from './picker.js?rmv=1.5-qualityfix1';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5-qualityfix1';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5-qualityfix1';
+import { pickCombination } from './picker.js?rmv=1.5-qualityfix3';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5-qualityfix3';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5-qualityfix3';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.17';
 import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.30.17';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.5-qualityfix1';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5-qualityfix3';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -597,6 +597,23 @@ function stateBarIsolationRule() {
 }
 
 
+function followTagIsolationNames(settings, generationType = 'normal') {
+    if (String(generationType || 'normal') === 'independent') return [];
+    if (settings?.generationSource !== 'follow' || settings?.followTagIsolationEnabled !== true) return [];
+    // <toto> is the output container itself and can never be treated as an excluded source tag.
+    return normalizeIndependentContextExcludedTags(settings?.independentContextExcludedTags)
+        .filter(tag => tag !== 'toto');
+}
+
+function followTagIsolationRule(tags = []) {
+    if (!Array.isArray(tags) || !tags.length) return '';
+    const label = tags.map(tag => `<${tag}>`).join('、');
+    return `跟随当前 API 的兔子镜标签隔离【仅约束 <toto>，正文照常】:
+  - 隔离标签：${label}。其内容属于正文／预设模块，不是兔子镜素材或范例。
+  - <toto> 不得复述、摘要、仿写、改名包装，或继承其标题、结构、台词、配色、CSS 与交互；从其他正文事实和角色关系另选角度。`;
+}
+
+
 function compactLockItems(items, kind) {
     if (!Array.isArray(items) || !items.length) return kind === 'theme' ? '当前对话语境' : '未记录';
     return items.slice(0, 3).map(item => {
@@ -643,7 +660,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     ].filter(Boolean).join('\n');
 }
 
-function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, touchTheaterRulesText, directive, memoryMaterial, activeFeedback, generationType = 'normal' }) {
+function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, touchTheaterRulesText, directive, memoryMaterial, activeFeedback, generationType = 'normal', followTagIsolationText = '' }) {
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
@@ -710,6 +727,9 @@ ${shortVisualAvoidance(combo, 3)}`);
         chunks.push(`最终视觉偏好执行锁:
   - ${visualPreferenceLock}`);
     }
+    // Follow-mode tag isolation is a short near-output lock. It does not scan, clone,
+    // remove or rewrite the host context and therefore cannot affect the main reply.
+    if (followTagIsolationText) chunks.push(followTagIsolationText);
     // 强制输出契约放在注入末尾，利用指令近因保证每轮正文后继续生成完整兔子镜。
     chunks.push(coreOutputProtocol());
     chunks.push('</兔子镜自动注入>');
@@ -739,7 +759,9 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
     const memoryMaterial = String(generationType || 'normal') !== 'independent' && hasSharedMemoryTheme(combo)
         ? readSelectedMemoryForPrompt(settings, settings.memoryMaxChars || 2200)
         : null;
-    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, touchTheaterRulesText, directive, memoryMaterial, activeFeedback, generationType });
+    const followTagIsolationTags = followTagIsolationNames(settings, generationType);
+    const followTagIsolationText = followTagIsolationRule(followTagIsolationTags);
+    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, touchTheaterRulesText, directive, memoryMaterial, activeFeedback, generationType, followTagIsolationText });
     const metadata = Object.freeze({
         generationType: String(generationType || 'normal'),
         rawPolicy,
@@ -757,6 +779,9 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
         motherLibraryItems: selectedThemeResult.retrievedItems + selectedFormatResult.retrievedItems,
         memoryChars: String(memoryMaterial?.text || '').length,
         memorySources: Array.isArray(memoryMaterial?.sources) ? [...memoryMaterial.sources] : [],
+        followTagIsolationEnabled: followTagIsolationText.length > 0,
+        followTagIsolationTags: [...followTagIsolationTags],
+        followTagIsolationChars: followTagIsolationText.length,
         visualSceneryMode,
         forcedVisualScenery: !!combo?.forcedVisualScenery,
         tarotRules: !!tarotRulesText,

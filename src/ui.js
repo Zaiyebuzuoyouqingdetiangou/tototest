@@ -1,15 +1,15 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.5-qualityfix1';
-import { clearLastCombo } from './storage.js?rmv=1.5-qualityfix1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5-qualityfix1';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5-qualityfix1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5-qualityfix1';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.5-qualityfix3';
+import { clearLastCombo } from './storage.js?rmv=1.5-qualityfix3';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5-qualityfix3';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5-qualityfix3';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5-qualityfix3';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5-qualityfix1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5-qualityfix1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5-qualityfix1';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5-qualityfix3';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5-qualityfix3';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5-qualityfix3';
 
 const SETTINGS_UI_VERSION = '1.5';
-const RUNTIME_VERSION = '1.5';
+const RUNTIME_VERSION = '1.5.2';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -503,7 +503,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.2</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -563,7 +563,7 @@ export function initRabbitMirrorUI() {
                 <button id="rh_independent_import_current" class="menu_button" type="button" style="font-weight:700;">从酒馆当前连接一键配置</button>
                 <span id="rh_independent_connection_status" style="opacity:.72;font-size:11px;line-height:1.4;">尚未配置</span>
               </div>
-              <div style="opacity:.78;font-size:11px;line-height:1.45;margin-top:5px;">仅支持 SillyTavern 1.18.0 及以上版本；旧版请使用下方“手动 OpenAI 兼容接口”。</div>
+              <div style="opacity:.78;font-size:11px;line-height:1.45;margin-top:5px;">仅“酒馆 Connection Profile 一键配置”需要 SillyTavern 1.18.0 及以上版本；旧版仍可使用兔子镜及下方“手动 OpenAI 兼容接口”。</div>
               <button id="rh_independent_models" class="menu_button" type="button" style="margin-top:8px;">从此酒馆连接拉取模型</button>
             </div>
             <div class="flex-container" style="gap:7px;flex-wrap:wrap;">
@@ -733,12 +733,14 @@ export function initRabbitMirrorUI() {
               <div class="rabbit-mirror-subnote" style="margin:4px 0 0 26px;opacity:.72;font-size:11px;line-height:1.5;">只带入紧凑摘要，不会把整张角色卡或其它隐藏提示整包塞给副 API。</div>
             </div>
             <div style="padding:10px 11px;margin-bottom:12px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:12px;background:color-mix(in srgb,currentColor 5%,transparent);">
-              <div style="font-weight:700;font-size:12px;margin-bottom:7px;">正文标签过滤</div>
+              <div style="font-weight:700;font-size:12px;margin-bottom:7px;">正文标签过滤／隔离</div>
               <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;">
                 <button id="rh_independent_tag_filter_open" class="menu_button" type="button">扫描与管理正文标签</button>
                 <span id="rh_independent_tag_filter_summary" style="opacity:.72;font-size:11px;line-height:1.4;">尚未设置</span>
               </div>
-              <div class="rabbit-mirror-subnote" style="margin:6px 0 0;opacity:.72;font-size:11px;line-height:1.5;">从上面的聊天正文副本里删掉你勾选的标签内容。只影响副 API 临时副本，不会改酒馆正文。</div>
+              <label class="checkbox_label" style="margin-top:8px;"><input id="rh_follow_tag_isolation" type="checkbox"> 跟随当前 API：禁止兔子镜参考所选标签</label>
+              <div class="rabbit-mirror-subnote" style="margin:3px 0 0 26px;opacity:.72;font-size:11px;line-height:1.5;">仅要求兔子镜跳过所选标签内容；如需彻底过滤，请使用独立 API。</div>
+              <div class="rabbit-mirror-subnote" style="margin:6px 0 0;opacity:.72;font-size:11px;line-height:1.5;">独立 API 会在发送前从副 API 临时上下文副本中过滤并跳过所选标签内容；原酒馆正文始终不修改。</div>
             </div>
             <div style="padding:10px 11px;margin-bottom:12px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:12px;background:color-mix(in srgb,currentColor 5%,transparent);">
               <label class="checkbox_label" style="font-weight:700;"><input id="rh_independent_read_global_world_info" type="checkbox"> 读取本轮已激活的世界书</label>
@@ -799,14 +801,14 @@ export function initRabbitMirrorUI() {
 </div>`;
     $(worldInfoPromptHtml).appendTo(document.body);
     const tagFilterModalHtml = `
-<div id="rh_independent_tag_filter_modal" role="dialog" aria-modal="true" aria-label="副 API 正文标签过滤" aria-hidden="true" style="display:none;position:fixed;inset:0;z-index:2147483002;background:rgba(8,10,14,.62);box-sizing:border-box;padding:18px 12px;align-items:center;justify-content:center;overflow:hidden;pointer-events:auto;">
+<div id="rh_independent_tag_filter_modal" role="dialog" aria-modal="true" aria-label="兔子镜正文标签管理" aria-hidden="true" style="display:none;position:fixed;inset:0;z-index:2147483002;background:rgba(8,10,14,.62);box-sizing:border-box;padding:18px 12px;align-items:center;justify-content:center;overflow:hidden;pointer-events:auto;">
   <div style="width:min(560px,calc(100vw - 24px));max-height:min(720px,calc(100dvh - 36px));overflow:hidden;background:var(--SmartThemeBlurTintColor,#202226);color:var(--SmartThemeBodyColor,#ddd);border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:18px;box-shadow:0 22px 70px rgba(0,0,0,.42);display:flex;flex-direction:column;">
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 40px;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent);">
-      <div><b style="font-size:15px;">副 API 正文标签过滤</b><div style="opacity:.65;font-size:11px;line-height:1.35;margin-top:2px;">只从发给副 API 的上下文副本中移除，原正文与美化规则保持不变</div></div>
+      <div><b style="font-size:15px;">兔子镜正文标签管理</b><div style="opacity:.65;font-size:11px;line-height:1.35;margin-top:2px;">独立 API 发送前过滤；跟随当前 API 仅在开关启用时要求兔子镜跳过所选标签，原正文与美化规则保持不变</div></div>
       <button id="rh_independent_tag_filter_close" class="menu_button" type="button" aria-label="关闭" style="width:38px;min-width:38px;height:38px;padding:0;border-radius:12px;font-size:20px;line-height:1;">×</button>
     </div>
     <div style="padding:14px;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;">
-      <div style="font-size:12px;line-height:1.55;opacity:.82;">勾选要整段过滤的标签。标签名不区分大小写；可填写 <code>thinking</code>、<code>&lt;thinking&gt;</code> 或自定义标签名。最多 ${INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT} 项，不接受正则。</div>
+      <div style="font-size:12px;line-height:1.55;opacity:.82;">勾选要整段过滤／隔离的标签。标签名不区分大小写；可填写 <code>thinking</code>、<code>&lt;thinking&gt;</code> 或自定义标签名。最多 ${INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT} 项，不接受正则。预设内尚未出现在聊天正文的标签，请手动添加。</div>
       <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;align-items:center;margin-top:12px;padding:10px;border:1px solid color-mix(in srgb,currentColor 13%,transparent);border-radius:11px;background:color-mix(in srgb,currentColor 4%,transparent);">
         <button id="rh_independent_tag_filter_scan" class="menu_button" type="button">扫描当前聊天标签</button>
         <div id="rh_independent_tag_filter_scan_status" aria-live="polite" style="min-width:0;opacity:.72;font-size:11px;line-height:1.45;">扫描当前聊天已加载的正文源与可见正文；结果不会自动勾选或保存。</div>
@@ -837,6 +839,7 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_temperature').val(settings.independentApiTemperature ?? 0.8);
     $('#rh_independent_max_tokens').val(settings.independentApiMaxTokens ?? 30000);
     $('#rh_independent_context_layers').val(settings.independentContextMaxLayers ?? 20);
+    checked('#rh_follow_tag_isolation', settings.followTagIsolationEnabled === true);
     $('#rh_independent_model').val(settings.independentApiModel || '');
     const tagFilterPresetLabels = new Map([
         ['thinking', 'thinking'],
@@ -848,10 +851,12 @@ export function initRabbitMirrorUI() {
     let tagFilterScanController = null;
     let tagFilterScanEpoch = 0;
     const renderTagFilterSummary = () => {
-        const tags = normalizeIndependentContextExcludedTags(getSettings().independentContextExcludedTags);
+        const current = getSettings();
+        const tags = normalizeIndependentContextExcludedTags(current.independentContextExcludedTags);
+        const followHint = current.followTagIsolationEnabled === true ? '跟随隔离已开' : '跟随隔离未开';
         const summary = tags.length
-            ? `已过滤 ${tags.length} 项：${tags.slice(0, 3).map(tag => tagFilterPresetLabels.get(tag) || tag).join('、')}${tags.length > 3 ? '…' : ''}`
-            : '未过滤任何自定义标签';
+            ? `已选 ${tags.length} 项：${tags.slice(0, 3).map(tag => tagFilterPresetLabels.get(tag) || tag).join('、')}${tags.length > 3 ? '…' : ''}；${followHint}`
+            : `未选择标签；${followHint}`;
         $('#rh_independent_tag_filter_summary').text(summary);
     };
     const renderTagFilterDraft = () => {
@@ -913,12 +918,13 @@ export function initRabbitMirrorUI() {
     checked('#rh_independent_include_persona_summary', settings.independentReadPersonaSummary !== false);
     installWorldInfoBookVisibilityObserver();
     const syncGenerationModeFields = () => {
-        const independent = getSettings().generationSource === 'independent';
+        const current = getSettings();
+        const independent = current.generationSource === 'independent';
         $('#rh_independent_api_fields').show();
         $('#rh_follow_display_row').toggle(!independent);
         $('#rh_independent_mode_status').text(independent
             ? '当前已启用独立 API；以下设置会用于下一轮副 API 生成。'
-            : '当前使用“跟随当前 API”；这里仍可提前配置，切换为独立 API 后生效。');
+            : `当前使用“跟随当前 API”；标签隔离${current.followTagIsolationEnabled === true ? '已开启' : '未开启'}，其余独立 API 设置可提前配置。`);
     };
     syncGenerationModeFields();
     renderIndependentApiDiagnostic();
@@ -1096,7 +1102,16 @@ export function initRabbitMirrorUI() {
         updateSettings({ independentContextExcludedTags: selectedTags });
         renderTagFilterSummary();
         setTagFilterOpen(false);
-        toastr?.success?.('正文标签过滤已保存，从下一轮副 API 生成生效。');
+        toastr?.success?.('标签设置已保存：独立 API 下一轮发送前过滤；跟随当前 API 按隔离开关执行。');
+    });
+    $('#rh_follow_tag_isolation').on('change', e => {
+        const enabled = e.target.checked === true;
+        updateSettings({ followTagIsolationEnabled: enabled });
+        renderTagFilterSummary();
+        syncGenerationModeFields();
+        toastr?.info?.(enabled
+            ? '跟随标签隔离已开启，从下一轮兔子镜生效；正文与主预设不会被删除。'
+            : '跟随标签隔离已关闭；独立 API 的发送前标签过滤设置不受影响。');
     });
 
     $('input[name="rh_generation_source"]').on('change', e => {
