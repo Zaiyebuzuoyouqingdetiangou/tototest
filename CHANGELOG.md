@@ -1,3 +1,15 @@
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1
+
+- 复核临时对话的 fallback 聊天键、连续两轮授权与 stale owner 替换；补充刷新后连续两轮回归，不放宽历史消息拒绝、工具递归或单次付费请求限制。
+- 标签过滤后的删除字符计入 12,000 字符聊天选取预算，防止用更早正文回填；请求副本中标签名、标签与包裹内容仍完整缺席，酒馆原正文不变。
+- 最终正文稳定后改为约 120ms 精确复核，移除额外 1.6～4 秒结算退避；独立 API 重模块图延至意图返回后的下一任务，并在强宿主活动提示期跳过全局聊天选择器探测。
+- 最近请求诊断移入本轮 Token；删除指定的两段设置说明。
+- 外部性能诊断在销毁前留存真实 report／status，报告入口不再隐式启动空会话，并明确展示原始事件数量和分类。
+- 黑名单关闭或当前 Swipe 无抽签记录时隐藏 🎲；维修兔按钮移除问题类别图标，菜单顶部问题文字显示安全的类别 emoji 与真实原因；推荐 hotfix 不再覆盖真实问题。
+- 运行版本升至 1.4.30.33，更新 manifest、完整模块 cache-bust 闭包、维修建议 hotfix 版本及对应非回归测试。
+- 不修改母本、Prompt、随机候选池／权重、收藏倍率、主题与配色冷却、Touch Theater、挨打猫、世界书选择、Token 统计或 12,000／20,000／32,000 字符上限；保留 Variety1。
+- 未新增 fetch、setInterval 或 MutationObserver；新增一个可合并、可销毁的一次性 0ms 定时唤醒。仅完成源码／自动化验证，尚未真机验证；GitHub 未写入。
+
 ## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1
 
 - 将自动生成 owner 与工具递归阶段、准确消息渲染及当前正文指纹绑定；quiet、dry-run、历史重绘和工具结果系统消息不作为新的付费意图。

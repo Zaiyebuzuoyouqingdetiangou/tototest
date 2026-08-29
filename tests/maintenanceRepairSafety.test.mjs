@@ -43,8 +43,9 @@ vm.runInContext([
     extractFunction('maintenanceProblemEmoji'),
     extractFunction('decorateMaintenanceRabbitReason'),
     extractFunction('maintenanceRabbitGlyph'),
+    extractFunction('maintenanceMenuProblemText'),
     extractFunction('stripMaintenanceRabbitGlyphs'),
-    'globalThis.probe={maintenanceProblemEmoji,decorateMaintenanceRabbitReason,maintenanceRabbitGlyph,stripMaintenanceRabbitGlyphs};',
+    'globalThis.probe={maintenanceProblemEmoji,decorateMaintenanceRabbitReason,maintenanceRabbitGlyph,maintenanceMenuProblemText,stripMaintenanceRabbitGlyphs};',
 ].join('\n'), emojiSandbox);
 const emoji = emojiSandbox.probe;
 
@@ -61,14 +62,26 @@ for (const [state, reason, expected] of [
     ['idle', '巡逻未完成，可点击重试', '❌'],
 ]) {
     assert.equal(emoji.maintenanceProblemEmoji(state, reason), expected, `${reason} needs its category emoji`);
-    assert.ok(emoji.maintenanceRabbitGlyph(state, reason).endsWith(expected));
+    const expectedGlyph = state === 'unknown' ? '🐇🔴' : (state === 'repairable' || state === 'notice') ? '🐇🟡' : '🐇⚪';
+    assert.equal(emoji.maintenanceRabbitGlyph(state, reason), expectedGlyph, 'the compact rabbit glyph must not carry a problem-category emoji');
     const decorated = emoji.decorateMaintenanceRabbitReason(state, reason);
     assert.ok(decorated.startsWith(expected));
     assert.equal(emoji.decorateMaintenanceRabbitReason(state, decorated), decorated, 'emoji decoration must be idempotent');
+    assert.match(emoji.maintenanceMenuProblemText(state, reason), new RegExp(`^${expected}`), 'the category emoji belongs in the menu problem text');
 }
 assert.equal(emoji.maintenanceProblemEmoji('healthy', '未发现高置信异常'), '');
 assert.equal(emoji.maintenanceProblemEmoji('checking', '正在检查 HTML、CSS、源码与交互链'), '');
+assert.equal(emoji.maintenanceRabbitGlyph('healthy', '未发现高置信异常'), '🐇🟢');
+assert.equal(emoji.maintenanceRabbitGlyph('checking', '正在检查 HTML、CSS、源码与交互链'), '🐇⚪');
+assert.doesNotMatch(emoji.maintenanceMenuProblemText('healthy', '未发现高置信异常'), /[📄🎨📱🌐📡📋❌⚠️]|🖱️/u);
+assert.doesNotMatch(emoji.maintenanceMenuProblemText('checking', '正在检查 HTML、CSS、源码与交互链'), /[📄🎨📱🌐📡📋❌⚠️]|🖱️/u);
 assert.equal(emoji.stripMaintenanceRabbitGlyphs('标题🐇🟡🖱️ 尾巴'), '标题 尾巴');
+
+const menuSource = extractFunction('showMaintenanceRabbitMenu');
+assert.match(menuSource, /MAINTENANCE_STATE_ATTR/);
+assert.match(menuSource, /MAINTENANCE_REASON_ATTR/);
+assert.match(menuSource, /maintenanceMenuProblemText/);
+assert.match(menuSource, /recommendation\.textContent\s*=/, 'problem reasons must be placed with textContent, never interpolated as HTML');
 
 const selectorSandbox = {
     normalizeMaintenanceSummaryText: value => String(value || '').trim(),

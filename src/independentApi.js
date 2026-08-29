@@ -1,15 +1,15 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
-const RUNTIME_VERSION = '1.4.30.32';
+const RUNTIME_VERSION = '1.4.30.33';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -993,13 +993,14 @@ function externalHostGenerationActivity(){
  return {active:dom||weak||moduleActive,weak,dom,moduleActive};
 }
 function hostGenerationActivity(){
- const external=externalHostGenerationActivity();
  // GENERATION_ENDED can occasionally be missed by mobile WebViews. Treat the
  // event-only flag as a short, strong hint. Context/global booleans are weaker:
  // some hosts leave them true after the visible reply has already stabilized.
  const eventHint=!!(hostGenerationInProgress && hostGenerationHintStartedAt && Date.now()-hostGenerationHintStartedAt<HOST_GENERATION_EVENT_HINT_MS);
+ if(eventHint) return {active:true,strong:true,weak:false,dom:false,moduleActive:false,eventHint:true};
  if(hostGenerationInProgress && !eventHint){ hostGenerationInProgress=false; hostGenerationHintStartedAt=0; }
- return {active:external.active||eventHint,strong:external.dom||external.moduleActive||eventHint,weak:external.weak,dom:external.dom,moduleActive:external.moduleActive,eventHint};
+ const external=externalHostGenerationActivity();
+ return {active:external.active,strong:external.dom||external.moduleActive,weak:external.weak,dom:external.dom,moduleActive:external.moduleActive,eventHint:false};
 }
 function hostGenerationLooksActive(){ return hostGenerationActivity().active; }
 function legacyChatKey(ctx){ const meta=ctx?.chatMetadata||globalThis.chat_metadata||{}; return String(meta.chat_id||meta.chatId||meta.file_name||ctx?.characterId||ctx?.groupId||'chat'); }
@@ -1907,26 +1908,33 @@ function contextBundle(ctx,targetIndex,globalWorldInfoSnapshot=null,preparedGlob
  const totalBudget=Math.max(8000,Math.min(CONTEXT_TOTAL_BUDGET,Number(budgetOverride)||CONTEXT_TOTAL_BUDGET));
  const transcriptBudget=Math.max(4000,Math.min(CONTEXT_TRANSCRIPT_BUDGET,totalBudget-fixedSuffix.length-transcriptHeader.length-512));
  const visibleReader=typeof readVisible==='function'?readVisible:createIndependentVisibleTextReader(targetIndex);
- const rows=[]; const filteredExcludedTags=new Set(); let used=0; let includedLayers=0; let filteredRabbitMirrorChars=0; let filteredExcludedTagChars=0; let targetVisibleChars=0;
+ const rows=[]; const filteredExcludedTags=new Set(); let selectionUsed=0; let includedLayers=0; let filteredRabbitMirrorChars=0; let filteredExcludedTagChars=0; let targetVisibleChars=0;
   const contextStart=Math.min(targetIndex,chat.length-1);
   for(const real of independentContextCandidateIndexes(contextStart,visibleReader.renderedIndexes)){
    if(includedLayers>=maxLayers) break;
+   if(selectionUsed>=transcriptBudget) break;
    const m=chat[real];
    if(!m || (m.is_user!==true && !isRabbitMirrorEligibleAssistantMessage(m))) continue;
    const role=m.is_user?'USER':'ASSISTANT';
-  const filtered=visibleReader(m,real);
-  const body=filtered.text;
-  filteredRabbitMirrorChars+=filtered.filteredRabbitMirrorChars;
-  filteredExcludedTagChars+=Number(filtered.filteredExcludedTagChars||0);
-  for(const tag of filtered.filteredExcludedTags||[]) filteredExcludedTags.add(tag);
-  if(real===Number(targetIndex)) targetVisibleChars=body.length;
-  if(!body) continue;
-  let row=`[${real} ${role}]\n${body}`;
-  if(row.length>8000) row=`${row.slice(0,4000)}\n…[正文中段裁剪]…\n${row.slice(-4000)}`;
-  if(rows.length && used+row.length>transcriptBudget) break;
-  if(!rows.length && row.length>transcriptBudget) row=clipIndependentContextText(row,transcriptBudget);
-  rows.unshift(row); used+=row.length; includedLayers+=1;
- }
+   const filtered=visibleReader(m,real);
+   const body=filtered.text;
+   const filteredSelectionChars=Math.max(0,Number(filtered.filteredExcludedTagChars||0));
+   filteredRabbitMirrorChars+=filtered.filteredRabbitMirrorChars;
+   filteredExcludedTagChars+=filteredSelectionChars;
+   for(const tag of filtered.filteredExcludedTags||[]) filteredExcludedTags.add(tag);
+   if(real===Number(targetIndex)) targetVisibleChars=body.length;
+   if(!body){ selectionUsed+=filteredSelectionChars; continue; }
+   let row=`[${real} ${role}]\n${body}`;
+   const untrimmedRowChars=row.length;
+   if(row.length>8000) row=`${row.slice(0,4000)}\n…[正文中段裁剪]…\n${row.slice(-4000)}`;
+   // A user-selected tag is private prompt content, not free space for older
+   // messages. Charge its removed size to the 12k transcript-selection budget
+   // while keeping it completely absent from the request text below.
+   const rowSelectionChars=Math.max(untrimmedRowChars,row.length)+filteredSelectionChars;
+   if(rows.length && selectionUsed+rowSelectionChars>transcriptBudget) break;
+   if(!rows.length && row.length>transcriptBudget) row=clipIndependentContextText(row,transcriptBudget);
+   rows.unshift(row); selectionUsed+=rowSelectionChars; includedLayers+=1;
+  }
  const transcript=rows.join('\n\n');
  const bundle=`${transcriptHeader}${transcript}${fixedSuffix}`;
  const text=bundle.length>totalBudget ? `${bundle.slice(0,Math.floor(totalBudget*0.62))}\n…[上下文中段裁剪]…\n${bundle.slice(-Math.floor(totalBudget*0.37))}`.slice(0,totalBudget) : bundle;
@@ -6086,13 +6094,13 @@ function confirmFinalRenderedGeneration(index){
  state.queue?.(FINAL_RENDER_POLL_INTERVAL_MS);
  return true;
 }
-function scheduleMessageGeneration(index,delay=260,sourceAware=true,finalRenderConfirmed=false){
+function scheduleMessageGeneration(index,delay=260,sourceAware=true,finalRenderConfirmed=false,sourceStabilityConfirmed=false){
  const initialContext=getContext();
  const initialMessage=initialContext.chat?.[index];
  if(suppressesAutomaticGeneration(initialContext,index) || hasExistingFollowRabbitMirror(initialContext,index,initialMessage)) return null;
  const pollKey=generationPollKey(index); const previous=generationPolls.get(pollKey);
  if(previous){ previous.cancelled=true; if(previous.timer) clearTimeout(previous.timer); }
- const state={cancelled:false,timer:0,startedAt:Date.now(),stableSince:0,lastHash:'',lastRevision:-1,weakActiveSince:0,finalRenderHash:'',finalRenderRevision:-1,finalRenderAt:0,queue:null};
+ const state={cancelled:false,timer:0,startedAt:Date.now(),stableSince:0,lastHash:'',lastRevision:-1,weakActiveSince:0,finalRenderHash:'',finalRenderRevision:-1,finalRenderAt:0,sourceStabilityConfirmed:sourceStabilityConfirmed===true,queue:null};
  generationPolls.set(pollKey,state);
  const finish=()=>{ if(generationPolls.get(pollKey)===state) generationPolls.delete(pollKey); };
  const queue=ms=>{ if(state.timer) clearTimeout(state.timer); state.timer=setTimeout(()=>{ state.timer=0; poll(); },ms); };
@@ -6111,7 +6119,7 @@ function scheduleMessageGeneration(index,delay=260,sourceAware=true,finalRenderC
   if(hasAutomaticFailureStop(live.slot,live.sourceHash)){ finish(); return; }
   const activity=hostGenerationActivity();
   if(activity.strong){
-   state.weakActiveSince=0; state.stableSince=0; state.lastHash=''; state.lastRevision=-1;
+   state.weakActiveSince=0; state.stableSince=0; state.lastHash=''; state.lastRevision=-1; state.sourceStabilityConfirmed=false;
    if(Date.now()-state.startedAt<ACTIVE_GENERATION_WAIT_MS) queue(generationWaitPollDelay(state.startedAt));
    else { finish(); renderGenerationGateTimeout(index); }
    return;
@@ -6129,12 +6137,13 @@ function scheduleMessageGeneration(index,delay=260,sourceAware=true,finalRenderC
   if(!sourceAware){ finish(); void generateFor(index,live.msg,false,false); return; }
   if(live.sourceHash!==state.lastHash || live.revision!==state.lastRevision){
    state.lastHash=live.sourceHash; state.lastRevision=live.revision; state.stableSince=Date.now();
-   if(state.finalRenderHash!==live.sourceHash || state.finalRenderRevision!==live.revision){ state.finalRenderHash=''; state.finalRenderRevision=-1; state.finalRenderAt=0; }
+   if(state.finalRenderHash!==live.sourceHash || state.finalRenderRevision!==live.revision){ state.finalRenderHash=''; state.finalRenderRevision=-1; state.finalRenderAt=0; state.sourceStabilityConfirmed=false; }
   }
   const hasBody=String(live.msg?.mes||'').trim().length>0;
   const confirmedFinal=state.finalRenderHash===live.sourceHash
    && state.finalRenderRevision===live.revision
    && Date.now()-state.finalRenderAt<=FINAL_RENDER_CONFIRMATION_TTL_MS;
+  if(hasBody && confirmedFinal && state.sourceStabilityConfirmed){ finish(); void generateFor(index,live.msg,false,true); return; }
   const stableWait=confirmedFinal?FINAL_RENDER_SOURCE_STABLE_WAIT_MS:(activity.weak?WEAK_GENERATION_SOURCE_STABLE_WAIT_MS:SOURCE_STABLE_WAIT_MS);
   if(hasBody && state.stableSince && Date.now()-state.stableSince>=stableWait){ finish(); void generateFor(index,live.msg,false,true); return; }
   if(Date.now()-state.startedAt<OWNER_REATTACH_WAIT_MS) queue(confirmedFinal?FINAL_RENDER_POLL_INTERVAL_MS:GENERATION_PLACEHOLDER_POLL_INTERVAL_MS);
@@ -7224,7 +7233,7 @@ function clearAutomaticGenerationCutovers(){
  for(const cutover of automaticGenerationCutovers.values()) clearAutomaticHostGenerationSettlement(cutover?.activeHostGeneration);
  automaticGenerationCutovers.clear();
 }
-function activateAuthorizedAutomaticGeneration(ctx,index,reason='host-final-render',finalRenderConfirmed=true){
+function activateAuthorizedAutomaticGeneration(ctx,index,reason='host-final-render',finalRenderConfirmed=true,sourceStabilityConfirmed=false){
  const normalized=Number(index); const msg=ctx?.chat?.[normalized];
  if(!Number.isInteger(normalized)||normalized<0||!isRabbitMirrorEligibleAssistantMessage(msg)) return false;
  advanceOperationEpochForBase(
@@ -7238,9 +7247,12 @@ function activateAuthorizedAutomaticGeneration(ctx,index,reason='host-final-rend
  if(!live || !String(live.msg?.mes||'').trim() || hasGenerationWorkFor(normalized,live.slot,live.sourceHash)) return true;
  const existingPoll=generationPolls.get(generationPollKey(normalized));
  if(existingPoll){
-  if(finalRenderConfirmed) confirmFinalRenderedGeneration(normalized);
-  else existingPoll.queue?.(420);
- }else scheduleMessageGeneration(normalized,finalRenderConfirmed?FINAL_RENDER_POLL_INTERVAL_MS:420,true,finalRenderConfirmed);
+   if(finalRenderConfirmed){
+    confirmFinalRenderedGeneration(normalized);
+    if(sourceStabilityConfirmed===true) existingPoll.sourceStabilityConfirmed=true;
+   }
+   else existingPoll.queue?.(420);
+ }else scheduleMessageGeneration(normalized,finalRenderConfirmed?FINAL_RENDER_POLL_INTERVAL_MS:420,true,finalRenderConfirmed,sourceStabilityConfirmed);
  return true;
 }
 function finalizeAutomaticHostGeneration(ctx,index,reason='host-final-render'){
@@ -7252,7 +7264,7 @@ function finalizeAutomaticHostGeneration(ctx,index,reason='host-final-render'){
  // Consume the lightweight exact-render proof too, so a later duplicate END or
  // RENDER cannot reopen the same operation through the cold-runtime path.
  claimDeferredIndependentGenerationIntent(ctx,index,`${reason}-deferred`,{requireFinalProof:true});
- return activateAuthorizedAutomaticGeneration(ctx,index,reason,true);
+ return activateAuthorizedAutomaticGeneration(ctx,index,reason,true,true);
 }
 function stopAutomaticHostGenerationSettlement(ctx,owner,reason='host-completion-timeout'){
  if(runtimeMode()!=='independent') return false;
@@ -7324,7 +7336,17 @@ function scheduleAutomaticHostGenerationSettlement(delay=FINAL_RENDER_POLL_INTER
    return;
   }
   if(Date.now()-Number(owner.settleStartedAt||0)<ACTIVE_GENERATION_WAIT_MS){
-   scheduleAutomaticHostGenerationSettlement(generationWaitPollDelay(owner.settleStartedAt));
+   if(renderedAt){
+    const renderedElapsed=Math.max(0,Date.now()-renderedAt);
+    let nextDelay=candidate
+     ? Math.max(1,Math.min(FINAL_RENDER_POLL_INTERVAL_MS,settleWait-renderedElapsed))
+     : (renderedElapsed<HOST_FINAL_PROOF_WAIT_MS?FINAL_RENDER_POLL_INTERVAL_MS:GENERATION_PLACEHOLDER_POLL_INTERVAL_MS);
+    if(owner.toolCapable===true && owner.terminalSeen!==true && owner.tentativeRender?.proof==='exact-render'){
+     const proofRemaining=HOST_FINAL_PROOF_WAIT_MS-renderedElapsed;
+     if(proofRemaining>0) nextDelay=Math.min(nextDelay,proofRemaining);
+    }
+    scheduleAutomaticHostGenerationSettlement(nextDelay);
+   }else scheduleAutomaticHostGenerationSettlement(generationWaitPollDelay(owner.settleStartedAt));
    return;
   }
   stopAutomaticHostGenerationSettlement(ctx,owner);

@@ -1,15 +1,15 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
+} from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -25,6 +25,7 @@ const INDEPENDENT_GENERATION_INTENT_TTL_MS = 5 * 60 * 1000;
 const INDEPENDENT_GENERATION_INTENT_MAX = 8;
 const INDEPENDENT_GENERATION_INTENT_TYPES = new Set(['normal', 'continue', 'swipe', 'regenerate']);
 let independentIntentBridgeSubscriptions = [];
+let independentCoreRuntimeWakeTimer = 0;
 
 function hashIndependentIntentText(text = '') {
     let hash = 2166136261;
@@ -197,6 +198,20 @@ function markIndependentGenerationIntentTerminal(reason = 'host-terminal') {
     return changed;
 }
 
+function scheduleIndependentCoreRuntimeWake() {
+    if (independentCoreRuntimeWakeTimer || typeof globalThis.setTimeout !== 'function') return false;
+    // Intent proof is recorded synchronously, but the 2 MiB deferred graph starts in
+    // the next task so SillyTavern can dispatch its main request first.
+    independentCoreRuntimeWakeTimer = globalThis.setTimeout(() => {
+        independentCoreRuntimeWakeTimer = 0;
+        try {
+            const runtimeLoad = globalThis.__rabbitMirrorEnsureDeferredCoreRuntime?.('independent-generation-intent');
+            if (runtimeLoad && typeof runtimeLoad.catch === 'function') void runtimeLoad.catch(() => {});
+        } catch {}
+    }, 0);
+    return true;
+}
+
 function recordIndependentGenerationIntent(chat, type = '') {
     const messages = Array.isArray(chat) ? chat : [];
     const normalizedType = String(type || 'normal').trim().toLowerCase() || 'normal';
@@ -244,10 +259,7 @@ function recordIndependentGenerationIntent(chat, type = '') {
     // therefore revokes the pre-tool assistant before the nested final can render.
     globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = [...previous.filter(item => String(item?.chatKey || '') !== chatKey), intent]
         .slice(-INDEPENDENT_GENERATION_INTENT_MAX);
-    try {
-        const runtimeLoad = globalThis.__rabbitMirrorEnsureDeferredCoreRuntime?.('independent-generation-intent');
-        if (runtimeLoad && typeof runtimeLoad.catch === 'function') void runtimeLoad.catch(() => {});
-    } catch {}
+    scheduleIndependentCoreRuntimeWake();
     return intent;
 }
 
@@ -277,6 +289,10 @@ export function initIndependentGenerationIntentBridge() {
 }
 
 export function destroyIndependentGenerationIntentBridge({ clearIntents = false } = {}) {
+    if (independentCoreRuntimeWakeTimer) {
+        try { globalThis.clearTimeout?.(independentCoreRuntimeWakeTimer); } catch {}
+        independentCoreRuntimeWakeTimer = 0;
+    }
     for (const { event, handler } of independentIntentBridgeSubscriptions) {
         try { eventSource?.off?.(event, handler); } catch {}
     }
@@ -292,7 +308,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -302,7 +318,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1').catch(error => {
             generationGuardPromise = null;
             throw error;
         });

@@ -1,4 +1,19 @@
-# 兔子镜测试版 AdvancedUI1 Stability1 RepairEmoji1 CleanUI1 WidthFix1 ApiFix2 ModelSelectFix1 StreamFix1 Variety1
+# 兔子镜测试版 AdvancedUI1 Stability1 RepairEmoji1 CleanUI1 WidthFix1 ApiFix2 ModelSelectFix1 StreamFix1 Variety1 FollowupFix1
+
+## FollowupFix1 / 1.4.30.33
+
+本候选以 1.4.30.32 成品为唯一源码基线，集中处理临时对话复核、标签过滤预算、独立 API 结算速度、发送热路径、设置布局、外部诊断、黑名单骰子和维修兔问题提示；不放宽单次付费请求、当前正文、工具递归、历史拒绝或安全净化边界。
+
+- 当前版本的临时对话 fallback 聊天键与 owner 替换逻辑可以连续授权两轮；新增“刷新后连续两轮、第一轮漏结束事件、第二轮替换 stale owner”的回归测试，不为追求触发而放宽历史消息或重复请求防线。
+- 勾选过滤的标签名、标签本身与包裹内容继续从发给副 API 的上下文副本中删除；被删除字符同时占用 12,000 字符聊天选取预算，不再用更早聊天回填，所以真实请求字符数会随过滤下降。原酒馆正文不修改。
+- 最终正文通过上游稳定证明后只做一次约 120ms 的精确 hash／revision 复核，不再额外叠加 1.6～4 秒退避；独立 API 重模块图移到主生成意图返回后的下一任务唤醒，正常宿主活动窗口不再反复做全局聊天选择器查询。
+- “最近请求／请求指定模型／抽到／世界书”移入本轮 Token 卡片；删除两段指定的 Connection Manager 与隐私预算说明，只保留温度建议。
+- 外部诊断结束前先保留真实报告和分类；“查看报告”不再偷偷启动一个空的新会话，界面明确区分原始事件条数和报告分类。诊断仍只在用户主动开启时运行，不新增网络请求。
+- 黑名单未启用或当前 Swipe 没有精确抽签记录时不显示 🎲；维修兔按钮只保留兔子和状态色，问题类别 emoji 与真实问题文字显示在维修菜单顶部。
+- 不修改母本库、Prompt、选题候选池、收藏倍率、黑名单权重、配色冷却、Touch Theater、挨打猫、世界书选择、Token 统计口径或 12,000／20,000／32,000 字符上限；保留 1.4.30.32 的 Variety1 多样性调整。
+- 未新增 `fetch`、`setInterval` 或 MutationObserver 调用点；仅新增一个合并的一次性 0ms 唤醒定时器，用于把重模块加载移出发送同步热路径，销毁时会清理。
+
+仅完成源码／自动化验证，尚未完成真实 SillyTavern 临时对话、真实副 API、PC／iPhone 网络与模型响应速度实机验证。GitHub 未写入，原 ZIP 未覆盖。
 
 ## StreamFix1 Variety1 / 1.4.30.32
 

@@ -111,6 +111,6 @@ assert.match(visualScanner, /missing_visual_program/);
 assert.match(indexSource, /\.\/src\/ui\.js\?rmv=1\.4\.9-subapitag2-advancedui1/);
 assert.match(uiSource, /\.\/injector\.js\?rmv=1\.4\.9-subapitag2-advancedui1/);
 assert.match(uiSource, /\.\/independentApi\.js\?rmv=1\.4\.9-subapitag2-advancedui1/);
-assert.equal(manifest.version, '1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1');
+assert.equal(manifest.version, '1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1');
 
 console.log('presentationQuality tests passed');

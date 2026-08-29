@@ -25,4 +25,22 @@ assert.doesNotMatch(external, /__rabbitMirrorDiag/);
 assert.match(index, /initRabbitMirrorExternalDiagnostics/);
 assert.match(index, /destroyRabbitMirrorExternalDiagnostics/);
 
+const reportHandlerStart = ui.indexOf('const renderExternalDiagnosticReport =');
+const reportHandlerEnd = ui.indexOf("$('#rh_external_diag_start').on", reportHandlerStart);
+const reportHandler = ui.slice(reportHandlerStart, reportHandlerEnd);
+assert.ok(reportHandlerStart >= 0 && reportHandlerEnd > reportHandlerStart);
+assert.doesNotMatch(reportHandler, /ensureExternalDiagnosticApi/, 'reading a stopped report must never start a fresh empty diagnostic session');
+assert.match(reportHandler, /retainedExternalDiagnosticReport/, 'a stopped diagnostic report must remain available for display/copy');
+
+const stopHandlerStart = ui.indexOf("$('#rh_external_diag_stop').on");
+const stopHandlerEnd = ui.indexOf("$('#rh_external_diag_report').on", stopHandlerStart);
+const stopHandler = ui.slice(stopHandlerStart, stopHandlerEnd);
+assert.match(stopHandler, /\.report\?\./, 'stop must capture the live report before destroying listeners');
+assert.match(stopHandler, /__rabbitMirrorDisableExternalDiag/);
+assert.ok(stopHandler.indexOf('.report?.') < stopHandler.indexOf('__rabbitMirrorDisableExternalDiag'), 'report capture must precede diagnostic teardown');
+
+assert.match(index, /externalDiagnosticsOperationRevision/, 'late diagnostic imports need an operation revision guard');
+assert.match(index, /externalDiagnosticsDesiredEnabled/, 'late diagnostic imports must observe the latest enabled/disabled intent');
+assert.match(index, /revision\s*!==\s*externalDiagnosticsOperationRevision/, 'a stopped stale import must not re-enable diagnostics');
+
 console.log('external diagnostic separation: PASS');

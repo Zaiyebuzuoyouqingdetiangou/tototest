@@ -1,4 +1,4 @@
-const VERSION = '1.4.5';
+const VERSION = '1.4.6';
 const BUTTON_SELECTOR = '[data-rabbit-mirror-maintenance-rabbit="true"]';
 const MENU_RECOMMENDATION_SELECTOR = '.rabbit-mirror-maintenance-recommendation[data-rm-recommended-action="manual"]';
 const STATE_ATTR = 'data-rabbit-mirror-maintenance-state';
@@ -63,6 +63,15 @@ function recommendationForButton(button) {
     );
 }
 
+function mergeMaintenanceProblemAndRecommendation(problemText = '', recommendation = '') {
+    const problem = String(problemText || '').trim();
+    const suggestion = String(recommendation || '').trim();
+    if (!suggestion) return problem;
+    if (!problem) return suggestion;
+    if (problem.split(/\r?\n/u).some(line => line.trim() === suggestion)) return problem;
+    return `${problem}\n${suggestion}`;
+}
+
 function decorateButton(button) {
     if (!button?.matches?.(BUTTON_SELECTOR)) return '';
     const recommendation = recommendationForButton(button);
@@ -90,7 +99,7 @@ function updateOpenMenu(button) {
         if (!recommendation) return;
         const panel = document.querySelector(MENU_RECOMMENDATION_SELECTOR);
         if (!panel) return;
-        panel.textContent = recommendation;
+        panel.textContent = mergeMaintenanceProblemAndRecommendation(panel.textContent, recommendation);
         panel.setAttribute('data-rm-recommended-action', 'detected');
     }, 0);
 }

@@ -1,15 +1,15 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { clearLastCombo } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { clearLastCombo } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
 
-const SETTINGS_UI_VERSION = '1.4.30.32-subapitag2-advancedui1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-const RUNTIME_VERSION = '1.4.30.32';
+const SETTINGS_UI_VERSION = '1.4.30.33-subapitag2-advancedui1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+const RUNTIME_VERSION = '1.4.30.33';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -21,6 +21,8 @@ let worldInfoBookRenderTimer = 0;
 let worldInfoBookVisibilityObserver = null;
 let worldInfoBookCurrentVisible = false;
 let worldInfoBookCurrentDirty = true;
+let retainedExternalDiagnosticReport = '';
+let retainedExternalDiagnosticStatus = null;
 const WORLD_INFO_BOOK_RENDER_DEBOUNCE_MS = 140;
 
 function scheduleUiMountRetry() {
@@ -446,6 +448,15 @@ export function initRabbitMirrorUI() {
                     && $panel.find('#rh_independent_advanced_open').length === 1
                     && $panel.find('.rabbit-mirror-primary-row').length === 1
                     && $panel.find('#rh_token_meter > summary').length === 1
+                    && $panel.find('#rh_token_meter #rh_independent_api_diagnostic').length === 1
+                    && $panel.find('#rh_independent_api_section #rh_independent_api_diagnostic').length === 0
+                    && $panel.find('#rh_external_diag_status').length === 1
+                    && $panel.find('#rh_external_diag_start').length === 1
+                    && $panel.find('#rh_external_diag_stop').length === 1
+                    && $panel.find('#rh_external_diag_report').length === 1
+                    && $panel.find('#rh_external_diag_copy').length === 1
+                    && $panel.find('#rh_external_diag_reset').length === 1
+                    && $panel.find('#rh_external_diag_output').length === 1
                     && $panel.find('#rh_blacklist_enabled').length
                     && $panel.find('#rh_favorite_summary').length
                     && $advanced.find('#rh_feedback_cat').length
@@ -492,7 +503,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.32</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.33</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -514,6 +525,7 @@ export function initRabbitMirrorUI() {
         <div class="rabbit-mirror-token-meter-body">
           <div data-rh-token-meter-exact class="rabbit-mirror-token-meter-exact">下一轮生成后更新。</div>
           <div data-rh-token-meter-detail class="rabbit-mirror-token-meter-detail">只统计兔子镜自己的 Prompt。</div>
+          <div id="rh_independent_api_diagnostic" style="padding:7px 9px;border-left:2px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);opacity:.78;font-size:11px;line-height:1.5;word-break:break-word;">最近请求：暂无记录</div>
           <div class="rabbit-mirror-token-meter-note">Token 是估算值。</div>
         </div>
       </details>
@@ -551,7 +563,6 @@ export function initRabbitMirrorUI() {
                 <button id="rh_independent_import_current" class="menu_button" type="button" style="font-weight:700;">从酒馆当前连接一键配置</button>
                 <span id="rh_independent_connection_status" style="opacity:.72;font-size:11px;line-height:1.4;">尚未配置</span>
               </div>
-              <div style="opacity:.66;font-size:11px;line-height:1.45;margin-top:5px;">直接复用 SillyTavern Connection Manager 连接；兔子镜可以选择与正文不同的 Profile，生成时不会切换正文连接。API Key 继续由酒馆 Secrets 保管，不复制到兔子镜。</div>
               <div style="opacity:.78;font-size:11px;line-height:1.45;margin-top:5px;">仅支持 SillyTavern 1.18.0 及以上版本；旧版请使用下方“手动 OpenAI 兼容接口”。</div>
               <button id="rh_independent_models" class="menu_button" type="button" style="margin-top:8px;">从此酒馆连接拉取模型</button>
             </div>
@@ -582,8 +593,7 @@ export function initRabbitMirrorUI() {
               <div class="rabbit-mirror-independent-advanced-copy"><b>读取内容与隐私</b><span>聊天层数、角色卡 / Persona、世界书与正文标签过滤</span></div>
               <button id="rh_independent_advanced_open" class="menu_button" type="button">管理读取内容</button>
             </div>
-            <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议 <b>1.0</b>。副 API 只读取你允许的可见内容；历史兔子镜、隐藏推理和你勾选过滤的标签不会发送。过滤不会改酒馆正文；内容太长时会自动裁剪（聊天正文 12,000 / 上下文 20,000 / 完整请求 32,000 字符）。</div>
-            <div id="rh_independent_api_diagnostic" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);opacity:.78;font-size:11px;line-height:1.5;word-break:break-word;">最近请求：暂无记录</div>
+            <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议 <b>1.0</b>。</div>
             <div style="opacity:.66;font-size:11px;line-height:1.45;">一键配置时不保存 API Key；旧手动模式仍按原逻辑保存在当前 SillyTavern 扩展设置里。</div>
           </div>
         </div>
@@ -607,9 +617,9 @@ export function initRabbitMirrorUI() {
             <div style="opacity:.74;font-size:11px;line-height:1.5;margin-top:4px;">只诊断 <b>SillyTavern 本体、其他扩展、浏览器主线程和网络</b>：聊天为什么空白、发送为什么迟滞、AI 请求何时真正发出、维修兔点击后是否被外部脚本/网络阻塞。<br><b>不读取兔子镜内部生成或维修状态。</b> 兔子镜内部问题仍请使用对应兔子镜里的「📋 生成全链路诊断」，两份报告互不合并。</div>
             <div id="rh_external_diag_status" style="margin-top:7px;opacity:.82;font-size:11px;line-height:1.45;">默认关闭（零常驻监听）；需要复现问题时再手动开启。</div>
             <div class="flex-container" style="gap:7px;flex-wrap:wrap;margin-top:8px;">
-              <button id="rh_external_diag_start" class="menu_button" type="button" style="font-weight:700;">开始外部诊断</button>
-              <button id="rh_external_diag_stop" class="menu_button" type="button">停止外部诊断</button>
-              <button id="rh_external_diag_report" class="menu_button" type="button" style="font-weight:700;">生成外部诊断报告</button>
+              <button id="rh_external_diag_start" class="menu_button" type="button" style="font-weight:700;">开始新诊断</button>
+              <button id="rh_external_diag_stop" class="menu_button" type="button">结束并生成报告</button>
+              <button id="rh_external_diag_report" class="menu_button" type="button" style="font-weight:700;">查看当前／最后报告</button>
               <button id="rh_external_diag_copy" class="menu_button" type="button">复制外部报告</button>
               <button id="rh_external_diag_reset" class="menu_button" type="button">清空外部记录</button>
             </div>
@@ -921,7 +931,7 @@ export function initRabbitMirrorUI() {
     globalThis.addEventListener?.(WORLD_INFO_BOOKS_CHANGED_EVENT, worldInfoBooksListener);
     globalThis.__rabbitMirrorWorldInfoBooksUiCleanup = () => globalThis.removeEventListener?.(WORLD_INFO_BOOKS_CHANGED_EVENT, worldInfoBooksListener);
     try { globalThis.__rabbitMirrorBlacklistUiCleanup?.(); } catch {}
-    const blacklistListener = () => { checked('#rh_blacklist_enabled', getSettings().blacklistEnabled !== false); if (document.getElementById('rh_random_preference_section')?.open) { renderBlacklistSettings(); renderFavoriteSettings(); } };
+    const blacklistListener = event => { checked('#rh_blacklist_enabled', getSettings().blacklistEnabled !== false); if (event?.detail?.action === 'enabled') refreshRecipeButtons(); if (document.getElementById('rh_random_preference_section')?.open) { renderBlacklistSettings(); renderFavoriteSettings(); } };
     globalThis.addEventListener?.(BLACKLIST_CHANGED_EVENT, blacklistListener);
     globalThis.__rabbitMirrorBlacklistUiCleanup = () => globalThis.removeEventListener?.(BLACKLIST_CHANGED_EVENT, blacklistListener);
     checked('#rh_feedback_cat', settings.feedbackCatEnabled);
@@ -1543,7 +1553,6 @@ export function initRabbitMirrorUI() {
     $('#rh_blacklist_enabled').on('change', e => {
         setBlacklistEnabled(e.target.checked);
         renderBlacklistSettings();
-        refreshRecipeButtons();
         toastr?.info?.(e.target.checked ? '黑名单已开启。' : '黑名单已暂停，名单仍保留。');
     });
     $('#rh_blacklist_summary').on('click', '.rh-blacklist-remove', function () {
@@ -1614,13 +1623,20 @@ export function initRabbitMirrorUI() {
         $('#rh_memory_scan_results').html('<div style="padding:8px 0;opacity:.68;font-size:11px;line-height:1.45;">已保存资料来源设置。需要刷新列表时请点击“扫描可用资料来源”。</div>');
     }
 
+    let externalDiagnosticUiRevision = 0;
+    const externalDiagnosticStatusText = (state, prefix = '诊断中') => `${prefix}｜原始事件 ${Number(state?.entries || 0)} 条（不是报告数）｜分类：外部资源 ${Number(state?.externalResources || 0)}｜外部长帧 ${Number(state?.externalLoaf || 0)}｜主线程阻塞 ${Number(state?.stalls || 0)}｜网络 ${Number(state?.network || 0)}｜维修点击窗口 ${Number(state?.maintenanceWindows || 0)}`;
     const renderExternalDiagnosticStatus = () => {
         const api = globalThis.__rabbitMirrorExternalDiag;
         const target = $('#rh_external_diag_status');
         if (!target.length) return;
-        if (!api?.status) { target.text('默认关闭（零常驻监听）；需要复现问题时再手动开启。'); return; }
+        if (!api?.status) {
+            target.text(retainedExternalDiagnosticReport && retainedExternalDiagnosticStatus
+                ? externalDiagnosticStatusText(retainedExternalDiagnosticStatus, '已结束并保留最后报告')
+                : '默认关闭（零常驻监听）；需要复现问题时再手动开启。');
+            return;
+        }
         const state = api.status();
-        target.text(`已记录 ${state.entries} 条｜外部资源 ${state.externalResources}｜外部长帧 ${state.externalLoaf}｜主线程阻塞 ${state.stalls}｜网络 ${state.network}｜维修点击窗口 ${state.maintenanceWindows}`);
+        target.text(externalDiagnosticStatusText(state));
     };
     const ensureExternalDiagnosticApi = async () => {
         const existing = globalThis.__rabbitMirrorExternalDiag;
@@ -1628,24 +1644,39 @@ export function initRabbitMirrorUI() {
         return await globalThis.__rabbitMirrorEnsureExternalDiag?.();
     };
     const renderExternalDiagnosticReport = async () => {
-        const api = await ensureExternalDiagnosticApi();
+        const api = globalThis.__rabbitMirrorExternalDiag;
         const output = $('#rh_external_diag_output');
-        if (!api?.report) { toastr?.error?.('外部诊断模块尚未就绪'); return ''; }
-        const text = String(api.report() || '');
+        const text = api?.report ? String(api.report() || '') : retainedExternalDiagnosticReport;
+        if (!text) { toastr?.error?.('请先开始外部诊断，复现问题后再结束并生成报告'); return ''; }
         output.val(text).show();
         renderExternalDiagnosticStatus();
         return text;
     };
     $('#rh_external_diag_start').on('click', async () => {
+        const revision = ++externalDiagnosticUiRevision;
         const api = await ensureExternalDiagnosticApi();
+        if (revision !== externalDiagnosticUiRevision) return;
         if (!api) { toastr?.error?.('外部诊断模块启动失败'); return; }
+        retainedExternalDiagnosticReport = '';
+        retainedExternalDiagnosticStatus = null;
+        api.reset?.('user-start');
+        $('#rh_external_diag_output').hide().val('');
         renderExternalDiagnosticStatus();
-        toastr?.success?.('外部诊断已开始；复现完成后可停止或生成报告');
+        toastr?.success?.('外部诊断已开始；请复现问题，再点击“结束并生成报告”');
     });
     $('#rh_external_diag_stop').on('click', () => {
+        externalDiagnosticUiRevision += 1;
+        const api = globalThis.__rabbitMirrorExternalDiag;
+        const report = api?.report?.();
+        const status = api?.status?.();
+        if (report) retainedExternalDiagnosticReport = String(report);
+        if (status) retainedExternalDiagnosticStatus = { ...status };
         globalThis.__rabbitMirrorDisableExternalDiag?.();
+        if (retainedExternalDiagnosticReport) $('#rh_external_diag_output').val(retainedExternalDiagnosticReport).show();
         renderExternalDiagnosticStatus();
-        toastr?.success?.('外部诊断已停止，常驻监听和定时器已移除');
+        toastr?.success?.(retainedExternalDiagnosticReport
+            ? '外部诊断已结束并保留报告；常驻监听和定时器已移除'
+            : '外部诊断未在运行；没有可生成的记录');
     });
     $('#rh_external_diag_report').on('click', async () => { await renderExternalDiagnosticReport(); });
     $('#rh_external_diag_copy').on('click', async () => {
@@ -1661,12 +1692,14 @@ export function initRabbitMirrorUI() {
             catch { toastr?.error?.('复制失败，请手动复制报告'); }
         }
     });
-    $('#rh_external_diag_reset').on('click', async () => {
-        const api = await ensureExternalDiagnosticApi();
+    $('#rh_external_diag_reset').on('click', () => {
+        const api = globalThis.__rabbitMirrorExternalDiag;
         api?.reset?.('settings-button');
+        retainedExternalDiagnosticReport = '';
+        retainedExternalDiagnosticStatus = null;
         $('#rh_external_diag_output').hide().val('');
         renderExternalDiagnosticStatus();
-        toastr?.success?.('已清空外部诊断记录，从现在重新记录');
+        toastr?.success?.(api ? '已清空外部诊断记录，从现在重新记录' : '已清空最后保留的外部诊断报告');
     });
     renderExternalDiagnosticStatus();
 

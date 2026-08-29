@@ -61,6 +61,9 @@ assert.match(independent, /scheduleStartupHistorySync\(runtimeConfigSequence\)/)
 assert.match(independent, /const hotUpdate=typeof previousCleanup==='function';/);
 assert.match(independent, /const FINAL_RENDER_SOURCE_STABLE_WAIT_MS = 520/);
 assert.match(independent, /const FINAL_RENDER_POLL_INTERVAL_MS = 120/);
+const hostActivity = independent.slice(independent.indexOf('function hostGenerationActivity()'), independent.indexOf('function hostGenerationLooksActive()'));
+assert.match(hostActivity, /if\(eventHint\) return \{active:true,strong:true/, 'the strong START-event latch must skip global DOM generation queries on streaming token mutations');
+assert.ok(hostActivity.indexOf('if(eventHint)') < hostActivity.indexOf('externalHostGenerationActivity()'), 'the cheap event latch must run before the document-wide fallback selector');
 assert.match(independent, /function confirmFinalRenderedGeneration\(index\)/);
 assert.match(independent, /state\.finalRenderHash===live\.sourceHash[\s\S]{0,220}state\.finalRenderRevision===live\.revision/, 'fast path must bind to the exact正文 fingerprint and revision');
 assert.match(independent, /const finalRenderEvents=\[et\.CHARACTER_MESSAGE_RENDERED\]/);
@@ -76,8 +79,8 @@ const index = read('index.js');
 assert.match(index, /\.\/src\/ui\.js\?rmv=1\.4\.9-subapitag2-advancedui1/, 'AdvancedUI1 UI parent must use its dedicated cache key');
 assert.doesNotMatch(index, /\.\/src\/ui\.js\?rmv=1\.4\.30\.2[0-9]/, 'stale 1.4.30.x UI cache key must not survive');
 assert.match(index, /\.\/src\/checkedSelectorRepair\.js\?rmv=1\.4\.30\.26/, 'formal checked-selector repair must be present in the test baseline');
-assert.match(index, /\.\/src\/maintenanceRecommendationHotfix\.js\?rmv=1\.4\.5/, 'formal maintenance recommendation must be present in the test baseline');
-assert.equal(manifest.js, 'index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1');
-assert.equal(manifest.version, '1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1');
+assert.match(index, /\.\/src\/maintenanceRecommendationHotfix\.js\?rmv=1\.4\.6/, 'formal maintenance recommendation must be present in the test baseline');
+assert.equal(manifest.js, 'index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1');
+assert.equal(manifest.version, '1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1');
 
 console.log('performance lifecycle tests passed');

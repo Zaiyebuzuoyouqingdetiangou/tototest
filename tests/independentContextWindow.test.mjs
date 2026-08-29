@@ -416,6 +416,11 @@ assert.match(uiSource, /class="rabbit-mirror-primary-row"[\s\S]{0,900}id="rh_adv
 assert.match(uiSource, /<details id="rh_token_meter" class="rabbit-mirror-token-meter"[^>]*>[\s\S]{0,260}<summary class="rabbit-mirror-token-meter-head">/, 'Token details must retain a compact always-visible summary');
 assert.ok(uiSource.indexOf('id="rh_advanced_open"') < uiSource.indexOf('id="rh_token_meter"'), 'advanced launcher must sit in the primary row above Token');
 assert.ok(uiSource.indexOf('id="rh_token_meter"') < uiSource.indexOf('<span>生成方式<\/span>'), 'Token meter must sit below auto injection and above generation mode');
+const tokenMeterStart = uiSource.indexOf('id="rh_token_meter"');
+const tokenMeterEnd = uiSource.indexOf('</details>', tokenMeterStart);
+const requestDiagnosticMatches = uiSource.match(/id="rh_independent_api_diagnostic"/g) || [];
+assert.equal(requestDiagnosticMatches.length, 1, 'the recent-request diagnostic must be moved, never duplicated');
+assert.ok(uiSource.indexOf('id="rh_independent_api_diagnostic"') > tokenMeterStart && uiSource.indexOf('id="rh_independent_api_diagnostic"') < tokenMeterEnd, 'recent request details must live inside the per-round Token card');
 assert.match(uiSource, /<details class="rabbit-mirror-section">\s*<summary><span>生成方式<\/span>/, 'generation details must start collapsed to keep the main panel compact');
 assert.match(uiSource, /<details class="rabbit-mirror-section" id="rh_independent_api_section">/, 'independent API details must start collapsed but remain directly available');
 assert.match(uiSource, /class="rabbit-mirror-independent-advanced-row"[\s\S]{0,500}id="rh_independent_advanced_open"/, 'independent context/privacy shortcut must remain available');
@@ -427,6 +432,7 @@ const advancedModalStart = uiSource.indexOf('id="rh_advanced_modal"', independen
 assert.ok(independentMainStart >= 0 && advancedModalStart > independentMainStart);
 const independentMain = uiSource.slice(independentMainStart, advancedModalStart);
 assert.doesNotMatch(independentMain, /id="rh_independent_context_layers"|id="rh_independent_tag_filter_open"/, 'context range and tag filtering belong in independent advanced settings');
+assert.doesNotMatch(independentMain, /id="rh_independent_api_diagnostic"/, 'recent request details must not remain scattered inside the independent API main section');
 assert.match(uiSource, /\$\('#rh_independent_api_fields'\)\.show\(\)/, 'independent settings must remain visible and preconfigurable in follow mode');
 assert.doesNotMatch(uiSource, /\$\('#rh_independent_api_fields'\)\.toggle\(independent\)/, 'generation source must no longer hide the independent settings section');
 const scanHandlerStart = uiSource.indexOf("$('#rh_independent_tag_filter_scan').on('click'");
@@ -446,13 +452,21 @@ for (const id of [
     'rh_independent_tag_filter_open',
     'rh_independent_tag_filter_scan',
     'rh_independent_tag_filter_save',
+    'rh_external_diag_status',
+    'rh_external_diag_start',
+    'rh_external_diag_stop',
+    'rh_external_diag_report',
+    'rh_external_diag_copy',
+    'rh_external_diag_reset',
+    'rh_external_diag_output',
 ]) assert.match(completeness, new RegExp(`#${id}\\b`), `same-version DOM completeness must require #${id}`);
 assert.match(completeness, /rabbit-mirror-primary-row/, 'same-version DOM completeness must require the CleanUI primary row');
 assert.match(completeness, /#rh_token_meter > summary/, 'same-version DOM completeness must require the compact Token summary');
+assert.match(completeness, /#rh_token_meter #rh_independent_api_diagnostic/, 'same-version DOM completeness must require recent-request details inside Token');
 assert.match(uiSource, /不接受正则/);
-assert.match(uiSource, /副 API 只读取你允许的可见内容/);
-assert.match(uiSource, /历史兔子镜、隐藏推理和你勾选过滤的标签不会发送/);
-assert.match(uiSource, /聊天正文 12,000 \/ 上下文 20,000 \/ 完整请求 32,000 字符/);
+assert.doesNotMatch(uiSource, /直接复用 SillyTavern Connection Manager 连接；兔子镜可以选择与正文不同的 Profile/);
+assert.doesNotMatch(uiSource, /历史兔子镜、隐藏推理和你勾选过滤的标签不会发送/);
+assert.doesNotMatch(uiSource, /聊天正文 12,000 \/ 上下文 20,000 \/ 完整请求 32,000 字符/);
 assert.match(tokenSource, /independentContextLayers/);
 assert.match(tokenSource, /filteredRabbitMirrorChars/);
 assert.match(tokenSource, /filteredContextTagChars/);

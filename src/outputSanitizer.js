@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
+import { getSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,14 +9,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
+} from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
 
 
-const RUNTIME_VERSION = '1.4.30.32';
+const RUNTIME_VERSION = '1.4.30.33';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -13702,15 +13702,22 @@ function decorateMaintenanceRabbitReason(state, reason = '') {
     return `${emoji} ${text}`;
 }
 
-function maintenanceRabbitGlyph(state, reason = '') {
-    const base = state === MAINTENANCE_STATES.healthy
+function maintenanceMenuProblemText(state, reason = '') {
+    const text = String(reason || '').trim();
+    if (state === MAINTENANCE_STATES.checking) return text || '正在检查当前镜面，请稍候。';
+    if (state === MAINTENANCE_STATES.healthy) return text || '未发现需要维修的问题。';
+    if (text) return decorateMaintenanceRabbitReason(state, text);
+    return '请选择问题类型；“自动判断”会在执行时检测当前镜面。';
+}
+
+function maintenanceRabbitGlyph(state, _reason = '') {
+    return state === MAINTENANCE_STATES.healthy
         ? '🐇🟢'
         : (state === MAINTENANCE_STATES.repairable || state === MAINTENANCE_STATES.notice)
             ? '🐇🟡'
             : state === MAINTENANCE_STATES.unknown
                 ? '🐇🔴'
                 : '🐇⚪';
-    return `${base}${maintenanceProblemEmoji(state, reason)}`;
 }
 
 function stripMaintenanceRabbitGlyphs(text = '') {
@@ -18567,7 +18574,7 @@ function showBlacklistManagerMenu(root, button) {
             button.title = recipeButtonTitle(freshRecipe);
             button.setAttribute('aria-label', button.title);
             closeRecipeMenu();
-            showBlacklistManagerMenu(root, button);
+            installRecipeButtonForRoot(root);
             return;
         }
         if (value === 'clear') {
@@ -21949,6 +21956,15 @@ function showMaintenanceRabbitMenu(root, button) {
       <button type="button" data-rm-maintenance-action="restore-before" ${maintenancePreRepairSnapshots.has(maintenanceSnapshotKey(root)) ? '' : 'disabled'}>↩️ 返回修复前</button>
       <button type="button" data-rm-maintenance-action="diagnostic">📋 生成全链路诊断</button>
       <button type="button" data-rm-maintenance-action="close">关闭</button>`;
+    const recommendation = panel.querySelector('.rabbit-mirror-maintenance-recommendation');
+    if (recommendation) {
+        const state = button.getAttribute(MAINTENANCE_STATE_ATTR) || MAINTENANCE_STATES.idle;
+        const reason = button.getAttribute(MAINTENANCE_REASON_ATTR) || '';
+        // The reason may contain diagnostic detail. Keep it out of innerHTML so a
+        // repaired/model-produced string can never become executable menu markup.
+        recommendation.textContent = maintenanceMenuProblemText(state, reason);
+        recommendation.setAttribute('data-rm-maintenance-problem-text', 'true');
+    }
     document.body.appendChild(panel);
     const rect = button.getBoundingClientRect();
     const width = Math.min(300, Math.max(240, globalThis.innerWidth - 24));
@@ -22198,14 +22214,23 @@ function ensureFeedbackCatButton(root, summary, host) {
 }
 
 
-function ensureRecipeButton(root, summary, host) {
+function recipeButtonShouldBeVisible(recipe, blacklistState = getBlacklistState()) {
+    return blacklistState?.enabled === true && !!recipe;
+}
+
+function removeRecipeButtonsFromSummary(summary) {
+    if (!summary?.querySelectorAll) return 0;
+    const existing = [...summary.querySelectorAll(`[${RECIPE_BUTTON_ATTR}]`)];
+    existing.forEach(button => button.remove());
+    if (existing.length) closeRecipeMenu();
+    for (const host of summary.querySelectorAll(`:scope > [${TOOL_ENTRY_HOST_ATTR}]`)) {
+        if (!host.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}]`)) host.remove();
+    }
+    return existing.length;
+}
+
+function ensureRecipeButton(root, summary, host, recipe = rabbitMirrorRecipeForRoot(root)) {
     const existing = [...summary.querySelectorAll?.(`[${RECIPE_BUTTON_ATTR}]`) || []];
-    const recipe = rabbitMirrorRecipeForRoot(root);
-    // 1.3.77: 没有记录时保留按钮，只改提示语。
-    // 1.3.65 收紧了 getRabbitMirrorRecipe：Swipe 已知时只认该 Swipe 自己的精确记录，
-    // 避免上一个 Swipe 的配方冒充当前正文。那个收紧是对的，但这里当时直接把按钮删掉，
-    // 于是所有没有精确记录的兔子镜（尤其是记录功能上线前生成的全部历史镜面）看起来像
-    // 功能消失了。点开时的「没有可读取的记录」提示本来就已经存在，让它去承担说明责任。
     let current = existing.find(button => button.getAttribute(RUNTIME_VERSION_ATTR) === RUNTIME_VERSION) || existing[0] || null;
     existing.filter(button => button !== current).forEach(button => button.remove());
     if (!current) current = document.createElement('button');
@@ -22214,9 +22239,9 @@ function ensureRecipeButton(root, summary, host) {
     current.setAttribute(RECIPE_BUTTON_ATTR, 'true');
     current.setAttribute(RUNTIME_VERSION_ATTR, RUNTIME_VERSION);
     current.textContent = '🎲';
-    current.title = recipe ? recipeButtonTitle(recipe) : '本轮抽签：这一面没有可读取的记录';
+    current.title = recipeButtonTitle(recipe);
     current.setAttribute('aria-label', current.title);
-    current.dataset.rmRecipeAvailable = recipe ? 'true' : 'false';
+    current.dataset.rmRecipeAvailable = 'true';
     if (current.parentElement !== host) host.appendChild(current);
     normalizeRabbitMirrorToolButton(current);
     return current;
@@ -22227,9 +22252,14 @@ function installRecipeButtonForRoot(root) {
     const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
     const summary = details?.querySelector?.(':scope > summary') || details?.querySelector?.('summary');
     if (!summary) return false;
+    const recipe = rabbitMirrorRecipeForRoot(root);
+    if (!recipeButtonShouldBeVisible(recipe, getBlacklistState())) {
+        removeRecipeButtonsFromSummary(summary);
+        return true;
+    }
     const host = ensureRabbitMirrorToolHost(summary);
     if (!host) return false;
-    ensureRecipeButton(root, summary, host);
+    ensureRecipeButton(root, summary, host, recipe);
     return true;
 }
 
