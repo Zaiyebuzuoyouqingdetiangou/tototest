@@ -69,7 +69,9 @@ test('an unexpected bare AbortError becomes a visible single-shot transport fail
             assert.notEqual(error, nakedAbort, 'a transport-origin AbortError must not be mistaken for an intentional UI cancellation');
             assert.notEqual(error?.name, 'AbortError');
             assert.match(String(error?.message || ''), /副 API 网络／响应流失败/);
+            assert.match(String(error?.message || ''), /连接在响应完成前中断/);
             assert.equal(error?.rabbitMirrorRequestDiagnostic?.semanticFailure, 'transport-body');
+            assert.equal(error?.rabbitMirrorRequestDiagnostic?.transportCause, 'connection-interrupted');
             assert.equal(error?.rabbitMirrorRequestDiagnostic?.requestCount, 1);
             assert.equal(error?.rabbitMirrorRequestDiagnostic?.automaticRetry, false);
             return true;
@@ -186,6 +188,68 @@ test('Connection Manager nested 401 cause gives Profile/Secret repair guidance w
     );
     assert.equal(serviceCalls, 1, 'a nested 401 must never trigger a second paid Connection Manager request');
     assert.equal(stagedNonStream, 0, 'authentication/Secret failures are not stream compatibility failures');
+});
+
+test('Connection Manager Error with nested AbortError stages one exact manual non-stream retry', async () => {
+    const start = source.indexOf('async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={})');
+    const end = source.indexOf('function wrappedIndependentMirrorHtml', start);
+    let serviceCalls = 0;
+    let stageCalls = 0;
+    const abortCause = Object.assign(new Error('The operation was aborted.'), { name: 'AbortError', type: 'aborted' });
+    const outer = new Error('API request failed', { cause: abortCause });
+    const sandbox = {
+        getRememberedApiProfile: () => '',
+        getStagedApiProfile: () => '',
+        independentRequestProfiles: () => [{ name: 'chat_system_user_full', kind: 'chat', body: { model: 'model-b', messages: [], temperature: 0.8, max_tokens: 15000, stream: true } }],
+        normalizeIndependentConnectionText: value => String(value || ''),
+        endpoint: () => '/chat/completions',
+        nextCompatibilityProfileName: () => 'chat_system_user_full_nostream',
+        stageManualNonStreamRetry: (_settings, current, reason) => {
+            stageCalls += 1;
+            assert.equal(current, 'chat_system_user_full');
+            assert.equal(reason, 'transport-profile-stream-failure');
+            return 'chat_system_user_full_nostream';
+        },
+        stageNextApiProfile: () => {},
+        forgetRememberedApiProfileIfMatches: () => {},
+        normalizedConfiguredTemperature: () => 0.8,
+        independentDiagnosticBase: () => 'sillytavern:profile-b',
+        profileUsesStreaming: profile => !/nostream/i.test(String(profile || '')),
+        profileUsesSystemMessage: () => true,
+        profileTokenField: () => 'max_tokens',
+        publishIndependentApiRequestDiagnostic: value => ({ ...value, ts: 1 }),
+        validatedIndependentConnectionProfile: () => ({ id: 'profile-b', ctx: {}, profile: {} }),
+        requestIndependentConnectionProfileCompletion: async () => { serviceCalls += 1; throw outer; },
+        recoverableCompletedIndependentAbort: () => false,
+        responsePayloadErrorText: () => '',
+        retryableParameterError: () => false,
+        safeJson: value => JSON.stringify(value),
+        API_PROFILE_ORDER: ['chat_system_user_full', 'chat_system_user_full_nostream'],
+        console, JSON, String, Number, Object, Error, globalThis: {},
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(`${source.slice(start, end)}\nglobalThis.request=requestIndependentCompletion;`, sandbox);
+
+    await assert.rejects(
+        () => sandbox.globalThis.request(
+            { independentApiModel: 'model-b', independentConnectionProfileId: 'profile-b' },
+            'S',
+            'U',
+            { signal: { aborted: false } },
+        ),
+        error => {
+            assert.match(String(error?.message || ''), /连接在响应完成前中断/);
+            assert.equal(error?.rabbitMirrorRequestDiagnostic?.semanticFailure, 'transport-profile');
+            assert.equal(error?.rabbitMirrorRequestDiagnostic?.transportCause, 'connection-interrupted');
+            assert.equal(error?.rabbitMirrorRequestDiagnostic?.nextProfile, 'chat_system_user_full_nostream');
+            assert.equal(error?.rabbitMirrorRequestDiagnostic?.requestCount, 1);
+            assert.equal(error?.rabbitMirrorRequestDiagnostic?.automaticRetry, false);
+            assert.equal(error?.cause, outer);
+            return true;
+        },
+    );
+    assert.equal(serviceCalls, 1, 'nested AbortError must remain one paid Connection Manager request');
+    assert.equal(stageCalls, 1, 'only the next explicit resay receives the exact non-stream twin');
 });
 
 test('generation catch does not silently swallow a naked AbortError', () => {

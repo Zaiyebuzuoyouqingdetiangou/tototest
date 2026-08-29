@@ -17,11 +17,15 @@ const sandbox = {
     INDEPENDENT_MAX_CSS_RULES: 1400,
     INDEPENDENT_MAX_DATA_URI_CHARS: 192000,
     byteLength: value => Buffer.byteLength(String(value || '')),
+    republishIndependentSemanticFailure: (request, failure, next, extra) => {
+        sandbox.lastDiagnostic = { request, failure, next, extra };
+    },
     globalThis: {},
 };
 vm.createContext(sandbox);
 vm.runInContext(`${source.slice(start, end)}
-globalThis.check = assertIndependentMarkupComplexity;`, sandbox);
+globalThis.check = assertIndependentMarkupComplexity;
+globalThis.checkWithDiagnostic = assertIndependentMarkupComplexityWithDiagnostic;`, sandbox);
 const check = sandbox.globalThis.check;
 
 assert.doesNotThrow(() => check('<toto><details><summary>安全</summary><div>正文</div></details></toto>'));
@@ -32,7 +36,14 @@ assert.throws(() => check(attributeBomb), error => error?.kind === 'attributes')
 assert.throws(() => check(`<style>${'.x{}'.repeat(1401)}</style>`), error => error?.kind === 'css-rules');
 const dataUriBomb = Array.from({ length: 7 }, () => `<img src="data:image/png;base64,${'A'.repeat(30000)}">`).join('');
 assert.throws(() => check(dataUriBomb), error => error?.kind === 'data-uri-chars');
-assert.match(source, /assertIndependentMarkupComplexity\(raw\);[\s\S]{0,240}extractMirrorInner/, 'raw output must be checked before extraction/parsing');
+sandbox.lastDiagnostic = null;
+assert.throws(() => sandbox.globalThis.checkWithDiagnostic('<i></i>'.repeat(2101), 'raw', { ok: true }), error => error?.code === 'RABBIT_MIRROR_MARKUP_TOO_COMPLEX');
+assert.equal(sandbox.lastDiagnostic?.failure, 'markup-too-complex');
+assert.equal(sandbox.lastDiagnostic?.extra?.markupScope, 'raw');
+assert.equal(sandbox.lastDiagnostic?.extra?.markupKind, 'tags');
+assert.equal(sandbox.lastDiagnostic?.extra?.responseChars, '<i></i>'.repeat(2101).length);
+assert.match(source, /assertIndependentMarkupComplexityWithDiagnostic\(raw,'raw',requestDiagnostic\);[\s\S]{0,240}extractMirrorInner/, 'raw output must be checked and diagnostic state corrected before extraction/parsing');
+assert.match(source, /assertIndependentMarkupComplexityWithDiagnostic\(inner,'inner',requestDiagnostic\)/, 'inner output complexity failure must also correct the diagnostic state');
 assert.match(source, /if\(!independentRecordWithinBudget\(completed\)\)/, 'completed records must be capped before persistence');
 
 const sanitizerSource = fs.readFileSync(new URL('../src/outputSanitizer.js', import.meta.url), 'utf8');

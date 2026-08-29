@@ -14,8 +14,8 @@ import {
     setPendingComboBatch,
     clearPendingComboBatch,
     clearPendingCombo,
-} from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
+} from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
 
 function randomUnit() {
     try {
@@ -110,12 +110,27 @@ function compactUnique(values) {
     return [...new Set((values || []).map(value => String(value || '').trim()).filter(Boolean))];
 }
 
+function mergeRecentHitMaps(base = {}, attempts = {}) {
+    const result = {};
+    for (const source of [base, attempts]) {
+        for (const [key, raw] of Object.entries(source || {})) {
+            const count = Math.max(0, Math.floor(Number(raw) || 0));
+            if (key && count) result[key] = Math.max(Number(result[key] || 0), count);
+        }
+    }
+    return result;
+}
+
 function mergeRecent(base, attempts) {
     return {
         themeIds: compactUnique([...(base?.themeIds || []), ...(attempts?.themeIds || [])]),
         formatIds: compactUnique([...(base?.formatIds || []), ...(attempts?.formatIds || [])]),
         themeGroups: compactUnique([...(base?.themeGroups || []), ...(attempts?.themeGroups || [])]),
         formatGroups: compactUnique([...(base?.formatGroups || []), ...(attempts?.formatGroups || [])]),
+        themeIdHits: mergeRecentHitMaps(base?.themeIdHits, attempts?.themeIdHits),
+        formatIdHits: mergeRecentHitMaps(base?.formatIdHits, attempts?.formatIdHits),
+        themeGroupHits: mergeRecentHitMaps(base?.themeGroupHits, attempts?.themeGroupHits),
+        formatGroupHits: mergeRecentHitMaps(base?.formatGroupHits, attempts?.formatGroupHits),
         uiReviewFocus: Array.isArray(base?.uiReviewFocus) ? [...base.uiReviewFocus] : [],
     };
 }
@@ -156,7 +171,32 @@ function favoriteThemeFamilyFactor(items, favorites, multiplierMap = {}) {
     return Math.min(6, 1 + (maxMultiplier - 1) * 0.75);
 }
 
-function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], eligibleMisses = {}, favoriteMultipliers = {}) {
+function recentDiversityFactor(hitCount, firstPenalty = 0.35, floor = 0.12) {
+    const hits = Math.max(0, Math.floor(Number(hitCount) || 0));
+    if (!hits) return 1;
+    const first = Math.max(0.01, Math.min(1, Number(firstPenalty) || 0.35));
+    const minimum = Math.max(0.01, Math.min(first, Number(floor) || 0.12));
+    return Math.max(minimum, first * Math.pow(0.72, hits - 1));
+}
+
+function formatFamilyKey(itemOrId) {
+    const id = typeof itemOrId === 'string' ? itemOrId : itemOrId?.id;
+    const parts = String(id || '').split('.').filter(Boolean);
+    if (parts.length >= 2) return `${parts[0]}.${parts[1]}`;
+    return String(id || 'unknown');
+}
+
+function recentFamilyHits(idHits = {}, familyKey = value => String(value || '')) {
+    const result = {};
+    for (const [id, raw] of Object.entries(idHits || {})) {
+        const family = familyKey(id);
+        const count = Math.max(0, Math.floor(Number(raw) || 0));
+        if (family && count) result[family] = Number(result[family] || 0) + count;
+    }
+    return result;
+}
+
+function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], eligibleMisses = {}, favoriteMultipliers = {}, recentGroupHitMap = {}, recentFamilyHitMap = {}) {
     const recent = new Set(recentIds || []);
     const groups = new Set(recentGroups || []);
     const hardExcluded = new Set(hardExcludedIds || []);
@@ -182,8 +222,14 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
             .filter(item => !used.has(item.id))
             .map(item => {
                 let weight = 1;
-                // 最近 10 轮同父类不绝对禁止，只降权，让随机更丰富但不容易疲劳。
-                if (avoidRepeat && groups.has(item.group)) weight *= 0.35;
+                // 第一次同组命中保留原 0.35 软冷却；同一组在最近窗口反复
+                // 出现时继续累积有下限的债务。不同条目的基础权重仍不变。
+                const groupHits = Number(recentGroupHitMap?.[item.group] || (groups.has(item.group) ? 1 : 0));
+                if (avoidRepeat && groupHits) weight *= recentDiversityFactor(groupHits, 0.35);
+                // 格式索引同时含父项与子项。精确 ID 虽不同，前两段家族相同
+                // 时观感仍高度近似，因此增加软家族避让而不做硬排除。
+                const familyHits = Number(recentFamilyHitMap?.[formatFamilyKey(item)] || 0);
+                if (avoidRepeat && familyHits) weight *= recentDiversityFactor(familyHits, 0.28);
                 // 收藏室只提高本地随机权重，不越过黑名单、硬排除或近期冷却。
                 if (favorites.has(item.id)) weight *= favoriteMultiplierFor(item.id, favorites, favoriteMultipliers);
                 // 公平性只作用于已经通过本轮资格过滤的候选；有上限，不形成固定轮播或硬保底。
@@ -246,7 +292,7 @@ function themeFamilyBaseWeight(itemCount) {
  * 家族仍是去重/冷却单位，但基础权重随家族有效条目数按 0.9 次方增长。
  * 这样单条家族不会天然拿到完整家族票，同时也不会让大树家族完全按子项数量线性霸榜。
  */
-function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], favoriteMultipliers = {}) {
+function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], favoriteMultipliers = {}, recentGroupHitMap = {}, recentFamilyHitMap = {}) {
     const recent = new Set(recentIds || []);
     const recentGroupSet = new Set(recentGroups || []);
     const recentFamilySet = new Set((recentIds || []).map(themeFamilyKey));
@@ -276,8 +322,10 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
 
         const family = pickWeightedEntry(availableFamilies, entry => {
             let weight = themeFamilyBaseWeight(entry.items.length);
-            if (avoidRepeat && recentGroupSet.has(entry.group)) weight *= 0.35;
-            if (avoidRepeat && recentFamilySet.has(entry.key)) weight *= 0.25;
+            const groupHits = Number(recentGroupHitMap?.[entry.group] || (recentGroupSet.has(entry.group) ? 1 : 0));
+            const familyHits = Number(recentFamilyHitMap?.[entry.key] || (recentFamilySet.has(entry.key) ? 1 : 0));
+            if (avoidRepeat && groupHits) weight *= recentDiversityFactor(groupHits, 0.35);
+            if (avoidRepeat && familyHits) weight *= recentDiversityFactor(familyHits, 0.25);
             weight *= favoriteThemeFamilyFactor(entry.items, favorites, favoriteMultipliers);
             return weight;
         });
@@ -585,6 +633,8 @@ function getVisualSceneryFormat() {
 
 function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, themeCount, formatCount, recent, hardRecent, favoriteThemeIds, favoriteFormatIds, favoriteThemeMultipliers, favoriteFormatMultipliers, formatEligibleMisses }) {
     if (directive?.disabled) return { disabled: true, directive };
+    const themeFamilyHitMap = recentFamilyHits(recent.themeIdHits, themeFamilyKey);
+    const formatFamilyHitMap = recentFamilyHits(recent.formatIdHits, formatFamilyKey);
 
     const pickedThemes = directive?.hasThemeRequest
         ? []
@@ -597,6 +647,8 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
             hardRecent.themeIds,
             favoriteThemeIds,
             favoriteThemeMultipliers,
+            recent.themeGroupHits,
+            themeFamilyHitMap,
         );
     const formatSample = directive?.hasFormatRequest
         ? { selected: [], eligibleIds: [] }
@@ -610,6 +662,8 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
             favoriteFormatIds,
             formatEligibleMisses,
             favoriteFormatMultipliers,
+            recent.formatGroupHits,
+            formatFamilyHitMap,
         );
     const pickedFormats = formatSample.selected;
     const visualSceneryFormat = getVisualSceneryFormat();

@@ -189,6 +189,34 @@ test('official SillyTavern 1.18 payload merge consumes RabbitMirror model B inst
     assert.equal(harness.manager.selectedProfile, 'profile-a', 'the正文 connection stays untouched');
 });
 
+test('manual non-stream resay still sends Profile B and model B without switching the正文 connection', async () => {
+    const complete = '<toto><details><summary>B</summary><div>READY NONSTREAM</div></details></toto>';
+    let finalPayload = null;
+    const harness = connectionManagerAdapterHarness(async (profileId, messages, maxTokens, custom, overridePayload) => {
+        const profile = harness.manager.profiles.find(item => item.id === profileId);
+        finalPayload = {
+            stream: custom.stream,
+            messages,
+            max_tokens: maxTokens,
+            model: profile.model,
+            ...overridePayload,
+        };
+        return { content: complete };
+    }, { stream: false });
+
+    const output = await harness.adapter(harness.runtime, harness.requestProfile, { dispatchLease: harness.dispatchLease });
+    assert.equal(harness.calls.length, 1);
+    assert.equal(harness.calls[0][0], 'profile-b');
+    assert.equal(harness.calls[0][3]?.stream, false);
+    assert.equal(harness.calls[0][4]?.model, 'model-b', 'the fifth override payload must retain selected model B in non-stream mode');
+    assert.equal(finalPayload.model, 'model-b');
+    assert.equal(finalPayload.stream, false);
+    assert.deepEqual(finalPayload.messages, harness.requestProfile.body.messages);
+    assert.equal(output.result.text, complete);
+    assert.equal(output.result.streamed, false);
+    assert.equal(harness.manager.selectedProfile, 'profile-a', 'manual resay must not mutate the正文 Profile A selection');
+});
+
 test('Connection Manager rejects an incomplete stream Abort without a second request', async () => {
     const partial = '<toto><details><summary>B</summary><div>TRUNCATED';
     const nakedAbort = Object.assign(new Error('relay aborted an incomplete stream'), { name: 'AbortError' });

@@ -81,6 +81,17 @@ test('expected stream is consumed incrementally even when a relay mislabels it t
     assert.deepEqual(response.counts(), { cancelCount: 0, getReaderCount: 1 }, 'an open mislabeled stream must settle at DONE without response.text() or cancel()');
 });
 
+test('every received body chunk renews the request progress deadline without another fetch', async () => {
+    const raw = 'data: {"choices":[{"delta":{"content":"A"}}]}\n\ndata: {"choices":[{"delta":{"content":"B"}}]}\n\ndata: [DONE]\n\n';
+    const chunks = [...encoder.encode(raw)].map(value => Uint8Array.of(value));
+    const response = streamingResponse('text/event-stream', chunks, { close: false });
+    let progress = 0;
+    const result = await readApiResponse(response, { expectedStream: true, onProgress: () => { progress += 1; } });
+    assert.equal(result.text, 'AB');
+    assert.equal(progress, chunks.length - 1, 'every chunk actually read through the DONE terminal must renew the idle deadline');
+    assert.deepEqual(response.counts(), { cancelCount: 0, getReaderCount: 1 });
+});
+
 test('a naked body AbortError preserves the complete response as partialResult', async () => {
     const complete = '<toto><details><summary>OK</summary><div>READY</div></details></toto>';
     const first = encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: complete } }] })}\n\n`);

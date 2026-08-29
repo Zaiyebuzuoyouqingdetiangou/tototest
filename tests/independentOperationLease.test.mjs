@@ -47,7 +47,8 @@ assert.ok(sandbox.globalThis.reserve('chat:8:0', 'A'), 'released pre-dispatch re
 
 assert.match(source, /const cutover=\{authorized:new Map\(\),activeHostGeneration:null/, 'automatic generation must default to an empty authorization map');
 assert.match(source, /if\(!cutover\) return true;/, 'missing cutover authorization must fail closed');
-assert.match(source, /finishAutomaticHostGeneration\(finishedContext,last\?\.i \?\? -1\)/, 'only an observed START→END operation may authorize completion');
+assert.match(source, /noteAutomaticHostGenerationTerminal\(finishedContext/, 'END must only record a terminal hint for an observed visible owner');
+assert.match(source, /noteAutomaticHostGenerationRender\(ctx,id\)/, 'an exact final render must participate in lifecycle authorization');
 assert.doesNotMatch(source, /normalized>cutover\.maxIndex|cutover\.unlocked/, 'partial-chat max-index cutover must not survive');
 
 const cutoverStart = source.indexOf('function ensureAutomaticGenerationCutover(');
@@ -58,40 +59,76 @@ assert.ok(cutoverTokenStart >= 0 && cutoverTokenStart < cutoverStart, 'deferred 
 const lifecycleSandbox = {
     automaticGenerationCutovers: new Map(),
     INDEPENDENT_GENERATION_INTENTS_KEY: '__testIntents',
+    INDEPENDENT_GENERATION_STOPS_KEY: '__testStops',
+    runtimeMode: () => 'independent',
     INDEPENDENT_GENERATION_INTENT_TTL_MS: 300000,
     INDEPENDENT_GENERATION_INTENT_TYPES: new Set(['normal', 'continue', 'swipe', 'regenerate']),
+    hostModule: { main_api: 'openai', streamingProcessor: null },
     chatKey: ctx => String(ctx?.key || ''),
     swipeId: message => Number(message?.swipe_id || 0),
     messageBodyFingerprint: message => String(message?.mes || ''),
+    isRabbitMirrorToolResultMessage: message => message?.is_system === true
+        || message?.extra?.isSmallSys === true
+        || Object.prototype.hasOwnProperty.call(message?.extra || {}, 'tool_invocations'),
+    isRabbitMirrorEligibleAssistantMessage: message => !!message
+        && message.is_user !== true
+        && message.is_system !== true
+        && message?.extra?.isSmallSys !== true
+        && !Object.prototype.hasOwnProperty.call(message?.extra || {}, 'tool_invocations')
+        && typeof message.mes === 'string',
+    lastAssistantMessage: ctx => {
+        for (let index = (ctx?.chat?.length || 0) - 1; index >= 0; index -= 1) {
+            const message = ctx.chat[index];
+            if (lifecycleSandbox.isRabbitMirrorEligibleAssistantMessage(message)) return { i: index, m: message };
+        }
+        return null;
+    },
     Date: { now: () => 12345 },
+    clearTimeout: () => {},
     Number,
     String,
     Map,
     globalThis: {},
 };
 vm.createContext(lifecycleSandbox);
-vm.runInContext(`${source.slice(cutoverTokenStart, cutoverStart)}
+const classifierStart = source.indexOf('function isRabbitMirrorToolResultMessage(');
+const classifierEnd = source.indexOf('function assistantMessages(', classifierStart);
+assert.ok(classifierStart >= 0 && classifierEnd > classifierStart);
+vm.runInContext(`${source.slice(classifierStart, classifierEnd)}
+${source.slice(cutoverTokenStart, cutoverStart)}
 ${source.slice(cutoverStart, cutoverEnd)}
 globalThis.begin = beginAutomaticHostGeneration;
-globalThis.finish = finishAutomaticHostGeneration;
+globalThis.terminal = noteAutomaticHostGenerationTerminal;
+globalThis.render = noteAutomaticHostGenerationRender;
+globalThis.candidate = automaticHostGenerationSettlementCandidate;
+globalThis.settle = settleAutomaticHostGeneration;
 globalThis.suppresses = suppressesAutomaticGeneration;
 globalThis.clear = clearAutomaticGenerationCutovers;
 globalThis.claimDeferred = claimDeferredIndependentGenerationIntent;`, lifecycleSandbox);
 
-const lifecycleContext = { key: 'chat:nested', chat: [{ is_user: false, mes: 'FINAL', swipe_id: 0 }] };
-assert.equal(lifecycleSandbox.globalThis.begin(lifecycleContext, 'normal', false, false), true);
-assert.equal(lifecycleSandbox.globalThis.begin(lifecycleContext, 'normal', true, false), true, 'nested tool-call START must preserve the outer owner');
-assert.equal(lifecycleSandbox.globalThis.finish(lifecycleContext, 0), true, 'outer START followed by nested START and END must authorize the exact reply');
-assert.equal(lifecycleSandbox.globalThis.suppresses(lifecycleContext, 0), false);
+const lifecycleContext = { key: 'chat:nested', chat: [{ is_user: true, mes: 'USER', swipe_id: 0 }] };
+assert.equal(lifecycleSandbox.globalThis.begin(lifecycleContext, 'normal', false, false), 'new');
+lifecycleContext.chat.push({ is_user: false, mes: 'INTERMEDIATE', swipe_id: 0 });
+assert.equal(lifecycleSandbox.globalThis.render(lifecycleContext, 1), true);
+lifecycleContext.chat.push({ is_user: false, is_system: true, mes: 'TOOL RESULT', extra: { isSmallSys: true, tool_invocations: [{}] } });
+assert.equal(lifecycleSandbox.globalThis.begin(lifecycleContext, 'normal', true, false), 'nested', 'nested tool-call START must preserve the outer owner and advance its proof phase');
+lifecycleContext.chat.push({ is_user: false, mes: 'FINAL', swipe_id: 0 });
+assert.equal(lifecycleSandbox.globalThis.terminal(lifecycleContext, 'outer-end'), 'terminal');
+assert.equal(lifecycleSandbox.globalThis.render(lifecycleContext, 3), true);
+assert.equal(lifecycleSandbox.globalThis.candidate(lifecycleContext, { externalActive: false })?.index, 3);
+assert.equal(lifecycleSandbox.globalThis.settle(lifecycleContext, 3), true, 'only the current phase exact render may authorize the reply');
+assert.equal(lifecycleSandbox.globalThis.suppresses(lifecycleContext, 3), false);
 
 lifecycleSandbox.globalThis.clear();
 assert.equal(lifecycleSandbox.globalThis.begin(lifecycleContext, 'normal', true, false), false, 'nested START without an outer owner remains denied');
-assert.equal(lifecycleSandbox.globalThis.finish(lifecycleContext, 0), false);
+assert.equal(lifecycleSandbox.globalThis.terminal(lifecycleContext, 'orphan-end'), false);
+assert.equal(lifecycleSandbox.globalThis.settle(lifecycleContext, 0), false);
 assert.equal(lifecycleSandbox.globalThis.suppresses(lifecycleContext, 0), true);
 
 lifecycleSandbox.globalThis.clear();
 assert.equal(lifecycleSandbox.globalThis.begin(lifecycleContext, 'normal', false, true), false, 'dry-run START remains denied');
-assert.equal(lifecycleSandbox.globalThis.finish(lifecycleContext, 0), false);
+assert.equal(lifecycleSandbox.globalThis.terminal(lifecycleContext, 'unrelated-end'), false);
+assert.equal(lifecycleSandbox.globalThis.settle(lifecycleContext, 0), false);
 assert.equal(lifecycleSandbox.globalThis.suppresses(lifecycleContext, 0), true);
 
 lifecycleSandbox.globalThis.clear();
@@ -119,8 +156,10 @@ assert.equal(lifecycleSandbox.globalThis.__testIntents.length, 1);
 lifecycleSandbox.globalThis.__testIntents = [{
     ...lifecycleSandbox.globalThis.__testIntents[0],
     completedAt: 12345,
+    terminalAt: 12345,
     finalIndex: 1,
     finalBodyHash: 'FINAL_ASSISTANT',
+    finalProof: 'exact-render',
 }];
 assert.equal(lifecycleSandbox.globalThis.claimDeferred(deferredContext, 1, 'exact-final-render', { requireFinalProof: true }), true, 'the exact chat + tail + final-body proof may recover a missing END event');
 assert.equal(lifecycleSandbox.globalThis.suppresses(deferredContext, 1), false);
@@ -131,6 +170,7 @@ const injectorIntentEnd = injectorSource.indexOf('\nfunction loadPromptBuilder()
 assert.ok(injectorIntentStart >= 0 && injectorIntentEnd > injectorIntentStart, 'lightweight intent bridge block must exist');
 const liveRawChat = [{ is_user: false, mes: 'RAW_CURRENT_ASSISTANT', swipe_id: 0 }];
 let rawContextReads = 0;
+let hostToolCapability = true;
 const injectorSandbox = {
     Date: { now: () => 777 },
     Math,
@@ -138,25 +178,73 @@ const injectorSandbox = {
     Object,
     String,
     Set,
+    hostRuntime: { main_api: 'openai', streamingProcessor: null },
     eventSource: { on() {}, off() {} },
     event_types: {},
     getCurrentChatKey: () => 'chat:raw-proof',
     independentGenerationIntentSequence: 0,
-    globalThis: { SillyTavern: { getContext: () => { rawContextReads += 1; return { chat: liveRawChat }; } } },
+    globalThis: { SillyTavern: { getContext: () => { rawContextReads += 1; return { chat: liveRawChat, canPerformToolCalls: () => hostToolCapability }; } } },
 };
 vm.createContext(injectorSandbox);
 vm.runInContext(`${injectorSource.slice(injectorIntentStart, injectorIntentEnd).replace(/^export /gm, '')}
 globalThis.recordIntent = recordIndependentGenerationIntent;
 globalThis.markIntentCompleted = markIndependentGenerationIntentCompleted;
-globalThis.intentHash = hashIndependentIntentText;`, injectorSandbox);
+globalThis.markIntentTerminal = markIndependentGenerationIntentTerminal;
+globalThis.intentHash = hashIndependentIntentText;
+globalThis.capability = independentHostGenerationMayUseTools;`, injectorSandbox);
 assert.equal(injectorSandbox.globalThis.recordIntent([{ is_user: false, mes: 'PROMPT_TRANSFORMED_ASSISTANT', swipe_id: 0 }], 'quiet'), null, 'quiet/impersonate background generations must not create recovery intents');
 const rawAnchoredIntent = injectorSandbox.globalThis.recordIntent([{ is_user: false, mes: 'PROMPT_TRANSFORMED_ASSISTANT', swipe_id: 0 }], 'regenerate');
 assert.equal(rawAnchoredIntent.tailBodyHash, injectorSandbox.globalThis.intentHash('RAW_CURRENT_ASSISTANT'), 'assistant-tail proof must anchor to SillyTavern raw current正文, not prompt-transformed _chat');
+assert.equal(injectorSandbox.globalThis.recordIntent(liveRawChat, 'quiet'), null);
 liveRawChat[0].mes = 'FINAL_RAW_ASSISTANT';
+injectorSandbox.hostRuntime.streamingProcessor = { messageId: 0, isFinished: true, toolCalls: [{}] };
+assert.equal(injectorSandbox.globalThis.markIntentCompleted(0, 'stream-tool-intermediate'), true);
+assert.equal(injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents[0].finalBodyHash, undefined, 'a live streaming tool-call render must never create final proof');
+injectorSandbox.hostRuntime.streamingProcessor = null;
+assert.equal(injectorSandbox.globalThis.markIntentTerminal('generation-ended'), true);
+assert.equal(injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents[0].terminalAt, undefined, 'the first unscoped END after an auxiliary START must be consumed as ambiguous');
+assert.equal(injectorSandbox.globalThis.markIntentTerminal('outer-generation-ended'), true);
+assert.equal(injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents[0].finalBodyHash, undefined, 'unscoped END must never fabricate final正文 proof');
+assert.equal(injectorSandbox.globalThis.markIntentCompleted(liveRawChat.length, 'invalid-generation-ended-payload'), false, 'chat.length END payload must not fall back to the assistant tail');
 assert.equal(injectorSandbox.globalThis.markIntentCompleted(0, 'character-rendered'), true);
 const completedIntent = injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents[0];
 assert.equal(completedIntent.finalIndex, 0);
 assert.equal(completedIntent.finalBodyHash, injectorSandbox.globalThis.intentHash('FINAL_RAW_ASSISTANT'), 'lightweight final-render proof must bind the exact final raw正文 hash');
+liveRawChat.push({ is_user: false, is_system: true, mes: 'TOOL RESULT', extra: { isSmallSys: true, tool_invocations: [{}] } });
+const nestedIntent = injectorSandbox.globalThis.recordIntent(liveRawChat, 'normal');
+assert.equal(nestedIntent.tailRole, 'system');
+assert.equal(injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents.length, 1, 'nested START must supersede the pre-tool render proof for this chat');
+assert.notEqual(injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents[0].id, completedIntent.id);
+liveRawChat.push({ is_user: false, mes: 'FINAL_AFTER_TOOL', swipe_id: 0 });
+assert.equal(injectorSandbox.globalThis.markIntentCompleted(2, 'character-rendered'), true);
+assert.equal(injectorSandbox.globalThis.markIntentTerminal('generation-ended'), true);
+assert.equal(injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents[0].finalIndex, 2);
+liveRawChat.splice(0, liveRawChat.length, { is_user: true, mes: 'NO-TOOL USER' });
+hostToolCapability = false;
+injectorSandbox.globalThis.recordIntent(liveRawChat, 'normal');
+injectorSandbox.globalThis.recordIntent(liveRawChat, 'quiet');
+injectorSandbox.globalThis.markIntentTerminal('only-quiet-hide-stop-edge');
+liveRawChat.push({ is_user: false, mes: 'NO-TOOL FINAL' });
+injectorSandbox.globalThis.markIntentCompleted(1, 'final-without-second-end');
+const noToolIntent = injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents[0];
+assert.equal(noToolIntent.terminalAt, undefined);
+assert.equal(noToolIntent.toolCapable, false);
+assert.equal(noToolIntent.finalProof, 'non-tool-final', 'cold-runtime proof also recovers a no-tool final when quiet consumed the only END');
+hostToolCapability = true;
+injectorSandbox.globalThis.markIntentCompleted(1, 'tool-capability-enabled');
+hostToolCapability = false;
+injectorSandbox.globalThis.markIntentCompleted(1, 'tool-capability-later-disabled');
+assert.equal(injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents[0].toolCapable, true, 'tool ambiguity is monotonic for an in-flight intent');
+assert.equal(injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents[0].finalProof, 'exact-render');
+assert.equal(injectorSandbox.globalThis.capability('normal', { canPerformToolCalls: () => { throw new Error('unavailable'); }, chatCompletionSettings: { function_calling: false } }), true);
+injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents = [];
+injectorSandbox.globalThis.__rabbitMirrorIndependentStoppedHostOperations = [{ chatKey: 'chat:raw-proof', startedAt: 777 }];
+liveRawChat.push({ is_user: false, is_system: true, mes: 'LATE TOOL RESULT', extra: { tool_invocations: [{}] } });
+assert.equal(injectorSandbox.globalThis.recordIntent(liveRawChat, 'normal'), null, 'a cold interceptor must also reject recursive START from a stopped operation');
+assert.equal(injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents.length, 0);
+liveRawChat.push({ is_user: true, mes: 'NEW USER REQUEST' });
+assert.ok(injectorSandbox.globalThis.recordIntent(liveRawChat, 'normal'));
+assert.equal(injectorSandbox.globalThis.__rabbitMirrorIndependentStoppedHostOperations.length, 0);
 injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents = [];
 const readsAfterCompletion = rawContextReads;
 assert.equal(injectorSandbox.globalThis.markIntentCompleted(0, 'no-intent'), false);
@@ -191,8 +279,9 @@ function extractFunction(sourceText, name) {
     };
     const bridgeSandbox = {
         Date: { now: () => 777 }, Math, Number, Object, String, Set,
+        hostRuntime: { main_api: 'openai', streamingProcessor: null },
         eventSource,
-        event_types: { GENERATION_ENDED: 'END', GENERATION_STOPPED: 'STOP', CHARACTER_MESSAGE_RENDERED: 'RENDER' },
+        event_types: { GENERATION_ENDED: 'END', GENERATION_STOPPED: 'STOP', CHARACTER_MESSAGE_RENDERED: 'RENDER', CHAT_CHANGED: 'CHAT' },
         getCurrentChatKey: () => 'chat:bridge',
         globalThis: { __rabbitMirrorIndependentGenerationIntentBridgeCleanup: () => { oldCleanupCalls += 1; } },
     };
@@ -202,16 +291,21 @@ globalThis.initBridge=initIndependentGenerationIntentBridge;
 globalThis.destroyBridge=destroyIndependentGenerationIntentBridge;`, bridgeSandbox);
     bridgeSandbox.globalThis.initBridge();
     assert.equal(oldCleanupCalls, 1, 'new cache-busted module must hand off cleanup to the previous module');
-    assert.equal(activeHandlers.size, 3);
+    assert.equal(activeHandlers.size, 4);
+    bridgeSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents = [{ id: 'stale-chat', startedAt: 777, type: 'normal' }];
+    const chatChangedHandler = [...activeHandlers.entries()].find(([, event]) => event === 'CHAT')?.[0];
+    assert.equal(typeof chatChangedHandler, 'function');
+    chatChangedHandler();
+    assert.equal(bridgeSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents.length, 0, 'CHAT_CHANGED must revoke every ephemeral final proof');
     bridgeSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents = [{ id: 'keep-me', startedAt: 777, type: 'normal' }];
     bridgeSandbox.globalThis.initBridge();
-    assert.equal(activeHandlers.size, 3, 'repeated init must replace, not stack, the three host listeners');
-    assert.equal(offCount, 3);
+    assert.equal(activeHandlers.size, 4, 'repeated init must replace, not stack, the four host listeners');
+    assert.equal(offCount, 4);
     assert.equal(bridgeSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents.length, 1, 'hot update cleanup must preserve pending intent proof');
     bridgeSandbox.globalThis.destroyBridge({ clearIntents: true });
     assert.equal(activeHandlers.size, 0);
-    assert.equal(onCount, 6);
-    assert.equal(offCount, 6);
+    assert.equal(onCount, 8);
+    assert.equal(offCount, 8);
     assert.equal(bridgeSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents, undefined);
 }
 

@@ -11,7 +11,8 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const RELEASE_COHORT = '1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1';
+const RELEASE_COHORT = '1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1';
+const RELEASE_RUNTIME = '1.4.30.32';
 const REQUIRED_RELEASE_MODULES = [
     'src/settings.js',
     'src/tokenMeter.js',
@@ -23,6 +24,10 @@ const REQUIRED_RELEASE_MODULES = [
     'src/promptBuilder.js',
     'src/visualScanner.js',
     'src/blacklist.js',
+    'src/storage.js',
+    'src/picker.js',
+    'src/mobileModalHotfix.js',
+    'src/renderedVisualFeedbackHotfix.js',
 ];
 
 function collectJsFiles(dir) {
@@ -94,5 +99,23 @@ for (const file of collectJsFiles(ROOT)) {
     }
 }
 assert.equal(runtimeVersions.has(RELEASE_COHORT), false, 'RUNTIME_VERSION 不是发布缓存键，不得改成 cohort 串');
+
+// 4. Runtime guards and watermark repair modules must agree with the entrypoint.
+// Persistent storage/schema versions and unchanged data-module versions are not
+// release identities and intentionally remain outside this check.
+const identityPatterns = new Map([
+    ['index.js', /const RABBIT_MIRROR_RUNTIME_VERSION\s*=\s*'([^']+)'/],
+    ['src/independentApi.js', /const RUNTIME_VERSION\s*=\s*'([^']+)'/],
+    ['src/outputSanitizer.js', /const RUNTIME_VERSION\s*=\s*'([^']+)'/],
+    ['src/ui.js', /const RUNTIME_VERSION\s*=\s*'([^']+)'/],
+    ['src/independentProfileSelectorHotfix.js', /const RELEASE_VERSION\s*=\s*'([^']+)'/],
+    ['src/mobileModalHotfix.js', /const RELEASE_VERSION\s*=\s*'([^']+)'/],
+    ['src/renderedVisualFeedbackHotfix.js', /const VERSION\s*=\s*'([^']+)'/],
+]);
+for (const [file, pattern] of identityPatterns) {
+    assert.equal(readFileSync(join(ROOT, file), 'utf8').match(pattern)?.[1], RELEASE_RUNTIME, `${file} runtime identity must match the release`);
+}
+assert.ok(readFileSync(join(ROOT, 'src/ui.js'), 'utf8').includes(`TOTOv${RELEASE_RUNTIME}`), 'the visible watermark must match the runtime');
+assert.equal(JSON.parse(readFileSync(join(ROOT, 'manifest.json'), 'utf8')).css, `style.css?rmv=${RELEASE_RUNTIME}`);
 
 console.log(`cacheBustClosure: ${edges.length} 条 import 边，SubApiTag2 单一 cache cohort 通过`);

@@ -31,6 +31,12 @@ const helperSource = independentSource.slice(helperStart, helperEnd);
 let currentSettings = { independentContextMaxLayers: 20, independentContextExcludedTags: ['thinking', 'updatevariable', 'updatevarible'] };
 const sandbox = {
     getSettings: () => currentSettings,
+    isRabbitMirrorEligibleAssistantMessage: message => !!message
+        && message.is_user !== true
+        && message.is_system !== true
+        && message?.extra?.isSmallSys !== true
+        && !Object.prototype.hasOwnProperty.call(message?.extra || {}, 'tool_invocations')
+        && typeof message.mes === 'string',
     normalizeIndependentContextExcludedTags: value => [...new Set((Array.isArray(value) ? value : []).map(item => String(item || '').toLowerCase()).filter(item => /^[a-z][a-z0-9._:-]{0,63}$/.test(item)))].slice(0, 32),
     safeJson: (value, max) => JSON.stringify(value ?? null).slice(0, max),
     globalWorldInfoContextView: () => ({ block: '' }),
@@ -75,6 +81,57 @@ const verifiedSourceTags = sandbox.globalThis.__verifiedSourceTags;
     assert.match(result.text, /\[6 USER\]\nM6/);
     assert.match(result.text, /\[7 ASSISTANT\]\nM7/);
     assert.doesNotMatch(result.text, /\[4 USER\]/);
+}
+
+{
+    currentSettings = { independentContextMaxLayers: 4, independentContextExcludedTags: [] };
+    const chat = [
+        { is_user: true, mes: 'USER' },
+        { is_user: false, mes: 'PRE_TOOL_ASSISTANT' },
+        { is_user: false, is_system: true, mes: 'TOOL_RESULT_SECRET', extra: { isSmallSys: true, tool_invocations: [{}] } },
+        { is_user: false, mes: 'FINAL_ASSISTANT' },
+    ];
+    const result = bundle({ chat }, 3);
+    assert.match(result.text, /USER|PRE_TOOL_ASSISTANT|FINAL_ASSISTANT/);
+    assert.doesNotMatch(result.text, /TOOL_RESULT_SECRET/, 'tool-result system rows must never become assistant正文 context or a target');
+    assert.equal(result.layers, 3);
+}
+
+{
+    currentSettings = { independentContextMaxLayers: 3, independentContextExcludedTags: [] };
+    const chat = Array.from({ length: 10000 }, (_, i) => ({ is_user: i % 2 === 0, mes: `M${i}` }));
+    const calls = [];
+    const reader = (message, index) => {
+        calls.push(index);
+        return { text: message.mes, filteredRabbitMirrorChars: 0, filteredExcludedTagChars: 0, filteredExcludedTags: [] };
+    };
+    reader.renderedIndexes = [9999, 9997, 9995, 42];
+    const result = bundle({ chat }, 9999, null, null, 20000, reader);
+    assert.deepEqual(calls, [9999, 9997, 9995], 'long-chat context must visit only recent loaded message indexes needed for X visible layers');
+    assert.equal(result.layers, 3);
+    assert.doesNotMatch(result.text, /\[42 USER\]/);
+}
+
+{
+    const chatRoot = { querySelectorAll: selector => {
+        assert.equal(selector, '.mes[mesid]');
+        return owners;
+    } };
+    const makeOwner = (mesid, parentElement = chatRoot) => ({
+        parentElement,
+        getAttribute: name => name === 'mesid' ? String(mesid) : null,
+    });
+    const wrapper = { closest: () => null };
+    const nestedInsideMessage = { closest: () => ({ getAttribute: () => 'outer-message' }) };
+    const owners = [makeOwner(9999), makeOwner(9997), makeOwner(9997), makeOwner(10001), makeOwner(3, wrapper), makeOwner(5, nestedInsideMessage)];
+    sandbox.document = { querySelector: selector => selector === '#chat' ? chatRoot : null };
+    const indexed = createReader(9999, currentSettings);
+    assert.deepEqual([...indexed.renderedIndexes], [9999, 9997, 3], 'actual DOM index construction accepts wrapped top-level rows but rejects nested message clones');
+
+    sandbox.document = { querySelector: () => { throw new Error('host DOM unavailable'); } };
+    const fallback = createReader(7, currentSettings);
+    assert.equal(fallback.renderedIndexes, undefined, 'DOM index failure must retain the legacy bounded fallback walk');
+    delete sandbox.document;
 }
 
 {
@@ -221,9 +278,9 @@ for (const optionCase of [
     currentSettings = { independentContextMaxLayers: 4, independentContextExcludedTags: ['thinking', 'updatevariable', 'updatevarible'] };
     const chat = [
         { is_user: true, extra: { display_text: 'A&lt;!--&lt;thinking&gt;COMMENT_SECRET&lt;/thinking&gt;--&gt;&lt;Thinking data-note=&quot;&gt;&quot;&gt;SECRET_A&lt;Thinking&gt;SECRET_NESTED&lt;/Thinking&gt;TAIL&lt;/Thinking&gt;B' } },
-        { is_user: false, extra: { display_text: '<UPDATEVARIABLE mode="x">SECRET_B</UPDATEVARIABLE>VISIBLE_B' } },
+        { is_user: false, mes: 'RAW_B', extra: { display_text: '<UPDATEVARIABLE mode="x">SECRET_B</UPDATEVARIABLE>VISIBLE_B' } },
         { is_user: true, extra: { display_text: '<UpdateVarible>SECRET_C</UpdateVarible><ordinary>VISIBLE_C</ordinary>' } },
-        { is_user: false, extra: { display_text: 'VISIBLE_D&lt;thinking&gt;SECRET_UNCLOSED' } },
+        { is_user: false, mes: 'RAW_D', extra: { display_text: 'VISIBLE_D&lt;thinking&gt;SECRET_UNCLOSED' } },
     ];
     const result = bundle({ chat }, 3);
     assert.match(result.text, /AB|VISIBLE_B|VISIBLE_C|VISIBLE_D/);
@@ -300,7 +357,7 @@ for (const optionCase of [
 assert.doesNotMatch(independentSource, /message\?\.reasoning\s*\?\?|m\?\.reasoning\s*\?\?|reasoning_content\s*\?\?|extra\?\.thoughts\s*\?\?/, 'independent runtime must not read reasoning/thought fields');
 assert.match(independentSource, /MAX_INDEPENDENT_REQUEST_CHARS = 32000/);
 assert.match(independentSource, /const directiveStart=Math\.max\(0,index-3\)/);
-assert.match(independentSource, /mes:directiveStart\+offset===index\?targetVisibleAtStart\.text:readVisible\(message,directiveStart\+offset\)\.text/);
+assert.match(independentSource, /filter\(\(\{message\}\)=>message\?\.is_user===true \|\| isRabbitMirrorEligibleAssistantMessage\(message\)\)[\s\S]{0,240}mes:realIndex===index\?targetVisibleAtStart\.text:readVisible\(message,realIndex\)\.text/, 'directive sampling must preserve exact indexes while excluding tool-result system rows');
 assert.match(independentSource, /const targetVisibleAtStart=readVisible\(msg,index\);[\s\S]{0,220}本次未发送副 API 请求/, 'target正文 must be freshly checked before prompt selection and network dispatch');
 assert.match(independentSource, /const independentUserLead='请根据以下当前聊天可见正文、紧凑角色卡、Persona 与本轮已激活世界书生成兔子镜：';/, 'independent user lead must retain the protected baseline wording');
 assert.match(independentSource, /if\(live\.available\)[\s\S]{0,2200}source:'live-dom'/, 'browser context must prefer the rendered DOM');

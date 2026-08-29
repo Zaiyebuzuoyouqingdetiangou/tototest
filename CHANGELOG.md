@@ -1,3 +1,16 @@
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1
+
+- 将自动生成 owner 与工具递归阶段、准确消息渲染及当前正文指纹绑定；quiet、dry-run、历史重绘和工具结果系统消息不作为新的付费意图。
+- 使用宿主公开的工具能力检查并单调锁存当前操作快照；工具关闭时不再要求 quiet 之后必然有第二次结束事件；流式工具中间帧同步拒绝。
+- 非流式工具调用缺少最终证明时，使用有界等待和明确的 ⚠️ 未付费／手动重生说明；停止后保留最多 8 条 metadata-only 操作标记，迟到工具递归不能自动重开。跟随当前 API 模式不会创建独立 API 错误壳。
+- 健康长流改为按响应进度续期：5 分钟无进度超时、20 分钟绝对上限；每个用户意图仍最多一次付费请求，不自动重试。
+- 手动非流式重说配置单次消费、20 分钟过期，隔离模型和运行版本；只有完整成品成功才更新兼容记忆，6 小时后重新允许流式探测。
+- 补充嵌套 Abort／网络中断及成品复杂度失败诊断；界面区分 HTTP 错误与没有收到完整响应，不展示虚假的 HTTP 状态。
+- 上下文读取限定当前挂载楼层，保持目标正文实时复读；系统／工具结果不进入聊天正文与尾层选题指令，预算与标签隐私边界不变。
+- 使用既有最近 10 次记录软降低重复主题组与形式家族权重；无历史分布、收藏倍率、黑名单、候选母本与配色冷却不变。
+- 补充确定性生命周期、迟到递归、单次响应进度、失败重说状态、Profile 模型覆盖、复杂度诊断、挂载楼层索引和随机多样性回归；保留全部旧安全断言，并加强运行版本／水印／模块缓存闭包检查。
+- 原包不覆盖，GitHub 未写入；仅完成源码／自动化验证，尚未真机验证。
+
 ## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1
 
 - 将酒馆 Connection Profile 与手动 OpenAI 兼容接口的模型拉取入口明确拆开；两者都只在用户点击时各发一次模型列表请求，不新增轮询、Observer 或后台网络请求。

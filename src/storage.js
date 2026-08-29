@@ -258,9 +258,19 @@ function compactIdList(values, limit = 16) {
     return [...new Set((values || []).map(value => String(value || '').trim()).filter(Boolean))].slice(0, limit);
 }
 
+function incrementRecentHit(map, value) {
+    const key = String(value || '').trim();
+    if (!key) return;
+    map.set(key, Number(map.get(key) || 0) + 1);
+}
+
+function recentHitObject(map) {
+    return Object.fromEntries([...map.entries()].map(([key, count]) => [key, Math.max(1, Number(count) || 1)]));
+}
+
 export function getRecentGenerationAttemptIds(chatKey, limit = 10) {
     const key = String(chatKey || '').trim();
-    if (!key) return { themeIds: [], formatIds: [], themeGroups: [], formatGroups: [] };
+    if (!key) return { themeIds: [], formatIds: [], themeGroups: [], formatGroups: [], themeIdHits: {}, formatIdHits: {}, themeGroupHits: {}, formatGroupHits: {} };
     const store = readScopedStore(ATTEMPT_STORAGE_KEY);
     const now = Date.now();
     // 读路径只做内存过滤，不写盘：读操作不应产生副作用，单条过期就整表序列化在长聊天里
@@ -273,17 +283,25 @@ export function getRecentGenerationAttemptIds(chatKey, limit = 10) {
     const formatIds = new Set();
     const themeGroups = new Set();
     const formatGroups = new Set();
+    const themeIdHits = new Map();
+    const formatIdHits = new Map();
+    const themeGroupHits = new Map();
+    const formatGroupHits = new Map();
     for (const item of recent) {
-        for (const id of item.themeIds || []) themeIds.add(id);
-        for (const id of item.formatIds || []) formatIds.add(id);
-        for (const id of item.themeGroups || []) themeGroups.add(id);
-        for (const id of item.formatGroups || []) formatGroups.add(id);
+        for (const id of new Set(item.themeIds || [])) { themeIds.add(id); incrementRecentHit(themeIdHits, id); }
+        for (const id of new Set(item.formatIds || [])) { formatIds.add(id); incrementRecentHit(formatIdHits, id); }
+        for (const id of new Set(item.themeGroups || [])) { themeGroups.add(id); incrementRecentHit(themeGroupHits, id); }
+        for (const id of new Set(item.formatGroups || [])) { formatGroups.add(id); incrementRecentHit(formatGroupHits, id); }
     }
     return {
         themeIds: [...themeIds],
         formatIds: [...formatIds],
         themeGroups: [...themeGroups],
         formatGroups: [...formatGroups],
+        themeIdHits: recentHitObject(themeIdHits),
+        formatIdHits: recentHitObject(formatIdHits),
+        themeGroupHits: recentHitObject(themeGroupHits),
+        formatGroupHits: recentHitObject(formatGroupHits),
     };
 }
 
@@ -383,13 +401,17 @@ export function getRecentIds(limit = 10) {
     const formatIds = new Set();
     const themeGroups = new Set();
     const formatGroups = new Set();
+    const themeIdHits = new Map();
+    const formatIdHits = new Map();
+    const themeGroupHits = new Map();
+    const formatGroupHits = new Map();
     const uiReviewFocus = [];
 
     for (const combo of history) {
-        for (const id of combo?.themeIds || []) themeIds.add(id);
-        for (const id of combo?.formatIds || []) formatIds.add(id);
-        for (const id of combo?.themeGroups || []) themeGroups.add(id);
-        for (const id of combo?.formatGroups || []) formatGroups.add(id);
+        for (const id of new Set(combo?.themeIds || [])) { themeIds.add(id); incrementRecentHit(themeIdHits, id); }
+        for (const id of new Set(combo?.formatIds || [])) { formatIds.add(id); incrementRecentHit(formatIdHits, id); }
+        for (const id of new Set(combo?.themeGroups || [])) { themeGroups.add(id); incrementRecentHit(themeGroupHits, id); }
+        for (const id of new Set(combo?.formatGroups || [])) { formatGroups.add(id); incrementRecentHit(formatGroupHits, id); }
         if (Array.isArray(combo?.uiReviewFocus) && combo.uiReviewFocus.length) {
             uiReviewFocus.push(combo.uiReviewFocus.join('；'));
         }
@@ -400,6 +422,10 @@ export function getRecentIds(limit = 10) {
         formatIds: [...formatIds],
         themeGroups: [...themeGroups],
         formatGroups: [...formatGroups],
+        themeIdHits: recentHitObject(themeIdHits),
+        formatIdHits: recentHitObject(formatIdHits),
+        themeGroupHits: recentHitObject(themeGroupHits),
+        formatGroupHits: recentHitObject(formatGroupHits),
         uiReviewFocus: uiReviewFocus.slice(-limit),
     };
 }
