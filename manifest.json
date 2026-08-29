@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5-qualityfix1",
-  "css": "style.css?rmv=1.5",
+  "js": "index.js?rmv=1.5-qualityfix3",
+  "css": "style.css?rmv=1.5.2",
   "author": "Toto",
-  "version": "1.5",
+  "version": "1.5.2",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.5｜修复长正文上下文预算、交互质量约束与慢速模型列表拉取；保留标签隐私、单次请求及既有功能边界。"
+  "description": "兔子镜测试版 1.5.2｜保留外框身份恢复、宿主忙碌检测与标签隔离修复；补充兼容说明和发布回归，不改变正文、美化与单次请求边界。"
 }
