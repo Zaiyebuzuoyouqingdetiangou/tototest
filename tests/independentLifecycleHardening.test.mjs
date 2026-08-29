@@ -218,6 +218,7 @@ globalThis.capability=automaticHostGenerationMayUseTools;`, sandbox);
         markAutomaticFailureStop: () => {},
         collapseDuplicateIdentityHosts: () => null,
         readyDetailsFromHost: () => null,
+        mountedIndependentReadyHostMatchesObserved: () => false,
         ensureExternalUi: (...args) => { errors.push(args); return null; },
         globalThis: { __testIntents: [{ chatKey: ctx.key, startedAt: now, toolCapable: true }, { chatKey: 'other-chat', startedAt: now }] },
     };

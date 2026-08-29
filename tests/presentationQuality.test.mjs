@@ -121,9 +121,9 @@ assert.match(sanitizer, /if \(rootTraversal\.exceeded\) return stats/);
 assert.match(visualScanner, /missing_visual_program/);
 // multiface-step1 起 ui / injector / independentApi 全部进入本阶段 cache cohort。
 // 这里只断言链路仍然闭合在同一 cohort；完整闭包校验见 cacheBustClosure.test.mjs。
-assert.match(indexSource, /\.\/src\/ui\.js\?rmv=1\.5-qualityfix1/);
-assert.match(uiSource, /\.\/injector\.js\?rmv=1\.5-qualityfix1/);
-assert.match(uiSource, /\.\/independentApi\.js\?rmv=1\.5-qualityfix1/);
-assert.equal(manifest.version, '1.5');
+assert.match(indexSource, /\.\/src\/ui\.js\?rmv=1\.5-qualityfix3/);
+assert.match(uiSource, /\.\/injector\.js\?rmv=1\.5-qualityfix3/);
+assert.match(uiSource, /\.\/independentApi\.js\?rmv=1\.5-qualityfix3/);
+assert.equal(manifest.version, '1.5.2');
 
 console.log('presentationQuality tests passed');

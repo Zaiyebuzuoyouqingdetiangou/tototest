@@ -718,7 +718,7 @@ assert.match(models, /const url=connectionId\?'\/models'/, 'Profile mode must re
 assert.doesNotMatch(models, /mode:'profile-saved'/, 'Profile mode must not pretend local saved models are a remote pull');
 assert.match(source, /export function getLastIndependentModelListDiagnostic/);
 assert.equal(manifest.minimum_client_version, '1.13.0', '1.18 must gate only Connection Profile reuse, not the whole extension');
-assert.match(uiSource, /仅支持 SillyTavern 1\.18\.0 及以上版本；旧版请使用下方“手动 OpenAI 兼容接口”/);
+assert.match(uiSource, /仅“酒馆 Connection Profile 一键配置”需要 SillyTavern 1\.18\.0 及以上版本；旧版仍可使用兔子镜及下方“手动 OpenAI 兼容接口”/);
 assert.match(uiSource, /id="rh_independent_models"[^>]*>从此酒馆连接拉取模型<\/button>/);
 assert.match(uiSource, /id="rh_independent_manual_models"[^>]*>从此手动接口拉取模型<\/button>/);
 assert.match(uiSource, /updateSettings\(\{independentConnectionProfileId:String\(source\.profileId/);

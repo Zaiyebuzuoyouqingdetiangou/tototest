@@ -11,8 +11,9 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const RELEASE_COHORT = '1.5-qualityfix1';
-const RELEASE_RUNTIME = '1.5';
+const RELEASE_COHORT = '1.5-qualityfix3';
+const RELEASE_RUNTIME = '1.5.2';
+const RETIRED_RELEASE_COHORTS = new Set(['1.5-qualityfix1', '1.5-qualityfix2']);
 const REQUIRED_RELEASE_MODULES = [
     'src/settings.js',
     'src/tokenMeter.js',
@@ -60,8 +61,9 @@ for (const file of collectJsFiles(ROOT)) {
 }
 
 assert.ok(edges.length > 0, 'import graph must not be empty');
+assert.equal(RETIRED_RELEASE_COHORTS.has(RELEASE_COHORT), false, 'current release cohort must advance beyond every retired published cohort');
 
-// 1. 本次所有 1.5 JS 发布边使用同一个完整 cohort，避免热更新混装。
+// 1. 本次所有 1.5 系列 JS 发布边使用同一个完整 cohort，避免热更新混装。
 const releaseEdges = edges.filter(edge => /^1\.5(?:-|$)/.test(String(edge.rmv || '')));
 const stale = releaseEdges.filter(edge => edge.rmv !== RELEASE_COHORT);
 assert.deepEqual(
@@ -76,7 +78,7 @@ for (const target of REQUIRED_RELEASE_MODULES) {
     assert.deepEqual(
         [...new Set(fixEdges.map(edge => edge.rmv))],
         [RELEASE_COHORT],
-        `${target} must use exactly one SubApiTag2 cache key`,
+        `${target} must use exactly one QualityFix3 cache key`,
     );
 }
 
@@ -118,4 +120,4 @@ for (const [file, pattern] of identityPatterns) {
 assert.ok(readFileSync(join(ROOT, 'src/ui.js'), 'utf8').includes(`TOTOv${RELEASE_RUNTIME}`), 'the visible watermark must match the runtime');
 assert.equal(JSON.parse(readFileSync(join(ROOT, 'manifest.json'), 'utf8')).css, `style.css?rmv=${RELEASE_RUNTIME}`);
 
-console.log(`cacheBustClosure: ${edges.length} 条 import 边，SubApiTag2 单一 cache cohort 通过`);
+console.log(`cacheBustClosure: ${edges.length} 条 import 边，QualityFix3 单一 cache cohort 通过`);
