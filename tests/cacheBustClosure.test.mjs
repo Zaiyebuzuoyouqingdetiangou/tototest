@@ -11,8 +11,8 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const RELEASE_COHORT = '1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
-const RELEASE_RUNTIME = '1.4.30.33';
+const RELEASE_COHORT = '1.5-qualityfix1';
+const RELEASE_RUNTIME = '1.5';
 const REQUIRED_RELEASE_MODULES = [
     'src/settings.js',
     'src/tokenMeter.js',
@@ -61,13 +61,13 @@ for (const file of collectJsFiles(ROOT)) {
 
 assert.ok(edges.length > 0, 'import graph must not be empty');
 
-// 1. 本次所有 1.4.9 JS 发布边使用同一个完整 cohort，避免热更新混装。
-const releaseEdges = edges.filter(edge => /^1\.4\.9-/.test(String(edge.rmv || '')));
+// 1. 本次所有 1.5 JS 发布边使用同一个完整 cohort，避免热更新混装。
+const releaseEdges = edges.filter(edge => /^1\.5(?:-|$)/.test(String(edge.rmv || '')));
 const stale = releaseEdges.filter(edge => edge.rmv !== RELEASE_COHORT);
 assert.deepEqual(
     stale.map(edge => `${edge.from} -> ${edge.target}?rmv=${edge.rmv}`),
     [],
-    `所有 1.4.9 发布边必须使用 ?rmv=${RELEASE_COHORT}，否则父模块会命中旧缓存`,
+    `所有 1.5 发布边必须使用 ?rmv=${RELEASE_COHORT}，否则父模块会命中旧缓存`,
 );
 
 for (const target of REQUIRED_RELEASE_MODULES) {
@@ -91,14 +91,14 @@ const conflicting = [...keysByTarget.entries()]
     .map(([target, keys]) => `${target}: ${[...keys].sort().join(' / ')}`);
 assert.deepEqual(conflicting, [], '同一模块不得被多种 ?rmv 键引用');
 
-// 3. 各模块内部的 RUNTIME_VERSION 不是发布缓存键，不得写成 cohort 串。
+// 3. 各模块内部的 RUNTIME_VERSION 不是带内部后缀的发布缓存键。
 const runtimeVersions = new Set();
 for (const file of collectJsFiles(ROOT)) {
     for (const match of readFileSync(file, 'utf-8').matchAll(/RUNTIME_VERSION\s*=\s*'([\w.\-]+)'/g)) {
         runtimeVersions.add(match[1]);
     }
 }
-assert.equal(runtimeVersions.has(RELEASE_COHORT), false, 'RUNTIME_VERSION 不是发布缓存键，不得改成 cohort 串');
+assert.equal(runtimeVersions.has(RELEASE_COHORT), false, 'RUNTIME_VERSION 不得包含内部 cache cohort 后缀');
 
 // 4. Runtime guards and watermark repair modules must agree with the entrypoint.
 // Persistent storage/schema versions and unchanged data-module versions are not

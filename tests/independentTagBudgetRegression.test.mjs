@@ -98,6 +98,32 @@ const createReader = helperSandbox.globalThis.reader;
     assert.ok(result.transcriptChars <= 12000 && result.text.length <= 20000);
 }
 
+// A long visible row is compacted to a bounded head + tail before dispatch.
+// With no selected tag removed, only that compacted text may consume the 12k
+// selection budget; the discarded middle must not evict a short useful layer.
+{
+    currentSettings = { ...currentSettings, independentContextExcludedTags: [] };
+    const chat = [
+        { is_user: true, mes: 'OLDER_USEFUL_' + '前情'.repeat(900) },
+        { is_user: false, mes: 'TARGET_HEAD_' + '正文'.repeat(6500) + '_TARGET_TAIL' },
+    ];
+    const reader = (message) => ({
+        text: message.mes,
+        filteredRabbitMirrorChars: 0,
+        filteredExcludedTagChars: 0,
+        filteredExcludedTags: [],
+    });
+    reader.renderedIndexes = [1, 0];
+    const result = contextBundle({ chat }, 1, null, null, 20000, reader);
+    assert.equal(result.layers, 2, 'the compacted visible row must leave room for the useful older layer');
+    assert.match(result.text, /OLDER_USEFUL_/);
+    assert.match(result.text, /TARGET_HEAD_/);
+    assert.match(result.text, /_TARGET_TAIL/);
+    assert.equal(result.filteredExcludedTagChars, 0);
+    assert.ok(result.transcriptChars <= 12000 && result.text.length <= 20000);
+    currentSettings = { ...currentSettings, independentContextExcludedTags: ['thinking'] };
+}
+
 // Exercise the actual paid-request seam. The selected wrapper and its contents
 // must be absent from the user prompt, while the source chat object stays byte-for-byte
 // equivalent to its preflight value.

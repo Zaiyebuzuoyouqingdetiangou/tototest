@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -97,7 +98,19 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'u
 assert.match(promptBuilder, /最终成品短检/);
 assert.match(promptBuilder, /compactPresentationExecutionContract\(combo\?\.formats\)/);
 assert.match(promptBuilder, /对象→操作→第二状态→明确反馈→返回或继续/);
+assert.match(promptBuilder, /存在多个值得探索的内容节点时，须提供多个有效入口或连续阶段/);
+assert.doesNotMatch(promptBuilder, /只需一条完整链/);
 assert.match(promptBuilder, /按 360px 检查人物、关系节点、图例等数量群组/);
+
+const touchStart = promptBuilder.indexOf('function isTouchTheaterRelated(');
+const touchEnd = promptBuilder.indexOf('function shortVisualAvoidance(', touchStart);
+assert.ok(touchStart >= 0 && touchEnd > touchStart);
+const touchSandbox = { globalThis: {} };
+vm.createContext(touchSandbox);
+vm.runInContext(`${promptBuilder.slice(touchStart, touchEnd)}\nglobalThis.isTouch=isTouchTheaterRelated;`, touchSandbox);
+assert.equal(touchSandbox.globalThis.isTouch({ formats: [{ id: '6.2.1.1', summary: '综合父项，包含大接近模式子项' }] }), false, '综合父项不得误启用大接近强约束');
+assert.equal(touchSandbox.globalThis.isTouch({ formats: [{ id: '6.2.1.1.d', title: '萤火虫栖息地' }] }), false);
+assert.equal(touchSandbox.globalThis.isTouch({ formats: [{ id: '6.2.1.1.e', title: '大接近模式' }] }), true);
 assert.match(sanitizer, /controlKinds\.safeChoiceOnly/);
 assert.doesNotMatch(sanitizer, /formControlCount <= 1/);
 assert.match(sanitizer, /semantic-ensemble-fit/);
@@ -108,9 +121,9 @@ assert.match(sanitizer, /if \(rootTraversal\.exceeded\) return stats/);
 assert.match(visualScanner, /missing_visual_program/);
 // multiface-step1 起 ui / injector / independentApi 全部进入本阶段 cache cohort。
 // 这里只断言链路仍然闭合在同一 cohort；完整闭包校验见 cacheBustClosure.test.mjs。
-assert.match(indexSource, /\.\/src\/ui\.js\?rmv=1\.4\.9-subapitag2-advancedui1/);
-assert.match(uiSource, /\.\/injector\.js\?rmv=1\.4\.9-subapitag2-advancedui1/);
-assert.match(uiSource, /\.\/independentApi\.js\?rmv=1\.4\.9-subapitag2-advancedui1/);
-assert.equal(manifest.version, '1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1');
+assert.match(indexSource, /\.\/src\/ui\.js\?rmv=1\.5-qualityfix1/);
+assert.match(uiSource, /\.\/injector\.js\?rmv=1\.5-qualityfix1/);
+assert.match(uiSource, /\.\/independentApi\.js\?rmv=1\.5-qualityfix1/);
+assert.equal(manifest.version, '1.5');
 
 console.log('presentationQuality tests passed');

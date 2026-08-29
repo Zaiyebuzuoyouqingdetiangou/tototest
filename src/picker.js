@@ -14,8 +14,8 @@ import {
     setPendingComboBatch,
     clearPendingComboBatch,
     clearPendingCombo,
-} from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+} from './storage.js?rmv=1.5-qualityfix1';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5-qualityfix1';
 
 function randomUnit() {
     try {

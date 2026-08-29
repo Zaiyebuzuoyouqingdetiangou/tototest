@@ -1,15 +1,15 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
-import { assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.4.9-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5-qualityfix1';
+import { assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5-qualityfix1';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.5-qualityfix1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5-qualityfix1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5-qualityfix1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.5-qualityfix1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5-qualityfix1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5-qualityfix1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5-qualityfix1';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
-const RUNTIME_VERSION = '1.4.30.33';
+const RUNTIME_VERSION = '1.5';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -19,7 +19,7 @@ const API_REQUEST_DIAGNOSTIC_EVENT = 'rabbitmirror:independent-api-diagnostic';
 const WORLD_INFO_BOOK_CACHE_KEY = 'rabbit_mirror_world_info_books_v2';
 const WORLD_INFO_BOOK_CACHE_LIMIT = 512;
 export const WORLD_INFO_BOOKS_CHANGED_EVENT = 'rabbit-mirror-world-info-books-changed';
-const INDEPENDENT_MODEL_LIST_TIMEOUT_MS = 12000;
+const INDEPENDENT_MODEL_LIST_TIMEOUT_MS = 30000;
 const WORLD_INFO_BOOK_LIST_TIMEOUT_MS = 15000;
 const API_PROFILE_SCHEMA = 2;
 const API_PROFILE_ORDER = [
@@ -1925,12 +1925,14 @@ function contextBundle(ctx,targetIndex,globalWorldInfoSnapshot=null,preparedGlob
    if(real===Number(targetIndex)) targetVisibleChars=body.length;
    if(!body){ selectionUsed+=filteredSelectionChars; continue; }
    let row=`[${real} ${role}]\n${body}`;
-   const untrimmedRowChars=row.length;
    if(row.length>8000) row=`${row.slice(0,4000)}\n…[正文中段裁剪]…\n${row.slice(-4000)}`;
    // A user-selected tag is private prompt content, not free space for older
    // messages. Charge its removed size to the 12k transcript-selection budget
    // while keeping it completely absent from the request text below.
-   const rowSelectionChars=Math.max(untrimmedRowChars,row.length)+filteredSelectionChars;
+   // Only text that survives the per-row head/tail compaction consumes visible
+   // transcript budget. Explicitly filtered private tags still consume their
+   // original space so removing them cannot backfill older chat layers.
+   const rowSelectionChars=row.length+filteredSelectionChars;
    if(rows.length && selectionUsed+rowSelectionChars>transcriptBudget) break;
    if(!rows.length && row.length>transcriptBudget) row=clipIndependentContextText(row,transcriptBudget);
    rows.unshift(row); selectionUsed+=rowSelectionChars; includedLayers+=1;
@@ -2253,7 +2255,7 @@ export async function fetchIndependentModels(options){
   return models;
  }catch(error){
   const finalError=controller.signal.aborted
-   ? independentModelListError('模型列表拉取超过 12 秒，已自动停止','MODEL_LIST_TIMEOUT')
+   ? independentModelListError('模型列表拉取超过 30 秒，已自动停止','MODEL_LIST_TIMEOUT')
    : error;
   if(connectionId && savedModels.length){
    publishIndependentModelListDiagnostic({mode:'saved-fallback',count:savedModels.length,error:String(finalError?.message||finalError)});

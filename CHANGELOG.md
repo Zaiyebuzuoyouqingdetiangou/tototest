@@ -1,3 +1,11 @@
+## 1.5
+
+- 修复长正文先裁至约 8,000 字符、却仍按裁剪前长度占用 12,000 字符聊天选择预算的回归；无过滤标签时恢复上一层前情可用性，过滤标签内容仍不外发且不以更老聊天回填。
+- 多节点媒介明确要求多入口或连续阶段；删除冷却规则中“只需一条完整链”的最低满足暗示，单焦点媒介继续要求至少一条完整深入链路。
+- Touch Theater／大接近强规则只按精确专用展现形式 ID 启用，不再被综合父项或兄弟子项说明中的名称误触发。
+- 用户主动模型列表拉取的单请求有界等待从 12 秒调整为 30 秒；不自动重试，不切换正文连接，失败继续保留当前 Profile 已保存模型和手填模型。
+- 测试版与正式版版本统一为 1.5；运行时、水印、manifest、cache-bust 闭包及回归测试同步更新。未新增常驻任务或额外网络请求。
+
 ## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1
 
 - 复核临时对话的 fallback 聊天键、连续两轮授权与 stale owner 替换；补充刷新后连续两轮回归，不放宽历史消息拒绝、工具递归或单次付费请求限制。

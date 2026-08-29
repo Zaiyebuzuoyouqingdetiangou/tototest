@@ -709,6 +709,8 @@ globalThis.matches=independentModelPullSnapshotMatches;`, sandbox);
 });
 
 const models = source.slice(source.indexOf('export async function fetchIndependentModels('), source.indexOf('export async function testIndependentConnection('));
+assert.match(source, /const INDEPENDENT_MODEL_LIST_TIMEOUT_MS = 30000;/, 'a user-triggered slow Profile model list gets a bounded 30 second window');
+assert.match(models, /模型列表拉取超过 30 秒，已自动停止/);
 assert.match(models, /savedIndependentModelsForProfile/);
 assert.match(models, /mode:'saved-fallback'/);
 assert.match(models, /return savedModels/);

@@ -76,11 +76,11 @@ assert.doesNotMatch(sanitizerInit, /\n\s*installMaintenanceRabbitsInChatDom\(\);
 const index = read('index.js');
 // multiface-step1 起 ui.js 进入本阶段 cache cohort：不再断言旧的 1.4.30.25 键，
 // 改为断言 cohort 完整性（详见 cacheBustClosure.test.mjs）。
-assert.match(index, /\.\/src\/ui\.js\?rmv=1\.4\.9-subapitag2-advancedui1/, 'AdvancedUI1 UI parent must use its dedicated cache key');
+assert.match(index, /\.\/src\/ui\.js\?rmv=1\.5-qualityfix1/, '1.5 UI parent must use its dedicated cache key');
 assert.doesNotMatch(index, /\.\/src\/ui\.js\?rmv=1\.4\.30\.2[0-9]/, 'stale 1.4.30.x UI cache key must not survive');
 assert.match(index, /\.\/src\/checkedSelectorRepair\.js\?rmv=1\.4\.30\.26/, 'formal checked-selector repair must be present in the test baseline');
 assert.match(index, /\.\/src\/maintenanceRecommendationHotfix\.js\?rmv=1\.4\.6/, 'formal maintenance recommendation must be present in the test baseline');
-assert.equal(manifest.js, 'index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1');
-assert.equal(manifest.version, '1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1');
+assert.equal(manifest.js, 'index.js?rmv=1.5-qualityfix1');
+assert.equal(manifest.version, '1.5');
 
 console.log('performance lifecycle tests passed');

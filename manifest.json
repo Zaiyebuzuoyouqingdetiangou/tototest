@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1",
-  "css": "style.css?rmv=1.4.30.33",
+  "js": "index.js?rmv=1.5-qualityfix1",
+  "css": "style.css?rmv=1.5",
   "author": "Toto",
-  "version": "1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1",
+  "version": "1.5",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版｜FollowupFix1：修复独立 API 结算延迟、标签过滤预算、诊断报告留存、设置布局、黑名单骰子及维修问题提示；保留双来源模型选择与既有生成边界。"
+  "description": "兔子镜测试版 1.5｜修复长正文上下文预算、交互质量约束与慢速模型列表拉取；保留标签隐私、单次请求及既有功能边界。"
 }
