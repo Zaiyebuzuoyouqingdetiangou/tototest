@@ -43,6 +43,26 @@ assert.ok(cooledDetails.prompt.includes('视觉短冷却【仅处理连续重复
 assert.ok(!cooledDetails.prompt.includes('近期实际视觉家族【由插件扫描真实 HTML/CSS；越近权重越高】'));
 assert.ok(cooledTokens <= 4200, `cooled Visual Scenery prompt should stay <= 4200, got ${cooledTokens}`);
 
+const adultIndependentSettings = {
+    ...settings,
+    userDirectivePriority: true,
+    themesMin: 3,
+    themesMax: 3,
+};
+const adultIndependent = buildRabbitMirrorPromptDetails(
+    adultIndependentSettings,
+    'independent',
+    null,
+    'budget:adult-independent',
+    { chat: [{ is_user: true, is_system: false, mesid: 1, mes: '兔子镜主题：心理操纵 + 官能色情 + 春梦' }] },
+);
+assert.deepEqual(adultIndependent.metadata.themeIds, ['A.2.3', 'A.1', 'E.1']);
+assert.doesNotMatch(adultIndependent.prompt, /成人条目内部执行边界/, 'independent base prompt must not duplicate its near-output adult lock');
+assert.match(adultIndependent.executionLock, /成人条目内部锁/);
+const adultIndependentTokens = estimatePromptTokens(`${adultIndependent.prompt}\n${adultIndependent.executionLock}`).estimatedTokens;
+assert.ok(adultIndependent.prompt.length + adultIndependent.executionLock.length <= 7000, 'three-theme adult independent prompt and lock must remain far below the 20,000-character context budget');
+assert.ok(adultIndependentTokens <= 4500, `three-theme adult independent payload should stay <= 4500 estimated tokens, got ${adultIndependentTokens}`);
+
 Math.random = originalRandom;
 delete globalThis.localStorage;
-console.log(`promptBudget tests passed (base=${baseTokens}, cooled=${cooledTokens})`);
+console.log(`promptBudget tests passed (base=${baseTokens}, cooled=${cooledTokens}, adult-independent=${adultIndependentTokens})`);

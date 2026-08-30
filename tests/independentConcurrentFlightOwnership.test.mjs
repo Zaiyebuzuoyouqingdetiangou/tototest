@@ -314,6 +314,12 @@ globalThis.installObserver = installObserverIfNeeded;`, sandbox);
             const host = hosts.get(Number(index));
             if (host) host.isConnected = false;
         },
+        replaceOwnerInPlace(index) {
+            const normalized = Number(index);
+            const host = hosts.get(normalized);
+            if (host) host.isConnected = false;
+            owners.set(normalized, makeOwner(normalized));
+        },
         setHostGenerationActive(value) { hostGenerationActive = value === true; },
         installObserver() { sandbox.globalThis.installObserver(); },
         fireRemovalMutation() {
@@ -355,6 +361,30 @@ test('a second floor and passive same-owner hash drift preserve the unresolved f
     assert.equal(fixture.hosts.get(secondIndex)?.dataset.rmState, 'ready', 'the second floor settles independently');
     assert.equal(fixture.postCounts.get(0), 1, 'reconciliation/remount must never issue a second POST for floor A');
     assert.equal(fixture.postCounts.get(secondIndex), 1, 'floor B also owns exactly one POST');
+});
+
+test('Android-style owner replacement plus passive postwrite keeps one paid request and mounts its success', async () => {
+    const fixture = createFixture([{ is_user: false, mes: 'ANDROID H0', swipe_id: 0 }]);
+    const automatic = fixture.runGenerate(0);
+    const base = fixture.baseFor(0, fixture.context.chat[0]);
+
+    // SillyTavern/Android WebView may replace the message DOM and normalize the
+    // same mesid+Swipe body while the already-paid request is still running.
+    // This is passive host work, not a Swipe, resay, continue, or new operation.
+    fixture.replaceOwnerInPlace(0);
+    fixture.context.chat[0].mes = 'ANDROID H1 AFTER PASSIVE HOST POSTWRITE';
+    fixture.syncBase(base, hashBody(fixture.context.chat[0]));
+
+    assert.equal(fixture.requestSignals.get(0)?.aborted, false, 'passive Android owner/body replacement must not cancel the paid request');
+    fixture.resolve(0, 'ANDROID READY');
+    await automatic;
+
+    assert.equal(fixture.postCounts.get(0), 1, 'owner replacement must never dispatch a second paid request');
+    assert.equal(fixture.hosts.get(0)?.dataset.rmState, 'ready', 'the successful result must mount on the replacement owner');
+    assert.match(fixture.hosts.get(0)?.readyHtml || '', /ANDROID READY/, 'the ready mirror must not disappear at settlement');
+    assert.equal(fixture.persistedWrites.length, 1, 'the completed owner must be persisted exactly once');
+    assert.equal(fixture.persistedWrites[0]?.record?.sourceHash, hashBody(fixture.context.chat[0]), 'persistence must bind to the settled H1 body');
+    assert.equal(fixture.queuedSyncs.some(indices => indices.length === 1 && indices[0] === 0), true, 'settlement must queue only an exact mesid remount');
 });
 
 test('an explicit operation epoch change cancels only the superseded same-base flight', async () => {

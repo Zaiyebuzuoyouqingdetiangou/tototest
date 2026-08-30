@@ -11,9 +11,9 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const RELEASE_COHORT = '1.5-qualityfix5';
-const RELEASE_RUNTIME = '1.5.4';
-const RETIRED_RELEASE_COHORTS = new Set(['1.5-qualityfix1', '1.5-qualityfix2', '1.5-qualityfix3', '1.5-qualityfix4']);
+const RELEASE_COHORT = '1.5-varietyfix1';
+const RELEASE_RUNTIME = '1.5.5';
+const RETIRED_RELEASE_COHORTS = new Set(['1.5-qualityfix1', '1.5-qualityfix2', '1.5-qualityfix3', '1.5-qualityfix4', '1.5-qualityfix5']);
 const REQUIRED_RELEASE_MODULES = [
     'src/settings.js',
     'src/tokenMeter.js',
@@ -30,6 +30,11 @@ const REQUIRED_RELEASE_MODULES = [
     'src/picker.js',
     'src/mobileModalHotfix.js',
     'src/renderedVisualFeedbackHotfix.js',
+    'data/structured/thematicIndex.js',
+    'data/structured/presentationIndex.js',
+    'data/raw/rawSegmentLookup.js',
+    'data/raw/rawThematicCategories.js',
+    'data/raw/rawPresentationFormats.js',
 ];
 
 function collectJsFiles(dir) {
@@ -79,7 +84,7 @@ for (const target of REQUIRED_RELEASE_MODULES) {
     assert.deepEqual(
         [...new Set(fixEdges.map(edge => edge.rmv))],
         [RELEASE_COHORT],
-        `${target} must use exactly one QualityFix5 cache key`,
+        `${target} must use exactly one VarietyFix1 cache key`,
     );
 }
 
@@ -119,6 +124,9 @@ for (const [file, pattern] of identityPatterns) {
     assert.equal(readFileSync(join(ROOT, file), 'utf8').match(pattern)?.[1], RELEASE_RUNTIME, `${file} runtime identity must match the release`);
 }
 assert.ok(readFileSync(join(ROOT, 'src/ui.js'), 'utf8').includes(`TOTOv${RELEASE_RUNTIME}`), 'the visible watermark must match the runtime');
-assert.equal(JSON.parse(readFileSync(join(ROOT, 'manifest.json'), 'utf8')).css, `style.css?rmv=${RELEASE_RUNTIME}`);
+const manifest = JSON.parse(readFileSync(join(ROOT, 'manifest.json'), 'utf8'));
+assert.equal(manifest.js, `index.js?rmv=${RELEASE_COHORT}`, 'the manifest entrypoint must use the release cohort');
+assert.equal(manifest.css, `style.css?rmv=${RELEASE_RUNTIME}`);
+assert.equal(manifest.version, RELEASE_RUNTIME, 'the manifest version must match the runtime');
 
-console.log(`cacheBustClosure: ${edges.length} 条 import 边，QualityFix5 单一 cache cohort 通过`);
+console.log(`cacheBustClosure: ${edges.length} 条 import 边，VarietyFix1 单一 cache cohort 通过`);

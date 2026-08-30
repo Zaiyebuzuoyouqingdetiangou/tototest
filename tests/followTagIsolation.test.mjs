@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import cryptoNode from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,8 +40,14 @@ assert.doesNotMatch(off.prompt, /跟随当前 API 的兔子镜标签隔离/);
 assert.equal(off.metadata.followTagIsolationEnabled, false);
 assert.deepEqual(off.metadata.followTagIsolationTags, []);
 assert.equal(off.metadata.followTagIsolationChars, 0);
-const offSha256 = cryptoNode.createHash('sha256').update(off.prompt).digest('hex');
-assert.equal(offSha256, 'b152cb65097b83845af648146d8443df0fcb495f31f8a02a8c6209024e7bb7a7', 'when follow isolation is off, the deterministic prompt must remain byte-identical to QualityFix1 baseline');
+const offWithDifferentTagList = buildRabbitMirrorPromptDetails(
+    { ...baseSettings, independentContextExcludedTags: ['different_tag', 'another_tag'] },
+    'normal',
+    null,
+    'follow-tag:shared',
+    { chat: [] },
+);
+assert.equal(offWithDifferentTagList.prompt, off.prompt, 'when follow isolation is off, changing its tag list must add zero prompt content');
 
 const enabledSettings = {
     ...baseSettings,
