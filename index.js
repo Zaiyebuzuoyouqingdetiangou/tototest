@@ -1,14 +1,14 @@
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.5-qualityfix5';
-import { clearLastCombo } from './src/storage.js?rmv=1.5-qualityfix5';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.5-qualityfix5';
-import { getSettings, updateSettings } from './src/settings.js?rmv=1.5-qualityfix5';
-import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.5-qualityfix5';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.5-varietyfix1';
+import { clearLastCombo } from './src/storage.js?rmv=1.5-varietyfix1';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.5-varietyfix1';
+import { getSettings, updateSettings } from './src/settings.js?rmv=1.5-varietyfix1';
+import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.5-varietyfix1';
 
 // SecurityFix2 leaves only the prompt interceptor and request guard in the parser-critical
 // graph. The 1.8 MiB UI/sanitizer/independent runtime graph is imported after the host has
 // received a paint/idle opportunity, or immediately after explicit RabbitMirror intent.
-const GOLDEN_MERGE_VERSION = '1.5.4';
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.5.4';
+const GOLDEN_MERGE_VERSION = '1.5.5';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.5.5';
 let runtimeCancelled = false;
 let deferredRuntimePromise = null;
 let deferredRuntimeModules = null;
@@ -61,11 +61,11 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.5-qualityfix5'),
-        import('./src/visualScanner.js?rmv=1.5-qualityfix5'),
-        import('./src/independentApi.js?rmv=1.5-qualityfix5'),
-        import('./src/touchTheater.js?rmv=1.5-qualityfix5'),
-        import('./src/ui.js?rmv=1.5-qualityfix5'),
+        import('./src/outputSanitizer.js?rmv=1.5-varietyfix1'),
+        import('./src/visualScanner.js?rmv=1.5-varietyfix1'),
+        import('./src/independentApi.js?rmv=1.5-varietyfix1'),
+        import('./src/touchTheater.js?rmv=1.5-varietyfix1'),
+        import('./src/ui.js?rmv=1.5-varietyfix1'),
     ]).then(async ([output, visual, independent, touch, ui]) => {
         if (runtimeCancelled) return null;
         deferredRuntimeModules = { output, visual, independent, touch, ui };
@@ -240,7 +240,7 @@ function loadOptional(name, specifier, init) {
 }
 
 function loadProfileSelector() {
-    return ensureDeferredCoreRuntime('settings-intent').then(modules => loadOptional('profileSelector', './src/independentProfileSelectorHotfix.js?rmv=1.5-qualityfix5', mod => {
+    return ensureDeferredCoreRuntime('settings-intent').then(modules => loadOptional('profileSelector', './src/independentProfileSelectorHotfix.js?rmv=1.5-varietyfix1', mod => {
         mod.initRabbitMirrorIndependentProfileSelectorHotfix?.({
             getSettings,
             updateSettings,
@@ -257,7 +257,7 @@ function loadMirrorVisualCompat() {
     if (!deferredRuntimeModules) return Promise.resolve(null);
     return Promise.all([
         loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.4.30.26', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
-        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.5-qualityfix5', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
+        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.5-varietyfix1', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
     ]);
 }
 
@@ -272,7 +272,7 @@ function mobileLike() {
 
 function loadMobileModalCompat() {
     if (!mobileLike()) return Promise.resolve(null);
-    return ensureDeferredCoreRuntime('mobile-settings-intent').then(() => loadOptional('mobileModal', './src/mobileModalHotfix.js?rmv=1.5-qualityfix5', mod => mod.initRabbitMirrorMobileModalHotfix?.()));
+    return ensureDeferredCoreRuntime('mobile-settings-intent').then(() => loadOptional('mobileModal', './src/mobileModalHotfix.js?rmv=1.5-varietyfix1', mod => mod.initRabbitMirrorMobileModalHotfix?.()));
 }
 
 function isRabbitMirrorSurface(target) {
@@ -337,7 +337,7 @@ async function ensureExternalDiagnostics() {
     if (externalDiagnosticsApi) return externalDiagnosticsApi;
     if (externalDiagnosticsPromise) return externalDiagnosticsPromise;
     const revision = ++externalDiagnosticsOperationRevision;
-    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.5-qualityfix5').then(mod => {
+    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.5-varietyfix1').then(mod => {
         if (runtimeCancelled || !externalDiagnosticsDesiredEnabled || revision !== externalDiagnosticsOperationRevision) return null;
         externalDiagnosticsModule = mod;
         externalDiagnosticsApi = mod.initRabbitMirrorExternalDiagnostics?.() || null;
@@ -359,7 +359,7 @@ function disableExternalDiagnostics() {
 }
 
 function clearDeferredGenerationSnapshots() {
-    void import('./src/generationGuard.js?rmv=1.5-qualityfix5')
+    void import('./src/generationGuard.js?rmv=1.5-varietyfix1')
         .then(mod => mod.clearRabbitMirrorGenerationSnapshots?.())
         .catch(() => {});
 }

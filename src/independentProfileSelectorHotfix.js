@@ -1,4 +1,4 @@
-const RELEASE_VERSION = '1.5.4';
+const RELEASE_VERSION = '1.5.5';
 const ROW_ID = 'rh_independent_profile_selector_hotfix';
 const SELECT_ID = 'rh_independent_profile_select';
 const REFRESH_ID = 'rh_independent_profile_refresh';

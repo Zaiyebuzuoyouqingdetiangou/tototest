@@ -1,5 +1,5 @@
-import { RAW_THEMATIC_CATEGORIES } from './rawThematicCategories.js?rmv=1.3.7';
-import { RAW_PRESENTATION_FORMATS } from './rawPresentationFormats.js?rmv=1.3.7';
+import { RAW_THEMATIC_CATEGORIES } from './rawThematicCategories.js?rmv=1.5-varietyfix1';
+import { RAW_PRESENTATION_FORMATS } from './rawPresentationFormats.js?rmv=1.5-varietyfix1';
 
 function escapeRegExp(text) {
     return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -182,4 +182,3 @@ export function resolveRawSnippetForItem(item, kind, maxChars = 320) {
     RAW_SNIPPET_CACHE.set(cacheKey, snippet);
     return snippet;
 }
-

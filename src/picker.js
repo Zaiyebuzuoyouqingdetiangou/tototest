@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.4.30.17';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.4.30.17';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5-varietyfix1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5-varietyfix1';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -14,8 +14,8 @@ import {
     setPendingComboBatch,
     clearPendingComboBatch,
     clearPendingCombo,
-} from './storage.js?rmv=1.5-qualityfix5';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5-qualityfix5';
+} from './storage.js?rmv=1.5-varietyfix1';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5-varietyfix1';
 
 function randomUnit() {
     try {
@@ -196,7 +196,26 @@ function recentFamilyHits(idHits = {}, familyKey = value => String(value || ''))
     return result;
 }
 
-function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], eligibleMisses = {}, favoriteMultipliers = {}, recentGroupHitMap = {}, recentFamilyHitMap = {}) {
+function familySizeMap(items, familyKey) {
+    const counts = new Map();
+    for (const item of items || []) {
+        const key = familyKey(item);
+        counts.set(key, Number(counts.get(key) || 0) + 1);
+    }
+    return counts;
+}
+
+function balancedFamilyItemFactor(itemCount) {
+    // Item-level sampling otherwise gives a family one full ticket per child.
+    // Keep larger families richer, but reduce their total mass from n to n^0.45.
+    return 1 / Math.pow(Math.max(1, Number(itemCount) || 1), 0.55);
+}
+
+function immediateFamilySet(values) {
+    return new Set((Array.isArray(values) ? values : []).map(value => String(value || '')).filter(Boolean));
+}
+
+function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], eligibleMisses = {}, favoriteMultipliers = {}, recentGroupHitMap = {}, recentFamilyHitMap = {}, immediateFamilyKeys = []) {
     const recent = new Set(recentIds || []);
     const groups = new Set(recentGroups || []);
     const hardExcluded = new Set(hardExcludedIds || []);
@@ -214,14 +233,30 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
         const filtered = candidates.filter(x => !recent.has(x.id));
         if (filtered.length >= count) candidates = filtered;
     }
+    const immediateFamilies = avoidRepeat ? immediateFamilySet(immediateFamilyKeys) : new Set();
 
     const selected = [];
     const used = new Set();
+    const usedFamilies = new Set();
+    const familySizes = familySizeMap(candidates, formatFamilyKey);
     while (selected.length < count && used.size < candidates.length) {
-        const weighted = candidates
-            .filter(item => !used.has(item.id))
+        let available = candidates.filter(item => !used.has(item.id));
+        // Maximise immediate-family avoidance instead of falling back all-or-nothing:
+        // consume every still-unseen fresh family first, then reopen an older family
+        // only when it is needed to fill the remaining slots.
+        const freshDifferentFamilies = available.filter(item => {
+            const family = formatFamilyKey(item);
+            return !immediateFamilies.has(family) && !usedFamilies.has(family);
+        });
+        if (freshDifferentFamilies.length) {
+            available = freshDifferentFamilies;
+        } else {
+            const differentFamilies = available.filter(item => !usedFamilies.has(formatFamilyKey(item)));
+            if (differentFamilies.length) available = differentFamilies;
+        }
+        const weighted = available
             .map(item => {
-                let weight = 1;
+                let weight = balancedFamilyItemFactor(familySizes.get(formatFamilyKey(item)));
                 // 第一次同组命中保留原 0.35 软冷却；同一组在最近窗口反复
                 // 出现时继续累积有下限的债务。不同条目的基础权重仍不变。
                 const groupHits = Number(recentGroupHitMap?.[item.group] || (groups.has(item.group) ? 1 : 0));
@@ -249,6 +284,7 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
         if (!chosen) break;
         selected.push(chosen);
         used.add(chosen.id);
+        usedFamilies.add(formatFamilyKey(chosen));
     }
     const finalSelected = selected.length
         ? selected
@@ -282,17 +318,17 @@ function pickWeightedEntry(entries, getWeight) {
 }
 
 function themeFamilyBaseWeight(itemCount) {
-    // 家族完全等权会让单条家族获得远高于普通单项的命中率。
-    // 采用温和的规模校正：接近“条目等权”，但仍压低超大家族因子项数量造成的总量优势。
-    return Math.pow(Math.max(1, Number(itemCount) || 1), 0.9);
+    // Families retain a modest benefit for genuine breadth, while very large
+    // trees no longer dominate almost linearly merely because they have children.
+    return Math.pow(Math.max(1, Number(itemCount) || 1), 0.6);
 }
 
 /**
  * 主题采用“父主题家族优先 + 温和规模校正”抽取：
- * 家族仍是去重/冷却单位，但基础权重随家族有效条目数按 0.9 次方增长。
+ * 家族仍是去重/冷却单位，但基础权重随家族有效条目数按 0.6 次方增长。
  * 这样单条家族不会天然拿到完整家族票，同时也不会让大树家族完全按子项数量线性霸榜。
  */
-function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], favoriteMultipliers = {}, recentGroupHitMap = {}, recentFamilyHitMap = {}) {
+function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], favoriteMultipliers = {}, recentGroupHitMap = {}, recentFamilyHitMap = {}, immediateFamilyKeys = []) {
     const recent = new Set(recentIds || []);
     const recentGroupSet = new Set(recentGroups || []);
     const recentFamilySet = new Set((recentIds || []).map(themeFamilyKey));
@@ -303,6 +339,11 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
         const filtered = workingPool.filter(item => !hardExcluded.has(item.id));
         if (filtered.length >= Math.max(1, Number(count) || 1)) workingPool = filtered;
     }
+    if (avoidRepeat && recent.size) {
+        const filtered = workingPool.filter(item => !recent.has(item.id));
+        if (filtered.length >= Math.max(1, Number(count) || 1)) workingPool = filtered;
+    }
+    const immediateFamilies = avoidRepeat ? immediateFamilySet(immediateFamilyKeys) : new Set();
     const families = new Map();
 
     for (const item of workingPool) {
@@ -317,8 +358,10 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
     const targetCount = Math.max(0, Math.min(Number(count) || 0, familyList.length));
 
     while (selected.length < targetCount) {
-        const availableFamilies = familyList.filter(family => !usedFamilies.has(family.key));
+        let availableFamilies = familyList.filter(family => !usedFamilies.has(family.key));
         if (!availableFamilies.length) break;
+        const freshFamilies = availableFamilies.filter(family => !immediateFamilies.has(family.key));
+        if (freshFamilies.length) availableFamilies = freshFamilies;
 
         const family = pickWeightedEntry(availableFamilies, entry => {
             let weight = themeFamilyBaseWeight(entry.items.length);
@@ -415,6 +458,7 @@ function itemHaystack(item) {
     return normalizeText([
         item.id,
         item.title,
+        ...(Array.isArray(item.aliases) ? item.aliases : []),
         item.summary,
         item.raw,
         ...(item.tags || []),
@@ -430,6 +474,7 @@ function matchOne(pool, query) {
     for (const item of pool) {
         const id = normalizeText(item.id);
         const title = normalizeText(item.title);
+        const aliases = Array.isArray(item.aliases) ? item.aliases.map(normalizeText).filter(Boolean) : [];
         const summary = normalizeText(item.summary);
         const raw = normalizeText(item.raw);
         const haystack = itemHaystack(item);
@@ -437,6 +482,7 @@ function matchOne(pool, query) {
         let score = 0;
         if (id === q) score = 100;
         else if (title === q) score = 95;
+        else if (aliases.includes(q)) score = 94;
         else if (id.includes(q) || q.includes(id)) score = Math.max(score, 80);
         else if (title.includes(q) || q.includes(title)) score = Math.max(score, 75);
         else if (summary.includes(q)) score = Math.max(score, 55);
@@ -631,7 +677,7 @@ function getVisualSceneryFormat() {
     return PRESENTATION_FORMATS.find(item => item.id === '10.2.2' || normalizeText(item.title) === normalizeText('Visual Scenery')) || null;
 }
 
-function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, themeCount, formatCount, recent, hardRecent, favoriteThemeIds, favoriteFormatIds, favoriteThemeMultipliers, favoriteFormatMultipliers, formatEligibleMisses }) {
+function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, themeCount, formatCount, recent, hardRecent, previousThemeFamilyKeys = [], previousFormatFamilyKeys = [], favoriteThemeIds, favoriteFormatIds, favoriteThemeMultipliers, favoriteFormatMultipliers, formatEligibleMisses }) {
     if (directive?.disabled) return { disabled: true, directive };
     const themeFamilyHitMap = recentFamilyHits(recent.themeIdHits, themeFamilyKey);
     const formatFamilyHitMap = recentFamilyHits(recent.formatIdHits, formatFamilyKey);
@@ -649,6 +695,7 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
             favoriteThemeMultipliers,
             recent.themeGroupHits,
             themeFamilyHitMap,
+            previousThemeFamilyKeys,
         );
     const formatSample = directive?.hasFormatRequest
         ? { selected: [], eligibleIds: [] }
@@ -664,6 +711,7 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
             favoriteFormatMultipliers,
             recent.formatGroupHits,
             formatFamilyHitMap,
+            previousFormatFamilyKeys,
         );
     const pickedFormats = formatSample.selected;
     const visualSceneryFormat = getVisualSceneryFormat();
@@ -879,6 +927,8 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
             formatCount,
             recent,
             hardRecent,
+            previousThemeFamilyKeys: (last?.themeIds || []).map(themeFamilyKey),
+            previousFormatFamilyKeys: (last?.formatIds || []).map(formatFamilyKey),
             favoriteThemeIds: favorites.themeIds,
             favoriteFormatIds: favorites.formatIds,
             favoriteThemeMultipliers: favorites.themeMultipliers,
