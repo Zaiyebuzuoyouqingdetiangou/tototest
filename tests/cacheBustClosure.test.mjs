@@ -11,13 +11,14 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const RELEASE_COHORT = '1.5-qualityfix4';
-const RELEASE_RUNTIME = '1.5.3';
-const RETIRED_RELEASE_COHORTS = new Set(['1.5-qualityfix1', '1.5-qualityfix2', '1.5-qualityfix3']);
+const RELEASE_COHORT = '1.5-qualityfix5';
+const RELEASE_RUNTIME = '1.5.4';
+const RETIRED_RELEASE_COHORTS = new Set(['1.5-qualityfix1', '1.5-qualityfix2', '1.5-qualityfix3', '1.5-qualityfix4']);
 const REQUIRED_RELEASE_MODULES = [
     'src/settings.js',
     'src/tokenMeter.js',
     'src/independentApi.js',
+    'src/independentQualityGate.js',
     'src/ui.js',
     'src/outputSanitizer.js',
     'src/injector.js',
@@ -78,7 +79,7 @@ for (const target of REQUIRED_RELEASE_MODULES) {
     assert.deepEqual(
         [...new Set(fixEdges.map(edge => edge.rmv))],
         [RELEASE_COHORT],
-        `${target} must use exactly one QualityFix4 cache key`,
+        `${target} must use exactly one QualityFix5 cache key`,
     );
 }
 
@@ -120,4 +121,4 @@ for (const [file, pattern] of identityPatterns) {
 assert.ok(readFileSync(join(ROOT, 'src/ui.js'), 'utf8').includes(`TOTOv${RELEASE_RUNTIME}`), 'the visible watermark must match the runtime');
 assert.equal(JSON.parse(readFileSync(join(ROOT, 'manifest.json'), 'utf8')).css, `style.css?rmv=${RELEASE_RUNTIME}`);
 
-console.log(`cacheBustClosure: ${edges.length} 条 import 边，QualityFix4 单一 cache cohort 通过`);
+console.log(`cacheBustClosure: ${edges.length} 条 import 边，QualityFix5 单一 cache cohort 通过`);

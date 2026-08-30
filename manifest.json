@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5-qualityfix4",
-  "css": "style.css?rmv=1.5.3",
+  "js": "index.js?rmv=1.5-qualityfix5",
+  "css": "style.css?rmv=1.5.4",
   "author": "Toto",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.5.3｜修复已完成镜面被后置正文改写误判为等待／失败，以及恢复事件用已消费请求覆盖成品；不改变正文、美化、随机抽取与单次请求边界。"
+  "description": "兔子镜测试版 1.5.4｜修复并发楼层、重说／Swipe 与页面恢复竞态，并在安全净化后拦截通用三按钮、单入口多节点与明确低对比半成品；不自动重发付费请求。"
 }

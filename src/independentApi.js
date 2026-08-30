@@ -1,15 +1,16 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5-qualityfix4';
-import { assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5-qualityfix4';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.5-qualityfix4';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5-qualityfix4';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5-qualityfix4';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.5-qualityfix4';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5-qualityfix4';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5-qualityfix4';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5-qualityfix4';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5-qualityfix5';
+import { assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5-qualityfix5';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.5-qualityfix5';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5-qualityfix5';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5-qualityfix5';
+import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5-qualityfix5';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.5-qualityfix5';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5-qualityfix5';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5-qualityfix5';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5-qualityfix5';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
-const RUNTIME_VERSION = '1.5.3';
+const RUNTIME_VERSION = '1.5.4';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -3025,13 +3026,60 @@ function recentIndependentVisualGuard(){
  if(!repeated.length) return '\n- 独立 API 最近成品未形成连续两面的同一视觉维度；不要为了避重机械切换到另一种固定视觉底盘，继续从本轮媒介本体推导。';
  return `\n- 独立 API 最近成品真正连续未变的视觉维度：${repeated.map(item=>`${item.label}「${item.value}」×${item.streak}`).join('；')}。本轮优先改变这些重复维度；不得只换主色或强调色来保留同一整体视觉家族。`;
 }
+const INDEPENDENT_QUALITY_RETRY_GUARD_TTL_MS=30*60*1000;
+const INDEPENDENT_QUALITY_RETRY_GUARD_LIMIT=64;
+const independentQualityRetryGuards=new Map();
+function independentQualityRetryGuardKey(slot=''){
+ // A rejected output belongs to one exact source revision. Carrying its hint
+ // across a later正文 edit on the same chat/message/swipe can bias a genuinely
+ // new request with stale failure evidence for up to the guard TTL.
+ return String(slot||'');
+}
+function pruneIndependentQualityRetryGuards(now=Date.now()){
+ for(const [key,value] of independentQualityRetryGuards){
+  if(!value || now-Number(value.ts||0)>INDEPENDENT_QUALITY_RETRY_GUARD_TTL_MS) independentQualityRetryGuards.delete(key);
+ }
+ while(independentQualityRetryGuards.size>INDEPENDENT_QUALITY_RETRY_GUARD_LIMIT){
+  independentQualityRetryGuards.delete(independentQualityRetryGuards.keys().next().value);
+ }
+}
+function rememberIndependentQualityFailure(slot='',quality={}){
+ const key=independentQualityRetryGuardKey(slot); if(!key || quality?.ok!==false) return;
+ pruneIndependentQualityRetryGuards();
+ independentQualityRetryGuards.delete(key);
+ independentQualityRetryGuards.set(key,{
+  code:String(quality.code||'quality-rejected').slice(0,80),
+  flags:Array.isArray(quality.flags)?quality.flags.map(value=>String(value||'').slice(0,80)).filter(Boolean).slice(0,12):[],
+  ts:Date.now(),
+ });
+ pruneIndependentQualityRetryGuards();
+}
+function clearIndependentQualityFailure(slot=''){
+ const key=independentQualityRetryGuardKey(slot); if(key) independentQualityRetryGuards.delete(key);
+}
+function independentQualityFailureRetryGuard(slot=''){
+ const key=independentQualityRetryGuardKey(slot); if(!key) return '';
+ pruneIndependentQualityRetryGuards();
+ const failure=independentQualityRetryGuards.get(key); if(!failure) return '';
+ const instruction=failure.code==='generic-tabbed-flat-layout'
+  ? '上一版在净化后退化为通用三按钮／标签切页加纵向文字流；本次禁止复用这种交互骨架，除非本轮抽中的媒介本体明确就是频道、档位或分页器。'
+  : failure.code==='multi-node-single-reveal'
+    ? '上一版的多节点内容只有一个显隐入口；本次每个可探索节点都必须有清晰、可独立操作的入口。'
+    : failure.code==='clearly-low-contrast'
+      ? '上一版净化后出现明确低对比正文；本次所有正文承载面必须保持清晰可读的前景／背景对比。'
+      : '上一版在净化后未达到成品质量门槛；本次必须改变失败的视觉或交互骨架。';
+ return `\n- 本次是用户手动重说：${instruction}`;
+}
 function manualRetryVisualGuard(slot=''){
  if(!slot) return '';
+ const guards=[independentQualityFailureRetryGuard(slot)];
  const previous=historyEntriesForSlot(String(slot||''))[0];
- if(!previous?.html) return '';
- const family=independentVisualFamilyFromHtml(previous.html);
- const description=describeVisualFamilyDimensions(family); if(!description) return '';
- return `\n- 本次是同一兔子镜的手动重 roll；上一版视觉家族「${description}」进入最高短期冷却。至少改变两项整体视觉维度，不得只换主色、边框或强调色来伪装成新方案。`;
+ if(previous?.html){
+  const family=independentVisualFamilyFromHtml(previous.html);
+  const description=describeVisualFamilyDimensions(family);
+  if(description) guards.push(`\n- 本次是同一兔子镜的手动重 roll；上一版视觉家族「${description}」进入最高短期冷却。至少改变两项整体视觉维度，不得只换主色、边框或强调色来伪装成新方案。`);
+ }
+ return guards.filter(Boolean).join('');
 }
 function commitIndependentVisualResult(inner=''){
  try{
@@ -3187,11 +3235,46 @@ ${independentUserTail}`;
    republishIndependentSemanticFailure(requestDiagnostic,'visual-program-invalid','',{responseChars:raw.length,visualFailure:String(visualProgram.reason||'')});
    throw new Error(`独立 API 返回了 HTML 主体，但视觉样式程序缺失（${detail}）。本次半成品不会保存，也不会让维修兔凭空猜测 CSS；请重新生成兔子镜。`);
  }
+ const preparedHtml=prepareIndependentReadyHtml(inner);
+ if(!preparedHtml || !independentMirrorBodyEvidence(preparedHtml)){
+   republishIndependentSemanticFailure(requestDiagnostic,'post-sanitize-empty','',{responseChars:raw.length});
+   throw new Error('⚠️ 独立 API 返回了完整结构，但经过安全净化后没有留下可用正文。本次结果不会保存；本轮只发送了 1 次生成请求，不会自动重发，请手动重新生成兔子镜。');
+ }
+ assertIndependentMarkupComplexityWithDiagnostic(preparedHtml,'sanitized',requestDiagnostic);
+ const preparedVisualProgram=independentVisualProgramIntegrity(preparedHtml);
+ if(!preparedVisualProgram.ok){
+   republishIndependentSemanticFailure(requestDiagnostic,'post-sanitize-visual-program-invalid','',{
+    responseChars:raw.length,
+    visualFailure:String(preparedVisualProgram.reason||''),
+   });
+   throw new Error('⚠️ 兔子镜的视觉样式程序在安全净化后变得不完整。本次半成品不会保存；本轮只发送了 1 次生成请求，不会自动重发，请手动重新生成兔子镜。');
+ }
+ const postSanitizeScan=scanRabbitMirrorHtml(wrappedIndependentMirrorHtml(preparedHtml),null)||{};
+ const selectedFormats=requestSelectionDiagnostic.formatIds.map((id,formatIndex)=>({
+  id:String(id||''),
+  title:String(requestSelectionDiagnostic.formatLabels[formatIndex]||''),
+ }));
+ const postSanitizeQuality=evaluateIndependentPostSanitizeQuality(preparedHtml,{
+  ...details.metadata,
+  interactionFamily:postSanitizeScan.interactionFamily||null,
+  riskFlags:Array.isArray(postSanitizeScan.riskFlags)?postSanitizeScan.riskFlags:[],
+  selectedFormats,
+ });
+ if(!postSanitizeQuality.ok){
+   rememberIndependentQualityFailure(requestOptions.slot,postSanitizeQuality);
+   republishIndependentSemanticFailure(requestDiagnostic,'post-sanitize-quality','',{
+    responseChars:raw.length,
+    qualityCode:String(postSanitizeQuality.code||'quality-rejected'),
+    qualityFlags:Array.isArray(postSanitizeQuality.flags)?postSanitizeQuality.flags.join(',').slice(0,600):'',
+   });
+   throw new Error(`⚠️ ${postSanitizeQuality.message||'净化后的兔子镜没有达到成品质量门槛，本次结果不会保存。'} 本轮只发送了 1 次生成请求，不会自动重发；请手动重新生成兔子镜，下一次会避开本次退化模式。`);
+ }
+ clearIndependentQualityFailure(requestOptions.slot);
  // Capability memory is earned only after the response has passed the real
  // RabbitMirror semantic boundary. HTTP 200 alone is not proof of a usable
  // parameter profile.
  rememberApiProfile(st,profile);
- return {html:inner,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
+ return {html:preparedHtml,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
 }
 function externalOwnerMesid(el){
  return String(el?.getAttribute?.('mesid') ?? el?.dataset?.messageId ?? el?.dataset?.messageid ?? '').trim();
@@ -4470,7 +4553,15 @@ function prepareIndependentReadyHtml(html=''){
   ? compactTotoBlock(cleaned)
   : cleaned;
  const sanitized=sanitizeIndependentReadyFragment(prepared);
- return cachePreparedReadyHtml(cacheKey,sanitized);
+ cachePreparedReadyHtml(cacheKey,sanitized);
+ // callIndependentApi() stores this already-prepared value and the first DOM
+ // mount receives those exact bytes. Seed that value's own key as well so the
+ // mount is a cache hit instead of parsing/sanitizing a large mirror twice.
+ if(sanitized){
+  const sanitizedKey=`${RUNTIME_VERSION}:${sanitized.length}:${hashText(sanitized)}`;
+  if(sanitizedKey!==cacheKey) cachePreparedReadyHtml(sanitizedKey,sanitized);
+ }
+ return sanitized;
 }
 function repairLabelTargets(root){
  if(!root?.querySelectorAll) return 0;
@@ -6228,6 +6319,18 @@ function scheduleMessageGeneration(index,delay=260,sourceAware=true,finalRenderC
    restoreExactIndependentReadyForIdentity(index,live,exactReady);
    finish(); return;
   }
+  const activeBaseFlight=activeIndependentFlightForBase(live.baseSlot);
+  if(activeBaseFlight && automaticFlightStillOwnsBaseOperation(activeBaseFlight)){
+   const liveEl=messageElement(index);
+   if(liveEl){
+    const remounted=ensureExternalUi(liveEl,live.key,'正在读取当前上下文并生成兔子镜……','loading','independent',live.sourceHash);
+    if(remounted) activeBaseFlight.loadingHost=remounted;
+   }
+   // A consumed lease means the single paid request was already dispatched;
+   // while that exact request still owns this message, resume/pageshow only
+   // remounts its shell and must not replace it with a false failure card.
+   finish(); return;
+  }
   if(automaticDispatchAlreadyConsumed(live.baseSlot)){ finish(); renderAutomaticDispatchConsumed(index,live.sourceHash); return; }
   if(hasAutomaticFailureStop(live.slot,live.sourceHash)){ finish(); return; }
   const activity=hostGenerationActivity();
@@ -6397,30 +6500,73 @@ function cancelFlightsForSlot(slot,exceptSourceHash=''){
  const active=pending.get(slot);
  if(active && (!exceptSourceHash || active.sourceHash!==exceptSourceHash)){ abortFlight(active,'source-changed'); pending.delete(slot); }
 }
+function activeIndependentFlightForBase(baseSlot=''){
+ const base=String(baseSlot||'');
+ if(!base) return null;
+ for(const flight of globalFlights().values()){
+  if(String(flight?.baseSlot||'')===base && !flight?.cancelled) return flight;
+ }
+ for(const flight of pending.values()){
+  if(String(flight?.baseSlot||'')===base && !flight?.cancelled) return flight;
+ }
+ return null;
+}
+function automaticFlightStillOwnsBaseOperation(flight){
+ if(!flight || flight.cancelled || flight.manual) return false;
+ const base=String(flight.baseSlot||'');
+ if(!base || Number(flight.operationEpoch||0)!==Number(operationEpochForBase(base))) return false;
+ const identity=currentGenerationIdentity(Number(flight.index));
+ if(!identity || String(identity.baseSlot||'')!==base) return false;
+ // A body/status postwrite inside the same authorized host operation is a
+ // presentation drift, not permission to discard an already-paid response.
+ // Explicit Swipe/regenerate/continue evidence still supersedes the flight.
+ return !hasExplicitSourceReplacementEvidence(identity.ctx,Number(flight.index),identity.msg,flight.loadingHost||null);
+}
 function cancelSupersededFlightsForBase(baseSlot,currentSourceHash=''){
  const base=String(baseSlot||'');
  if(!base) return;
  for(const [id,flight] of globalFlights()){
   if(String(flight?.baseSlot||'')!==base || String(flight?.sourceHash||'')===String(currentSourceHash||'')) continue;
+  if(automaticFlightStillOwnsBaseOperation(flight)) continue;
   abortFlight(flight,'source-version-replaced');
   globalFlights().delete(id);
  }
  for(const [slot,active] of pending.entries()){
   if(String(active?.baseSlot||'')!==base || String(active?.sourceHash||'')===String(currentSourceHash||'')) continue;
+  if(automaticFlightStillOwnsBaseOperation(active)) continue;
   abortFlight(active,'source-version-replaced');
   pending.delete(slot);
  }
 }
-function cancelFlightsForMessage(index,reason='message-source-changed'){
- const ctx=getContext(); const msg=ctx.chat?.[index];
- if(!isRabbitMirrorEligibleAssistantMessage(msg)) return;
- const base=messageBaseSlotKey(ctx,index,msg);
+function cancelFlightsForMessage(index,reason='message-source-changed',preserveBaseSlot=''){
+ const ctx=getContext();
+ const chatKeys=new Set([chatKey(ctx),legacyChatKey(ctx)].map(value=>String(value||'')).filter(Boolean));
+ const preserveBase=String(preserveBaseSlot||'');
+ const liveIdentity=preserveBase?currentGenerationIdentity(Number(index)):null;
+ const keepCurrentFlight=flight=>{
+  const base=String(flight?.baseSlot||'');
+  if(!preserveBase || base!==preserveBase || flight?.cancelled) return false;
+  if(!flight?.manual) return automaticFlightStillOwnsBaseOperation(flight);
+  return !!liveIdentity
+   && String(liveIdentity.baseSlot||'')===preserveBase
+   && String(flight?.slot||'')===String(liveIdentity.slot||'')
+   && String(flight?.sourceHash||'')===String(liveIdentity.sourceHash||'')
+   && Number(flight?.revision||0)===Number(liveIdentity.revision||0);
+ };
+ const belongsToCurrentMessage=flight=>{
+  const base=String(flight?.baseSlot||'');
+  if(!base || keepCurrentFlight(flight)) return false;
+  return [...chatKeys].some(key=>{
+   const prefix=`${key}:${Number(index)}:`;
+   return base.startsWith(prefix) && /^\d+$/.test(base.slice(prefix.length));
+  });
+ };
  for(const [id,flight] of globalFlights()){
-  if(String(flight?.baseSlot||'')!==base) continue;
+  if(!belongsToCurrentMessage(flight)) continue;
   abortFlight(flight,reason); globalFlights().delete(id);
  }
  for(const [slot,active] of pending.entries()){
-  if(String(active?.baseSlot||'')!==base) continue;
+  if(!belongsToCurrentMessage(active)) continue;
   abortFlight(active,reason); pending.delete(slot);
  }
 }
@@ -6469,7 +6615,14 @@ async function generateFor(index,msg,force=false,sourceAware=true){
    return locked.record;
   }
  }
- cancelSupersededFlightsForBase(baseSlot,sourceHash);
+ if(force){
+  // A user-initiated resay becomes the sole owner for this message. Advance
+  // the operation epoch and abort every older swipe/source flight before the
+  // new paid request is dispatched, so a late automatic result cannot replace
+  // the manual result after it has already mounted.
+  advanceOperationEpochForBase(baseSlot,'manual-resay');
+  cancelFlightsForMessage(index,'manual-resay');
+ } else cancelSupersededFlightsForBase(baseSlot,sourceHash);
  const recoveredAtGeneration=recoverSavedRecord(store,slot,observed);
  let saved=persistedSuppressed&&!force?null:recoveredAtGeneration.saved;
  if(recoveredAtGeneration.storeChanged) writeStore(store);
@@ -6514,7 +6667,6 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  }
  const previousReadyRecord=mountedReady || (saved?.html && independentStoredHtmlRestorable(saved.html) ? {...saved} : null);
  if(force){
-  cancelFlightsForSlot(slot);
   if(previousReadyRecord?.html) appendHistoryEntry(slot,previousReadyRecord);
  } else cancelFlightsForSlot(slot,sourceHash);
  const dispatchLease=force ? createManualDispatchLease() : reserveAutomaticDispatchLease(baseSlot,sourceHash);
@@ -6531,11 +6683,23 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   loadingHost=ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
  }
  const runId=++generationSequence; const controller=new AbortController(); let stale=false;
- const flight={task:null,runId,key,slot,index,sourceHash,revision,manual:!!force,cancelled:false,controller,baseSlot,dispatchLease,timedOut:false,timeoutError:null,deadline:null,loadingHost,previousReadyRecord,uiSettled:false};
- const stillCurrent=()=>{
+ const operationEpoch=Number(dispatchLease?.epoch||operationEpochForBase(baseSlot));
+ const flight={task:null,runId,key,slot,index,sourceHash,revision,manual:!!force,cancelled:false,controller,baseSlot,operationEpoch,flightKey,dispatchLease,timedOut:false,timeoutError:null,deadline:null,loadingHost,previousReadyRecord,uiSettled:false};
+ const currentIdentityForFlight=()=>{
   const live=currentGenerationIdentity(index); const active=pending.get(slot);
-  return currentRuntime() && runtimeMode()==='independent' && live && live.slot===slot && live.key===key && live.sourceHash===sourceHash && live.revision===revision && active?.runId===runId && active?.revision===revision && !flight.cancelled && globalFlights().get(flightKey)===flight;
+  const registered=currentRuntime() && runtimeMode()==='independent' && live
+   && active?.runId===runId && active?.revision===revision
+   && !flight.cancelled && globalFlights().get(flightKey)===flight;
+  if(!registered) return null;
+  if(force){
+   return live.slot===slot && live.key===key && live.sourceHash===sourceHash && live.revision===revision ? live : null;
+  }
+  if(String(live.baseSlot||'')!==String(baseSlot)
+   || Number(operationEpochForBase(baseSlot))!==operationEpoch
+   || hasExplicitSourceReplacementEvidence(live.ctx,index,live.msg,flight.loadingHost||null)) return null;
+  return live;
  };
+ const stillCurrent=()=>!!currentIdentityForFlight();
  let timeoutReject=null;
  const timeoutPromise=new Promise((resolve,reject)=>{ timeoutReject=reject; });
  flight.deadline=createIndependentRequestDeadline(controller,error=>{
@@ -6545,29 +6709,35 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  });
  const apiTask=callIndependentApi(ctx,index,msg,controller.signal,{manualRetry:force,slot,dispatchLease,onProgress:()=>flight.deadline?.progress?.()});
  const task=Promise.race([apiTask,timeoutPromise]).then(result=>{
-  if(!stillCurrent()){ stale=true; settleCancelledIndependentFlightUi(flight,'stale-owner'); return; }
+  const settledIdentity=currentIdentityForFlight();
+  if(!settledIdentity){ stale=true; settleCancelledIndependentFlightUi(flight,'stale-owner'); return; }
+  const settledCtx=settledIdentity.ctx; const settledMsg=settledIdentity.msg;
+  const settledSlot=settledIdentity.slot; const settledKey=settledIdentity.key;
+  const settledSourceHash=settledIdentity.sourceHash; const settledBodyHash=settledIdentity.bodyHash;
+  const settledDisplayHash=settledIdentity.displayHash; const settledReasoningHash=settledIdentity.reasoningHash;
   // One chat+mesid+swipe owner accepts only its first successful automatic
   // result. Later DOM/source rewrites cannot replace A with B; explicit resay
   // clears this owner lock before starting.
   if(!force){
-   const serverOwner=persistedOwnerForMessage(ctx,index,msg);
-   const serverRecord=serverOwner?.deleted?null:(serverOwner?.html&&independentStoredHtmlRestorable(serverOwner.html)&&savedRecordMatchesObserved(serverOwner,observed)?serverOwner:null);
-   if(serverRecord?.html){
-    const serverSlot=chatPersistenceSlot(ctx,index,swipeId(msg),serverRecord)||slot;
-    const liveStore=readStore(); if(!liveStore?.[serverSlot]?.html){ saveRecordForSlot(liveStore,serverSlot,serverRecord,{dropLegacy:false}); writeStore(liveStore); }
-    setOwnerLockForBase(baseSlot,serverSlot,String(serverRecord.sourceHash||serverRecord.bodyHash||sourceHash));
-    const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,serverRecord.html,'ready','independent',sourceHash);
-    return serverRecord;
+    const serverOwner=persistedOwnerForMessage(settledCtx,index,settledMsg);
+    const serverRecord=serverOwner?.deleted?null:(serverOwner?.html&&independentStoredHtmlRestorable(serverOwner.html)&&savedRecordMatchesObserved(serverOwner,settledIdentity)?serverOwner:null);
+    if(serverRecord?.html){
+     const serverSlot=chatPersistenceSlot(settledCtx,index,swipeId(settledMsg),serverRecord)||settledSlot;
+     const liveStore=readStore(); if(!liveStore?.[serverSlot]?.html){ saveRecordForSlot(liveStore,serverSlot,serverRecord,{dropLegacy:false}); writeStore(liveStore); }
+     setOwnerLockForBase(baseSlot,serverSlot,String(serverRecord.sourceHash||serverRecord.bodyHash||settledSourceHash));
+     const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,settledKey,serverRecord.html,'ready','independent',settledSourceHash);
+     return serverRecord;
+    }
+    const locked=lockedIndependentRecordForBase(baseSlot,readStore());
+    if(locked?.record?.html && savedRecordMatchesObserved(locked.record,settledIdentity)){
+     const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,settledKey,locked.record.html,'ready','independent',settledSourceHash);
+     return locked.record;
+    }
    }
-   const locked=lockedIndependentRecordForBase(baseSlot,readStore());
-   if(locked?.record?.html && savedRecordMatchesObserved(locked.record,observed)){
-    const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,locked.record.html,'ready','independent',sourceHash);
-    return locked.record;
-   }
-  }
-  const html=String(result?.html||'');
-  clearAutomaticFailureStop(slot,sourceHash);
-  const paletteFingerprint=commitIndependentVisualResult(html);
+   const html=String(result?.html||'');
+   clearAutomaticFailureStop(slot,sourceHash);
+   if(settledSlot!==slot || settledSourceHash!==sourceHash) clearAutomaticFailureStop(settledSlot,settledSourceHash);
+   const paletteFingerprint=commitIndependentVisualResult(html);
   if(result?.feedbackId && result?.feedbackPrompt){
    const liveFeedback=getActiveFeedbackForCurrentChat(getContext().chat);
    if(liveFeedback?.id===result.feedbackId){
@@ -6576,15 +6746,15 @@ async function generateFor(index,msg,force=false,sourceAware=true){
    }
   }
   const initialHtml=scrubIndependentInteractionState(html,html);
-  const completed={html:initialHtml||html,initialHtml:'',sourceHash,bodyHash,displayHash,reasoningHash,paletteFingerprint,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION,apiRequest:result?.requestDiagnostic||null,executionLockChars:Number(result?.executionLockChars||0)};
-  if(!independentRecordWithinBudget(completed)) throw independentMarkupLimitError('record-bytes',byteLength(completed.html),INDEPENDENT_RECORD_BUDGET_BYTES);
-  recordRabbitMirrorRecipe({ chat:ctx.chat, chatKey:chatKey(ctx), messageIndex:index, swipeId:swipeId(msg), message:msg, metadata:result?.requestDiagnostic||null, source:'independent' });
-  appendHistoryEntry(slot,completed);
-  const next=readStore(); saveRecordForSlot(next,slot,completed); writeStore(next);
-  setOwnerLockForBase(baseSlot,slot,sourceHash);
-  writePersistedOwner(ctx,index,msg,completed,{overwrite:true});
-  const liveEl=messageElement(index);
-  if(liveEl) ensureExternalUi(liveEl,key,html,'ready','independent',sourceHash);
+   const completed={html:initialHtml||html,initialHtml:'',sourceHash:settledSourceHash,bodyHash:settledBodyHash,displayHash:settledDisplayHash,reasoningHash:settledReasoningHash,paletteFingerprint,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION,apiRequest:result?.requestDiagnostic||null,executionLockChars:Number(result?.executionLockChars||0)};
+   if(!independentRecordWithinBudget(completed)) throw independentMarkupLimitError('record-bytes',byteLength(completed.html),INDEPENDENT_RECORD_BUDGET_BYTES);
+   recordRabbitMirrorRecipe({ chat:settledCtx.chat, chatKey:chatKey(settledCtx), messageIndex:index, swipeId:swipeId(settledMsg), message:settledMsg, metadata:result?.requestDiagnostic||null, source:'independent' });
+   appendHistoryEntry(settledSlot,completed);
+   const next=readStore(); saveRecordForSlot(next,settledSlot,completed); writeStore(next);
+   setOwnerLockForBase(baseSlot,settledSlot,settledSourceHash);
+   writePersistedOwner(settledCtx,index,settledMsg,completed,{overwrite:true});
+   const liveEl=messageElement(index);
+   if(liveEl) ensureExternalUi(liveEl,settledKey,html,'ready','independent',settledSourceHash);
   flight.uiSettled=true;
   return completed;
  }).catch(err=>{
@@ -6624,16 +6794,17 @@ async function generateFor(index,msg,force=false,sourceAware=true){
     }
    }
   }
- }).finally(()=>{
+  }).finally(()=>{
   try{ dispatchLease.release?.(); }catch{}
   flight.deadline?.clear?.(); flight.deadline=null;
   if(pending.get(slot)?.runId===runId) pending.delete(slot);
   if(globalFlights().get(flightKey)===flight) globalFlights().delete(flightKey);
-  if(flight.loadingHost?.isConnected && flight.loadingHost.dataset?.rmState==='loading') settleCancelledIndependentFlightUi(flight,flight.cancelReason||'request-ended-without-terminal-ui');
-  // Never turn a completed/cancelled request into another automatic paid
-  // request from finally(). Genuine new正文 versions are scheduled by their
-  // own Swipe/resay/generation events; the same正文 remains single-shot.
- });
+   if(flight.loadingHost?.isConnected && flight.loadingHost.dataset?.rmState==='loading') settleCancelledIndependentFlightUi(flight,flight.cancelReason||'request-ended-without-terminal-ui');
+   // One exact passive reconciliation repairs a DOM replacement that happened
+   // while another host reply was streaming. syncMessages() never issues a paid
+   // request, and the consumed dispatch lease keeps this owner single-shot.
+   queueMessageSync([index]);
+  });
  flight.task=task; globalFlights().set(flightKey,flight);
  pending.set(slot,flight);
  await task;
@@ -7620,10 +7791,11 @@ function syncMessages(indices=null){
        const observed=observeMessageSourceRevision(ctx,i,m);
        const key=recordKey(ctx,i,m); const slot=observed.slot; const sourceHash=observed.sourceHash;
        const baseSlot=messageBaseSlotKey(ctx,i,m);
-       const persistedOwner=persistedOwnerForMessage(ctx,i,m);
-       const persistedSuppressed=!!persistedOwner?.deleted;
-       cancelSupersededFlightsForBase(baseSlot,sourceHash);
-       cancelFlightsForSlot(slot,sourceHash);
+        const persistedOwner=persistedOwnerForMessage(ctx,i,m);
+        const persistedSuppressed=!!persistedOwner?.deleted;
+        cancelSupersededFlightsForBase(baseSlot,sourceHash);
+        cancelFlightsForSlot(slot,sourceHash);
+        const activeBaseFlight=activeIndependentFlightForBase(baseSlot);
        const persistedReady=!persistedSuppressed&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)&&savedRecordMatchesObserved(persistedOwner,observed)?persistedOwner:null;
        if(persistedSuppressed) clearOwnerLockForBase(baseSlot);
        let ownerLocked=null;
@@ -7688,22 +7860,29 @@ function syncMessages(indices=null){
          // them. Actual replacement happens only when a new generation starts.
          saved=null;
        }
-       if(!saved?.html && !keep && isActiveGenerationTarget && !automaticGenerationSuppressed){
-         keep=ensureReplyGenerationPlaceholder(el,key,sourceHash,true);
-       }
+        if(!saved?.html && !keep && activeBaseFlight){
+          // A second host reply may replace the earlier message DOM while its
+          // already-paid independent request is still unresolved. Reattach only
+          // that exact owner shell; do not schedule or dispatch another request.
+          keep=ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
+          if(keep) activeBaseFlight.loadingHost=keep;
+        } else if(!saved?.html && !keep && isActiveGenerationTarget && !automaticGenerationSuppressed){
+          keep=ensureReplyGenerationPlaceholder(el,key,sourceHash,true);
+        }
        const hostSourceHash=String(keep?.dataset?.rmSourceHash||'');
        const mountedReadyIdentityStale=!!(readyDetailsFromHost(keep) && !mountedReadyMatchesObserved && !mountedReadyPassiveSourceDrift);
        let hostIsStale=!!(keep && !mountedReadyPassiveSourceDrift && (mountedReadyIdentityStale || (hostSourceHash && hostSourceHash!==sourceHash)));
        const keepIsReplyPlaceholder=!!(keep && (keep.dataset.rmReplyGenerationPlaceholder==='true' || (keep.dataset.rmState==='loading' && keep.querySelector?.(':scope > details.rabbit-mirror-external-placeholder'))));
-       if(keepIsReplyPlaceholder && !saved?.html && automaticGenerationSuppressed){
-         keep.remove();
-         keep=null;
-         hostIsStale=false;
-       } else if(keepIsReplyPlaceholder && !saved?.html){
+        if(keepIsReplyPlaceholder && !saved?.html && automaticGenerationSuppressed && !activeBaseFlight){
+          keep.remove();
+          keep=null;
+          hostIsStale=false;
+        } else if(keepIsReplyPlaceholder && !saved?.html){
          // Streaming正文 changes its fingerprint repeatedly. Re-key the same
          // placeholder instead of treating it as an old completed mirror.
-         keep=ensureReplyGenerationPlaceholder(el,key,sourceHash,isActiveGenerationTarget);
-         hostIsStale=false;
+          keep=ensureReplyGenerationPlaceholder(el,key,sourceHash,isActiveGenerationTarget);
+          if(keep && activeBaseFlight) activeBaseFlight.loadingHost=keep;
+          hostIsStale=false;
        } else if(hostIsStale){
          // The mounted mirror belongs to the previous正文 version. Keep the one
          // shell anchored in place, but never show stale mirror content beside
@@ -7713,7 +7892,7 @@ function syncMessages(indices=null){
          keep.dataset.rmAwaitingFreshSource='true';
          keep.dataset.rmFreshSourceStatus='waiting';
        }
-       const activePending=pending.get(slot);
+        const activePending=pending.get(slot)||activeBaseFlight;
        const manualResayPending=!!(activePending?.manual
         && !activePending.cancelled
         && String(activePending.sourceHash||'')===String(sourceHash||'')
@@ -7916,10 +8095,16 @@ function removedMutationIndices(records){
  const found=new Set();
  for(const rec of records){
    const target=rec.target?.nodeType===1?rec.target:rec.target?.parentElement;
-   const targetId=nodeMessageIndex(target);
-   for(const node of [...(rec.removedNodes||[])]){
-     const el=node?.nodeType===1?node:null;
-     if(!el || el.matches?.(`[${SOURCE_ATTR}]`) || el.closest?.(`[${SOURCE_ATTR}]`)) continue;
+    const targetId=nodeMessageIndex(target);
+    for(const node of [...(rec.removedNodes||[])]){
+      const el=node?.nodeType===1?node:null;
+      if(!el) continue;
+      if(el.matches?.(`[${SOURCE_ATTR}]`)){
+        const owner=Number(el.dataset?.rmOwnerMesid ?? el.dataset?.rmExternalOwnerMessage);
+        if(Number.isInteger(owner)&&owner>=0) found.add(owner);
+        continue;
+      }
+      if(el.closest?.(`[${SOURCE_ATTR}]`)) continue;
      if(targetId!==null){
        found.add(targetId);
        continue;
@@ -8061,10 +8246,17 @@ function installObserverIfNeeded({skipHistoricalProbe=false}={}){
    // Streaming mutations are finalized by GENERATION_ENDED/STOPPED. Scanning the
    // current message on every token used to turn a long reply into repeated full
    // source/DOM passes even though no paid request may start before completion.
-   if(mode==='independent' && hostGenerationLooksActive()){
-    end?.({affectedMessages:0,removedMessages:0,skippedStreaming:true});
-    return;
-   }
+    if(mode==='independent' && hostGenerationLooksActive()){
+     // Do not scan streaming additions. Removals are different: SillyTavern may
+     // replace an older message wrapper or its external RabbitMirror shell when
+     // a new reply starts. Recover only those exact owner ids, with no chat-wide
+     // traversal and no generation call.
+     const removed=removedMutationIndices(records);
+     for(const id of removed){ if(!messageElement(id)) markExternalHostsAwaitingOwner(id); }
+     if(removed.size) queueMessageSync(removed);
+     end?.({affectedMessages:removed.size,removedMessages:removed.size,skippedStreaming:true,boundedOwnerRecovery:true});
+     return;
+    }
    const removed=removedMutationIndices(records);
    for(const id of removed){
      if(!messageElement(id)) markExternalHostsAwaitingOwner(id);
@@ -8184,10 +8376,14 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
        const ctx=getContext();
        const id=resolveHostEventMessageIndex(messageId,ctx,{fallbackLastAssistant:true});
        if(Number.isInteger(id)&&id>=0){
-         unlockAutomaticGenerationCutover(ctx,id,'host-swipe');
-         const message=ctx.chat?.[id];
-          if(isRabbitMirrorEligibleAssistantMessage(message)) advanceOperationEpochForBase(messageBaseSlotKey(ctx,id,message),'host-swipe',automaticCutoverVersionToken(message));
-         cancelFlightsForMessage(id,'swipe-changed');
+       unlockAutomaticGenerationCutover(ctx,id,'host-swipe');
+       const message=ctx.chat?.[id];
+         const currentBase=isRabbitMirrorEligibleAssistantMessage(message)?messageBaseSlotKey(ctx,id,message):'';
+         if(currentBase) advanceOperationEpochForBase(currentBase,'host-swipe',automaticCutoverVersionToken(message));
+         // Some hosts emit MESSAGE_SWIPED after the new swipe's generation has
+         // already started. Preserve that exact current operation, while still
+         // aborting every older swipe/source flight for this chat+message.
+         cancelFlightsForMessage(id,'swipe-changed',currentBase);
          queueMessageSync([id]);
          scheduleMessageGeneration(id,260,true);
        } else globalThis.__rabbitMirrorPerfDiag?.mark?.('independent.eventNoOwner',{reason:'host:MESSAGE_SWIPED:fallback',event:String(event||'MESSAGE_SWIPED')});

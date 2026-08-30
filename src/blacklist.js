@@ -1,5 +1,5 @@
-import { getSettings, updateSettings } from './settings.js?rmv=1.5-qualityfix4';
-import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.5-qualityfix4';
+import { getSettings, updateSettings } from './settings.js?rmv=1.5-qualityfix5';
+import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.5-qualityfix5';
 import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.4.30.17';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.4.30.17';
 
