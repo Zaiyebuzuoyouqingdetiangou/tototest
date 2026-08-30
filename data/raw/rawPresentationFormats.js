@@ -1,6 +1,4 @@
 export const RAW_PRESENTATION_FORMATS = String.raw`
-## [展现形式]
-那么多'PresentationFormats'你要运用创意每轮回复都要用不一样的,知道吗?
 
 ### **兔子镜 ：展现形式 (Presentation Formats)**
 
