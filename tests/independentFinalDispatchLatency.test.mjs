@@ -118,6 +118,9 @@ globalThis.schedule=scheduleAutomaticHostGenerationSettlement;`, sandbox);
         currentRuntime: () => ({}),
         runtimeMode: () => 'independent',
         currentGenerationIdentity: () => live,
+        exactIndependentReadyForIdentity: () => null,
+        restoreExactIndependentReadyForIdentity: () => null,
+        clearAutomaticFailureStop: () => {},
         suppressesAutomaticGeneration: () => false,
         hasExistingFollowRabbitMirror: () => false,
         cancelSupersededFlightsForBase: () => {},
@@ -161,6 +164,80 @@ globalThis.schedule=scheduleMessageGeneration;`, sandbox);
     sandbox.suppressesAutomaticGeneration = () => true;
     clock.advance(200);
     assert.equal(dispatches.length, 0, 'hash/revision replacement must revoke the pre-authorized fast path');
+    assert.equal(clock.timers.size, 0);
+}
+
+// A resume/reconcile callback may arrive after the exact result was already
+// committed and the one-shot lease was consumed. The ready result wins over the
+// tombstone: no error shell, failure stop, or second paid dispatch is allowed.
+{
+    const clock = fakeClock(300000);
+    const ctx = { key: 'chat:ready-resume', chat: [{ is_user: false, mes: 'FINAL' }] };
+    const generationPolls = new Map();
+    const live = {
+        ctx,
+        msg: ctx.chat[0],
+        key: 'key:0',
+        slot: 'slot:0',
+        baseSlot: 'base:0',
+        sourceHash: 'hash:final',
+        revision: 1,
+    };
+    const ready = { kind: 'mounted', host: { isConnected: true } };
+    let restored = 0;
+    let errors = 0;
+    let failureStops = 0;
+    let dispatches = 0;
+    const start = source.indexOf('function scheduleMessageGeneration(');
+    const end = source.indexOf('\nfunction ensureGenerationPlaceholderForIndex(', start);
+    const sandbox = {
+        getContext: () => ctx,
+        generationPolls,
+        generationPollKey: index => `${ctx.key}:${index}`,
+        currentRuntime: () => ({}),
+        runtimeMode: () => 'independent',
+        currentGenerationIdentity: () => live,
+        exactIndependentReadyForIdentity: () => ready,
+        restoreExactIndependentReadyForIdentity: () => { restored += 1; return ready.host; },
+        clearAutomaticFailureStop: () => {},
+        suppressesAutomaticGeneration: () => false,
+        hasExistingFollowRabbitMirror: () => false,
+        cancelSupersededFlightsForBase: () => {},
+        automaticDispatchAlreadyConsumed: () => true,
+        hasAutomaticFailureStop: () => false,
+        hostGenerationActivity: () => ({ strong: false, weak: false }),
+        cancelFlightsForSlot: () => {},
+        generateFor: () => { dispatches += 1; },
+        renderAutomaticDispatchConsumed: () => { errors += 1; },
+        renderGenerationGateTimeout: () => { errors += 1; },
+        markAutomaticFailureStop: () => { failureStops += 1; },
+        generationWaitPollDelay: () => 3200,
+        OWNER_REATTACH_WAIT_MS: 60000,
+        ACTIVE_GENERATION_WAIT_MS: 600000,
+        WEAK_GENERATION_FLAG_GRACE_MS: 30000,
+        FINAL_RENDER_CONFIRMATION_TTL_MS: 5000,
+        FINAL_RENDER_SOURCE_STABLE_WAIT_MS: 520,
+        WEAK_GENERATION_SOURCE_STABLE_WAIT_MS: 4500,
+        SOURCE_STABLE_WAIT_MS: 1400,
+        FINAL_RENDER_POLL_INTERVAL_MS: 120,
+        GENERATION_PLACEHOLDER_POLL_INTERVAL_MS: 760,
+        Date: { now: clock.now },
+        setTimeout: clock.setTimeoutFake,
+        clearTimeout: clock.clearTimeoutFake,
+        Math,
+        Number,
+        String,
+        globalThis: {},
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(`${source.slice(start, end)}\nglobalThis.schedule=scheduleMessageGeneration;`, sandbox);
+    sandbox.globalThis.schedule(0, 0, true);
+    clock.advance(1000);
+    assert.equal(restored, 1, 'the exact ready result is restored immediately');
+    assert.equal(dispatches, 0, 'a consumed exact result must never start a second request');
+    assert.equal(errors, 0, 'the consumed tombstone must not overwrite an exact ready result');
+    assert.equal(failureStops, 0);
+    assert.equal(generationPolls.size, 0);
     assert.equal(clock.timers.size, 0);
 }
 

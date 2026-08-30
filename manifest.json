@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5-qualityfix3",
-  "css": "style.css?rmv=1.5.2",
+  "js": "index.js?rmv=1.5-qualityfix4",
+  "css": "style.css?rmv=1.5.3",
   "author": "Toto",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.5.2｜保留外框身份恢复、宿主忙碌检测与标签隔离修复；补充兼容说明和发布回归，不改变正文、美化与单次请求边界。"
+  "description": "兔子镜测试版 1.5.3｜修复已完成镜面被后置正文改写误判为等待／失败，以及恢复事件用已消费请求覆盖成品；不改变正文、美化、随机抽取与单次请求边界。"
 }

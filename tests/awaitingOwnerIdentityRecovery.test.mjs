@@ -79,7 +79,36 @@ function createOwner(mesid, parent) {
     };
 }
 
-function createSyncFixture({ messages, hosts, persistedOwner = null, lockedRecord = null } = {}) {
+function explicitReplacementEvidence({ active = false, authorizationTs = 0, readyTs = 0 } = {}) {
+    const ctx = { chat: [{ is_user: false, mes: 'new body', swipe_id: 0 }] };
+    const cutover = {
+        activeHostGeneration: active ? {
+            chat: 'chat:test',
+            type: 'regenerate',
+            startTailRole: 'assistant',
+            startTailIndex: 0,
+        } : null,
+        authorized: new Map(authorizationTs ? [[0, { token: 'current-token', ts: authorizationTs }]] : []),
+    };
+    const sandbox = {
+        automaticGenerationCutovers: new Map([['chat:test', cutover]]),
+        chatKey: () => 'chat:test',
+        messageBaseSlotKey: () => 'chat:test:0:0',
+        ownerLockForBase: () => readyTs ? { slot: 'old-key', sourceHash: 'old-hash', ts: readyTs } : null,
+        persistedOwnerForMessage: () => null,
+        automaticCutoverVersionToken: () => 'current-token',
+        messageSourceFingerprint: () => 'new-hash',
+        Number,
+        String,
+        Math,
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(`${functionBlock('hasExplicitSourceReplacementEvidence')}\n`+
+        'globalThis.run=hasExplicitSourceReplacementEvidence;', sandbox);
+    return sandbox.run(ctx, 0, ctx.chat[0], { dataset: { rmKey: 'old-key', rmSourceHash: 'old-hash' } });
+}
+
+function createSyncFixture({ messages, hosts, persistedOwner = null, lockedRecord = null, explicitSourceReplacement = false } = {}) {
     let nextTimerId = 1;
     const timers = new Map();
     const timerOrder = [];
@@ -207,6 +236,7 @@ function createSyncFixture({ messages, hosts, persistedOwner = null, lockedRecor
         },
         rebuildCollapsedReadyHost() {},
         refreshExistingExternalDetails() {},
+        hasExplicitSourceReplacementEvidence: () => explicitSourceReplacement,
         suppressesAutomaticGeneration: () => false,
         hasExistingFollowRabbitMirror: () => false,
         ensureReplyGenerationPlaceholder() { throw new Error('no generation placeholder expected'); },
@@ -255,6 +285,7 @@ function createSyncFixture({ messages, hosts, persistedOwner = null, lockedRecor
         functionBlock('savedRecordMatchesObserved'),
         functionBlock('readyDetailsFromHost'),
         functionBlock('mountedIndependentReadyHostMatchesObserved'),
+        functionBlock('mountedIndependentReadyHostSharesStableOwner'),
         functionBlock('readyRecordFromHost'),
         functionBlock('placeExternalHost'),
         functionBlock('markExternalHostsAwaitingOwner'),
@@ -615,6 +646,15 @@ test('same identity: missed added/render event recovers through the production q
     assert.deepEqual(fixture.pendingTimers(), []);
 });
 
+test('explicit source replacement evidence distinguishes a new host operation from later passive rewrites', () => {
+    assert.equal(explicitReplacementEvidence({ active: true }), true,
+        'an active regenerate of this assistant owner must stale the old mirror immediately');
+    assert.equal(explicitReplacementEvidence({ authorizationTs: 200, readyTs: 100 }), true,
+        'a final authorization newer than the ready owner proves an explicit replacement');
+    assert.equal(explicitReplacementEvidence({ authorizationTs: 100, readyTs: 200 }), false,
+        'an older authorization must not turn a later post-processing rewrite into a new generation');
+});
+
 test('changed Swipe with the same mesid/body: the old host is not rebound to the new Swipe', () => {
     const oldHtml = '<details><summary>OLD SWIPE</summary><div>OLD CONTENT</div></details>';
     const host = createHost({ mesid: 0, sourceHash: 'same-hash', swipe: 0, content: oldHtml });
@@ -638,6 +678,34 @@ test('changed Swipe with the same mesid/body: the old host is not rebound to the
     assert.equal(fixture.paidRequests.count, 0);
 });
 
+test('passive same-Swipe source rewrite keeps the completed mirror visible without rebinding it', () => {
+    const oldHtml = '<details><summary>READY MIRROR</summary><div>READY CONTENT</div></details>';
+    const host = createHost({ mesid: 0, sourceHash: 'old-hash', swipe: 0, content: oldHtml });
+    const fixture = createSyncFixture({
+        messages: [{ is_user: false, mes: 'post-processed body', swipe_id: 0, __sourceHash: 'new-hash' }],
+        hosts: [host],
+        explicitSourceReplacement: false,
+    });
+
+    fixture.ownerLeaves(0);
+    fixture.markAwaiting(0);
+    fixture.ownerReturns(0);
+    fixture.runOrphanTimer();
+    fixture.runSyncTimer();
+
+    assert.equal(host.isConnected, true);
+    assert.equal(host.hidden, false, 'a passive post-render rewrite must not hide an already completed mirror');
+    assert.equal(host.dataset.rmState, 'ready');
+    assert.equal(host.dataset.rmAwaitingOwner, undefined);
+    assert.equal(host.dataset.rmAwaitingFreshSource, undefined);
+    assert.equal(host.dataset.rmFreshSourceStatus, undefined);
+    assert.equal(host.__content, oldHtml);
+    assert.equal(fixture.ownerLocks.length, 0, 'passive preservation must not bind old HTML to the new source hash');
+    assert.equal(fixture.renderedReady.some(call => call.sourceHash === 'new-hash'), false,
+        'passive preservation must not persist or repaint the old mirror as the new source');
+    assert.equal(fixture.paidRequests.count, 0);
+});
+
 test('changed sourceHash with the same mesid/Swipe: old ready HTML never becomes the new owner or flashes', () => {
     const oldHtml = '<details><summary>OLD MIRROR</summary><div>OLD CONTENT</div></details>';
     const staleRecord = { html: oldHtml, sourceHash: 'old-hash', bodyHash: 'old-hash' };
@@ -647,6 +715,7 @@ test('changed sourceHash with the same mesid/Swipe: old ready HTML never becomes
         hosts: [host],
         persistedOwner: staleRecord,
         lockedRecord: staleRecord,
+        explicitSourceReplacement: true,
     });
 
     host.hidden = true;

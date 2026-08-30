@@ -14,8 +14,8 @@ import {
     setPendingComboBatch,
     clearPendingComboBatch,
     clearPendingCombo,
-} from './storage.js?rmv=1.5-qualityfix3';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5-qualityfix3';
+} from './storage.js?rmv=1.5-qualityfix4';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5-qualityfix4';
 
 function randomUnit() {
     try {
