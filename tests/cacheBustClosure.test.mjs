@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, normalize, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,9 +11,9 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const RELEASE_COHORT = '1.5-varietyfix1';
-const RELEASE_RUNTIME = '1.5.5';
-const RETIRED_RELEASE_COHORTS = new Set(['1.5-qualityfix1', '1.5-qualityfix2', '1.5-qualityfix3', '1.5-qualityfix4', '1.5-qualityfix5']);
+const RELEASE_COHORT = '1.5.6-abc1';
+const RELEASE_RUNTIME = '1.5.6';
+const RETIRED_RELEASE_COHORTS = new Set(['1.5-qualityfix1', '1.5-qualityfix2', '1.5-qualityfix3', '1.5-qualityfix4', '1.5-qualityfix5', '1.5-varietyfix1']);
 const REQUIRED_RELEASE_MODULES = [
     'src/settings.js',
     'src/tokenMeter.js',
@@ -43,7 +43,7 @@ function collectJsFiles(dir) {
         if (entry === 'node_modules' || entry === '.git' || entry === 'tests') continue;
         const full = join(dir, entry);
         if (statSync(full).isDirectory()) out.push(...collectJsFiles(full));
-        else if (entry.endsWith('.js')) out.push(full);
+        else if (/\.m?js$/.test(entry)) out.push(full);
     }
     return out;
 }
@@ -55,6 +55,7 @@ const IMPORT_RES = [
     /:\s*'(\.[^'?]+)(?:\?rmv=([\w.\-]+))?'/g,
 ];
 const edges = [];
+const computedImports = [];
 for (const file of collectJsFiles(ROOT)) {
     const rel = relative(ROOT, file).split('\\').join('/');
     const source = readFileSync(file, 'utf-8');
@@ -64,13 +65,25 @@ for (const file of collectJsFiles(ROOT)) {
             edges.push({ from: rel, target, rmv: match[2] || null });
         }
     }
+    // Also inventory double-quoted/template literals and provider registries,
+    // not only the legacy single-quote import spellings above.
+    for (const match of source.matchAll(/(['"`])(\.\.?\/[^\s'"`]+?\.m?js(?:\?[^\s'"`]*)?)\1/g)) {
+        assert.ok(!match[2].includes('${'), `${rel}: interpolated module URLs require explicit closure handling`);
+        const [modulePath, query = ''] = match[2].split('?');
+        const target = normalize(join(dirname(rel), modulePath)).split('\\').join('/');
+        edges.push({ from: rel, target, rmv: new URLSearchParams(query).get('rmv') });
+        if (!target.startsWith('../')) assert.ok(existsSync(join(ROOT, target)), `${rel}: ${target} must resolve inside the package`);
+    }
+    for (const match of source.matchAll(/\bimport\(\s*([^'"`\s][^)]*)\)/g)) {
+        computedImports.push({ file: rel, expression: match[1].trim() });
+    }
 }
 
 assert.ok(edges.length > 0, 'import graph must not be empty');
 assert.equal(RETIRED_RELEASE_COHORTS.has(RELEASE_COHORT), false, 'current release cohort must advance beyond every retired published cohort');
 
 // 1. 本次所有 1.5 系列 JS 发布边使用同一个完整 cohort，避免热更新混装。
-const releaseEdges = edges.filter(edge => /^1\.5(?:-|$)/.test(String(edge.rmv || '')));
+const releaseEdges = edges.filter(edge => /^1\.5(?:[.-]|$)/.test(String(edge.rmv || '')));
 const stale = releaseEdges.filter(edge => edge.rmv !== RELEASE_COHORT);
 assert.deepEqual(
     stale.map(edge => `${edge.from} -> ${edge.target}?rmv=${edge.rmv}`),
@@ -84,7 +97,7 @@ for (const target of REQUIRED_RELEASE_MODULES) {
     assert.deepEqual(
         [...new Set(fixEdges.map(edge => edge.rmv))],
         [RELEASE_COHORT],
-        `${target} must use exactly one VarietyFix1 cache key`,
+        `${target} must use exactly one current release cache key`,
     );
 }
 
@@ -98,6 +111,22 @@ const conflicting = [...keysByTarget.entries()]
     .filter(([, keys]) => keys.size > 1)
     .map(([target, keys]) => `${target}: ${[...keys].sort().join(' / ')}`);
 assert.deepEqual(conflicting, [], '同一模块不得被多种 ?rmv 键引用');
+
+// Compute transitive parents from the actual URL graph. Changing a child URL
+// inside an old-cached parent is insufficient even if the child itself is fresh.
+const changedRoots = new Set(['src/settings.js', 'src/picker.js', 'src/storage.js', 'src/promptBuilder.js', 'src/ui.js']);
+let grew = true;
+while (grew) {
+    grew = false;
+    for (const edge of edges) if (changedRoots.has(edge.target) && !changedRoots.has(edge.from)) {
+        changedRoots.add(edge.from);
+        grew = true;
+    }
+}
+assert.deepEqual(edges.filter(edge => changedRoots.has(edge.target) && edge.rmv !== RELEASE_COHORT), [], 'all transitive parents of modified modules must join this cohort');
+assert.deepEqual(computedImports, [{ file: 'index.js', expression: 'specifier' }], 'unreviewed variable imports must fail closed');
+const indexSource = readFileSync(join(ROOT, 'index.js'), 'utf8');
+assert.equal([...indexSource.matchAll(/loadOptional\([^,]+,\s*(['"`])(\.\.?\/[^'"`]+\.js\?rmv=[^'"`]+)\1/g)].length, 5, 'the one variable import must be backed by all five reviewed literal loadOptional call sites');
 
 // 3. 各模块内部的 RUNTIME_VERSION 不是带内部后缀的发布缓存键。
 const runtimeVersions = new Set();
@@ -120,6 +149,7 @@ const identityPatterns = new Map([
     ['src/mobileModalHotfix.js', /const RELEASE_VERSION\s*=\s*'([^']+)'/],
     ['src/renderedVisualFeedbackHotfix.js', /const VERSION\s*=\s*'([^']+)'/],
 ]);
+assert.equal(indexSource.match(/const GOLDEN_MERGE_VERSION\s*=\s*'([^']+)'/)?.[1], RELEASE_RUNTIME, 'boot lifecycle version must match this release');
 for (const [file, pattern] of identityPatterns) {
     assert.equal(readFileSync(join(ROOT, file), 'utf8').match(pattern)?.[1], RELEASE_RUNTIME, `${file} runtime identity must match the release`);
 }
@@ -129,4 +159,4 @@ assert.equal(manifest.js, `index.js?rmv=${RELEASE_COHORT}`, 'the manifest entryp
 assert.equal(manifest.css, `style.css?rmv=${RELEASE_RUNTIME}`);
 assert.equal(manifest.version, RELEASE_RUNTIME, 'the manifest version must match the runtime');
 
-console.log(`cacheBustClosure: ${edges.length} 条 import 边，VarietyFix1 单一 cache cohort 通过`);
+console.log(`cacheBustClosure: ${edges.length} 条导入/字面量检查匹配，${changedRoots.size} 个反向闭包模块，${RELEASE_COHORT} 单一 cache cohort 通过`);

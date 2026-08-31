@@ -129,10 +129,10 @@ assert.equal(history()[0].themeIds[0], 'T.legacy');
 assert.equal(history()[0].visualSignature, 'sig');
 assert.equal(values.has(PENDING_KEY), false, '单面提交成功后应清空 PENDING_KEY');
 
-// ── 11. 批次上限为 3，多余的面被截断 ───────────────────────────────────
+// ── 11. 批次上限为 3，超界计划整体拒绝而非静默改变计划 ────────────────
 reset();
-storage.setPendingComboBatch([combo('1'), combo('2'), combo('3'), combo('4'), combo('5')]);
-assert.equal(JSON.parse(values.get(BATCH_KEY)).faces.length, 3, '批次最多保留三面');
+assert.equal(storage.setPendingComboBatch([combo('1'), combo('2'), combo('3'), combo('4'), combo('5')]), '', '超过三面应拒绝而非截断');
+assert.equal(values.has(BATCH_KEY), false, '拒绝超界批次不得留下部分计划');
 
 // ── 12. 空批次不得留下残留槽 ───────────────────────────────────────────
 reset();

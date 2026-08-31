@@ -28,23 +28,25 @@ function freshSettings(overrides = {}) {
     return settings;
 }
 const shape = face => `${(face?.combo?.themeIds || []).join(',')}|${(face?.combo?.formatIds || []).join(',')}`;
+// C1 requires explicit current-target identity; no body scanning or guessed owner.
+const batchContext = () => ({ batchIdentity: { mesid: 7, swipeId: 0, sourceHash: 'batch-plan-fixture' } });
 
 // ── 1. 同 scope 批次幂等：重复调用必须返回同一批计划 ────────────────────
 {
     const settings = freshSettings();
-    const first = picker.pickCombinationBatch(settings, 'scope-idem', null, 3);
-    const second = picker.pickCombinationBatch(settings, 'scope-idem', null, 3);
+    const first = picker.pickCombinationBatch(settings, 'scope-idem', batchContext(), 3);
+    const second = picker.pickCombinationBatch(settings, 'scope-idem', batchContext(), 3);
     assert.equal(first.length, 3, '三面规划应产生三面');
     assert.deepEqual(first.map(shape), second.map(shape), '同 scope 重复调用必须返回同一批次计划');
-    const third = picker.pickCombinationBatch(settings, 'scope-idem', null, 3);
+    const third = picker.pickCombinationBatch(settings, 'scope-idem', batchContext(), 3);
     assert.deepEqual(first.map(shape), third.map(shape), '第三次调用仍应命中同一计划');
 }
 
 // ── 2. 不同 scope 必须重新规划 ────────────────────────────────────────
 {
     const settings = freshSettings();
-    const a = picker.pickCombinationBatch(settings, 'scope-a', null, 3);
-    const b = picker.pickCombinationBatch(settings, 'scope-b', null, 3);
+    const a = picker.pickCombinationBatch(settings, 'scope-a', batchContext(), 3);
+    const b = picker.pickCombinationBatch(settings, 'scope-b', batchContext(), 3);
     assert.equal(a.length, 3);
     assert.equal(b.length, 3);
     assert.notDeepEqual(a.map(shape), b.map(shape), '不同 scope 应各自规划');
@@ -57,7 +59,7 @@ const shape = face => `${(face?.combo?.themeIds || []).join(',')}|${(face?.combo
     const rounds = 120;
     for (let index = 0; index < rounds; index += 1) {
         const settings = freshSettings();
-        const faces = picker.pickCombinationBatch(settings, `batch-${index}`, null, 3);
+        const faces = picker.pickCombinationBatch(settings, `batch-${index}`, batchContext(), 3);
         const themes = faces.flatMap(face => face?.combo?.themeIds || []);
         const formats = faces.flatMap(face => face?.combo?.formatIds || []);
         if (new Set(themes).size !== themes.length) duplicateThemeBatches += 1;
@@ -70,7 +72,7 @@ const shape = face => `${(face?.combo?.themeIds || []).join(',')}|${(face?.combo
 // ── 4. 三面规划不污染单面 pending，批次槽成为权威状态 ───────────────────
 {
     const settings = freshSettings();
-    picker.pickCombinationBatch(settings, 'scope-authority', null, 3);
+    picker.pickCombinationBatch(settings, 'scope-authority', batchContext(), 3);
     assert.ok(values.has(BATCH_KEY), '三面规划应建立批次槽');
     assert.equal(values.has(PENDING_KEY), false, '三面规划不得留下单面 pending');
     const batch = JSON.parse(values.get(BATCH_KEY));
@@ -105,7 +107,7 @@ const shape = face => `${(face?.combo?.themeIds || []).join(',')}|${(face?.combo
 {
     const cases = [
         [undefined, 1], [1, 1], [2, 2], [3, 3],
-        [0, 1], [4, 1], [-1, 1], ['2', 2], [2.7, 2],
+        [0, 1], [4, 1], [-1, 1], ['2', 1], [2.7, 1],
         [Number.NaN, 1], [Number.POSITIVE_INFINITY, 1], [null, 1],
     ];
     for (const [input, expected] of cases) {
@@ -120,14 +122,14 @@ const shape = face => `${(face?.combo?.themeIds || []).join(',')}|${(face?.combo
 // ── 8. 批次计划不得越过黑名单等更高优先级过滤 ──────────────────────────
 {
     const settings = freshSettings();
-    const faces = picker.pickCombinationBatch(settings, 'scope-pool', null, 3);
+    const faces = picker.pickCombinationBatch(settings, 'scope-pool', batchContext(), 3);
     for (const face of faces) {
         assert.ok((face?.combo?.themeIds || []).length > 0, '每面都应抽到主题');
         assert.ok((face?.combo?.formatIds || []).length > 0, '每面都应抽到展现形式');
     }
 }
 
-// ── 9. 批次存储失败 → 安全降级为单面，且不缓存失败计划 ────────────────
+// ── 9. 批次存储失败 → 固定首面；同身份稳定，新 scope 存储恢复 ──────────
 {
     const settings = freshSettings();
     const realSet = globalThis.localStorage.setItem;
@@ -135,16 +137,19 @@ const shape = face => `${(face?.combo?.themeIds || []).join(',')}|${(face?.combo
         if (key === BATCH_KEY) return; // 静默失败
         return realSet(key, value);
     };
-    const degraded = picker.pickCombinationBatch(settings, 'scope-degrade', null, 3);
+    const degraded = picker.pickCombinationBatch(settings, 'scope-degrade', batchContext(), 3);
     globalThis.localStorage.setItem = realSet;
 
     assert.equal(degraded.length, 1, '批次存储失败必须降级为单面');
     assert.equal(values.has(BATCH_KEY), false, '失败后不得留下批次槽');
     assert.ok(values.has(PENDING_KEY), '降级后应回到既有单面 PENDING_KEY');
 
-    // 不得缓存失败计划：存储恢复后同 scope 应能重新规划出三面
-    const recovered = picker.pickCombinationBatch(settings, 'scope-degrade', null, 3);
-    assert.equal(recovered.length, 3, '存储恢复后同 scope 应重新规划三面');
+    // C1：不得缓存失败的三面半成品，也不能同 scope 偷偷重新抽签。
+    const stable = picker.pickCombinationBatch(settings, 'scope-degrade', batchContext(), 3);
+    assert.equal(stable.length, 1, '存储恢复后同身份 / scope 必须保持首面');
+    assert.deepEqual(stable.map(shape), degraded.map(shape), '降级首面不得被重新抽签');
+    const recovered = picker.pickCombinationBatch(settings, 'scope-degrade-recovered', batchContext(), 3);
+    assert.equal(recovered.length, 3, '存储恢复后新 scope 应重新规划三面');
     assert.ok(values.has(BATCH_KEY), '恢复后应建立批次槽');
 }
 

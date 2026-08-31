@@ -1,0 +1,196 @@
+{
+  "source": "Untouched uploaded tototest-main(1).zip, runtime 1.5.5",
+  "allowedFunctional": [
+    "src/settings.js",
+    "src/picker.js",
+    "src/storage.js",
+    "src/promptBuilder.js",
+    "src/ui.js"
+  ],
+  "entries": [
+    {
+      "file": "data/independentBehaviorPatch.js",
+      "normalizedSha256": "e196ff548d925c838d86fef06515061fdfa82ad9ad37fd552339e654f54e2a7c"
+    },
+    {
+      "file": "data/raw/creativeExpansionRules.js",
+      "normalizedSha256": "82c94cc708a4c9048987b8a0aafc465cfe165d4e3053c1e4344389a7006f3419"
+    },
+    {
+      "file": "data/raw/cssScopeRules.js",
+      "normalizedSha256": "06a6b4e2d95c386aa9fa1416020187fb8bb02f93f7f68a0187b86e17723aea7e"
+    },
+    {
+      "file": "data/raw/dynamicCommitmentRules.js",
+      "normalizedSha256": "024b7d83431318a8f6db617051ff04c2cfa824942eedcb08b459ec7a8875e0f5"
+    },
+    {
+      "file": "data/raw/dynamicVisualRules.js",
+      "normalizedSha256": "cee7aa96c1b35c23cd3541daa446e38802c14bf13300aaa3f773b331e6c28466"
+    },
+    {
+      "file": "data/raw/formatPriorityRules.js",
+      "normalizedSha256": "44f79062a7e6a82c4259aec79810a45f2ff490d20aabf060d57b831ed10bf59b"
+    },
+    {
+      "file": "data/raw/itemInterpretationRules.js",
+      "normalizedSha256": "28cd507bb04cc2c45adb3c8d689af1ac72737f5854ea14feb9f7f3e69d12ca6c"
+    },
+    {
+      "file": "data/raw/mediaSelfJudgmentRules.js",
+      "normalizedSha256": "0f446214a86e0e7bd7918eb7f0f482e8c2f3c313513f4e3fd26a7a40a135bc9e"
+    },
+    {
+      "file": "data/raw/modularDegradationRules.js",
+      "normalizedSha256": "b354eccd03992e87bc3b28867a2d1ff33e3bc394023867152fe82334c8f4cc96"
+    },
+    {
+      "file": "data/raw/rawExecutionRules.js",
+      "normalizedSha256": "1cd9a67d485dd3d4dbf040e7e847a89e2f45a4cbffc5a2d06d0e751d3f0e9dcd"
+    },
+    {
+      "file": "data/raw/rawPresentationFormats.js",
+      "normalizedSha256": "5303c831d228047bb43d2e309e19e0f688609747a15ef6c076191e00415c6ade"
+    },
+    {
+      "file": "data/raw/rawSegmentLookup.js",
+      "normalizedSha256": "33aaebaeb760dd93c4cf65b871ab63d7b8e870fc1725e72ca92f40f65ad422a0"
+    },
+    {
+      "file": "data/raw/rawThematicCategories.js",
+      "normalizedSha256": "31de5b52124068d8079355fb94ee7545d9e57e42e594965a514049b4f4549ea4"
+    },
+    {
+      "file": "data/raw/rawUniversalExecutionRules.js",
+      "normalizedSha256": "6639118525892fb0a2b5e31bf44804a628645b0d4253a47bbb2fea19088b0e9a"
+    },
+    {
+      "file": "data/raw/runtimeLanguageRules.js",
+      "normalizedSha256": "49124b7ef89af2f1c5603bd2718966e4b97c311d72e76121dd3e75a8f9e096e0"
+    },
+    {
+      "file": "data/raw/stateBarIsolationRules.js",
+      "normalizedSha256": "dce378512338793357e2598b859ce2a6abe05998434ba7348f619d5af663947a"
+    },
+    {
+      "file": "data/raw/tarotImageRules.js",
+      "normalizedSha256": "341dfa5cee42801a534527af70e44a4584466213b8a8d7ec4607d6989044e4f4"
+    },
+    {
+      "file": "data/raw/touchTheaterRules.js",
+      "normalizedSha256": "75cf1c5233d91c150a9ef6ab4db03239489035452f8a6743d6ab4132c9fcedf1"
+    },
+    {
+      "file": "data/raw/userRequestOverrideRules.js",
+      "normalizedSha256": "088e9aa0c7210a589deca2895802a2288f23c71d5be23240827dcedf01dfcce7"
+    },
+    {
+      "file": "data/raw/visualFamilyCooldownRules.js",
+      "normalizedSha256": "f2028d649c18369a55e90822c3f73dc37b1bc97c6d206c8b9b7e8bf55f552b68"
+    },
+    {
+      "file": "data/raw/visualSceneryRules.js",
+      "normalizedSha256": "22a1f51ef8c925e7a77cae0d8bf62bab20bd8f9723bf76bd00028ce5ce8b07b6"
+    },
+    {
+      "file": "data/structured/presentationIndex.js",
+      "normalizedSha256": "49299e5e8e90c45857bf6c10a59e257a76acb4755186dab53b1ca1ea0a014068"
+    },
+    {
+      "file": "data/structured/thematicIndex.js",
+      "normalizedSha256": "cf2a2e6a7ce171fc8d7a231d2076c602cea6f02291bc6a2427318dc01fafbacc"
+    },
+    {
+      "file": "index.js",
+      "normalizedSha256": "9984ee1dd6f930d39c14ca5be32e2b35494f73985b5727542e2d3306f1b5765a"
+    },
+    {
+      "file": "src/blacklist.js",
+      "normalizedSha256": "4eb2142ce88ecee2279fa03646c7f2bf71577a581de9a7999b7f0189785fbf0c"
+    },
+    {
+      "file": "src/checkedSelectorRepair.js",
+      "normalizedSha256": "d8e0f629dcc5b5839a86ec325c68353a7ff9223556fd1531e50a8a492e1e53d0"
+    },
+    {
+      "file": "src/externalDiagnostics.js",
+      "normalizedSha256": "313c2dc2133fcb25139906793e4f05ff81f44e1e9f16a0b6b18e082c7f9a52ec"
+    },
+    {
+      "file": "src/feedbackCat.js",
+      "normalizedSha256": "91faba089d3671e3c9bce497e9863d8fec0054a41fae684e7d4f237004836f61"
+    },
+    {
+      "file": "src/generationGuard.js",
+      "normalizedSha256": "1db393b8aebfa75d67140baa0338905c47fa4eba6ef87c33b38a7f8f8611f454"
+    },
+    {
+      "file": "src/independentApi.js",
+      "normalizedSha256": "fb9d0a10d08d2b2c29f2a441acf4ce10f6da8b61e63ca1cc44abfb5de1abd556"
+    },
+    {
+      "file": "src/independentProfileSelectorHotfix.js",
+      "normalizedSha256": "76a80dd75f19f7e11e35d352ca6f15f73ab0fc58508e9c3598efd091858bf526"
+    },
+    {
+      "file": "src/independentQualityGate.js",
+      "normalizedSha256": "8d1477a7abdb80726cefc6fdd851ee032786bc2f16f2dc6f3f43b7a1ca545150"
+    },
+    {
+      "file": "src/independentSecurityGuard.js",
+      "normalizedSha256": "901a3be1de04b911a3733061d0898bb585703213e8c82a63fef56aecf0beaca2"
+    },
+    {
+      "file": "src/injector.js",
+      "normalizedSha256": "50fb3c9834e5c800168004611d817f91ddd5a0034984557a79abf9590fba5be6"
+    },
+    {
+      "file": "src/maintenanceRecommendationHotfix.js",
+      "normalizedSha256": "18be2dd8104a0dd05d3f2cde92cc81768a238623b4703b023f1783fefd5475bf"
+    },
+    {
+      "file": "src/memoryScanner.js",
+      "normalizedSha256": "2bed87af3beaa132a6527900ea81aeca666508852f8f013ed07595412744eb0b"
+    },
+    {
+      "file": "src/mobileModalHotfix.js",
+      "normalizedSha256": "2dd40733e16efba8c6c8bba8b02530f9ebac33c6c3aab116acd0e4520143f79b"
+    },
+    {
+      "file": "src/outputSanitizer.js",
+      "normalizedSha256": "0d2e03b9f5f43af76a5e33b44af75b1e0618a4647277a3ab56024f5e3253ea30"
+    },
+    {
+      "file": "src/paletteCooldown.js",
+      "normalizedSha256": "ce58c62a14b9d9129f437fa00bb19d0be78f398fbf8c6d7e8b0920406dede474"
+    },
+    {
+      "file": "src/performanceDiagnostics.js",
+      "normalizedSha256": "9699cfeb2feec8a158ce943bae77866c236239ff6012d3e65ddf22aa7b86596f"
+    },
+    {
+      "file": "src/presentationQuality.js",
+      "normalizedSha256": "1e9a0b87e9749602fb90dc179b0c79962317e06fb9180a4714762e18eef93c6f"
+    },
+    {
+      "file": "src/renderedVisualFeedbackHotfix.js",
+      "normalizedSha256": "efb1b85d898e50e5e524c65b23a2d2783c05ae75c436fe80137ff4d1947dd942"
+    },
+    {
+      "file": "src/tokenMeter.js",
+      "normalizedSha256": "e1c9f89124e00dd02608d504d3897f2674207c1b5961dea635022e4907a62ddc"
+    },
+    {
+      "file": "src/touchTheater.js",
+      "normalizedSha256": "c13ed4d1765526857fd305849e9c319328312badc0a99ef5655ebcc75b9a1683"
+    },
+    {
+      "file": "src/visualScanner.js",
+      "normalizedSha256": "5e7cde9f6089fc7f0fca6b602ff21cd68b06068c1289ade0ae1520dfb6843c60"
+    },
+    {
+      "file": "style.css",
+      "normalizedSha256": "38a9e1f0e81a04edaedb952332cd5881cf306c2918b69fe1845af915992a3304"
+    }
+  ]
+}
