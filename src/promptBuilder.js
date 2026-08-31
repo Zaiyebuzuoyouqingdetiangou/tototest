@@ -1,12 +1,12 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.17';
 import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.17';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.30.17';
-import { pickCombination } from './picker.js?rmv=1.5-varietyfix1';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5-varietyfix1';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5-varietyfix1';
+import { pickCombination } from './picker.js?rmv=1.5.6-abc1';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.6-abc1';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.6-abc1';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.17';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5-varietyfix1';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5-varietyfix1';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.6-abc1';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.6-abc1';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -717,6 +717,9 @@ ${selectedFormats}`);
         chunks.push(legacyPresentationEmbodimentRule());
     }
     chunks.push(globalCompletionFloorRule());
+    if (settings?.enhancedVisualDrawing === true) {
+        chunks.push('可随本轮内容自由活用 HTML / CSS / 安全内联 SVG 等视觉技法；媒介与组合方式自由选择，不要求每轮使用 SVG。');
+    }
     chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
     chunks.push(interactionFamilyCooldownRule());
     chunks.push(innerDetailsCooldownRule());

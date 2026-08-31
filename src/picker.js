@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5-varietyfix1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5-varietyfix1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.6-abc1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.6-abc1';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -12,10 +12,10 @@ import {
     setDirectiveScopedPick,
     setLastCombo,
     setPendingComboBatch,
+    readPendingComboBatch,
     clearPendingComboBatch,
-    clearPendingCombo,
-} from './storage.js?rmv=1.5-varietyfix1';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5-varietyfix1';
+} from './storage.js?rmv=1.5.6-abc1';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.6-abc1';
 
 function randomUnit() {
     try {
@@ -215,7 +215,7 @@ function immediateFamilySet(values) {
     return new Set((Array.isArray(values) ? values : []).map(value => String(value || '')).filter(Boolean));
 }
 
-function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], eligibleMisses = {}, favoriteMultipliers = {}, recentGroupHitMap = {}, recentFamilyHitMap = {}, immediateFamilyKeys = []) {
+function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], eligibleMisses = {}, favoriteMultipliers = {}, recentGroupHitMap = {}, recentFamilyHitMap = {}, immediateFamilyKeys = [], groupCooldownEnabled = true) {
     const recent = new Set(recentIds || []);
     const groups = new Set(recentGroups || []);
     const hardExcluded = new Set(hardExcludedIds || []);
@@ -257,10 +257,10 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
         const weighted = available
             .map(item => {
                 let weight = balancedFamilyItemFactor(familySizes.get(formatFamilyKey(item)));
-                // 第一次同组命中保留原 0.35 软冷却；同一组在最近窗口反复
-                // 出现时继续累积有下限的债务。不同条目的基础权重仍不变。
+                // 仅显式 IF 主题保留大家族软冷却；普通路线允许同组的不同玩法
+                // 自然相邻。IF 的原系数、下界及所有候选的基础权重保持不变。
                 const groupHits = Number(recentGroupHitMap?.[item.group] || (groups.has(item.group) ? 1 : 0));
-                if (avoidRepeat && groupHits) weight *= recentDiversityFactor(groupHits, 0.35);
+                if (avoidRepeat && groupCooldownEnabled && groupHits) weight *= recentDiversityFactor(groupHits, 0.35);
                 // 格式索引同时含父项与子项。精确 ID 虽不同，前两段家族相同
                 // 时观感仍高度近似，因此增加软家族避让而不做硬排除。
                 const familyHits = Number(recentFamilyHitMap?.[formatFamilyKey(item)] || 0);
@@ -677,10 +677,12 @@ function getVisualSceneryFormat() {
     return PRESENTATION_FORMATS.find(item => item.id === '10.2.2' || normalizeText(item.title) === normalizeText('Visual Scenery')) || null;
 }
 
-function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, themeCount, formatCount, recent, hardRecent, previousThemeFamilyKeys = [], previousFormatFamilyKeys = [], favoriteThemeIds, favoriteFormatIds, favoriteThemeMultipliers, favoriteFormatMultipliers, formatEligibleMisses }) {
+function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, themeCount, formatCount, recent, formalRecent, hardRecent, previousThemeFamilyKeys = [], previousFormatFamilyKeys = [], favoriteThemeIds, favoriteFormatIds, favoriteThemeMultipliers, favoriteFormatMultipliers, formatEligibleMisses }) {
     if (directive?.disabled) return { disabled: true, directive };
     const themeFamilyHitMap = recentFamilyHits(recent.themeIdHits, themeFamilyKey);
-    const formatFamilyHitMap = recentFamilyHits(recent.formatIdHits, formatFamilyKey);
+    // 格式兄弟家族只参考既有正式提交记录；失败 attempt 仍参与 exact 防重，
+    // 但不再连带冷却同 family/group 的未抽中母本。主题与 pity 语义不变。
+    const formatFamilyHitMap = recentFamilyHits(formalRecent?.formatIdHits, formatFamilyKey);
 
     const pickedThemes = directive?.hasThemeRequest
         ? []
@@ -697,32 +699,36 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
             themeFamilyHitMap,
             previousThemeFamilyKeys,
         );
+    // 这里只提前组装最终主题，不省略 format_only 原有的主题随机抽数。
+    // 与 Prompt 的 IF 判据一致：只认已选主题的显式 tag，不猜标题或编号。
+    const formatOnly = settings.samplingMode === 'format_only';
+    const themes = formatOnly
+        ? []
+        : uniqueById([...(directive?.themes || []), ...pickedThemes]).slice(0, Math.max(themeCount, directive?.themes?.length || 0));
+    const formatGroupCooldownEnabled = themes.some(item =>
+        Array.isArray(item?.tags) && item.tags.some(tag => String(tag || '').trim().toLowerCase() === 'if'));
     const formatSample = directive?.hasFormatRequest
         ? { selected: [], eligibleIds: [] }
         : weightedSample(
             formatPool,
             formatCount,
             recent.formatIds,
-            recent.formatGroups,
+            formalRecent?.formatGroups || [],
             settings.avoidRepeat,
             hardRecent.formatIds,
             favoriteFormatIds,
             formatEligibleMisses,
             favoriteFormatMultipliers,
-            recent.formatGroupHits,
+            formalRecent?.formatGroupHits || {},
             formatFamilyHitMap,
             previousFormatFamilyKeys,
+            formatGroupCooldownEnabled,
         );
     const pickedFormats = formatSample.selected;
     const visualSceneryFormat = getVisualSceneryFormat();
     const forcedFormats = settings.forceVisualScenery && visualSceneryFormat ? [visualSceneryFormat] : [];
     const directiveFormats = directive?.formats || [];
     const directiveWantsVisualScenery = directiveFormats.some(item => item?.id === '10.2.2');
-
-    const formatOnly = settings.samplingMode === 'format_only';
-    const themes = formatOnly
-        ? []
-        : uniqueById([...(directive?.themes || []), ...pickedThemes]).slice(0, Math.max(themeCount, directive?.themes?.length || 0));
 
     let formats;
     if (forcedFormats.length) {
@@ -798,71 +804,237 @@ function directiveScopeKey(directive, settings) {
     return hashText(`${directive.messageKey}|${directive.rawDirective}|${config}`);
 }
 
-// 单请求多面：按面依次抽取，每一面都要避开历史冷却 + 本批前面已选的组合。
-//
-// 复用既有 hardExcluded 机制而不是新写一套过滤：批内互斥与历史冷却因此走同一条
-// 代码路径，不会出现两套优先级互相打架。
-//
-// 幂等：同一个 generationScopeKey 重复调用必须返回同一批次计划。
-// pickCombination 自己的 cachedPick 只有一个槽，抽完第 3 面就被 face2 占据，
-// 第二次调用时第 1 面会重新抽 —— 所以批次必须有自己的计划缓存。
+// 多面基础层独立缓存；不接入当前单面 Prompt / API / DOM 调用链。
 let cachedBatchPlan = null;
 
-// 批次规划建立后，batch pending 成为多面计划的权威状态：
-// 每个 face 不再各自调用 setLastCombo()，否则单面 PENDING_KEY 会被逐面覆盖，
-// 最终只剩最后一面，前面两面的组合永久丢失。
-export function pickCombinationBatch(settings, generationScopeKey = '', generationContext = null, faceCount = 1) {
-    const total = (faceCount === 2 || faceCount === 3) ? faceCount : 1;
-    const scopeKey = normalizeGenerationScopeKey(generationScopeKey);
+function cloneBatchPlan(value) {
+    return JSON.parse(JSON.stringify(value));
+}
 
-    // 单面：完全走既有路径，setLastCombo / PENDING_KEY 语义与 1.4.5-test 逐字一致。
-    if (total === 1) {
-        clearPendingComboBatch();
-        return [pickCombination(settings, generationScopeKey, generationContext)];
-    }
-
-    if (scopeKey && cachedBatchPlan?.scopeKey === scopeKey && cachedBatchPlan?.total === total) {
-        return cachedBatchPlan.faces;
-    }
-
-    const first = pickCombination(settings, generationScopeKey, generationContext);
-    if (first?.disabled || !first?.combo) {
-        clearPendingComboBatch();
-        return [first];
-    }
-
-    const faces = [first];
-    const usedThemes = [...(first.combo.themeIds || [])];
-    const usedFormats = [...(first.combo.formatIds || [])];
-
-    for (let index = 1; index < total; index += 1) {
-        // 每面独立 scopeKey，否则 pickCombination 的点菜缓存会让三面命中同一结果。
-        const faceScope = scopeKey ? `${scopeKey}:face${index}` : '';
-        const next = pickCombination(settings, faceScope, {
-            ...(generationContext || {}),
-            batchExcludedThemeIds: [...usedThemes],
-            batchExcludedFormatIds: [...usedFormats],
+function batchFacesMatch(pending, faces, batchId) {
+    if (!pending || !Array.isArray(pending.faces) || pending.faces.length !== faces.length) return false;
+    return faces.every((face, faceIndex) => {
+        const combo = face.combo;
+        const stored = pending.faces[faceIndex];
+        const signature = JSON.stringify({
+            themeIds: combo.themeIds || [], formatIds: combo.formatIds || [],
+            samplingMode: combo.samplingMode || 'classic', forcedVisualScenery: !!combo.forcedVisualScenery,
         });
-        if (!next?.combo) break;
-        faces.push(next);
-        usedThemes.push(...(next.combo.themeIds || []));
-        usedFormats.push(...(next.combo.formatIds || []));
+        return stored?.batchId === batchId && stored.faceIndex === faceIndex && stored.signature === signature &&
+            JSON.stringify(stored.themeIds) === JSON.stringify(combo.themeIds) &&
+            JSON.stringify(stored.formatIds) === JSON.stringify(combo.formatIds);
+    });
+}
+
+function batchRandomSettingsKey(settings, total, favorites, exclusions, directive = null) {
+    const sortedIds = values => compactUnique(Array.isArray(values) ? values : []).sort();
+    // 完整白名单 JSON，不使用可能碰撞的短 hash，也不序列化 API、正文或视觉设置。
+    const key = JSON.stringify({
+        faceCount: total,
+        mode: settings.mode,
+        samplingMode: settings.samplingMode || 'classic',
+        themesMin: settings.themesMin,
+        themesMax: settings.themesMax,
+        formatsMin: settings.formatsMin,
+        formatsMax: settings.formatsMax,
+        avoidRepeat: settings.avoidRepeat,
+        cooldownRounds: settings.cooldownRounds || 10,
+        userDirectivePriority: !!settings.userDirectivePriority,
+        forceVisualScenery: !!settings.forceVisualScenery,
+        blacklistEnabled: settings.blacklistEnabled !== false,
+        blacklistedThemeIds: sortedIds(settings.blacklistedThemeIds),
+        blacklistedFormatIds: sortedIds(settings.blacklistedFormatIds),
+        favoriteThemes: [...favorites.themeIds].sort().map(id => [id, favorites.themeMultipliers[id]]),
+        favoriteFormats: [...favorites.formatIds].sort().map(id => [id, favorites.formatMultipliers[id]]),
+        excludedThemeIds: exclusions.themeIds,
+        excludedFormatIds: exclusions.formatIds,
+        // 只保留已有点菜解析器限定范围内的明确指令，不保存整条用户消息。
+        directive: directive ? {
+            rawDirective: directive.rawDirective,
+            disabled: !!directive.disabled,
+            themeIds: (directive.themes || []).map(item => item.id),
+            formatIds: (directive.formats || []).map(item => item.id),
+        } : null,
+    });
+    return key.length <= 8192 ? key : '';
+}
+
+function batchPlanningIdentity(settings, generationScopeKey, generationContext, total) {
+    const source = generationContext?.batchIdentity;
+    const boundedString = (value, max) => typeof value === 'string' && value.trim().length > 0 && value.length <= max;
+    if (!source || !Number.isSafeInteger(source.mesid) || source.mesid < 0 ||
+        !Number.isSafeInteger(source.swipeId) || source.swipeId < 0 ||
+        !boundedString(source.sourceHash, 512) || !boundedString(generationScopeKey, 1024)) return null;
+    const chatKey = getCurrentChatKey(generationContext?.chat || null);
+    if (!boundedString(chatKey, 1024)) return null;
+    const favorites = getFavoritesState(settings);
+    const exclusions = {
+        themeIds: compactUnique(Array.isArray(generationContext?.batchExcludedThemeIds) ? generationContext.batchExcludedThemeIds : []).sort(),
+        formatIds: compactUnique(Array.isArray(generationContext?.batchExcludedFormatIds) ? generationContext.batchExcludedFormatIds : []).sort(),
+    };
+    // 先拒绝本来就超限的设置，不为缺身份/非法签名额外读取聊天。
+    if (!batchRandomSettingsKey(settings, total, favorites, exclusions)) return null;
+    const currentTurn = settings.userDirectivePriority ? getCurrentTurnUserMessage(generationContext?.chat || null) : null;
+    const directive = currentTurn ? parseUserDirective(currentTurn) : null;
+    const settingsKey = batchRandomSettingsKey(settings, total, favorites, exclusions, directive);
+    return {
+        identity: { chatKey, generationScopeKey, mesid: source.mesid, swipeId: source.swipeId, sourceHash: source.sourceHash, settingsKey },
+        favorites,
+        exclusions,
+        directive,
+        signatureTooLarge: !settingsKey,
+    };
+}
+
+function batchPickSnapshot(settings, generationContext, planning) {
+    const formalRecent = getRecentIds(settings.cooldownRounds || 10);
+    const attemptRecent = getRecentGenerationAttemptIds(planning.identity.chatKey, settings.cooldownRounds || 10);
+    const validFormatIds = PRESENTATION_FORMATS.map(item => String(item?.id || '')).filter(Boolean);
+    const excludedThemes = new Set(planning.exclusions.themeIds);
+    const excludedFormats = new Set(planning.exclusions.formatIds);
+    return {
+        last: getLastCombo(),
+        formalRecent,
+        attemptRecent,
+        recent: mergeRecent(formalRecent, attemptRecent),
+        directive: planning.directive,
+        favorites: planning.favorites,
+        exclusions: planning.exclusions,
+        validFormatIds,
+        formatEligibleMisses: getFormatEligibleMisses(validFormatIds),
+        themePool: filterRandomThemePool(THEMATIC_CATEGORIES.filter(item => allowByMode(item, settings.mode)), settings).filter(item => !excludedThemes.has(item.id)),
+        formatPool: filterRandomFormatPool(PRESENTATION_FORMATS.filter(item => allowByMode(item, settings.mode)), settings).filter(item => !excludedFormats.has(item.id)),
+    };
+}
+
+function planBatchFace(settings, snapshot, usedThemeIds, usedFormatIds, counts = null) {
+    // 在生产 selector 的输入池里移除批内已选 exact，历史不足时的回退不能恢复它们。
+    // 不要求每面 family / group 不同，仍由同一权重函数决定。
+    const themePool = snapshot.themePool.filter(item => !usedThemeIds.has(item.id));
+    const formatPool = snapshot.formatPool.filter(item => !usedFormatIds.has(item.id));
+    const themeCount = counts ? counts.themeCount : weightedThemeCount(settings);
+    const formatCount = counts ? counts.formatCount : weightedFormatCount(settings);
+    const result = applyDirectiveOrRandom({
+        settings,
+        directive: snapshot.directive,
+        themePool,
+        formatPool,
+        themeCount,
+        formatCount,
+        recent: snapshot.recent,
+        formalRecent: snapshot.formalRecent,
+        hardRecent: {
+            themeIds: [...(snapshot.attemptRecent.themeIds || []), ...snapshot.exclusions.themeIds],
+            formatIds: [...(snapshot.attemptRecent.formatIds || []), ...snapshot.exclusions.formatIds],
+        },
+        previousThemeFamilyKeys: (snapshot.last?.themeIds || []).map(themeFamilyKey),
+        previousFormatFamilyKeys: (snapshot.last?.formatIds || []).map(formatFamilyKey),
+        favoriteThemeIds: snapshot.favorites.themeIds,
+        favoriteFormatIds: snapshot.favorites.formatIds,
+        favoriteThemeMultipliers: snapshot.favorites.themeMultipliers,
+        favoriteFormatMultipliers: snapshot.favorites.formatMultipliers,
+        formatEligibleMisses: snapshot.formatEligibleMisses,
+    });
+    return { result, payload: { combo: comboFromSelection(result, settings, snapshot.recent), last: snapshot.last, directive: snapshot.directive || null } };
+}
+
+function finalizeBatchFallback(first, snapshot, scopeKey, identityKey, chatKey, directiveCacheKey = '') {
+    // 复用首面；不再次调用 single 抽签。只完成一次原单面的写入顺序。
+    if (first.result.formatFairnessEligibleIds?.length) {
+        recordFormatEligibleMissRound({
+            eligibleIds: first.result.formatFairnessEligibleIds,
+            selectedIds: first.result.formatFairnessSelectedIds,
+            validFormatIds: snapshot.validFormatIds,
+        });
+    }
+    if (snapshot.directive && directiveCacheKey) setDirectiveScopedPick(chatKey, directiveCacheKey, first.payload.combo);
+    setLastCombo(first.payload.combo);
+    recordGenerationAttempt(first.payload.combo, { chatKey, attemptId: scopeKey, directiveScoped: !!snapshot.directive });
+    cachedPick = { scopeKey, payload: cloneBatchPlan(first.payload), batchFallbackKey: identityKey };
+    return [cloneBatchPlan(first.payload)];
+}
+
+function batchPrioritySingle(settings, snapshot, scopeKey, identityKey, chatKey) {
+    // 复用刚才唯一一次取得的点菜快照。计数抽数与原 single 的禁用/缓存顺序一致。
+    const counts = { themeCount: weightedThemeCount(settings), formatCount: weightedFormatCount(settings) };
+    if (snapshot.directive?.disabled) {
+        const payload = { disabled: true, directive: snapshot.directive, combo: null, last: snapshot.last };
+        cachedPick = { scopeKey, payload: cloneBatchPlan(payload), batchFallbackKey: identityKey };
+        return [cloneBatchPlan(payload)];
+    }
+    const directiveCacheKey = directiveScopeKey(snapshot.directive, settings);
+    const cachedCombo = snapshot.directive && directiveCacheKey
+        ? rehydrateDirectiveCombo(getDirectiveScopedPick(chatKey, directiveCacheKey), settings, snapshot.recent)
+        : null;
+    if (cachedCombo) {
+        const payload = { combo: cachedCombo, last: snapshot.last, directive: snapshot.directive };
+        setLastCombo(cachedCombo);
+        recordGenerationAttempt(cachedCombo, { chatKey, attemptId: scopeKey, directiveScoped: true });
+        cachedPick = { scopeKey, payload: cloneBatchPlan(payload), batchFallbackKey: identityKey };
+        return [cloneBatchPlan(payload)];
+    }
+    const first = planBatchFace(settings, snapshot, new Set(), new Set(), counts);
+    return finalizeBatchFallback(first, snapshot, scopeKey, identityKey, chatKey, directiveCacheKey);
+}
+
+function batchSinglePath(settings, generationScopeKey, generationContext, identityKey = '') {
+    const scopeKey = normalizeGenerationScopeKey(generationScopeKey);
+    // 完整身份的降级不得给无身份 / 其他身份的旧 single 缓存重新贴 owner。
+    // 面数 1 的早返回不经过这里，仍保留原单面缓存契约。
+    if (cachedPick?.scopeKey === scopeKey && (identityKey || cachedPick.batchFallbackKey) && cachedPick.batchFallbackKey !== identityKey) cachedPick = null;
+    const single = pickCombination(settings, generationScopeKey, generationContext);
+    if (identityKey && cachedPick?.scopeKey === scopeKey) cachedPick.batchFallbackKey = identityKey;
+    return [cloneBatchPlan(single)];
+}
+
+export function pickCombinationBatch(settings, generationScopeKey = '', generationContext = null, faceCount = 1) {
+    // 单面严格早返回：不得读取、清除或触碰另一轮 pending batch。
+    if (faceCount !== 2 && faceCount !== 3) return [pickCombination(settings, generationScopeKey, generationContext)];
+
+    const planning = batchPlanningIdentity(settings, generationScopeKey, generationContext, faceCount);
+    if (!planning) return batchSinglePath(settings, generationScopeKey, generationContext);
+    const { identity } = planning;
+    const identityKey = planning.signatureTooLarge ? '' : JSON.stringify(identity);
+    const scopeKey = normalizeGenerationScopeKey(generationScopeKey);
+    if (identityKey && cachedPick?.scopeKey === scopeKey && cachedPick.batchFallbackKey === identityKey) return [cloneBatchPlan(cachedPick.payload)];
+    if (identityKey && cachedBatchPlan?.identityKey === identityKey && batchFacesMatch(
+        readPendingComboBatch({ batchId: cachedBatchPlan.batchId, identity }), cachedBatchPlan.faces, cachedBatchPlan.batchId,
+    )) return cloneBatchPlan(cachedBatchPlan.faces);
+    cachedBatchPlan = null;
+
+    const snapshot = batchPickSnapshot(settings, generationContext, planning);
+    // 点菜和强制展现优先，不能为了凑面数改写用户明确选择。
+    if (planning.signatureTooLarge || snapshot.directive || settings.forceVisualScenery) {
+        return batchPrioritySingle(settings, snapshot, scopeKey, identityKey, identity.chatKey);
     }
 
-    // 批次 pending 取代逐面 setLastCombo 留下的单面残留：
-    // 先清掉被逐面覆盖过的 PENDING_KEY，再把完整计划写进批次槽。
-    clearPendingCombo();
-    const batchId = setPendingComboBatch(faces.map(item => item.combo));
-    if (!batchId) {
-        // 批次存储失败：多面计划无法提交，返回它只会得到三面都进不了历史的结果。
-        // 安全降级为原单面路径，且不缓存这个失败的计划。
-        console.warn('[RabbitMirror] Pending combo batch storage failed; falling back to single face.');
-        cachedBatchPlan = null;
-        clearPendingComboBatch();
-        return [pickCombination(settings, generationScopeKey, generationContext)];
+    const first = planBatchFace(settings, snapshot, new Set(), new Set());
+    const faces = [first.payload];
+    const usedThemeIds = new Set(first.payload.combo.themeIds);
+    const usedFormatIds = new Set(first.payload.combo.formatIds);
+    const wantsThemes = settings.samplingMode !== 'format_only';
+    if (usedFormatIds.size && (!wantsThemes || usedThemeIds.size)) {
+        for (let index = 1; index < faceCount; index += 1) {
+            if (!snapshot.formatPool.some(item => !usedFormatIds.has(item.id)) ||
+                (wantsThemes && !snapshot.themePool.some(item => !usedThemeIds.has(item.id)))) break;
+            const next = planBatchFace(settings, snapshot, usedThemeIds, usedFormatIds);
+            if (!next.payload.combo.formatIds.length || (wantsThemes && !next.payload.combo.themeIds.length)) break;
+            faces.push(next.payload);
+            next.payload.combo.themeIds.forEach(id => usedThemeIds.add(id));
+            next.payload.combo.formatIds.forEach(id => usedFormatIds.add(id));
+        }
     }
-    if (scopeKey) cachedBatchPlan = { scopeKey, total, faces };
-    return faces;
+    if (faces.length < 2) return finalizeBatchFallback(first, snapshot, scopeKey, identityKey, identity.chatKey);
+
+    const batchId = setPendingComboBatch(faces.map(item => item.combo), identity);
+    if (!batchId || !batchFacesMatch(readPendingComboBatch({ batchId, identity }), faces, batchId)) {
+        if (batchId) clearPendingComboBatch({ batchId, identity });
+        console.warn('[RabbitMirror] Pending combo batch storage failed; preserving the selected first face.');
+        return finalizeBatchFallback(first, snapshot, scopeKey, identityKey, identity.chatKey);
+    }
+    const completeFaces = faces.map((face, faceIndex) => ({ ...face, batchId, faceIndex }));
+    cachedBatchPlan = { identityKey, batchId, faces: cloneBatchPlan(completeFaces) };
+    return cloneBatchPlan(completeFaces);
 }
 
 export function pickCombination(settings, generationScopeKey = '', generationContext = null) {
@@ -926,6 +1098,7 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
             themeCount,
             formatCount,
             recent,
+            formalRecent,
             hardRecent,
             previousThemeFamilyKeys: (last?.themeIds || []).map(themeFamilyKey),
             previousFormatFamilyKeys: (last?.formatIds || []).map(formatFamilyKey),

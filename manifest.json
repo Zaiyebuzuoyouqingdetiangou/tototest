@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5-varietyfix1",
-  "css": "style.css?rmv=1.5.5",
+  "js": "index.js?rmv=1.5.6-abc1",
+  "css": "style.css?rmv=1.5.6",
   "author": "Toto",
-  "version": "1.5.5",
+  "version": "1.5.6",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.5.5｜保住安卓本地酒馆生成成功后的镜面，扩充主题／展现母本并增强近期主题与形式多样性；不自动重发付费请求。"
+  "description": "兔子镜测试版 1.5.6 ABC1｜普通展现形式冷却调整、默认关闭的增强视觉绘制、仅基础层的多面计划与存储；尚未启用多面请求或渲染。"
 }

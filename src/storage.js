@@ -660,76 +660,217 @@ export function getRecentInteractionFamilyCounts(limit = 5) {
 //
 // 与 PENDING_KEY 分开存放，因为语义不同：PENDING_KEY 是"一次生成一个组合"，
 // 多面是"一次生成 N 个组合，各自等待自己那一面真正渲染完成后再分别提交"。
-// 未真正生成出来的面永远不会进入正式历史——这是与旧 pending 相同的安全语义。
+// 本层只提供显式提交能力；真正成功和当前 owner 的证明由未来 C2 调用方负责。
 const PENDING_BATCH_KEY = 'rabbit_mirror_theater:pending_batch:v1';
+let pendingBatchSequence = 0;
 
-export function setPendingComboBatch(combos = []) {
+// C1 is a storage/planning boundary only. These values come from the caller's
+// already-proven owner, never from model HTML or a scan of the current chat.
+function normalizeBatchIdentity(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const stringLimits = { chatKey: 1024, generationScopeKey: 1024, sourceHash: 512, settingsKey: 8192 };
+    for (const [key, limit] of Object.entries(stringLimits)) {
+        if (typeof value[key] !== 'string' || !value[key].trim() || value[key].length > limit) return null;
+    }
+    if (!Number.isSafeInteger(value.mesid) || value.mesid < 0 || !Number.isSafeInteger(value.swipeId) || value.swipeId < 0) return null;
+    return {
+        chatKey: value.chatKey,
+        generationScopeKey: value.generationScopeKey,
+        mesid: value.mesid,
+        swipeId: value.swipeId,
+        sourceHash: value.sourceHash,
+        settingsKey: value.settingsKey,
+    };
+}
+
+function batchMatchesExpected(batch, expected, requireCommitIdentity = false) {
+    const identity = batch?.identity == null ? null : normalizeBatchIdentity(batch.identity);
+    if (batch?.identity != null && !identity) return false;
+    if (expected == null) return !requireCommitIdentity || !identity;
+    if (!expected || typeof expected !== 'object' || Array.isArray(expected)) return false;
+    const hasBatchId = typeof expected.batchId === 'string' && !!expected.batchId;
+    if (Object.prototype.hasOwnProperty.call(expected, 'batchId') && !hasBatchId) return false;
+    if (hasBatchId && expected.batchId !== batch.batchId) return false;
+    const wantedIdentity = expected.identity == null ? null : normalizeBatchIdentity(expected.identity);
+    if (expected.identity != null && !wantedIdentity) return false;
+    if (identity) {
+        if (!wantedIdentity || Object.keys(identity).some(key => identity[key] !== wantedIdentity[key])) return false;
+        if (requireCommitIdentity && !hasBatchId) return false;
+    } else if (wantedIdentity) return false;
+    return hasBatchId || !!wantedIdentity;
+}
+
+function validBatchCombo(combo) {
+    if (!combo || typeof combo !== 'object' || Array.isArray(combo)) return false;
+    for (const key of ['themeIds', 'formatIds']) {
+        if (!Array.isArray(combo[key]) || combo[key].length > 16) return false;
+        for (let index = 0; index < combo[key].length; index += 1) {
+            if (!Object.prototype.hasOwnProperty.call(combo[key], index)) return false;
+            const id = combo[key][index];
+            if (typeof id !== 'string' || !id.trim() || id.length > 128) return false;
+        }
+        if (new Set(combo[key]).size !== combo[key].length) return false;
+    }
+    return combo.themeIds.length + combo.formatIds.length > 0;
+}
+
+function removeBatchRawIfUnchanged(raw) {
     try {
-        const faces = (Array.isArray(combos) ? combos : []).filter(Boolean).slice(0, 3);
-        if (!faces.length) { localStorage.removeItem(PENDING_BATCH_KEY); return ''; }
-        if (faces.length === 1) { setPendingCombo(faces[0]); localStorage.removeItem(PENDING_BATCH_KEY); return ''; }
-        const batchId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-        // 批次成为权威状态：清掉逐面 setLastCombo 可能留下的单面残留，
-        // 否则 commitPendingCombo 之后仍可能提交到别人的旧组合。
-        localStorage.removeItem(PENDING_KEY);
-        const payload = JSON.stringify({
+        if (localStorage.getItem(PENDING_BATCH_KEY) !== raw) return false;
+        localStorage.removeItem(PENDING_BATCH_KEY);
+        return localStorage.getItem(PENDING_BATCH_KEY) === null;
+    } catch { return false; }
+}
+
+// localStorage has no cross-tab CAS. Restore only an unchanged value recognisable
+// as this attempted write; never overwrite a different batch/value discovered on
+// read-back. This is bounded synchronous recovery, not a retry loop.
+function restoreOwnedStorageWrite(key, payload, previousRaw, batchId = '') {
+    try {
+        const current = localStorage.getItem(key);
+        if (current === previousRaw) return true;
+        if (typeof current !== 'string') return false;
+        const ownPrefix = payload.startsWith(current) && current.length > 1
+            && (!batchId || current.includes(JSON.stringify(batchId)));
+        if (current !== payload && !ownPrefix) return false;
+        if (localStorage.getItem(key) !== current) return false;
+        if (previousRaw === null) localStorage.removeItem(key);
+        else localStorage.setItem(key, previousRaw);
+        return localStorage.getItem(key) === previousRaw;
+    } catch {
+        // A permanently disabled/full store cannot promise a rollback. The caller
+        // still reports failure and never marks the face committed.
+        return false;
+    }
+}
+
+export function setPendingComboBatch(combos = [], identity = null) {
+    let payload = '';
+    let batchId = '';
+    let previousBatchRaw = null;
+    let previousSingleRaw = null;
+    let singleRemovalAttempted = false;
+    try {
+        if (!Array.isArray(combos) || combos.length < 1 || combos.length > 3) return '';
+        for (let index = 0; index < combos.length; index += 1) {
+            if (!Object.prototype.hasOwnProperty.call(combos, index) || !validBatchCombo(combos[index])) return '';
+        }
+        const faces = combos.slice();
+        const normalizedIdentity = identity == null ? null : normalizeBatchIdentity(identity);
+        if (identity != null && !normalizedIdentity) return '';
+        // Legacy standalone storage callers keep their single-face path, without
+        // clearing an unrelated batch. New picker callers plan only 2/3 here.
+        if (faces.length === 1) {
+            if (!normalizedIdentity) setPendingCombo(faces[0]);
+            return '';
+        }
+        previousBatchRaw = localStorage.getItem(PENDING_BATCH_KEY);
+        previousSingleRaw = localStorage.getItem(PENDING_KEY);
+        batchId = `${PENDING_SESSION_TOKEN}:${Date.now().toString(36)}:${(++pendingBatchSequence).toString(36)}`;
+        payload = JSON.stringify({
             batchId,
             pendingTs: Date.now(),
             pendingSession: PENDING_SESSION_TOKEN,
-            faces: faces.map((combo, index) => ({ ...combo, batchId, faceIndex: index, signature: signatureOf(combo) })),
+            ...(normalizedIdentity ? { identity: normalizedIdentity } : {}),
+            faces: faces.map((combo, index) => {
+                const { committed, ...uncommittedCombo } = combo;
+                return { ...uncommittedCombo, batchId, faceIndex: index, signature: signatureOf(combo) };
+            }),
         });
         localStorage.setItem(PENDING_BATCH_KEY, payload);
-        // 读回验证：某些宿主的 setItem 在配额压力下会静默失败或截断。
-        // 调用方据返回值决定是否降级为单面，绝不返回一个表面成功但无法提交的计划。
-        const verify = localStorage.getItem(PENDING_BATCH_KEY);
-        if (verify !== payload) {
-            localStorage.removeItem(PENDING_BATCH_KEY);
-            console.warn('[RabbitMirror] Pending combo batch failed read-back verification.');
-            return '';
+        if (localStorage.getItem(PENDING_BATCH_KEY) !== payload) throw new Error('Batch read-back mismatch');
+        // Storage, not the caller, owns this transition. Keep the original single
+        // pending until the whole batch has survived read-back verification.
+        if (localStorage.getItem(PENDING_KEY) !== previousSingleRaw) throw new Error('Single pending changed during batch write');
+        if (previousSingleRaw !== null) {
+            singleRemovalAttempted = true;
+            localStorage.removeItem(PENDING_KEY);
+            if (localStorage.getItem(PENDING_KEY) !== null) throw new Error('Single pending removal failed');
         }
+        if (localStorage.getItem(PENDING_BATCH_KEY) !== payload) throw new Error('Batch replaced during single transition');
         return batchId;
     } catch (error) {
+        const rolledBackOwnBatch = payload && restoreOwnedStorageWrite(PENDING_BATCH_KEY, payload, previousBatchRaw, batchId);
+        if (rolledBackOwnBatch && singleRemovalAttempted && previousSingleRaw !== null) {
+            try {
+                if (localStorage.getItem(PENDING_KEY) === null) localStorage.setItem(PENDING_KEY, previousSingleRaw);
+            } catch { /* Preserve the failure result if storage cannot recover. */ }
+        }
         console.warn('[RabbitMirror] Failed to store pending combo batch:', error);
         return '';
     }
 }
 
-export function readPendingComboBatch() {
+export function readPendingComboBatch(expected = null) {
+    let raw = null;
     try {
-        const raw = localStorage.getItem(PENDING_BATCH_KEY);
+        raw = localStorage.getItem(PENDING_BATCH_KEY);
         if (!raw) return null;
         const batch = JSON.parse(raw);
-        if (!batch || typeof batch !== 'object' || !Array.isArray(batch.faces)) return null;
-        // 与单面 pending 相同的双判据：跨页面会话或超龄一律丢弃，绝不补写历史。
-        const session = String(batch.pendingSession || '');
-        const at = Number(batch.pendingTs);
-        if ((session && session !== PENDING_SESSION_TOKEN) || !Number.isFinite(at) || Date.now() - at > PENDING_MAX_AGE_MS) {
-            localStorage.removeItem(PENDING_BATCH_KEY);
+        if (!batch || typeof batch !== 'object' || Array.isArray(batch)) throw new Error('Invalid batch object');
+        // A mismatched owner must not clean up another chat's pending, even if
+        // that other record is old or malformed.
+        if (!batchMatchesExpected(batch, expected)) return null;
+        const validFaces = Array.isArray(batch.faces) && batch.faces.length >= 2 && batch.faces.length <= 3
+            && batch.faces.every(face => validBatchCombo(face) && face.batchId === batch.batchId
+                && face.signature === signatureOf(face)
+                && Number.isSafeInteger(face.faceIndex) && face.faceIndex >= 0 && face.faceIndex < batch.faces.length
+                && (face.committed === undefined || typeof face.committed === 'boolean'))
+            && new Set(batch.faces.map(face => face.faceIndex)).size === batch.faces.length;
+        const validIdentity = batch.identity == null || !!normalizeBatchIdentity(batch.identity);
+        const at = batch.pendingTs;
+        const now = Date.now();
+        if (typeof batch.batchId !== 'string' || !batch.batchId || batch.batchId.length > 256
+            || !validFaces || !validIdentity || batch.pendingSession !== PENDING_SESSION_TOKEN
+            // At most one second of wall-clock jitter, never an indefinitely
+            // future-dated record. No periodic expiration task is needed.
+            || !Number.isFinite(at) || at <= 0 || at > now + 1000 || now - at > PENDING_MAX_AGE_MS) {
+            if (expected == null) removeBatchRawIfUnchanged(raw);
             return null;
         }
-        return batch;
-    } catch { return null; }
+        return { ...batch, faces: batch.faces.slice().sort((a, b) => a.faceIndex - b.faceIndex) };
+    } catch {
+        // Without a parseable expected owner, only the explicit diagnostic/legacy
+        // read may discard a malformed slot; guarded callers leave it untouched.
+        if (expected == null && raw !== null) removeBatchRawIfUnchanged(raw);
+        return null;
+    }
 }
 
-// 只提交实际渲染成功的那一面。停止／截断／只成功 2/3 面时，未提交的面不会留下历史。
-export function commitPendingBatchFace(faceIndex = 0, visualSignature = '', visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null) {
-    const batch = readPendingComboBatch();
-    if (!batch) return false;
-    const index = Math.trunc(Number(faceIndex));
-    const face = batch.faces.find(item => Number(item?.faceIndex) === index);
-    if (!face || face.committed === true) return false;
+// 显式提交调用方确认成功的面；未提交的面不入史。C1 不自行证明 DOM 渲染成功。
+export function commitPendingBatchFace(faceIndex = 0, visualSignature = '', visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null, expected = null) {
+    if (!Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 2) return false;
+    const batch = readPendingComboBatch(expected);
+    if (!batch || !batchMatchesExpected(batch, expected, true)) return false;
+    const face = batch.faces.find(item => item.faceIndex === faceIndex);
+    if (!face || (face.committed === true && historyHasBatchFace(readHistory(), batch.batchId, faceIndex))) return false;
     // 直连共享底层：不经过 PENDING_KEY，因此绝不可能提交到别人的旧组合。
     const written = commitComboToHistory(
         face,
         { visualSignature, visualSkeleton, riskFlags, paletteFingerprint, interactionFamily },
-        { batchId: batch.batchId, faceIndex: index },
+        { batchId: batch.batchId, faceIndex },
     );
     if (!written) return false;   // 写入失败 → 不标记 committed，可重试
-    face.committed = true;
+    let markerRaw = null;
+    let markerPayload = '';
     try {
-        if (batch.faces.every(item => item.committed === true)) localStorage.removeItem(PENDING_BATCH_KEY);
-        else localStorage.setItem(PENDING_BATCH_KEY, JSON.stringify(batch));
+        markerRaw = localStorage.getItem(PENDING_BATCH_KEY);
+        if (!markerRaw) return true;
+        const current = JSON.parse(markerRaw);
+        if (current?.batchId !== batch.batchId || !batchMatchesExpected(current, expected, true)) return true;
+        const history = readHistory();
+        const currentFace = current.faces?.find(item => item.faceIndex === faceIndex);
+        if (!currentFace) return true;
+        currentFace.committed = true;
+        if (localStorage.getItem(PENDING_BATCH_KEY) !== markerRaw) return true;
+        if (current.faces.every(item => item.committed === true && historyHasBatchFace(history, batch.batchId, item.faceIndex))) removeBatchRawIfUnchanged(markerRaw);
+        else {
+            markerPayload = JSON.stringify(current);
+            localStorage.setItem(PENDING_BATCH_KEY, markerPayload);
+            if (localStorage.getItem(PENDING_BATCH_KEY) !== markerPayload) throw new Error('Batch marker read-back mismatch');
+        }
     } catch (error) {
+        if (markerPayload) restoreOwnedStorageWrite(PENDING_BATCH_KEY, markerPayload, markerRaw, batch.batchId);
         console.warn('[RabbitMirror] Failed to persist batch face state:', error);
         // 落盘失败不回滚历史：历史已经是事实，批次状态下次读取时按 committed 重建。
     }
@@ -741,8 +882,13 @@ export function clearPendingCombo() {
     try { localStorage.removeItem(PENDING_KEY); } catch {}
 }
 
-export function clearPendingComboBatch() {
-    try { localStorage.removeItem(PENDING_BATCH_KEY); } catch {}
+export function clearPendingComboBatch(expected = null) {
+    try {
+        const raw = localStorage.getItem(PENDING_BATCH_KEY);
+        if (raw === null) return false;
+        if (expected != null && !batchMatchesExpected(JSON.parse(raw), expected, true)) return false;
+        return removeBatchRawIfUnchanged(raw);
+    } catch { return false; }
 }
 
 export function setPendingCombo(combo) {
@@ -771,10 +917,9 @@ export function setPendingCombo(combo) {
 // 一旦丢失，重试同一 face 会二次写入 history。因此改为在 history 条目上带
 // batchId + faceIndex，写入前先查重 —— 只要那一面真的进过 history，重试就是幂等的。
 function historyHasBatchFace(history, batchId, faceIndex) {
-    if (!batchId) return false;
-    const index = Number(faceIndex);
+    if (!batchId || !Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 2) return false;
     return (Array.isArray(history) ? history : []).some(item =>
-        item && item.batchId === batchId && Number(item.faceIndex) === index);
+        item && item.batchId === batchId && item.faceIndex === faceIndex);
 }
 
 function commitComboToHistory(combo, visual = {}, options = {}) {
@@ -782,8 +927,23 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
     const { visualSignature = '', visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null } = visual || {};
     const batchId = String(options?.batchId || '');
     const faceIndex = options?.faceIndex;
+    let previousHistoryRaw = null;
+    let historyPayload = '';
     try {
-        const history = readHistory();
+        let history;
+        if (batchId) {
+            if (!Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 2) return false;
+            previousHistoryRaw = localStorage.getItem(STORAGE_KEY);
+            // Parse the verified snapshot itself. readHistory intentionally masks
+            // legacy read errors, which must not turn a batch read failure into []
+            // and erase earlier successes when this write later succeeds.
+            const parsed = JSON.parse(previousHistoryRaw === null ? '[]' : previousHistoryRaw);
+            if (Array.isArray(parsed)) history = parsed;
+            else if (parsed && typeof parsed === 'object') history = [parsed];
+            else throw new Error('Invalid batch history snapshot');
+        } else {
+            history = readHistory();
+        }
         // 已经在 history 里 → 视为提交成功，但绝不重复写入。
         if (batchId && historyHasBatchFace(history, batchId, faceIndex)) return true;
         const now = Date.now();
@@ -813,9 +973,20 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
             interactionFamily: normalizeInteractionFamily(interactionFamily),
             visualSignatureTs: visualSignature || visualSkeleton || (Array.isArray(riskFlags) && riskFlags.length) || paletteFingerprint || normalizeInteractionFamily(interactionFamily) ? now : undefined,
         });
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
+        if (batchId) {
+            historyPayload = JSON.stringify(history.slice(-MAX_STORED));
+            if (localStorage.getItem(STORAGE_KEY) !== previousHistoryRaw) return false;
+            localStorage.setItem(STORAGE_KEY, historyPayload);
+            const confirmedRaw = localStorage.getItem(STORAGE_KEY);
+            if (confirmedRaw !== historyPayload || !historyHasBatchFace(JSON.parse(confirmedRaw), batchId, faceIndex)) {
+                throw new Error('Batch history read-back mismatch');
+            }
+        } else {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
+        }
         return true;
     } catch (error) {
+        if (batchId && historyPayload) restoreOwnedStorageWrite(STORAGE_KEY, historyPayload, previousHistoryRaw);
         console.warn('[RabbitMirror] Failed to write combo history:', error);
         return false;
     }

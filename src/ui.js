@@ -1,15 +1,15 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.5-varietyfix1';
-import { clearLastCombo } from './storage.js?rmv=1.5-varietyfix1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5-varietyfix1';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5-varietyfix1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5-varietyfix1';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.5.6-abc1';
+import { clearLastCombo } from './storage.js?rmv=1.5.6-abc1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.6-abc1';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.6-abc1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.6-abc1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5-varietyfix1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5-varietyfix1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5-varietyfix1';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.6-abc1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.6-abc1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.6-abc1';
 
 const SETTINGS_UI_VERSION = '1.5';
-const RUNTIME_VERSION = '1.5.5';
+const RUNTIME_VERSION = '1.5.6';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -461,6 +461,8 @@ export function initRabbitMirrorUI() {
                     && $panel.find('#rh_favorite_summary').length
                     && $advanced.find('#rh_feedback_cat').length
                     && $advanced.find('#rh_maintenance_rabbit').length
+                    && $advanced.find('#rh_enhanced_visual_drawing').length === 1
+                    && $advanced.find('#rh_enhanced_visual_drawing_help').length === 1
                     && $advanced.find('#rh_visual_extra_prompt').length
                     && $advanced.find('#rh_visual_avoid_prompt').length
                     && $advanced.find('#rh_visual_prompt_save').length
@@ -503,7 +505,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.5</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.6</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -691,6 +693,8 @@ export function initRabbitMirrorUI() {
           </div>
 
           <div id="rh_advanced_page_visual" class="rh-advanced-page" data-title="个性化视觉提示词" style="display:none;">
+            <label for="rh_enhanced_visual_drawing" class="checkbox_label"><input id="rh_enhanced_visual_drawing" type="checkbox" aria-describedby="rh_enhanced_visual_drawing_help"> 增强视觉绘制</label>
+            <div id="rh_enhanced_visual_drawing_help" class="rabbit-mirror-subnote">默认关闭。开启后允许自由运用 HTML / CSS / 安全内联 SVG 等视觉技法，不固定画风，也不要求每轮使用 SVG；从下一面生效。</div>
             <div style="opacity:.82;font-size:12px;line-height:1.55;margin-bottom:9px;">这里可以直接写你喜欢或不喜欢的画面感觉。只有勾选下面的“启用视觉提示词编辑注入”后，保存的内容才会随生成兔子镜的请求发送。</div>
             <label class="checkbox_label" style="font-weight:700;"><input id="rh_visual_prompt_enabled" type="checkbox"> 启用视觉提示词编辑注入</label>
             <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.5;">默认关闭。关闭时已编辑内容仍保存在本地，但不会注入模型；下一面继续使用 1.3.20 原版视觉规则。开启后才切换到可编辑视觉层。</div>
@@ -952,6 +956,7 @@ export function initRabbitMirrorUI() {
     checked('#rh_avoid_repeat', settings.avoidRepeat);
     checked('#rh_blacklist_enabled', settings.blacklistEnabled !== false);
     checked('#rh_memory_scan_enabled', settings.memoryScanEnabled);
+    checked('#rh_enhanced_visual_drawing', settings.enhancedVisualDrawing === true);
     checked('#rh_visual_prompt_enabled', settings.visualPromptEditingEnabled);
     $('#rh_visual_prompt').val(settings.visualPrompt ?? DEFAULT_VISUAL_PROMPT);
     $('#rh_visual_extra_prompt').val(settings.visualExtraPrompt || '');
@@ -1473,6 +1478,10 @@ export function initRabbitMirrorUI() {
         toastr?.[enabled ? 'info' : 'success']?.(enabled
             ? '自动巡逻已开启，只自动修简单问题。'
             : '自动巡逻已关闭：维修兔恢复为纯手动模式。');
+    });
+
+    $('#rh_enhanced_visual_drawing').on('change', e => {
+        updateSettings({ enhancedVisualDrawing: e.target.checked === true });
     });
 
     $('#rh_visual_prompt_enabled').on('change', e => {

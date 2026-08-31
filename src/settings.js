@@ -109,6 +109,7 @@ export const defaultSettings = Object.freeze({
     maintenanceRabbitAutoSafeEnabled: false,
     maintenanceRabbitAutoSafeConsent: false,
     feedbackCatEnabled: true,
+    enhancedVisualDrawing: false,
     visualPromptEditingEnabled: false,
     visualPrompt: DEFAULT_VISUAL_PROMPT,
     visualExtraPrompt: '',
@@ -215,7 +216,7 @@ export function getSettings() {
     settings.presentationWorldviewLock = settings.presentationWorldviewLock === true;
     // 只接受 1/2/3；任何异常值（NaN、字符串、0、负数、超界）都回落到 1，
     // 保证旧设置升级与畸形写入都不会意外开启多面。
-    const faceCount = Math.trunc(Number(settings.rabbitMirrorFaceCount));
+    const faceCount = settings.rabbitMirrorFaceCount;
     settings.rabbitMirrorFaceCount = (faceCount === 2 || faceCount === 3) ? faceCount : 1;
     if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
     if (settings.maintenanceRabbitEnabled === undefined) {
@@ -230,6 +231,7 @@ export function getSettings() {
         settings.maintenanceRabbitAutoSafeConsent = false;
     }
     settings.feedbackCatEnabled = settings.feedbackCatEnabled !== false;
+    settings.enhancedVisualDrawing = settings.enhancedVisualDrawing === true;
     settings.visualPromptEditingEnabled = !!settings.visualPromptEditingEnabled;
     const normalizeVisualSetting = (value, fallback, maxChars) => {
         const raw = typeof value === 'string' ? value : String(value ?? fallback);
@@ -266,6 +268,13 @@ export function updateSettings(patch) {
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'followTagIsolationEnabled')) {
         safePatch.followTagIsolationEnabled = safePatch.followTagIsolationEnabled === true;
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'enhancedVisualDrawing')) {
+        safePatch.enhancedVisualDrawing = safePatch.enhancedVisualDrawing === true;
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorFaceCount')) {
+        const faceCount = safePatch.rabbitMirrorFaceCount;
+        safePatch.rabbitMirrorFaceCount = (faceCount === 2 || faceCount === 3) ? faceCount : 1;
     }
     for (const key of ['independentReadCharacterCardSummary', 'independentReadPersonaSummary']) {
         if (Object.prototype.hasOwnProperty.call(safePatch, key)) safePatch[key] = safePatch[key] !== false;
