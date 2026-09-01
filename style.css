@@ -774,6 +774,15 @@ toto[data-rabbit-mirror="true"] summary {
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-pending="true"] > details[data-rabbit-mirror-external-details="true"]{
   opacity:.76 !important;
 }
+#chat .rabbit-mirror-external-shell.rabbit-mirror-multiface-host{
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+  overflow:visible !important;
+}
+#chat .rabbit-mirror-external-shell.rabbit-mirror-multiface-host > details[data-rabbit-mirror-external-details="true"] + details[data-rabbit-mirror-external-details="true"]{
+  margin-top:18px !important;
+}
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
   display:block !important;
   width:auto !important;

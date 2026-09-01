@@ -102,7 +102,7 @@ export const defaultSettings = Object.freeze({
     favoriteThemeMultipliers: {},
     favoriteFormatMultipliers: {},
     presentationWorldviewLock: false,
-    // 每轮生成的兔子镜面数（1/2/3）。默认 1，与既有单面行为完全一致。
+    // 每轮生成的兔子镜面数（1～5）。默认 1，关闭多面不改旧单面路径。
     rabbitMirrorFaceCount: 1,
     richFormatBias: false,
     maintenanceRabbitEnabled: true,
@@ -214,10 +214,10 @@ export function getSettings() {
     settings.favoriteThemeMultipliers = normalizeFavoriteMultipliers(settings.favoriteThemeMultipliers, settings.favoriteThemeIds);
     settings.favoriteFormatMultipliers = normalizeFavoriteMultipliers(settings.favoriteFormatMultipliers, settings.favoriteFormatIds, canonicalFormatSettingId);
     settings.presentationWorldviewLock = settings.presentationWorldviewLock === true;
-    // 只接受 1/2/3；任何异常值（NaN、字符串、0、负数、超界）都回落到 1，
+    // 只接受数字 1～5；任何异常值（NaN、字符串、0、负数、超界）都回落到 1，
     // 保证旧设置升级与畸形写入都不会意外开启多面。
     const faceCount = settings.rabbitMirrorFaceCount;
-    settings.rabbitMirrorFaceCount = (faceCount === 2 || faceCount === 3) ? faceCount : 1;
+    settings.rabbitMirrorFaceCount = Number.isInteger(faceCount) && faceCount >= 2 && faceCount <= 5 ? faceCount : 1;
     if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
     if (settings.maintenanceRabbitEnabled === undefined) {
         settings.maintenanceRabbitEnabled = legacyRescueWasEnabled || defaultSettings.maintenanceRabbitEnabled;
@@ -274,7 +274,7 @@ export function updateSettings(patch) {
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorFaceCount')) {
         const faceCount = safePatch.rabbitMirrorFaceCount;
-        safePatch.rabbitMirrorFaceCount = (faceCount === 2 || faceCount === 3) ? faceCount : 1;
+        safePatch.rabbitMirrorFaceCount = Number.isInteger(faceCount) && faceCount >= 2 && faceCount <= 5 ? faceCount : 1;
     }
     for (const key of ['independentReadCharacterCardSummary', 'independentReadPersonaSummary']) {
         if (Object.prototype.hasOwnProperty.call(safePatch, key)) safePatch[key] = safePatch[key] !== false;

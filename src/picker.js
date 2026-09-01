@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.6-abc1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.6-abc1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.7-multiface5';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.7-multiface5';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -14,8 +14,10 @@ import {
     setPendingComboBatch,
     readPendingComboBatch,
     clearPendingComboBatch,
-} from './storage.js?rmv=1.5.6-abc1';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.6-abc1';
+    createPendingComboBatchPlan,
+    findPendingComboBatchPlan,
+} from './storage.js?rmv=1.5.7-multiface5';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.7-multiface5';
 
 function randomUnit() {
     try {
@@ -806,6 +808,7 @@ function directiveScopeKey(directive, settings) {
 
 // 多面基础层独立缓存；不接入当前单面 Prompt / API / DOM 调用链。
 let cachedBatchPlan = null;
+const cachedLiveBatchPlans = new Map();
 
 function cloneBatchPlan(value) {
     return JSON.parse(JSON.stringify(value));
@@ -861,10 +864,13 @@ function batchRandomSettingsKey(settings, total, favorites, exclusions, directiv
 
 function batchPlanningIdentity(settings, generationScopeKey, generationContext, total) {
     const source = generationContext?.batchIdentity;
+    const operation = generationContext?.batchPlanningOnly === true ? generationContext?.batchOperation : null;
     const boundedString = (value, max) => typeof value === 'string' && value.trim().length > 0 && value.length <= max;
-    if (!source || !Number.isSafeInteger(source.mesid) || source.mesid < 0 ||
-        !Number.isSafeInteger(source.swipeId) || source.swipeId < 0 ||
-        !boundedString(source.sourceHash, 512) || !boundedString(generationScopeKey, 1024)) return null;
+    if (!boundedString(generationScopeKey, 1024)) return null;
+    if (operation) {
+        if (!boundedString(operation.operationId, 1024) || !boundedString(operation.generationType, 64)) return null;
+    } else if (!source || !Number.isSafeInteger(source.mesid) || source.mesid < 0 ||
+        !Number.isSafeInteger(source.swipeId) || source.swipeId < 0 || !boundedString(source.sourceHash, 512)) return null;
     const chatKey = getCurrentChatKey(generationContext?.chat || null);
     if (!boundedString(chatKey, 1024)) return null;
     const favorites = getFavoritesState(settings);
@@ -878,7 +884,10 @@ function batchPlanningIdentity(settings, generationScopeKey, generationContext, 
     const directive = currentTurn ? parseUserDirective(currentTurn) : null;
     const settingsKey = batchRandomSettingsKey(settings, total, favorites, exclusions, directive);
     return {
-        identity: { chatKey, generationScopeKey, mesid: source.mesid, swipeId: source.swipeId, sourceHash: source.sourceHash, settingsKey },
+        identity: operation
+            ? { kind: 'generation-operation', chatKey, generationScopeKey, operationId: operation.operationId,
+                generationType: operation.generationType, preview: operation.preview === true, settingsKey }
+            : { chatKey, generationScopeKey, mesid: source.mesid, swipeId: source.swipeId, sourceHash: source.sourceHash, settingsKey },
         favorites,
         exclusions,
         directive,
@@ -987,11 +996,88 @@ function batchSinglePath(settings, generationScopeKey, generationContext, identi
     return [cloneBatchPlan(single)];
 }
 
+function multiFacePlanningError(message) {
+    const error = new Error(message);
+    error.code = 'MULTIFACE_PLAN_UNAVAILABLE';
+    return error;
+}
+
+function liveBatchResult(plan, directive) {
+    const faces = plan.faces.map(face => ({ combo: cloneBatchPlan(face.combo), last: null, directive: cloneBatchPlan(directive || null), batchId: plan.batchId, faceIndex: face.faceIndex }));
+    Object.defineProperty(faces, 'batchPlan', { value: cloneBatchPlan(plan), enumerable: false });
+    return faces;
+}
+
+function pickLiveCombinationBatch(settings, planning, faceCount) {
+    if (!planning || planning.signatureTooLarge) throw multiFacePlanningError('多面抽取缺少有效的本次生成身份，或抽取设置签名过长；本次尚未发送请求。');
+    if (planning.directive?.disabled) return [{ disabled: true, combo: null, directive: planning.directive, last: null }];
+    const identityKey = JSON.stringify(planning.identity);
+    const cached = cachedLiveBatchPlans.get(identityKey) || findPendingComboBatchPlan(planning.identity);
+    if (cached) return liveBatchResult(cached, planning.directive);
+    const snapshot = batchPickSnapshot(settings, null, planning);
+    const usedThemeIds = new Set();
+    const usedFormatIds = new Set();
+    const fixedThemes = new Set((snapshot.directive?.themes || []).map(item => item.id));
+    const fixedFormats = new Set((snapshot.directive?.formats || []).map(item => item.id));
+    if (settings.forceVisualScenery) fixedFormats.add('10.2.2');
+    const needsRandomThemes = settings.samplingMode !== 'format_only' && !snapshot.directive?.hasThemeRequest;
+    const needsRandomFormats = !settings.forceVisualScenery && !snapshot.directive?.hasFormatRequest;
+    const results = [];
+    for (let faceIndex = 0; faceIndex < faceCount; faceIndex += 1) {
+        if ((needsRandomThemes && !snapshot.themePool.some(item => !usedThemeIds.has(item.id))) ||
+            (needsRandomFormats && !snapshot.formatPool.some(item => !usedFormatIds.has(item.id)))) {
+            throw multiFacePlanningError(`当前候选池不足以抽取 ${faceCount} 面不同的随机内容；请调整黑名单或面数，本次尚未发送请求。`);
+        }
+        const selected = planBatchFace(settings, snapshot, usedThemeIds, usedFormatIds);
+        const combo = selected.payload.combo;
+        if ((needsRandomThemes && !combo.themeIds.length) || (needsRandomFormats && !combo.formatIds.length)) {
+            throw multiFacePlanningError('多面抽取未得到完整的随机选题／形式；本次尚未发送请求。');
+        }
+        if (!combo.themeIds.length && !combo.formatIds.length && snapshot.directive) combo.customDirective = true;
+        for (const id of combo.themeIds) if (!fixedThemes.has(id)) usedThemeIds.add(id);
+        for (const id of combo.formatIds) if (!fixedFormats.has(id)) usedFormatIds.add(id);
+        results.push(selected);
+    }
+    const plan = createPendingComboBatchPlan(results.map(result => result.payload.combo), planning.identity, {
+        eligibleFormatIds: [...new Set(results.flatMap(result => result.result.formatFairnessEligibleIds || []))],
+        selectedFormatIds: [...new Set(results.flatMap(result => result.result.formatFairnessSelectedIds || []))],
+        validFormatIds: snapshot.validFormatIds,
+        directiveScoped: !!snapshot.directive,
+    });
+    if (!plan) throw multiFacePlanningError('多面计划无法安全建立；本次尚未发送请求。');
+    cachedLiveBatchPlans.set(identityKey, cloneBatchPlan(plan));
+    if (cachedLiveBatchPlans.size > 8) cachedLiveBatchPlans.delete(cachedLiveBatchPlans.keys().next().value);
+    return liveBatchResult(plan, snapshot.directive);
+}
+
+export function pickCombinationForMultifaceResay(settings, resay) {
+    if (!resay || !Number.isSafeInteger(resay.faceIndex) || resay.faceIndex < 0 ||
+        !Array.isArray(resay.faces) || resay.faceIndex >= resay.faces.length || resay.faces.length > 5) {
+        throw multiFacePlanningError('未找到要重新生成的兔子镜面；本次尚未发送请求。');
+    }
+    const face = resay.faces[resay.faceIndex];
+    if (Number(face?.customThemeCount || 0) > 0 || Number(face?.customFormatCount || 0) > 0 || Number(face?.customRequestCount || 0) > 0) {
+        throw multiFacePlanningError('原面包含未入库的自定义点菜，仅凭面元数据无法安全还原；请重新选择整批生成。');
+    }
+    const resolveIds = (ids, pool) => {
+        if (!Array.isArray(ids) || ids.length > 16) throw multiFacePlanningError('原面抽取记录不完整，不能静默更换选题。');
+        const selected = ids.map(id => pool.find(item => item.id === id));
+        if (selected.some(item => !item)) throw multiFacePlanningError('原面使用的库条目已不存在，不能静默更换选题。');
+        return selected;
+    };
+    const themes = resolveIds(face?.themeIds, THEMATIC_CATEGORIES);
+    const formats = resolveIds(face?.formatIds, PRESENTATION_FORMATS);
+    if (!themes.length && !formats.length) throw multiFacePlanningError('原面只有自定义指令，缺少可复用抽取记录；请重新选择整批生成。');
+    const selectedSettings = { ...settings, samplingMode: face.samplingMode || settings.samplingMode, forceVisualScenery: face.forcedVisualScenery === true };
+    return { combo: comboFromSelection({ themes, formats }, selectedSettings, getRecentIds(settings.cooldownRounds || 10)), directive: null, last: null };
+}
+
 export function pickCombinationBatch(settings, generationScopeKey = '', generationContext = null, faceCount = 1) {
     // 单面严格早返回：不得读取、清除或触碰另一轮 pending batch。
-    if (faceCount !== 2 && faceCount !== 3) return [pickCombination(settings, generationScopeKey, generationContext)];
+    if (!Number.isSafeInteger(faceCount) || faceCount < 2 || faceCount > 5) return [pickCombination(settings, generationScopeKey, generationContext)];
 
     const planning = batchPlanningIdentity(settings, generationScopeKey, generationContext, faceCount);
+    if (generationContext?.batchPlanningOnly === true) return pickLiveCombinationBatch(settings, planning, faceCount);
     if (!planning) return batchSinglePath(settings, generationScopeKey, generationContext);
     const { identity } = planning;
     const identityKey = planning.signatureTooLarge ? '' : JSON.stringify(identity);

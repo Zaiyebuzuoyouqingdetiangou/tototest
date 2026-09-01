@@ -1,15 +1,15 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.6-abc1';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.7-multiface5';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.5.6-abc1';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5.6-abc1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.6-abc1';
+} from './feedbackCat.js?rmv=1.5.7-multiface5';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5.7-multiface5';
+import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.5.7-multiface5';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -308,7 +308,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.6-abc1').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.7-multiface5').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -318,7 +318,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.5.6-abc1').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.5.7-multiface5').catch(error => {
             generationGuardPromise = null;
             throw error;
         });
@@ -381,12 +381,23 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     // 未选择反馈时不追加任何字符，基础 Prompt 保持逐字不变。
     clearFeedbackCatExtensionPrompt();
     const generationScopeKey = createGenerationScopeKey(type);
-    const [{ buildRabbitMirrorPromptDetails }, { attachRabbitMirrorGenerationSelection, beginRabbitMirrorGenerationAttempt }] = await Promise.all([
+    const [{ buildRabbitMirrorPromptDetails }, {
+        attachRabbitMirrorGenerationSelection,
+        beginRabbitMirrorGenerationAttempt,
+        registerRabbitMirrorFollowBatch,
+    }] = await Promise.all([
         loadPromptBuilder(),
         loadGenerationGuard(),
     ]);
     beginRabbitMirrorGenerationAttempt(_chat, generationScopeKey);
-    const promptDetails = buildRabbitMirrorPromptDetails(settings, type, null, generationScopeKey, { chat: _chat });
+    const promptDetails = buildRabbitMirrorPromptDetails(settings, type, null, generationScopeKey, {
+        chat: _chat,
+        batchOperation: {
+            operationId: generationScopeKey,
+            generationType: String(type || 'normal'),
+            preview: false,
+        },
+    });
     attachRabbitMirrorGenerationSelection(promptDetails.metadata);
     const basePrompt = promptDetails.prompt;
     if (!basePrompt) {
@@ -406,6 +417,24 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         false,
         role,
     );
+    if (promptDetails.batchPlan) {
+        const marked = markPendingBatchAttempt(promptDetails.batchPlan);
+        const registered = marked && registerRabbitMirrorFollowBatch(
+            _chat,
+            generationScopeKey,
+            promptDetails.batchPlan,
+            promptDetails.metadata,
+        );
+        if (!registered) {
+            if (marked) releasePendingComboBatch({
+                batchId: promptDetails.batchPlan.batchId,
+                identity: promptDetails.batchPlan.identity,
+            });
+            clearRabbitMirrorPrompt('multiface-attempt-registration-failed', type);
+            console.warn('[RabbitMirror] Follow multiface attempt was not registered; the host request continues without RabbitMirror injection.');
+            return;
+        }
+    }
     recordRabbitMirrorInjection({
         prompt,
         basePrompt,

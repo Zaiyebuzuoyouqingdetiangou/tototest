@@ -1,6 +1,8 @@
 const NATIVE_TABBED_MEDIA_PATTERN = /(?:频道|换台|调频|电台|档位|变速|齿轮|分页|翻页|页签|分页器|channel|station|tuner|gear|pagination|pager|page[ -]?turn)/i;
 const CONTENT_SELECTOR_PATTERN = /(?:^|[\s>+~,])(?:toto|details|summary|main|article|section|p|li|label|button|input|textarea|select|body|html)\b|(?:^|[.#\[])(?:root|mirror|stage|panel|card|content|text|copy|body|page|screen|sheet|document|entry|node|item|description|desc|title|subtitle|caption|label|button|btn|tab)(?:\b|[-_])/i;
 const CLEAR_LOW_CONTRAST_LIMIT = 1.5;
+const TAROT_IMAGE_ORIGIN = 'https://gfx.tarot.com';
+const TAROT_IMAGE_PATH = /^\/images\/site\/decks\/rider\/full_size\/(?:[0-9]|[1-6][0-9]|7[0-7])\.jpg$/;
 
 function uniqueStrings(values = []) {
     return [...new Set(values.map(value => String(value || '').trim()).filter(Boolean))];
@@ -37,6 +39,42 @@ function attributeValue(tag = '', name = '') {
     const escaped = String(name || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const match = String(tag || '').match(new RegExp(`\\b${escaped}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i'));
     return String(match?.[1] ?? match?.[2] ?? match?.[3] ?? '').trim();
+}
+
+function decodedAttributeText(value = '') {
+    return String(value || '')
+        .replace(/&#x([0-9a-f]{1,6});?/gi, (_, hex) => {
+            try { return String.fromCodePoint(Number.parseInt(hex, 16)); } catch { return ''; }
+        })
+        .replace(/&#([0-9]{1,7});?/g, (_, decimal) => {
+            try { return String.fromCodePoint(Number.parseInt(decimal, 10)); } catch { return ''; }
+        })
+        .replace(/&(nbsp|ensp|emsp|thinsp);/gi, ' ')
+        .replace(/&(amp|lt|gt|quot|apos);/gi, (_, entity) => ({ amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" })[entity.toLowerCase()]);
+}
+
+function isOfficialTarotImageUrl(value = '') {
+    try {
+        const parsed = new URL(String(value || '').trim());
+        return parsed.origin === TAROT_IMAGE_ORIGIN
+            && !parsed.username
+            && !parsed.password
+            && !parsed.search
+            && !parsed.hash
+            && TAROT_IMAGE_PATH.test(parsed.pathname);
+    } catch {
+        return false;
+    }
+}
+
+export function hasRequiredTarotEntityImage(html = '') {
+    for (const match of String(html || '').matchAll(/<img\b[^>]*>/gi)) {
+        const tag = match[0];
+        const alt = decodedAttributeText(attributeValue(tag, 'alt')).trim();
+        if (isOfficialTarotImageUrl(attributeValue(tag, 'src'))
+            && /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/u.test(alt)) return true;
+    }
+    return false;
 }
 
 function inputProfile(html = '') {
@@ -292,6 +330,15 @@ function clearlyLowContrastRatio(html = '') {
 export function evaluateIndependentPostSanitizeQuality(html = '', metadata = {}) {
     const source = String(html || '');
     const flags = metadataRiskFlags(metadata);
+    if (metadata?.tarotRules === true && !hasRequiredTarotEntityImage(source)) {
+        flags.push('tarot_entity_image_required');
+        return qualityResult(
+            false,
+            'tarot-image-missing',
+            '抽中的塔罗／西方神秘学成品没有保留官方实体牌图及中文 alt；本次结果不会保存。',
+            flags,
+        );
+    }
     const family = interactionFamilyId(metadata);
     const profile = inputProfile(source);
     const tabbedFamily = family === 'tabbed_radio_family' || inferredTabbedFamily(source, profile);

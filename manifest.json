@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5.6-abc1",
-  "css": "style.css?rmv=1.5.6",
+  "js": "index.js?rmv=1.5.7-multiface5",
+  "css": "style.css?rmv=1.5.7",
   "author": "Toto",
-  "version": "1.5.6",
+  "version": "1.5.7",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.5.6 ABC1｜普通展现形式冷却调整、默认关闭的增强视觉绘制、仅基础层的多面计划与存储；尚未启用多面请求或渲染。"
+  "description": "兔子镜测试版 1.5.7 Multiface5｜一次请求生成可选 1～5 面，逐面独立展示与维修；增强视觉、塔罗实体牌图及交互返回同步加强。"
 }

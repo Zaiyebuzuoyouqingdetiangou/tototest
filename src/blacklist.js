@@ -1,7 +1,7 @@
-import { getSettings, updateSettings } from './settings.js?rmv=1.5.6-abc1';
-import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.5.6-abc1';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.6-abc1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.6-abc1';
+import { getSettings, updateSettings } from './settings.js?rmv=1.5.7-multiface5';
+import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.5.7-multiface5';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.7-multiface5';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.7-multiface5';
 
 export const BLACKLIST_CHANGED_EVENT = 'rabbitmirror:blacklist-changed';
 export const RECIPE_RECORDED_EVENT = 'rabbitmirror:recipe-recorded';
@@ -398,7 +398,7 @@ export function filterRandomFormatPool(pool, settings = getSettings()) {
     return blocked.size ? items.filter(item => !blocked.has(String(item?.id || ''))) : [...items];
 }
 
-function compactSelectionMetadata(metadata = {}) {
+function compactSelectionMetadata(metadata = {}, allowFaces = true) {
     const themeIds = compactIds(metadata?.themeIds).filter(id => THEME_BY_ID.has(id));
     const formatIds = compactIds(metadata?.formatIds).filter(id => FORMAT_BY_ID.has(id));
     if (!themeIds.length && !formatIds.length) return null;
@@ -408,6 +408,8 @@ function compactSelectionMetadata(metadata = {}) {
         samplingMode: String(metadata?.samplingMode || 'classic'),
         userDirectiveApplied: !!metadata?.userDirectiveApplied,
         forcedVisualScenery: !!metadata?.forcedVisualScenery || !!metadata?.visualSceneryMode,
+        ...(allowFaces && Array.isArray(metadata?.faces) && metadata.faces.length >= 2 && metadata.faces.length <= 5
+            ? { faces: metadata.faces.map(face => compactSelectionMetadata(face, false)) } : {}),
     };
 }
 
@@ -470,7 +472,8 @@ export function recordRabbitMirrorRecipe({ chat = null, chatKey = '', messageInd
         && !!existing.forcedVisualScenery === compact.forcedVisualScenery
         && String(existing.source || '') === sourceText
         && String(existing.messageFingerprint || '') === messageFingerprint;
-    if (unchanged) return true;
+    const facesUnchanged = JSON.stringify(existing?.faces || null) === JSON.stringify(compact.faces || null);
+    if (unchanged && facesUnchanged) return true;
     const records = existingRecords.filter(item => item?.key !== key);
     records.push({
         key,
@@ -489,7 +492,13 @@ export function recordRabbitMirrorRecipe({ chat = null, chatKey = '', messageInd
     return written;
 }
 
-export function getRabbitMirrorRecipe({ chatKey = '', messageIndex = -1, swipeId = -1, message = null } = {}) {
+export function getRabbitMirrorRecipe({ chatKey = '', messageIndex = -1, swipeId = -1, message = null, faceIndex = null } = {}) {
+    const faceRecipe = record => {
+        if (!Array.isArray(record?.faces)) return decorateRecipe(record);
+        if (!Number.isInteger(faceIndex) || faceIndex < 0 || faceIndex >= record.faces.length) return null;
+        const face = compactSelectionMetadata(record.faces[faceIndex], false);
+        return face ? decorateRecipe({ ...record, ...face, faceIndex }) : null;
+    };
     const resolvedChatKey = String(chatKey || '').trim();
     const index = Number(messageIndex);
     if (!resolvedChatKey || !Number.isInteger(index) || index < 0) return null;
@@ -506,14 +515,14 @@ export function getRabbitMirrorRecipe({ chatKey = '', messageIndex = -1, swipeId
         if (!exact) return null;
         const currentFingerprint = recipeMessageFingerprint(message, swipe);
         if (exact.messageFingerprint && currentFingerprint && exact.messageFingerprint !== currentFingerprint) return null;
-        return decorateRecipe(exact);
+        return faceRecipe(exact);
     }
     // 只有在调用方压根无法确定 swipe（传入 -1）时，才退回该消息最近的一条记录。
     const fallback = [...records].reverse().find(item => item?.chatKey === resolvedChatKey && Number(item?.messageIndex) === index);
     if (!fallback) return null;
     const currentFingerprint = recipeMessageFingerprint(message, Number(fallback?.swipeId));
     if (fallback.messageFingerprint && currentFingerprint && fallback.messageFingerprint !== currentFingerprint) return null;
-    return decorateRecipe(fallback);
+    return faceRecipe(fallback);
 }
 
 function decorateRecipe(record) {

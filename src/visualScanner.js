@@ -1,12 +1,23 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=1.5.6-abc1';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.6-abc1';
-import { getSettings } from './settings.js?rmv=1.5.6-abc1';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.7-multiface5';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.7-multiface5';
+import { getSettings } from './settings.js?rmv=1.5.7-multiface5';
 import {
+    commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
+    getRabbitMirrorFollowBatchSources,
+    getRabbitMirrorFollowBatchTargetIndexes,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.5.6-abc1';
+    releaseRabbitMirrorFollowBatchAtMessage,
+} from './generationGuard.js?rmv=1.5.7-multiface5';
+import {
+    clearSanitizedRabbitMirrorFaceProof,
+    getSanitizedRabbitMirrorFaceProof,
+    markSanitizedRabbitMirrorFace,
+    rabbitMirrorMultifaceSourceHash,
+} from './multifaceProof.js?rmv=1.5.7-multiface5';
 import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.4.30.23';
+import { hasRequiredTarotEntityImage } from './independentQualityGate.js?rmv=1.5.7-multiface5';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -14,6 +25,11 @@ let lastScanAttempts = 0;
 let visualScannerSubscriptions = [];
 let visualScannerTimers = new Set();
 let visualScannerCaptureTimer = 0;
+const followBatchScanAttempts = new Map();
+const terminalFollowMessageIndexes = new Set();
+const followBatchScansInFlight = new Set();
+let followBatchSanitizerModulePromise = null;
+let visualScannerLifecycle = 0;
 
 function hashText(text) {
     let hash = 0;
@@ -1063,6 +1079,281 @@ function findRenderedToto(message, chat, messageHtml) {
     return all[all.length - 1] || null;
 }
 
+function exactMessageScopes(chat, messageIndex) {
+    if (typeof document === 'undefined' || !Number.isInteger(messageIndex) || messageIndex < 0) return [];
+    const scopes = [];
+    const seen = new Set();
+    for (const selector of [
+        `.mes[mesid="${messageIndex}"]`,
+        `.mes[data-message-id="${messageIndex}"]`,
+        `.mes[data-messageid="${messageIndex}"]`,
+    ]) {
+        try {
+            for (const scope of [...document.querySelectorAll(selector)].slice(0, 8)) {
+                if (scope?.isConnected && !seen.has(scope)) { seen.add(scope); scopes.push(scope); }
+            }
+        } catch {}
+    }
+    return scopes;
+}
+
+function terminalFollowOwnerKey(chat, messageIndex) {
+    return `${getCurrentChatKey(Array.isArray(chat) ? chat : [])}\u0000${Number(messageIndex)}`;
+}
+
+function followOwnerStillCurrent(set, chat) {
+    const owner = set?.owner;
+    const message = Array.isArray(chat) ? chat[owner?.messageIndex] : null;
+    const swipeId = Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
+    return !!owner && message === owner.message
+        && swipeId === owner.swipeId
+        && rabbitMirrorMultifaceSourceHash(message?.mes || '') === owner.sourceHash;
+}
+
+const FOLLOW_TOTO_SELECTOR = 'toto[data-rabbit-mirror="true"]';
+
+function directDetailsChild(root) {
+    if (!root?.children) return null;
+    const matches = [...root.children].filter(child => String(child?.tagName || '').toLowerCase() === 'details');
+    return matches.length === 1 ? matches[0] : null;
+}
+
+function directSummaryChild(details) {
+    if (!details?.children) return null;
+    const matches = [...details.children].filter(child => String(child?.tagName || '').toLowerCase() === 'summary');
+    return matches.length === 1 ? matches[0] : null;
+}
+
+function isUsableSanitizedDetails(details) {
+    if (!details || !directSummaryChild(details)) return false;
+    return [...(details.childNodes || [])].some(node => {
+        if (node?.nodeType === 3) return normalizedText(node.textContent || '').length > 0;
+        if (node?.nodeType !== 1) return false;
+        return !new Set(['summary', 'style', 'script', 'template', 'link', 'meta']).has(String(node.tagName || '').toLowerCase());
+    });
+}
+
+function topLevelFollowTotos(scope) {
+    if (!scope?.querySelectorAll) return [];
+    return [...scope.querySelectorAll(FOLLOW_TOTO_SELECTOR)].filter(root => {
+        const ancestor = root.parentElement?.closest?.(FOLLOW_TOTO_SELECTOR);
+        return !ancestor || !scope.contains(ancestor);
+    });
+}
+
+function sourceFaceTitle(face) {
+    const stripped = stripTags(face?.summaryHtml || '');
+    if (typeof document === 'undefined') return normalizedText(stripped);
+    const decoder = document.createElement('textarea');
+    decoder.innerHTML = stripped;
+    return normalizedText(decoder.value || decoder.textContent || '');
+}
+
+function matchRenderedFollowFaces(scope, set) {
+    const faces = Array.isArray(set?.faces) ? set.faces : [];
+    const titles = faces.map(sourceFaceTitle);
+    if (titles.some(title => !title) || new Set(titles).size !== titles.length) return null;
+    const candidates = topLevelFollowTotos(scope)
+        .map(root => ({ root, details: directDetailsChild(root) }))
+        .filter(item => item.details && scope.contains(item.root));
+    if (candidates.length !== faces.length) return null;
+
+    const matched = [];
+    const used = new Set();
+    for (let faceIndex = 0; faceIndex < faces.length; faceIndex += 1) {
+        const matches = candidates.filter(item => !used.has(item.root) && renderedSummaryText(item.details) === titles[faceIndex]);
+        if (matches.length !== 1) return null;
+        used.add(matches[0].root);
+        matched.push({ ...matches[0], sourceFace: faces[faceIndex], faceIndex });
+    }
+
+    const parent = matched[0]?.root?.parentElement;
+    if (!parent || matched.some(item => item.root.parentElement !== parent)) return null;
+    const positions = matched.map(item => [...parent.children].indexOf(item.root));
+    if (positions.some(position => position < 0)) return null;
+    if (positions.some((position, index) => index > 0 && position <= positions[index - 1])) return null;
+    return matched;
+}
+
+function templateSingleFollowRoot(template) {
+    const significant = [...(template?.content?.childNodes || [])].filter(node => {
+        if (node?.nodeType === 1) return true;
+        return node?.nodeType === 3 && normalizedText(node.textContent || '').length > 0;
+    });
+    if (significant.length !== 1 || significant[0]?.nodeType !== 1) return null;
+    const root = significant[0];
+    return root.matches?.(FOLLOW_TOTO_SELECTOR) ? root : null;
+}
+
+function loadFollowBatchSanitizer() {
+    if (!followBatchSanitizerModulePromise) {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.7-multiface5').catch(error => {
+            followBatchSanitizerModulePromise = null;
+            console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
+            return null;
+        });
+    }
+    return followBatchSanitizerModulePromise;
+}
+
+function verifyMountedFollowFaces(scope, prepared) {
+    if (!scope || !Array.isArray(prepared) || prepared.length < 2 || prepared.length > 5) return false;
+    const parent = prepared[0]?.newRoot?.parentElement;
+    if (!parent || prepared.some(item => item.newRoot.parentElement !== parent || !scope.contains(item.newRoot))) return false;
+    const positions = prepared.map(item => [...parent.children].indexOf(item.newRoot));
+    if (positions.some(position => position < 0)) return false;
+    if (positions.some((position, index) => index > 0 && position <= positions[index - 1])) return false;
+    return prepared.every(item => {
+        const details = directDetailsChild(item.newRoot);
+        return details === item.newDetails
+            && isUsableSanitizedDetails(details)
+            && renderedSummaryText(details) === item.expectedTitle;
+    });
+}
+
+function rollbackMountedFollowFaces(prepared) {
+    for (let index = prepared.length - 1; index >= 0; index -= 1) {
+        const item = prepared[index];
+        clearSanitizedRabbitMirrorFaceProof(item.newRoot);
+        if (item.newRoot?.parentNode === item.parent) {
+            try { item.parent.replaceChild(item.oldRoot, item.newRoot); } catch {}
+        }
+    }
+}
+
+async function sanitizeAndMountFollowFaces(scope, set, sanitizer) {
+    if (!sanitizer?.sanitizeRabbitMirrorUntrustedTemplate
+        || !sanitizer?.isolateRabbitMirrorInteractionIds
+        || !sanitizer?.refreshRabbitMirrorToolsInScope) return null;
+    const matched = matchRenderedFollowFaces(scope, set);
+    if (!matched) return null;
+
+    const prepared = [];
+    for (const item of matched) {
+        const template = document.createElement('template');
+        template.innerHTML = String(item.sourceFace?.html || '');
+        if (!sanitizer.sanitizeRabbitMirrorUntrustedTemplate(template)) return null;
+        const newRoot = templateSingleFollowRoot(template);
+        const newDetails = directDetailsChild(newRoot);
+        const expectedTitle = sourceFaceTitle(item.sourceFace);
+        if (!newRoot || !newDetails || !isUsableSanitizedDetails(newDetails)
+            || renderedSummaryText(newDetails) !== expectedTitle) return null;
+        if (item.sourceFace?.metadata?.tarotRules === true
+            && !hasRequiredTarotEntityImage(newRoot.outerHTML || '')) return null;
+        if (item.details.open) newDetails.open = true;
+        else newDetails.removeAttribute('open');
+        prepared.push({
+            ...item,
+            expectedTitle,
+            newRoot,
+            newDetails,
+            parent: item.root.parentNode,
+            oldRoot: item.root,
+            sourceHash: rabbitMirrorMultifaceSourceHash(item.sourceFace.html),
+        });
+    }
+
+    if (prepared.length !== set.faces.length || prepared.some(item => !item.parent || !item.oldRoot.isConnected)) return null;
+    let mounted = 0;
+    try {
+        for (const item of prepared) {
+            if (item.oldRoot.parentNode !== item.parent) throw new Error('follow multiface DOM owner changed');
+            item.parent.replaceChild(item.newRoot, item.oldRoot);
+            mounted += 1;
+        }
+        for (const item of prepared) {
+            sanitizer.isolateRabbitMirrorInteractionIds(item.newRoot);
+            sanitizer.refreshRabbitMirrorToolsInScope(item.newRoot);
+        }
+        if (!verifyMountedFollowFaces(scope, prepared)) throw new Error('follow multiface mounted structure mismatch');
+        for (const item of prepared) {
+            if (!markSanitizedRabbitMirrorFace(item.newRoot, {
+                faceIndex: item.faceIndex,
+                faceCount: prepared.length,
+                sourceHash: item.sourceHash,
+                origin: 'follow',
+            })) throw new Error('follow multiface proof rejected');
+        }
+        if (prepared.some(item => {
+            const proof = getSanitizedRabbitMirrorFaceProof(item.newRoot);
+            return !proof || proof.origin !== 'follow'
+                || proof.faceIndex !== item.faceIndex
+                || proof.faceCount !== prepared.length
+                || proof.sourceHash !== item.sourceHash;
+        })) throw new Error('follow multiface proof mismatch');
+        return prepared.map(item => ({
+            root: item.newRoot,
+            details: item.newDetails,
+            proof: getSanitizedRabbitMirrorFaceProof(item.newRoot),
+            sourceFace: item.sourceFace,
+        }));
+    } catch (error) {
+        rollbackMountedFollowFaces(prepared.slice(0, mounted));
+        console.debug('[RabbitMirror] follow multiface transactional mount skipped:', error);
+        return null;
+    }
+}
+
+async function provenRenderedFollowFaces(set, chat, sanitizer) {
+    const messageIndex = set?.owner?.messageIndex;
+    if (!set || !Array.isArray(set.faces) || set.faces.length < 2 || set.faces.length > 5) return null;
+    if (!followOwnerStillCurrent(set, chat)) return null;
+    const scopes = exactMessageScopes(chat, messageIndex)
+        .filter(scope => !!matchRenderedFollowFaces(scope, set));
+    if (scopes.length !== 1) return null;
+    return sanitizeAndMountFollowFaces(scopes[0], set, sanitizer);
+}
+
+async function scanFollowBatches(chat, lifecycle = visualScannerLifecycle) {
+    let committed = 0;
+    const sets = getRabbitMirrorFollowBatchSources(chat);
+    const sanitizer = sets.length ? await loadFollowBatchSanitizer() : null;
+    if (lifecycle !== visualScannerLifecycle) return committed;
+    for (const set of sets) {
+        if (lifecycle !== visualScannerLifecycle) break;
+        if (followBatchScansInFlight.has(set.batchId)) continue;
+        followBatchScansInFlight.add(set.batchId);
+        const attemptKey = `${set.batchId}\u0000${set.owner.sourceHash}`;
+        const attempts = Number(followBatchScanAttempts.get(attemptKey) || 0) + 1;
+        if (!followBatchScanAttempts.has(attemptKey) && followBatchScanAttempts.size >= 24) {
+            followBatchScanAttempts.delete(followBatchScanAttempts.keys().next().value);
+        }
+        followBatchScanAttempts.set(attemptKey, attempts);
+        try {
+            const rendered = await provenRenderedFollowFaces(set, chat, sanitizer);
+            if (!rendered) continue;
+            const scans = rendered.map(({ sourceFace, root }, faceIndex) => ({
+                faceIndex,
+                ...scanRabbitMirrorHtml(sourceFace.html, root),
+            }));
+            if (scans.length !== set.faces.length) continue;
+            if (commitRabbitMirrorFollowBatch(set.batchId, chat, scans, set.owner)) {
+                committed += 1;
+                followBatchScanAttempts.delete(attemptKey);
+                terminalFollowMessageIndexes.delete(terminalFollowOwnerKey(chat, set.owner.messageIndex));
+                const feedbackResult = consumeInjectedFeedbackForSuccessfulRabbitMirror(set.owner.message);
+                if (feedbackResult?.consumed) console.debug('[RabbitMirror] feedback cat consumed:', feedbackResult.remainingRounds);
+                console.debug('[RabbitMirror] follow multiface visual batch committed:', set.batchId, scans.length);
+            }
+        } finally {
+            followBatchScansInFlight.delete(set.batchId);
+        }
+    }
+    for (const messageIndex of getRabbitMirrorFollowBatchTargetIndexes(chat)) {
+        const ownerKey = terminalFollowOwnerKey(chat, messageIndex);
+        if (!terminalFollowMessageIndexes.has(ownerKey)) continue;
+        const key = `terminal\u0000${ownerKey}`;
+        const attempts = Number(followBatchScanAttempts.get(key) || 0) + 1;
+        followBatchScanAttempts.set(key, attempts);
+        if (attempts >= 2) {
+            releaseRabbitMirrorFollowBatchAtMessage(chat, messageIndex);
+            terminalFollowMessageIndexes.delete(ownerKey);
+            followBatchScanAttempts.delete(key);
+        }
+    }
+    return committed;
+}
+
 
 function messageIntegritySources(message) {
     const candidates = [];
@@ -1101,14 +1392,18 @@ function successfulRabbitMirrorSource(message, chat) {
 }
 
 async function scanLatestAssistantMessage(mod) {
+    const lifecycle = visualScannerLifecycle;
     const chat = mod?.chat || globalThis.chat;
     if (!Array.isArray(chat) || !chat.length) return;
     captureRabbitMirrorGenerationSnapshots(chat);
+    await scanFollowBatches(chat, lifecycle);
+    if (lifecycle !== visualScannerLifecycle) return;
     const message = [...chat].reverse().find(item => !item?.is_user && typeof item?.mes === 'string');
     if (!message || !/(?:<toto\b|<details\b)[\s\S]*?兔子镜/i.test(message.mes)) {
         console.debug('[RabbitMirror] visual commit skipped: latest assistant message has no RabbitMirror source');
         return;
     }
+    if (/\bdata-rm-face\s*=/i.test(message.mes)) return;
     const successful = successfulRabbitMirrorSource(message, chat);
     if (!successful) {
         console.debug('[RabbitMirror] visual commit skipped: incomplete RabbitMirror source');
@@ -1155,11 +1450,15 @@ function clearVisualScannerTimers() {
 }
 
 export function destroyVisualScanner() {
+    visualScannerLifecycle += 1;
     clearVisualScannerTimers();
     for (const { eventSource, eventName, handler } of visualScannerSubscriptions) {
         try { eventSource?.off?.(eventName, handler); } catch {}
     }
     visualScannerSubscriptions = [];
+    followBatchScanAttempts.clear();
+    terminalFollowMessageIndexes.clear();
+    followBatchScansInFlight.clear();
     if (globalThis.__rabbitMirrorVisualScannerCleanup === destroyVisualScanner) delete globalThis.__rabbitMirrorVisualScannerCleanup;
 }
 
@@ -1196,8 +1495,25 @@ export async function initVisualScanner() {
             }, delay);
             visualScannerTimers.add(timer);
         };
-        const scheduleScan = () => {
+        const generationMessageIndex = payload => {
+            for (const value of [payload, payload?.messageId, payload?.message_id, payload?.mesid, payload?.id, mod?.streamingProcessor?.messageId]) {
+                const index = Number(value);
+                if (Number.isInteger(index) && index >= 0) return index;
+            }
+            return null;
+        };
+        const scheduleScan = (payload = null, eventName = '') => {
             globalThis.__rabbitMirrorPerfDiag?.mark?.('visualScanner.scheduleScan');
+            const messageIndex = generationMessageIndex(payload);
+            const eventChat = mod?.chat || globalThis.chat;
+            const ownerKey = Number.isInteger(messageIndex) ? terminalFollowOwnerKey(eventChat, messageIndex) : '';
+            if (Number.isInteger(messageIndex) && eventName === eventTypes.GENERATION_STOPPED) {
+                releaseRabbitMirrorFollowBatchAtMessage(eventChat, messageIndex);
+                terminalFollowMessageIndexes.delete(ownerKey);
+            } else if (Number.isInteger(messageIndex) && eventName === eventTypes.GENERATION_ENDED) {
+                if (terminalFollowMessageIndexes.size >= 8) terminalFollowMessageIndexes.delete(terminalFollowMessageIndexes.values().next().value);
+                terminalFollowMessageIndexes.add(ownerKey);
+            }
             // Multiple SillyTavern end events can fire for the same reply. Keep
             // only one early and one settled scan instead of stacking another
             // pair for every event.
@@ -1221,7 +1537,7 @@ export async function initVisualScanner() {
             subscribe(eventName, handler);
         }
         const generationEvents = [eventTypes.MESSAGE_RECEIVED, eventTypes.GENERATION_STOPPED, eventTypes.GENERATION_ENDED].filter(Boolean);
-        for (const eventName of [...new Set(generationEvents)]) subscribe(eventName, scheduleScan);
+        for (const eventName of [...new Set(generationEvents)]) subscribe(eventName, payload => scheduleScan(payload, eventName));
         // CHAT_CHANGED and MESSAGE_UPDATED can fire while a long history/reply is
         // still arriving. Final rendered/received/end events own the settled scan;
         // never rescan a growing正文 on every token or an empty chat boundary.

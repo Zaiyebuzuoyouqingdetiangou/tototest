@@ -1,11 +1,24 @@
-import { getCurrentChatKey } from './storage.js?rmv=1.5.6-abc1';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.6-abc1';
+import {
+    commitPendingComboBatch,
+    getCurrentChatKey,
+    releasePendingComboBatch,
+} from './storage.js?rmv=1.5.7-multiface5';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.7-multiface5';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.7-multiface5';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';
 const SNAPSHOT_TTL_MS = 30 * 60 * 1000;
 const MAX_SNAPSHOTS = 16;
 const MAX_SNAPSHOT_SOURCE_CHARS = 240000;
+const MAX_ACTIVE_FOLLOW_BATCHES = 8;
+const activeFollowBatches = new Map();
+
+function deeplyFreeze(value) {
+    if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+    for (const nested of Object.values(value)) deeplyFreeze(nested);
+    return Object.freeze(value);
+}
 
 function hashText(text) {
     let hash = 2166136261;
@@ -242,6 +255,242 @@ function currentSwipeId(message) {
     return Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
 }
 
+function copySelectionMetadata(metadata = null) {
+    if (!metadata || typeof metadata !== 'object') return null;
+    const copy = {
+        samplingMode: String(metadata.samplingMode || 'classic'),
+        themeIds: Array.isArray(metadata.themeIds) ? [...metadata.themeIds] : [],
+        formatIds: Array.isArray(metadata.formatIds) ? [...metadata.formatIds] : [],
+        userDirectiveApplied: !!metadata.userDirectiveApplied,
+        forcedVisualScenery: !!metadata.forcedVisualScenery,
+        tarotRules: metadata.tarotRules === true,
+    };
+    if (Array.isArray(metadata.faces)) {
+        copy.faces = metadata.faces.slice(0, 5).map(face => ({
+            faceIndex: Number(face?.faceIndex),
+            ...copySelectionMetadata(face),
+        }));
+    }
+    return copy;
+}
+
+function isFollowBatchPlan(plan) {
+    return plan?.kind === 'rabbit-mirror-multiface-plan'
+        && plan.schemaVersion === 1
+        && typeof plan?.batchId === 'string' && !!plan.batchId
+        && plan?.identity?.kind === 'generation-operation'
+        && typeof plan.identity.chatKey === 'string' && !!plan.identity.chatKey
+        && typeof plan.identity.generationScopeKey === 'string' && !!plan.identity.generationScopeKey
+        && typeof plan.identity.operationId === 'string' && !!plan.identity.operationId
+        && typeof plan.identity.generationType === 'string' && !!plan.identity.generationType
+        && typeof plan.identity.settingsKey === 'string' && !!plan.identity.settingsKey
+        && plan.identity.preview === false
+        && Number.isInteger(plan.requestedFaceCount)
+        && plan.requestedFaceCount >= 2 && plan.requestedFaceCount <= 5
+        && Array.isArray(plan.faces) && plan.faces.length === plan.requestedFaceCount
+        && plan.faces.every((face, index) => face?.faceIndex === index && face?.combo && typeof face.combo === 'object');
+}
+
+function followTargetFor(chat, generationType = '') {
+    const list = Array.isArray(chat) ? chat : [];
+    const type = String(generationType || 'normal').toLowerCase();
+    const tailIndex = list.length - 1;
+    const tail = list[tailIndex] || null;
+    if (tail && tail.is_user !== true && ['continue', 'swipe', 'regenerate'].includes(type)) {
+        return { targetMessageIndex: tailIndex, existingTarget: true };
+    }
+    if (tail && tail.is_user !== true && type === 'normal') {
+        return { targetMessageIndex: tailIndex, existingTarget: true };
+    }
+    return { targetMessageIndex: list.length, existingTarget: false };
+}
+
+function followAnchor(chat, target) {
+    const list = Array.isArray(chat) ? chat : [];
+    const anchorIndex = target.targetMessageIndex - 1;
+    const anchor = list[anchorIndex] || null;
+    const targetMessage = target.existingTarget ? list[target.targetMessageIndex] : null;
+    return {
+        initialLength: list.length,
+        anchorIndex,
+        anchorIsUser: typeof anchor?.is_user === 'boolean' ? anchor.is_user : null,
+        anchorBodyHash: anchor ? hashText(anchor.mes || '') : '',
+        anchorSwipeId: anchor ? currentSwipeId(anchor) : -1,
+        targetBodyHash: targetMessage ? hashText(targetMessage.mes || '') : '',
+        targetSwipeId: targetMessage ? currentSwipeId(targetMessage) : null,
+    };
+}
+
+function normalizedFollowRecord(chat, attemptId, plan, metadata = null) {
+    if (!isFollowBatchPlan(plan)) return null;
+    const list = Array.isArray(chat) ? chat : [];
+    const chatKey = getCurrentChatKey(list);
+    if (!chatKey || plan.identity.chatKey !== chatKey
+        || plan.identity.operationId !== String(attemptId || '')
+        || plan.identity.generationScopeKey !== String(attemptId || '')) return null;
+    const target = followTargetFor(list, plan.identity.generationType);
+    return Object.freeze({
+        batchId: plan.batchId,
+        attemptId: String(attemptId || ''),
+        chatKey,
+        targetMessageIndex: target.targetMessageIndex,
+        existingTarget: target.existingTarget,
+        generationType: String(plan.identity.generationType || 'normal').toLowerCase(),
+        anchor: Object.freeze(followAnchor(list, target)),
+        plan: deeplyFreeze(JSON.parse(JSON.stringify(plan))),
+        selectionMetadata: deeplyFreeze(copySelectionMetadata(metadata)),
+        startedAt: Date.now(),
+    });
+}
+
+function deleteFollowRecord(batchId, { release = false } = {}) {
+    const record = activeFollowBatches.get(String(batchId || '')) || null;
+    if (!record) return false;
+    activeFollowBatches.delete(record.batchId);
+    if (release) releasePendingComboBatch({ batchId: record.plan.batchId, identity: record.plan.identity });
+    return true;
+}
+
+/** Register only after the follow prompt was actually installed, never during preview. */
+export function registerRabbitMirrorFollowBatch(chat, attemptId, plan, metadata = null) {
+    const record = normalizedFollowRecord(chat, attemptId, plan, metadata);
+    if (!record) return false;
+    const existingBatch = activeFollowBatches.get(record.batchId);
+    if (existingBatch) {
+        return existingBatch.attemptId === record.attemptId
+            && existingBatch.chatKey === record.chatKey
+            && existingBatch.targetMessageIndex === record.targetMessageIndex
+            && JSON.stringify(existingBatch.plan) === JSON.stringify(record.plan);
+    }
+    for (const current of [...activeFollowBatches.values()]) {
+        if (current.chatKey === record.chatKey && current.targetMessageIndex === record.targetMessageIndex) {
+            deleteFollowRecord(current.batchId, { release: true });
+        }
+    }
+    if (activeFollowBatches.size >= MAX_ACTIVE_FOLLOW_BATCHES) return false;
+    activeFollowBatches.set(record.batchId, record);
+    return true;
+}
+
+function followOwner(record, chat) {
+    const list = Array.isArray(chat) ? chat : [];
+    if (!record || getCurrentChatKey(list) !== record.chatKey) return null;
+    const anchor = list[record.anchor.anchorIndex] || null;
+    if (record.anchor.anchorIndex >= 0 && (
+        !anchor
+        || anchor.is_user !== record.anchor.anchorIsUser
+        || hashText(anchor.mes || '') !== record.anchor.anchorBodyHash
+        || currentSwipeId(anchor) !== record.anchor.anchorSwipeId
+    )) return null;
+    const message = list[record.targetMessageIndex];
+    if (!message || message.is_user === true || typeof message.mes !== 'string' || !message.mes.trim()) return null;
+    const swipeId = currentSwipeId(message);
+    const sourceHash = hashText(message.mes);
+    if (record.existingTarget && sourceHash === record.anchor.targetBodyHash) return null;
+    const parsed = parseMultifaceOutput(message.mes, {
+        expectedCount: record.plan.requestedFaceCount,
+        allowProse: true,
+    });
+    if (!parsed.ok) return { record, message, messageIndex: record.targetMessageIndex, swipeId, sourceHash, parsed };
+    return { record, message, messageIndex: record.targetMessageIndex, swipeId, sourceHash, parsed };
+}
+
+function faceMetadata(record, faceIndex) {
+    const supplied = record?.selectionMetadata?.faces?.find(face => face.faceIndex === faceIndex);
+    if (supplied) return copySelectionMetadata(supplied);
+    const combo = record?.plan?.faces?.[faceIndex]?.combo;
+    if (!combo) return null;
+    return copySelectionMetadata({
+        samplingMode: combo.samplingMode,
+        themeIds: combo.themeIds,
+        formatIds: combo.formatIds,
+        forcedVisualScenery: combo.forcedVisualScenery,
+    });
+}
+
+export function getRabbitMirrorFollowBatchSources(chat) {
+    const list = Array.isArray(chat) ? chat : [];
+    const sets = [];
+    for (const record of activeFollowBatches.values()) {
+        const owner = followOwner(record, list);
+        if (!owner?.parsed?.ok) continue;
+        sets.push({
+            batchId: record.batchId,
+            plan: record.plan,
+            identity: record.plan.identity,
+            owner: {
+                chatKey: record.chatKey,
+                message: owner.message,
+                messageIndex: owner.messageIndex,
+                swipeId: owner.swipeId,
+                sourceHash: owner.sourceHash,
+            },
+            faces: owner.parsed.faces.map(face => ({ ...face, metadata: faceMetadata(record, face.index) })),
+        });
+    }
+    return sets;
+}
+
+export function getRabbitMirrorFollowBatchTargetIndexes(chat) {
+    const list = Array.isArray(chat) ? chat : [];
+    const chatKey = getCurrentChatKey(list);
+    return [...activeFollowBatches.values()]
+        .filter(record => record.chatKey === chatKey)
+        .map(record => record.targetMessageIndex)
+        .filter((value, index, values) => values.indexOf(value) === index)
+        .slice(0, MAX_ACTIVE_FOLLOW_BATCHES);
+}
+
+export function commitRabbitMirrorFollowBatch(batchId, chat, faceScans = [], expectedOwner = null) {
+    const record = activeFollowBatches.get(String(batchId || '')) || null;
+    const owner = followOwner(record, chat);
+    if (!record || !owner?.parsed?.ok || !expectedOwner || !Array.isArray(faceScans)
+        || faceScans.length !== record.plan.requestedFaceCount) return false;
+    if (expectedOwner.chatKey !== record.chatKey
+        || expectedOwner.message !== owner.message
+        || expectedOwner.messageIndex !== owner.messageIndex
+        || expectedOwner.swipeId !== owner.swipeId
+        || expectedOwner.sourceHash !== owner.sourceHash) return false;
+    if (hashText(owner.message.mes || '') !== owner.sourceHash || currentSwipeId(owner.message) !== owner.swipeId) return false;
+    const committed = commitPendingComboBatch(faceScans, { batchId: record.plan.batchId, identity: record.plan.identity });
+    if (!committed) return false;
+    recordRabbitMirrorRecipe({
+        chat,
+        chatKey: record.chatKey,
+        messageIndex: owner.messageIndex,
+        swipeId: owner.swipeId,
+        message: owner.message,
+        metadata: record.selectionMetadata || { faces: record.plan.faces.map((face, faceIndex) => faceMetadata(record, faceIndex)) },
+        source: 'follow',
+    });
+    activeFollowBatches.delete(record.batchId);
+    return true;
+}
+
+export function releaseRabbitMirrorFollowBatch(expected = null) {
+    const operationId = String(expected?.operationId || '');
+    const batchId = String(expected?.batchId || '');
+    let changed = false;
+    for (const record of [...activeFollowBatches.values()]) {
+        if (batchId && record.batchId !== batchId) continue;
+        if (operationId && record.attemptId !== operationId) continue;
+        changed = deleteFollowRecord(record.batchId, { release: true }) || changed;
+    }
+    return changed;
+}
+
+export function releaseRabbitMirrorFollowBatchAtMessage(chat, messageIndex) {
+    const chatKey = getCurrentChatKey(Array.isArray(chat) ? chat : []);
+    if (!chatKey || !Number.isInteger(messageIndex)) return false;
+    let changed = false;
+    for (const record of [...activeFollowBatches.values()]) {
+        if (record.chatKey === chatKey && record.targetMessageIndex === messageIndex) {
+            changed = deleteFollowRecord(record.batchId, { release: true }) || changed;
+        }
+    }
+    return changed;
+}
+
 export function beginRabbitMirrorGenerationAttempt(chat, attemptId) {
     const list = Array.isArray(chat) ? chat : [];
     const chatKey = getCurrentChatKey(list);
@@ -275,13 +524,7 @@ export function beginRabbitMirrorGenerationAttempt(chat, attemptId) {
 export function attachRabbitMirrorGenerationSelection(metadata = null) {
     const active = readActiveAttempt();
     if (!active || !metadata || typeof metadata !== 'object') return false;
-    active.selectionMetadata = {
-        samplingMode: String(metadata.samplingMode || 'classic'),
-        themeIds: Array.isArray(metadata.themeIds) ? [...metadata.themeIds] : [],
-        formatIds: Array.isArray(metadata.formatIds) ? [...metadata.formatIds] : [],
-        userDirectiveApplied: !!metadata.userDirectiveApplied,
-        forcedVisualScenery: !!metadata.forcedVisualScenery,
-    };
+    active.selectionMetadata = copySelectionMetadata(metadata);
     writeActiveAttempt(active);
     return true;
 }
@@ -327,6 +570,7 @@ export function captureRabbitMirrorGenerationSnapshots(chat) {
             ? String(active.attemptId || '')
             : '';
         for (const candidate of messageSourceCandidates(message)) {
+            if (/\bdata-rm-face\s*=/i.test(candidate.source)) continue;
             const inspection = inspectRabbitMirrorGenerationSource(candidate.source);
             if (!inspection.hasMirror || inspection.isolatedSource.length > MAX_SNAPSHOT_SOURCE_CHARS) continue;
             const existingIndex = snapshots.findIndex(item => item.key === key);
@@ -374,12 +618,32 @@ export function captureRabbitMirrorGenerationSnapshots(chat) {
     return changed;
 }
 
-export function getRabbitMirrorGenerationSnapshot(message, chat, messageIndex, expectedTitle = '') {
+export function getRabbitMirrorGenerationSnapshot(message, chat, messageIndex, expectedTitle = '', faceIndex = null) {
     const list = Array.isArray(chat) ? chat : [];
     const index = Number.isInteger(messageIndex) ? messageIndex : list.lastIndexOf(message);
     if (index < 0) return null;
     const chatKey = getCurrentChatKey(list);
     const swipeId = currentSwipeId(message);
+    if (Number.isInteger(faceIndex) && faceIndex >= 0 && faceIndex < 5) {
+        const wanted = normalizeText(expectedTitle);
+        for (const set of getRabbitMirrorFollowBatchSources(list)) {
+            if (set.owner.message !== message || set.owner.messageIndex !== index || set.owner.chatKey !== chatKey || set.owner.swipeId !== swipeId) continue;
+            const face = set.faces.find(item => item.index === faceIndex);
+            if (!face?.details) continue;
+            const title = normalizeText(face.summaryHtml);
+            if (wanted && title !== wanted && !title.includes(wanted) && !wanted.includes(title)) continue;
+            return {
+                source: face.inner,
+                title,
+                sourceLabel: '本轮多面完整源码',
+                attemptId: set.identity.operationId,
+                ts: Date.now(),
+                faceIndex,
+                selectionMetadata: face.metadata ? copySelectionMetadata(face.metadata) : null,
+            };
+        }
+        return null;
+    }
     const key = snapshotKey(chatKey, index, swipeId);
     const wanted = normalizeText(expectedTitle);
     const item = [...readSnapshots()].reverse().find(snapshot => {
@@ -402,6 +666,7 @@ export function getRabbitMirrorGenerationSnapshot(message, chat, messageIndex, e
 }
 
 export function clearRabbitMirrorGenerationSnapshots() {
+    for (const record of [...activeFollowBatches.values()]) deleteFollowRecord(record.batchId, { release: true });
     try {
         sessionStorage.removeItem(SNAPSHOT_STORAGE_KEY);
         sessionStorage.removeItem(ACTIVE_ATTEMPT_STORAGE_KEY);

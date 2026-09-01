@@ -1,12 +1,12 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.17';
 import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.17';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.30.17';
-import { pickCombination } from './picker.js?rmv=1.5.6-abc1';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.6-abc1';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.6-abc1';
+import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.7-multiface5';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.7-multiface5';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.7-multiface5';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.17';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.6-abc1';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.6-abc1';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.7-multiface5';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.7-multiface5';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -111,12 +111,18 @@ ${memoryMaterial.text}
 }
 
 function isTarotRelated(combo) {
-    const keywords = ['塔罗', '牌阵', '占卜', '神秘学', 'tarot'];
-    const text = [
+    const items = [
         ...(combo?.themes || []),
         ...(combo?.formats || []),
-    ].map(item => `${item?.id || ''} ${item?.title || ''} ${item?.summary || ''} ${item?.raw || ''} ${(item?.tags || []).join(' ')}`).join('\n').toLowerCase();
-    return keywords.some(keyword => text.includes(keyword.toLowerCase()));
+    ];
+    // 5.3.2 东方神秘学、泛称“占卜/神秘学”并不必然使用塔罗牌。
+    // 只在明确的西方神秘学条目或真正出现塔罗/牌阵证据时注入实体牌图规则。
+    if (items.some(item => String(item?.id || '').trim() === '5.3.1')) return true;
+    const text = items
+        .map(item => `${item?.title || ''} ${item?.summary || ''} ${item?.raw || ''} ${(item?.tags || []).join(' ')}`)
+        .join('\n')
+        .toLowerCase();
+    return /塔罗|牌阵|西方神秘学|\btarot\b/i.test(text);
 }
 
 function isTouchTheaterRelated(combo) {
@@ -279,6 +285,48 @@ function coreOutputProtocol() {
   - 若剩余输出长度不足，应立即收束正文并精简内部次要文字与装饰，但仍须完整输出并闭合。
   - 禁止解释规则、Markdown 代码块、<pre>/<code> 与 HTML 注释；禁止 script、iframe、object、embed、form、事件属性。
   - 完整输出 </toto> 后立即结束本轮回复，不得再追加状态栏、文字、标签或其他可见内容。`;
+}
+
+function multiFaceOutputProtocol(faceCount) {
+    const order = Array.from({ length: faceCount }, (_, index) => String(index + 1)).join(' → ');
+    const openingTags = Array.from({ length: faceCount }, (_, index) =>
+        `<toto data-rabbit-mirror="true" data-rm-face="${index + 1}" style="display:block;">`).join('、');
+    return String.raw`
+兔子镜多面输出顺序与强制输出【每轮必需】:
+  - 先完成本轮主回复正文与其他固定模块；随后连续输出 ${faceCount} 个互相平级、各自完整闭合的 <toto>，data-rm-face 顺序固定为 ${order}。
+  - 各面的实际开标签依次为：${openingTags}。每个开标签后紧接 <details><summary>【兔子镜：中文短标题】</summary>该面的独立 HTML</details></toto>。
+  - ${faceCount} 个 summary 的中文短标题必须互不相同；不得复制同一个标题或只靠空格、大小写、装饰标签伪装成不同标题。
+  - 禁止把多面塞进同一个 <toto>，禁止让某面嵌套、包裹或控制另一面；每面须是可单独净化、维修和替换的完整作品。
+  - 每面只执行下方同编号计划；不得交换编号、合并主题、复制另一面正文或用一套 HTML 只换标题／颜色。
+  - 若输出长度紧张，先收束主回复和每面的次要文字／装饰，但仍须输出恰好 ${faceCount} 面并全部闭合；不得少面、留占位或截断。
+  - 禁止解释规则、Markdown代码块、HTML注释、script、iframe、object、embed、form与事件属性。
+  - 只有第 ${faceCount} 面的 </toto> 完整闭合后才结束回复；中间各面闭合后立即继续下一面，不得追加面外说明。`;
+}
+
+function multiFaceSelectionRule(faces) {
+    const plans = faces.map((face, index) => {
+        const mode = face.combo?.samplingMode || 'classic';
+        const themes = mode === 'format_only' ? '- 内容取自当前对话语境，不补造题材分类' : face.selectedThemes;
+        return String.raw`【第 ${index + 1} 面｜输出 data-rm-face="${index + 1}"】
+抽取模式：${samplingModeLabel(face.combo, face.settings)}
+主题元素：
+${themes}
+展现形式：
+${face.selectedFormats}
+局部构思硬要求：从本面的选题与媒介重新确定主体、视线入口、空间层级、材质细节与交互链。即使用户固定了同一形式，本面也必须采用不同于其他面的内容焦点、构图路径和可逆第二状态；不得复制DOM骨架后换皮。`;
+    }).join('\n\n');
+    return `兔子镜逐面冻结计划【各面平级；不得互相借用】:\n${plans}`;
+}
+
+function tarotPhysicalImageRule(faceIndexes = []) {
+    if (!faceIndexes.length) return '';
+    return `塔罗实体牌图硬锁【仅第 ${faceIndexes.join('、')}面】:
+  - 该面凡展示一张具体塔罗牌，必须实际使用下方白名单规则对应的 <img> 实体牌图，并提供简体中文 alt；不得只画空白牌背、色块、牌名或占位框冒充牌面。
+  - 只允许规则给出的固定 base_url 与编号算法，不得改用其他外链、data URL或模型臆造地址。`;
+}
+
+function enhancedVisualDrawingRule() {
+    return '增强视觉绘制：先确定清晰的主体轮廓与阅读焦点，再建立前中后景、遮挡和留白；用真实 CSS 落实材质、接缝、光源、阴影与排版层级，并让交互前后出现可逆且有意义的内容或空间变化。可自由组合 HTML、CSS 与安全内联 SVG，不要求固定布局或每轮使用 SVG。';
 }
 
 function compactCreativeRule(enabled, formatOnly = false) {
@@ -683,14 +731,104 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     ].filter(Boolean).join('\n');
 }
 
-function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, touchTheaterRulesText, directive, memoryMaterial, activeFeedback, generationType = 'normal', followTagIsolationText = '' }) {
+function buildMultiIndependentExecutionLock(faceContexts, settings, directive) {
+    const interaction = interactionFamilyCooldownSnapshot();
+    const repeatedVisualDimensions = getRepeatedVisualFamilyDimensions(3, 2);
+    const paletteCooldownLock = buildPaletteCooldownExecutionLock();
+    const innerDetailsBlocked = getRecentRiskFlags(5).includes('inner_details_used');
+    const directiveText = settings?.userDirectivePriority && directive?.rawDirective
+        ? truncateDirectiveText(directive.rawDirective, 240) : '';
+    const visualPreferenceLock = compactVisualPreferenceExecutionLock(settings);
+    const activeBans = [
+        interaction ? `交互避用「${interaction.label}」` : '', paletteCooldownLock,
+        repeatedVisualDimensions.length ? `连续视觉项：${repeatedVisualDimensions.map(item => `${item.label}「${item.value}」×${item.streak}`).join('；')}；从媒介重做，不得只换色` : '',
+        innerDetailsBlocked ? '兔子镜内部 details/summary 冷却' : '',
+    ].filter(Boolean);
+    const faceLocks = faceContexts.map((face, index) => {
+        const mode = face.combo?.samplingMode || settings?.samplingMode || 'classic';
+        const themes = mode === 'format_only' ? '当前助手正文' : compactLockItems(face.combo?.themes, 'theme');
+        const formats = compactLockItems(face.combo?.formats, 'presentation');
+        const tarot = face.tarotRulesText ? '；具体塔罗牌必须使用白名单实体牌图' : '';
+        const adult = adultFictionExecutionRule(face.combo, true);
+        return `第 ${index + 1} 面：${samplingModeLabel(face.combo, settings)}；主题：${themes}；展现形式：${formats}。短检：${compactPresentationExecutionContract(face.combo?.formats)}；主体、空间层次、材质与可逆交互均须落实${tarot}。${adult}`;
+    });
+    return [
+        '<兔子镜多面近输出短锁 data-source="independent-api-near-output">',
+        `本轮必须按 data-rm-face="1" 至 "${faceContexts.length}" 顺序输出 ${faceContexts.length} 个平级、各自闭合的 <toto>；禁止单个 <toto> 内嵌多面。`,
+        ...faceLocks,
+        directiveText ? `点菜优先：${directiveText}` : '',
+        activeBans.length ? `全批近因避让：${activeBans.join('；')}。` : '',
+        visualPreferenceLock ? `最终视觉偏好裁决：${visualPreferenceLock}；近期避让不得覆盖。` : '',
+        '各面须具有不同的内容焦点、构图路径和交互第二状态；可读性与360px正文不裁切要求逐面成立。',
+        `只有第 ${faceContexts.length} 面闭合后才结束，不得少面、合并、追加面外文字。`,
+        '</兔子镜多面近输出短锁>',
+    ].filter(Boolean).join('\n');
+}
+
+function freezeDeep(value) {
+    if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+    Object.freeze(value);
+    Object.values(value).forEach(freezeDeep);
+    return value;
+}
+
+function buildFaceContext(combo, settings, rawPolicy) {
+    const selectedThemeResult = formatItemsWithRawPolicy(combo.themes, 'theme', rawPolicy);
+    const selectedFormatResult = formatItemsWithRawPolicy(combo.formats, 'presentation', rawPolicy);
+    return {
+        combo, settings,
+        selectedThemeResult, selectedFormatResult,
+        selectedThemes: selectedThemeResult.text,
+        selectedFormats: selectedFormatResult.text,
+        visualSceneryMode: !!(settings.forceVisualScenery || hasVisualScenery(combo)),
+        tarotRulesText: isTarotRelated(combo) ? TAROT_IMAGE_RULES : '',
+        touchTheaterRulesText: isTouchTheaterRelated(combo) ? TOUCH_THEATER_RULES : '',
+    };
+}
+
+function faceMetadata(face, settings, generationType, rawPolicy, directive, memoryMaterial, followTagIsolationTags, followTagIsolationText) {
+    const combo = face.combo;
+    return {
+        generationType: String(generationType || 'normal'), rawPolicy,
+        samplingMode: combo?.samplingMode || settings?.samplingMode || 'classic',
+        themeIds: Array.isArray(combo?.themeIds) ? [...combo.themeIds] : [],
+        formatIds: Array.isArray(combo?.formatIds) ? [...combo.formatIds] : [],
+        themeLabels: Array.isArray(combo?.themes) ? combo.themes.map(item => `${item?.id || '?'} ${item?.title || '未命名'}`) : [],
+        formatLabels: Array.isArray(combo?.formats) ? combo.formats.map(item => `${item?.id || '?'} ${item?.title || '未命名'}`) : [],
+        selectedThemeChars: face.selectedThemes.length, selectedFormatChars: face.selectedFormats.length,
+        editableVisualChars: settings?.visualPromptEditingEnabled
+            ? [settings?.visualPrompt ?? DEFAULT_VISUAL_PROMPT, settings?.visualExtraPrompt, settings?.visualAvoidPrompt].map(value => String(value || '')).join('').length : 0,
+        motherLibraryChars: face.selectedThemeResult.retrievedChars + face.selectedFormatResult.retrievedChars,
+        motherLibraryItems: face.selectedThemeResult.retrievedItems + face.selectedFormatResult.retrievedItems,
+        memoryChars: String(memoryMaterial?.text || '').length,
+        memorySources: Array.isArray(memoryMaterial?.sources) ? [...memoryMaterial.sources] : [],
+        followTagIsolationEnabled: followTagIsolationText.length > 0,
+        followTagIsolationTags: [...followTagIsolationTags], followTagIsolationChars: followTagIsolationText.length,
+        visualSceneryMode: face.visualSceneryMode, forcedVisualScenery: !!combo?.forcedVisualScenery,
+        tarotRules: !!face.tarotRulesText, touchTheaterRules: !!face.touchTheaterRulesText,
+        userDirectiveApplied: !!directive,
+        customThemeCount: Array.isArray(directive?.customThemes) ? directive.customThemes.length : 0,
+        customFormatCount: Array.isArray(directive?.customFormats) ? directive.customFormats.length : 0,
+        customRequestCount: Array.isArray(directive?.customRequests) ? directive.customRequests.length : 0,
+        rawDirectiveChars: String(directive?.rawDirective || '').length,
+        customDirectiveChars: [...(directive?.customThemes || []), ...(directive?.customFormats || []), ...(directive?.customRequests || [])].join('').length,
+        presentationWorldviewLockEnabled: settings?.presentationWorldviewLock === true,
+        presentationWorldviewLockApplied: settings?.presentationWorldviewLock === true && !selectedThemeHasIf(combo),
+        presentationWorldviewLockIfExempt: settings?.presentationWorldviewLock === true && selectedThemeHasIf(combo),
+    };
+}
+
+function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, touchTheaterRulesText, directive, memoryMaterial, activeFeedback, generationType = 'normal', followTagIsolationText = '', faceContexts = null }) {
     const chunks = [];
+    const multiface = Array.isArray(faceContexts) && faceContexts.length > 1;
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
     chunks.push(rabbitMirrorConstructionScopeRule());
     if (settings.hardStartup !== false) chunks.push(hardStartupReserve());
     chunks.push(visibleChineseHardLock());
-    if (mode === 'format_only') {
+    if (multiface) {
+        chunks.push(multiFaceSelectionRule(faceContexts));
+    } else if (mode === 'format_only') {
         chunks.push(String.raw`
 本轮抽取模式: 仅展现形式
 本轮内容来源: 当前对话语境；不使用题材抽取池，不额外补造独立类别。
@@ -710,7 +848,12 @@ ${selectedFormats}`);
     chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
     // Independent generation already receives the compact adult boundary in its
     // near-output execution lock. Avoid duplicating the same rule in both payloads.
-    if (String(generationType || 'normal') !== 'independent') chunks.push(adultFictionExecutionRule(combo, false));
+    if (String(generationType || 'normal') !== 'independent') {
+        if (multiface) {
+            const adultFaces = faceContexts.map((face, faceIndex) => selectedAdultItems(face.combo).length ? faceIndex : -1).filter(index => index >= 0);
+            if (adultFaces.length) chunks.push(`以下成人虚构边界仅作用于第 ${adultFaces.map(index => index + 1).join('、')} 面:\n${adultFictionExecutionRule(faceContexts[adultFaces[0]].combo, false)}`);
+        } else chunks.push(adultFictionExecutionRule(combo, false));
+    }
     if (settings?.visualPromptEditingEnabled) {
         chunks.push(presentationEmbodimentRule());
     } else {
@@ -718,35 +861,66 @@ ${selectedFormats}`);
     }
     chunks.push(globalCompletionFloorRule());
     if (settings?.enhancedVisualDrawing === true) {
-        chunks.push('可随本轮内容自由活用 HTML / CSS / 安全内联 SVG 等视觉技法；媒介与组合方式自由选择，不要求每轮使用 SVG。');
+        chunks.push(enhancedVisualDrawingRule());
     }
-    chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
+    if (multiface) {
+        chunks.push(complexInteractiveCore());
+        const visualFaces = faceContexts.map((face, index) => face.visualSceneryMode ? index : -1).filter(index => index >= 0);
+        if (visualFaces.length) chunks.push(`Visual Scenery 局部覆盖：以下完整规则只作用于第 ${visualFaces.map(index => index + 1).join('、')} 面，其他面继续执行通用复杂交互核心。\n${visualScenerySceneFirstCore()}`);
+    } else chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
     chunks.push(interactionFamilyCooldownRule());
     chunks.push(innerDetailsCooldownRule());
     chunks.push(buildPaletteCooldownRule());
     chunks.push(visualFamilyCooldownRule());
     chunks.push(visualColorTruthRule());
     chunks.push(stateBarIsolationRule());
-    chunks.push(presentationWorldviewLockRule(combo, settings));
+    if (multiface) {
+        faceContexts.forEach((face, faceIndex) => {
+            const lock = presentationWorldviewLockRule(face.combo, settings);
+            if (lock) chunks.push(`第 ${faceIndex + 1} 面：${lock}`);
+        });
+    } else chunks.push(presentationWorldviewLockRule(combo, settings));
 
     if (settings.avoidRepeat) {
         chunks.push(String.raw`
 近期视觉避让:
-${shortVisualAvoidance(combo, 3)}`);
+${multiface ? faceContexts.map((face, index) => `第 ${index + 1} 面:\n${shortVisualAvoidance(face.combo, 3)}`).join('\n') : shortVisualAvoidance(combo, 3)}`);
     }
     chunks.push(recentRiskCorrection());
 
-    if (visualSceneryMode) {
+    if (multiface) {
+        const visualFaces = faceContexts.map((face, index) => face.visualSceneryMode ? index : -1).filter(index => index >= 0);
+        if (visualFaces.length) {
+            chunks.push(`以下 Visual Scenery 规则只作用于第 ${visualFaces.map(index => index + 1).join('、')} 面:\n${VISUAL_SCENERY_RULES}`);
+            chunks.push(`第 ${visualFaces.map(index => index + 1).join('、')} 面：${visualSceneryInteractionLinkRule()}`);
+        }
+    } else if (visualSceneryMode) {
         chunks.push(VISUAL_SCENERY_RULES);
         chunks.push(visualSceneryInteractionLinkRule());
     }
 
-    if (tarotRulesText) chunks.push(tarotRulesText);
-    if (touchTheaterRulesText) chunks.push(touchTheaterRulesText);
+    if (multiface) {
+        const tarotFaces = faceContexts.map((face, index) => face.tarotRulesText ? index : -1).filter(index => index >= 0);
+        if (tarotFaces.length) {
+            chunks.push(tarotPhysicalImageRule(tarotFaces.map(index => index + 1)));
+            chunks.push(`以下塔罗牌图片规则只作用于第 ${tarotFaces.map(index => index + 1).join('、')} 面:\n${TAROT_IMAGE_RULES}`);
+        }
+        const touchFaces = faceContexts.map((face, index) => face.touchTheaterRulesText ? index : -1).filter(index => index >= 0);
+        if (touchFaces.length) chunks.push(`以下 Touch Theater 规则只作用于第 ${touchFaces.map(index => index + 1).join('、')} 面:\n${TOUCH_THEATER_RULES}`);
+    } else {
+        if (tarotRulesText) {
+            chunks.push(tarotPhysicalImageRule([1]));
+            chunks.push(tarotRulesText);
+        }
+        if (touchTheaterRulesText) chunks.push(touchTheaterRulesText);
+    }
     // When visual editing is enabled, keep the full user-editable layer near the final output
     // contract so later theme/cooldown rules cannot dilute it. The OFF path remains the legacy flow.
     if (settings?.visualPromptEditingEnabled) chunks.push(editableVisualPromptRule(settings));
-    if (String(generationType || 'normal') !== 'independent') chunks.push(presentationFinalAcceptanceLock(combo));
+    if (String(generationType || 'normal') !== 'independent') {
+        if (multiface) faceContexts.forEach((face, index) => chunks.push(`第 ${index + 1} 面最终形式验收:\n${presentationFinalAcceptanceLock(face.combo)}`));
+        else chunks.push(presentationFinalAcceptanceLock(combo));
+    }
     chunks.push(htmlSafetyCore());
     const visualPreferenceLock = compactVisualPreferenceExecutionLock(settings);
     // Main/current API receives the visual preference lock here, next to the final output protocol.
@@ -760,7 +934,7 @@ ${shortVisualAvoidance(combo, 3)}`);
     // remove or rewrite the host context and therefore cannot affect the main reply.
     if (followTagIsolationText) chunks.push(followTagIsolationText);
     // 强制输出契约放在注入末尾，利用指令近因保证每轮正文后继续生成完整兔子镜。
-    chunks.push(coreOutputProtocol());
+    chunks.push(multiface ? multiFaceOutputProtocol(faceContexts.length) : coreOutputProtocol());
     chunks.push('</兔子镜自动注入>');
     return chunks.filter(Boolean).join('\n\n').trim();
 }
@@ -769,72 +943,81 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
     if (!settings?.enabled || !settings?.autoRabbitMirrorInjection || settings?.mode === 'off') {
         return { prompt: '', executionLock: '', metadata: Object.freeze({ generationType: String(generationType || 'normal') }) };
     }
-    const { combo, directive, disabled } = pickCombination(settings, generationScopeKey, generationContext);
+    const requestedFaceCount = Number.isSafeInteger(settings.rabbitMirrorFaceCount) && settings.rabbitMirrorFaceCount >= 1 && settings.rabbitMirrorFaceCount <= 5
+        ? settings.rabbitMirrorFaceCount : 1;
+    const resay = generationContext?.multifaceResay || null;
+    let selections;
+    if (resay) {
+        selections = [pickCombinationForMultifaceResay(settings, resay)];
+    } else if (requestedFaceCount > 1) {
+        const operation = generationContext?.batchIdentity ? null : generationContext?.batchOperation || {
+            operationId: generationScopeKey || `preview:${String(generationType || 'normal')}`,
+            generationType: String(generationType || 'normal'),
+            preview: !generationScopeKey,
+        };
+        selections = pickCombinationBatch(settings, generationScopeKey || operation?.operationId || '', {
+            ...(generationContext || {}), batchPlanningOnly: true, ...(operation ? { batchOperation: operation } : {}),
+        }, requestedFaceCount);
+    } else {
+        selections = [pickCombination(settings, generationScopeKey, generationContext)];
+    }
+    const disabled = selections[0]?.disabled;
+    const directive = selections[0]?.directive || null;
     if (disabled) {
         if (settings.debug) console.debug('[RabbitMirror] skipped by user directive');
-        return { prompt: '', executionLock: '', metadata: Object.freeze({ generationType: String(generationType || 'normal'), disabled: true }) };
+        const metadata = requestedFaceCount > 1
+            ? { generationType: String(generationType || 'normal'), disabled: true, faceCount: 0, requestedFaceCount }
+            : { generationType: String(generationType || 'normal'), disabled: true };
+        return { prompt: '', executionLock: '', metadata: Object.freeze(metadata) };
     }
 
     const rawPolicy = normalizedRawPolicy(settings.rawPolicy);
-    const selectedThemeResult = formatItemsWithRawPolicy(combo.themes, 'theme', rawPolicy);
-    const selectedFormatResult = formatItemsWithRawPolicy(combo.formats, 'presentation', rawPolicy);
-    const selectedThemes = selectedThemeResult.text;
-    const selectedFormats = selectedFormatResult.text;
-    const visualSceneryMode = !!(settings.forceVisualScenery || hasVisualScenery(combo));
-    const tarotRulesText = isTarotRelated(combo) ? TAROT_IMAGE_RULES : '';
-    const touchTheaterRulesText = isTouchTheaterRelated(combo) ? TOUCH_THEATER_RULES : '';
-    // The user's memory-provider setting remains intact for the main API, but the
-    // independent API has a stricter data boundary and must not read plugin memory.
-    const memoryMaterial = String(generationType || 'normal') !== 'independent' && hasSharedMemoryTheme(combo)
-        ? readSelectedMemoryForPrompt(settings, settings.memoryMaxChars || 2200)
-        : null;
+    const faceContexts = selections.map(selection => buildFaceContext(selection.combo, settings, rawPolicy));
+    const multiface = faceContexts.length > 1;
+    const first = faceContexts[0];
+    // Main mode reads selected memory at most once for the whole request. Independent mode never reads it.
+    const memoryMaterial = String(generationType || 'normal') !== 'independent' &&
+        faceContexts.some(face => hasSharedMemoryTheme(face.combo))
+        ? readSelectedMemoryForPrompt(settings, settings.memoryMaxChars || 2200) : null;
     const followTagIsolationTags = followTagIsolationNames(settings, generationType);
     const followTagIsolationText = followTagIsolationRule(followTagIsolationTags);
-    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, touchTheaterRulesText, directive, memoryMaterial, activeFeedback, generationType, followTagIsolationText });
-    const metadata = Object.freeze({
-        generationType: String(generationType || 'normal'),
-        rawPolicy,
-        samplingMode: combo?.samplingMode || settings?.samplingMode || 'classic',
-        themeIds: Array.isArray(combo?.themeIds) ? [...combo.themeIds] : [],
-        formatIds: Array.isArray(combo?.formatIds) ? [...combo.formatIds] : [],
-        themeLabels: Array.isArray(combo?.themes) ? combo.themes.map(item => `${item?.id || '?'} ${item?.title || '未命名'}`) : [],
-        formatLabels: Array.isArray(combo?.formats) ? combo.formats.map(item => `${item?.id || '?'} ${item?.title || '未命名'}`) : [],
-        selectedThemeChars: selectedThemes.length,
-        selectedFormatChars: selectedFormats.length,
-        editableVisualChars: settings?.visualPromptEditingEnabled
-            ? [settings?.visualPrompt ?? DEFAULT_VISUAL_PROMPT, settings?.visualExtraPrompt, settings?.visualAvoidPrompt].map(value => String(value || '')).join('').length
-            : 0,
-        motherLibraryChars: selectedThemeResult.retrievedChars + selectedFormatResult.retrievedChars,
-        motherLibraryItems: selectedThemeResult.retrievedItems + selectedFormatResult.retrievedItems,
-        memoryChars: String(memoryMaterial?.text || '').length,
-        memorySources: Array.isArray(memoryMaterial?.sources) ? [...memoryMaterial.sources] : [],
-        followTagIsolationEnabled: followTagIsolationText.length > 0,
-        followTagIsolationTags: [...followTagIsolationTags],
-        followTagIsolationChars: followTagIsolationText.length,
-        visualSceneryMode,
-        forcedVisualScenery: !!combo?.forcedVisualScenery,
-        tarotRules: !!tarotRulesText,
-        touchTheaterRules: !!touchTheaterRulesText,
-        userDirectiveApplied: !!directive,
-        customThemeCount: Array.isArray(directive?.customThemes) ? directive.customThemes.length : 0,
-        customFormatCount: Array.isArray(directive?.customFormats) ? directive.customFormats.length : 0,
-        customRequestCount: Array.isArray(directive?.customRequests) ? directive.customRequests.length : 0,
-        rawDirectiveChars: String(directive?.rawDirective || '').length,
-        customDirectiveChars: [
-            ...(directive?.customThemes || []),
-            ...(directive?.customFormats || []),
-            ...(directive?.customRequests || []),
-        ].join('').length,
-        presentationWorldviewLockEnabled: settings?.presentationWorldviewLock === true,
-        presentationWorldviewLockApplied: settings?.presentationWorldviewLock === true && !selectedThemeHasIf(combo),
-        presentationWorldviewLockIfExempt: settings?.presentationWorldviewLock === true && selectedThemeHasIf(combo),
+    const prompt = buildPrompt({
+        combo: first.combo, settings, selectedThemes: first.selectedThemes, selectedFormats: first.selectedFormats,
+        visualSceneryMode: first.visualSceneryMode, tarotRulesText: first.tarotRulesText,
+        touchTheaterRulesText: first.touchTheaterRulesText, directive, memoryMaterial, activeFeedback,
+        generationType, followTagIsolationText, faceContexts: multiface ? faceContexts : null,
     });
-
+    const baseFaces = faceContexts.map(face => faceMetadata(face, settings, generationType, rawPolicy, directive,
+        memoryMaterial && hasSharedMemoryTheme(face.combo) ? memoryMaterial : null,
+        followTagIsolationTags, followTagIsolationText));
+    const faces = faceContexts.map((face, faceIndex) => Object.freeze({
+        faceIndex,
+        ...baseFaces[faceIndex],
+    }));
+    const firstMetadata = baseFaces[0];
+    const metadata = !multiface && !resay ? Object.freeze(firstMetadata) : Object.freeze({
+        ...firstMetadata,
+        faceCount: faces.length,
+        faces: Object.freeze(faces),
+        requestedFaceCount: resay ? 1 : requestedFaceCount,
+        resayFaceIndex: resay ? resay.faceIndex : null,
+        selectedThemeChars: faces.reduce((sum, face) => sum + face.selectedThemeChars, 0),
+        selectedFormatChars: faces.reduce((sum, face) => sum + face.selectedFormatChars, 0),
+        motherLibraryChars: faces.reduce((sum, face) => sum + face.motherLibraryChars, 0),
+        motherLibraryItems: faces.reduce((sum, face) => sum + face.motherLibraryItems, 0),
+        memoryChars: String(memoryMaterial?.text || '').length,
+    });
+    const batchPlan = multiface && selections.batchPlan
+        ? freezeDeep(JSON.parse(JSON.stringify(selections.batchPlan))) : null;
     if (settings.debug) {
-        console.debug('[RabbitMirror] generationType:', generationType, 'combo:', combo, 'rawPolicy:', rawPolicy, 'rawRetrieved:', { themes: selectedThemeResult, formats: selectedFormatResult }, 'memorySources:', memoryMaterial?.sources || [], 'prompt chars:', prompt.length);
+        console.debug('[RabbitMirror] generationType:', generationType, 'faceCount:', faces.length,
+            'combos:', faceContexts.map(face => face.combo), 'rawPolicy:', rawPolicy,
+            'memorySources:', memoryMaterial?.sources || [], 'prompt chars:', prompt.length);
     }
-    const executionLock = buildIndependentFinalExecutionLock({ combo, settings, directive });
-    return { prompt, executionLock, metadata };
+    const executionLock = multiface
+        ? buildMultiIndependentExecutionLock(faceContexts, settings, directive)
+        : buildIndependentFinalExecutionLock({ combo: first.combo, settings, directive });
+    return { prompt, executionLock, metadata, ...(batchPlan ? { batchPlan } : {}) };
 }
 
 export function buildRabbitMirrorPrompt(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '', generationContext = null) {

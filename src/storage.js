@@ -662,16 +662,29 @@ export function getRecentInteractionFamilyCounts(limit = 5) {
 // 多面是"一次生成 N 个组合，各自等待自己那一面真正渲染完成后再分别提交"。
 // 本层只提供显式提交能力；真正成功和当前 owner 的证明由未来 C2 调用方负责。
 const PENDING_BATCH_KEY = 'rabbit_mirror_theater:pending_batch:v1';
+const ACTIVE_BATCH_REGISTRY_KEY = 'rabbit_mirror_theater:pending_batch_registry:v2';
+const ACTIVE_BATCH_REGISTRY_MAX = 8;
+const ACTIVE_BATCH_REGISTRY_MAX_CHARS = 1024 * 1024;
 let pendingBatchSequence = 0;
 
-// C1 is a storage/planning boundary only. These values come from the caller's
-// already-proven owner, never from model HTML or a scan of the current chat.
+// These values come from the caller's already-proven owner/operation, never
+// from model HTML or a scan of the current chat.
 function normalizeBatchIdentity(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    const stringLimits = { chatKey: 1024, generationScopeKey: 1024, sourceHash: 512, settingsKey: 8192 };
+    const operation = value.kind === 'generation-operation';
+    const stringLimits = operation
+        ? { chatKey: 1024, generationScopeKey: 1024, operationId: 1024, generationType: 64, settingsKey: 8192 }
+        : { chatKey: 1024, generationScopeKey: 1024, sourceHash: 512, settingsKey: 8192 };
     for (const [key, limit] of Object.entries(stringLimits)) {
         if (typeof value[key] !== 'string' || !value[key].trim() || value[key].length > limit) return null;
     }
+    if (operation && typeof value.preview !== 'boolean') return null;
+    if (operation) return {
+        kind: 'generation-operation', chatKey: value.chatKey, generationScopeKey: value.generationScopeKey,
+        operationId: value.operationId, generationType: value.generationType, settingsKey: value.settingsKey,
+        preview: value.preview === true,
+    };
+    if (value.kind != null && value.kind !== 'final-body') return null;
     if (!Number.isSafeInteger(value.mesid) || value.mesid < 0 || !Number.isSafeInteger(value.swipeId) || value.swipeId < 0) return null;
     return {
         chatKey: value.chatKey,
@@ -711,7 +724,7 @@ function validBatchCombo(combo) {
         }
         if (new Set(combo[key]).size !== combo[key].length) return false;
     }
-    return combo.themeIds.length + combo.formatIds.length > 0;
+    return combo.themeIds.length + combo.formatIds.length > 0 || combo.customDirective === true;
 }
 
 function removeBatchRawIfUnchanged(raw) {
@@ -744,6 +757,281 @@ function restoreOwnedStorageWrite(key, payload, previousRaw, batchId = '') {
     }
 }
 
+function cloneSerializable(value) {
+    try { return JSON.parse(JSON.stringify(value)); } catch { return null; }
+}
+
+function validStringList(values, maxItems = 512) {
+    if (!Array.isArray(values) || values.length > maxItems) return false;
+    for (let index = 0; index < values.length; index += 1) {
+        const value = values[index];
+        if (!Object.prototype.hasOwnProperty.call(values, index) || typeof value !== 'string' || !value.trim() || value.length > 128) return false;
+    }
+    return true;
+}
+
+function normalizeLocalBatchPlan(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const identity = normalizeBatchIdentity(value.identity);
+    if (!identity || typeof value.batchId !== 'string' || !value.batchId.trim() || value.batchId.length > 256 ||
+        !Number.isSafeInteger(value.requestedFaceCount) || value.requestedFaceCount < 2 || value.requestedFaceCount > 5 ||
+        !Array.isArray(value.faces) || value.faces.length !== value.requestedFaceCount) return null;
+    const seen = new Set();
+    for (let index = 0; index < value.faces.length; index += 1) if (!Object.prototype.hasOwnProperty.call(value.faces, index)) return null;
+    const faces = value.faces.map((face, expectedIndex) => {
+        if (!face || typeof face !== 'object' || Array.isArray(face) || face.faceIndex !== expectedIndex || seen.has(face.faceIndex) ||
+            !validBatchCombo(face.combo)) return null;
+        seen.add(face.faceIndex);
+        return { faceIndex: face.faceIndex, combo: cloneSerializable(face.combo) };
+    });
+    if (faces.some(face => !face)) return null;
+    const fairness = value.fairness && typeof value.fairness === 'object' && !Array.isArray(value.fairness) ? value.fairness : {};
+    for (const key of ['eligibleFormatIds', 'selectedFormatIds', 'validFormatIds']) if (fairness[key] !== undefined && !validStringList(fairness[key])) return null;
+    if (fairness.directiveScoped !== undefined && typeof fairness.directiveScoped !== 'boolean') return null;
+    const eligibleFormatIds = [...new Set(fairness.eligibleFormatIds || [])];
+    const selectedFormatIds = [...new Set(fairness.selectedFormatIds || [])];
+    const validFormatIds = [...new Set(fairness.validFormatIds || [])];
+    if (!validStringList(eligibleFormatIds) || !validStringList(selectedFormatIds) || !validStringList(validFormatIds)) return null;
+    return {
+        kind: 'rabbit-mirror-multiface-plan', schemaVersion: 1, batchId: value.batchId,
+        identity, requestedFaceCount: value.requestedFaceCount, faces,
+        fairness: { eligibleFormatIds, selectedFormatIds, validFormatIds, directiveScoped: fairness.directiveScoped === true },
+    };
+}
+
+export function createPendingComboBatchPlan(combos = [], identity = null, fairness = {}) {
+    if (!Array.isArray(combos) || combos.length < 2 || combos.length > 5) return null;
+    const normalizedIdentity = normalizeBatchIdentity(identity);
+    if (!normalizedIdentity || combos.some(combo => !validBatchCombo(combo))) return null;
+    const candidate = normalizeLocalBatchPlan({
+        batchId: `${PENDING_SESSION_TOKEN}:${Date.now().toString(36)}:${(++pendingBatchSequence).toString(36)}`,
+        identity: normalizedIdentity,
+        requestedFaceCount: combos.length,
+        faces: combos.map((combo, faceIndex) => ({ faceIndex, combo })),
+        fairness,
+    });
+    if (!candidate) return null;
+    const payload = JSON.stringify(candidate);
+    return payload.length <= 262144 ? cloneSerializable(candidate) : null;
+}
+
+function normalizeActiveBatchRecord(value) {
+    const plan = normalizeLocalBatchPlan(value?.plan);
+    if (!plan || typeof value.registrySession !== 'string' || !value.registrySession ||
+        !Number.isFinite(value.createdAt) || value.createdAt <= 0) return null;
+    return { plan, registrySession: value.registrySession, createdAt: value.createdAt };
+}
+
+function readActiveBatchRegistry() {
+    try {
+        const raw = localStorage.getItem(ACTIVE_BATCH_REGISTRY_KEY);
+        if (raw === null) return { raw: null, records: [] };
+        if (raw.length > ACTIVE_BATCH_REGISTRY_MAX_CHARS) return null;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed) || parsed.length > ACTIVE_BATCH_REGISTRY_MAX) return null;
+        const records = parsed.map(normalizeActiveBatchRecord);
+        return records.some(record => !record) ? null : { raw, records };
+    } catch { return null; }
+}
+
+function activeBatchRecordIsFresh(record, now = Date.now()) {
+    return !!record && record.createdAt <= now + 1000 && now - record.createdAt <= PENDING_MAX_AGE_MS;
+}
+
+function planMatchesExpected(plan, expected) {
+    return !!plan && !!expected && expected.batchId === plan.batchId &&
+        batchMatchesExpected({ batchId: plan.batchId, identity: plan.identity }, expected, true);
+}
+
+export function findPendingComboBatchPlan(identity) {
+    const normalized = normalizeBatchIdentity(identity);
+    const registry = normalized && readActiveBatchRegistry();
+    if (!registry) return null;
+    const record = registry.records.find(item => activeBatchRecordIsFresh(item) && batchMatchesExpected(
+        { batchId: item.plan.batchId, identity: item.plan.identity }, { identity: normalized }, false,
+    ));
+    return record ? cloneSerializable(record.plan) : null;
+}
+
+function writeOwnedTransaction(changes = []) {
+    const completed = [];
+    try {
+        for (const change of changes) {
+            if (localStorage.getItem(change.key) !== change.before) throw new Error('Concurrent storage change');
+            completed.push(change);
+            localStorage.setItem(change.key, change.after);
+            if (localStorage.getItem(change.key) !== change.after) throw new Error('Storage read-back mismatch');
+        }
+        return true;
+    } catch {
+        for (const change of completed.reverse()) {
+            try {
+                restoreOwnedStorageWrite(change.key, change.after, change.before);
+            } catch { /* Fail closed; caller receives false and never dispatches/commits. */ }
+        }
+        return false;
+    }
+}
+
+function batchPityAgedPayload(plan, beforeRaw) {
+    let state;
+    try {
+        const parsed = JSON.parse(beforeRaw || '{}');
+        state = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch { return null; }
+    const valid = new Set(plan.fairness.validFormatIds);
+    const normalized = normalizeFormatEligibleMisses(state, [...valid]);
+    for (const id of plan.fairness.eligibleFormatIds) {
+        if (!valid.has(id)) return null;
+        normalized[id] = Math.min(FORMAT_ELIGIBLE_MISS_CAP, Number(normalized[id] || 0) + 1);
+    }
+    return JSON.stringify(normalized);
+}
+
+function batchAttemptPayload(plan, beforeRaw, now) {
+    let store;
+    try {
+        const parsed = JSON.parse(beforeRaw || '{}');
+        store = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch { store = {}; }
+    const key = plan.identity.chatKey;
+    const items = Array.isArray(store[key])
+        ? store[key].filter(item => item && now - Number(item.ts || 0) <= ATTEMPT_TTL_MS)
+        : [];
+    const attemptIds = plan.faces.map(face => `${plan.batchId}:${face.faceIndex}`);
+    if (items.some(item => attemptIds.includes(item?.attemptId))) return null;
+    for (const face of plan.faces) {
+        const combo = face.combo;
+        items.push({
+            attemptId: `${plan.batchId}:${face.faceIndex}`,
+            themeIds: compactIdList(combo.themeIds),
+            formatIds: compactIdList(combo.formatIds),
+            themeGroups: compactIdList(combo.themeGroups),
+            formatGroups: compactIdList(combo.formatGroups),
+            directiveScoped: plan.fairness.directiveScoped === true,
+            ts: now,
+        });
+    }
+    store[key] = items.slice(-MAX_ATTEMPTS_PER_CHAT);
+    reclaimOneExpiredForeignBucket(store, key, ATTEMPT_TTL_MS);
+    return JSON.stringify(store);
+}
+
+export function markPendingBatchAttempt(planInput = null) {
+    const plan = normalizeLocalBatchPlan(planInput);
+    if (!plan || plan.identity.preview === true) return false;
+    const registry = readActiveBatchRegistry();
+    if (!registry) return false;
+    const now = Date.now();
+    // A tab can be killed before its finally handler runs. Keep every plausible
+    // in-flight request (the independent absolute deadline is 20 minutes), but
+    // reclaim only records older than the established 12-hour pending TTL. This
+    // avoids both permanent capacity loss after crashes and cross-tab eviction of
+    // a live paid request; cleanup happens only inside this explicit dispatch CAS.
+    const liveRecords = registry.records.filter(record => activeBatchRecordIsFresh(record, now));
+    const existing = liveRecords.find(record => record.plan.batchId === plan.batchId);
+    if (existing) return JSON.stringify(existing.plan) === JSON.stringify(plan);
+    if (liveRecords.length >= ACTIVE_BATCH_REGISTRY_MAX) return false;
+    const record = { plan, registrySession: PENDING_SESSION_TOKEN, createdAt: now };
+    const registryAfter = JSON.stringify([...liveRecords, record]);
+    if (registryAfter.length > ACTIVE_BATCH_REGISTRY_MAX_CHARS) return false;
+    let pityBefore;
+    let attemptBefore;
+    try {
+        pityBefore = localStorage.getItem(FORMAT_ELIGIBLE_MISS_STORAGE_KEY);
+        attemptBefore = localStorage.getItem(ATTEMPT_STORAGE_KEY);
+    } catch { return false; }
+    const pityAfter = batchPityAgedPayload(plan, pityBefore);
+    const attemptAfter = batchAttemptPayload(plan, attemptBefore, now);
+    if (pityAfter === null || attemptAfter === null) return false;
+    const changes = [{ key: ACTIVE_BATCH_REGISTRY_KEY, before: registry.raw, after: registryAfter }];
+    if (pityAfter !== (pityBefore || '{}')) changes.push({ key: FORMAT_ELIGIBLE_MISS_STORAGE_KEY, before: pityBefore, after: pityAfter });
+    if (attemptAfter !== (attemptBefore || '{}')) changes.push({ key: ATTEMPT_STORAGE_KEY, before: attemptBefore, after: attemptAfter });
+    return writeOwnedTransaction(changes);
+}
+
+function normalizeFaceScan(value, faceIndex) {
+    if (!value || typeof value !== 'object' || Array.isArray(value) ||
+        (value.faceIndex !== undefined && value.faceIndex !== faceIndex)) return null;
+    return {
+        visualSignature: String(value.visualSignature ?? value.signature ?? '').slice(0, 280),
+        visualSkeleton: String(value.visualSkeleton ?? value.skeleton ?? '').slice(0, 420),
+        riskFlags: Array.isArray(value.riskFlags) ? [...new Set(value.riskFlags.map(String))].slice(0, 8) : [],
+        paletteFingerprint: value.paletteFingerprint && typeof value.paletteFingerprint === 'object' ? value.paletteFingerprint : null,
+        interactionFamily: normalizeInteractionFamily(value.interactionFamily),
+    };
+}
+
+function batchHistoryPayload(plan, scans, beforeRaw) {
+    let history;
+    try {
+        const parsed = JSON.parse(beforeRaw === null ? '[]' : beforeRaw);
+        history = Array.isArray(parsed) ? parsed : parsed && typeof parsed === 'object' ? [parsed] : null;
+    } catch { return null; }
+    if (!history) return null;
+    const existing = plan.faces.filter(face => historyHasBatchFace(history, plan.batchId, face.faceIndex));
+    if (existing.length) return existing.length === plan.faces.length ? beforeRaw : null;
+    const now = Date.now();
+    for (const face of plan.faces) {
+        const scan = scans[face.faceIndex];
+        const combo = face.combo;
+        history.push({ ...combo, signature: signatureOf(combo), ts: now, batchId: plan.batchId, faceIndex: face.faceIndex,
+            visualSignature: scan.visualSignature || combo.visualSignature,
+            visualSkeleton: scan.visualSkeleton || combo.visualSkeleton,
+            riskFlags: scan.riskFlags, paletteFingerprint: scan.paletteFingerprint || undefined,
+            interactionFamily: scan.interactionFamily, visualSignatureTs: now });
+    }
+    return JSON.stringify(history.slice(-MAX_STORED));
+}
+
+function batchPityCommittedPayload(plan, beforeRaw) {
+    let state;
+    try {
+        const parsed = JSON.parse(beforeRaw || '{}');
+        state = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch { return null; }
+    const selected = new Set(plan.faces.flatMap(face => face.combo.formatIds || []));
+    const normalized = normalizeFormatEligibleMisses(state, plan.fairness.validFormatIds);
+    for (const id of selected) delete normalized[id];
+    return JSON.stringify(normalized);
+}
+
+export function commitPendingComboBatch(faceScans = [], expected = null) {
+    const registry = readActiveBatchRegistry();
+    if (!registry || !expected) return false;
+    const index = registry.records.findIndex(record => activeBatchRecordIsFresh(record) && planMatchesExpected(record.plan, expected));
+    if (index < 0) return false;
+    const plan = registry.records[index].plan;
+    if (!Array.isArray(faceScans) || faceScans.length !== plan.requestedFaceCount) return false;
+    const scans = faceScans.map(normalizeFaceScan);
+    if (scans.some(scan => !scan)) return false;
+    let historyBefore;
+    let pityBefore;
+    try {
+        historyBefore = localStorage.getItem(STORAGE_KEY);
+        pityBefore = localStorage.getItem(FORMAT_ELIGIBLE_MISS_STORAGE_KEY);
+    } catch { return false; }
+    const historyAfter = batchHistoryPayload(plan, scans, historyBefore);
+    const pityAfter = batchPityCommittedPayload(plan, pityBefore);
+    if (historyAfter === null || pityAfter === null) return false;
+    const registryAfter = JSON.stringify(registry.records.filter((_, recordIndex) => recordIndex !== index));
+    const changes = [];
+    if (historyAfter !== historyBefore) changes.push({ key: STORAGE_KEY, before: historyBefore, after: historyAfter });
+    if (pityAfter !== (pityBefore || '{}')) changes.push({ key: FORMAT_ELIGIBLE_MISS_STORAGE_KEY, before: pityBefore, after: pityAfter });
+    changes.push({ key: ACTIVE_BATCH_REGISTRY_KEY, before: registry.raw, after: registryAfter });
+    return writeOwnedTransaction(changes);
+}
+
+export function releasePendingComboBatch(expected = null) {
+    if (!expected || typeof expected !== 'object') return false;
+    const registry = readActiveBatchRegistry();
+    if (!registry) return false;
+    const index = registry.records.findIndex(record => planMatchesExpected(record.plan, expected));
+    if (index < 0) return true;
+    const after = JSON.stringify(registry.records.filter((_, recordIndex) => recordIndex !== index));
+    return writeOwnedTransaction([{ key: ACTIVE_BATCH_REGISTRY_KEY, before: registry.raw, after }]);
+}
+
 export function setPendingComboBatch(combos = [], identity = null) {
     let payload = '';
     let batchId = '';
@@ -751,7 +1039,7 @@ export function setPendingComboBatch(combos = [], identity = null) {
     let previousSingleRaw = null;
     let singleRemovalAttempted = false;
     try {
-        if (!Array.isArray(combos) || combos.length < 1 || combos.length > 3) return '';
+        if (!Array.isArray(combos) || combos.length < 1 || combos.length > 5) return '';
         for (let index = 0; index < combos.length; index += 1) {
             if (!Object.prototype.hasOwnProperty.call(combos, index) || !validBatchCombo(combos[index])) return '';
         }
@@ -759,7 +1047,7 @@ export function setPendingComboBatch(combos = [], identity = null) {
         const normalizedIdentity = identity == null ? null : normalizeBatchIdentity(identity);
         if (identity != null && !normalizedIdentity) return '';
         // Legacy standalone storage callers keep their single-face path, without
-        // clearing an unrelated batch. New picker callers plan only 2/3 here.
+        // clearing an unrelated batch. This compatibility slot accepts 2..5.
         if (faces.length === 1) {
             if (!normalizedIdentity) setPendingCombo(faces[0]);
             return '';
@@ -811,7 +1099,7 @@ export function readPendingComboBatch(expected = null) {
         // A mismatched owner must not clean up another chat's pending, even if
         // that other record is old or malformed.
         if (!batchMatchesExpected(batch, expected)) return null;
-        const validFaces = Array.isArray(batch.faces) && batch.faces.length >= 2 && batch.faces.length <= 3
+        const validFaces = Array.isArray(batch.faces) && batch.faces.length >= 2 && batch.faces.length <= 5
             && batch.faces.every(face => validBatchCombo(face) && face.batchId === batch.batchId
                 && face.signature === signatureOf(face)
                 && Number.isSafeInteger(face.faceIndex) && face.faceIndex >= 0 && face.faceIndex < batch.faces.length
@@ -839,7 +1127,7 @@ export function readPendingComboBatch(expected = null) {
 
 // 显式提交调用方确认成功的面；未提交的面不入史。C1 不自行证明 DOM 渲染成功。
 export function commitPendingBatchFace(faceIndex = 0, visualSignature = '', visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null, expected = null) {
-    if (!Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 2) return false;
+    if (!Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 4) return false;
     const batch = readPendingComboBatch(expected);
     if (!batch || !batchMatchesExpected(batch, expected, true)) return false;
     const face = batch.faces.find(item => item.faceIndex === faceIndex);
@@ -917,7 +1205,7 @@ export function setPendingCombo(combo) {
 // 一旦丢失，重试同一 face 会二次写入 history。因此改为在 history 条目上带
 // batchId + faceIndex，写入前先查重 —— 只要那一面真的进过 history，重试就是幂等的。
 function historyHasBatchFace(history, batchId, faceIndex) {
-    if (!batchId || !Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 2) return false;
+    if (!batchId || !Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 4) return false;
     return (Array.isArray(history) ? history : []).some(item =>
         item && item.batchId === batchId && item.faceIndex === faceIndex);
 }
@@ -932,7 +1220,7 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
     try {
         let history;
         if (batchId) {
-            if (!Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 2) return false;
+            if (!Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 4) return false;
             previousHistoryRaw = localStorage.getItem(STORAGE_KEY);
             // Parse the verified snapshot itself. readHistory intentionally masks
             // legacy read errors, which must not turn a batch read failure into []

@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.5.6-abc1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.6-abc1';
+import { getSettings } from './settings.js?rmv=1.5.7-multiface5';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.7-multiface5';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,14 +9,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.6-abc1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.6-abc1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.6-abc1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.6-abc1';
+} from './feedbackCat.js?rmv=1.5.7-multiface5';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.7-multiface5';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.7-multiface5';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.7-multiface5';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
 
 
-const RUNTIME_VERSION = '1.5.6';
+const RUNTIME_VERSION = '1.5.7';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -12100,7 +12100,9 @@ function releaseIndependentMaintenanceLiveRepair(root, delay = 700) {
 const maintenancePreRepairSnapshots = new Map();
 const rabbitMirrorInteractionResetSnapshots = new Map();
 const rabbitMirrorInteractionResetInstanceIds = new WeakMap();
+const rabbitMirrorFacePositionHints = new WeakMap();
 let rabbitMirrorInteractionResetInstanceCounter = 0;
+const INTERACTION_HOME_ATTR = 'data-rabbit-mirror-interaction-home';
 const MAINTENANCE_AUTO_SAFE_ATTR = 'data-rabbit-mirror-auto-safe-maintenance';
 const MAINTENANCE_AUTO_SAFE_RESULT_ATTR = 'data-rabbit-mirror-auto-safe-result';
 const MAINTENANCE_AUTO_SAFE_VERSION = 'safe-v3-live-patrol';
@@ -16437,10 +16439,14 @@ function findLiveMaintenanceRoot(root, summaryText = '', messageIndex = -1) {
     const wantedIdentity = followMaintenanceMirrorIdentity(root);
     const independentHost = independentMaintenanceHost(root);
     const ownerKey = String(independentHost?.dataset?.rmKey || root?.dataset?.rabbitMirrorExternalOwner || '');
+    const facePosition = getRabbitMirrorFacePosition(root);
     if (ownerKey) {
         const exact = [...(document.querySelectorAll?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]') || [])]
             .find(host => String(host.dataset?.rmKey || '') === ownerKey);
-        if (exact) return exact.querySelector?.(':scope > details') || exact;
+        if (exact && Number.isInteger(facePosition?.faceIndex)) {
+            const faces = [...(exact.children || [])].filter(child => child?.matches?.('details') && isRabbitMirrorDetails(child));
+            return faces.length === facePosition.faceCount ? faces[facePosition.faceIndex] || null : null;
+        }
         return null;
     }
     const messageElement = messageIndex >= 0 ? getRenderedMessageElement(messageIndex) : null;
@@ -16752,7 +16758,9 @@ const RABBIT_MIRROR_INTERNAL_MODEL_ATTRS = new Set([
     REVERSIBLE_TEXT_BASELINE_ATTR,
     RAW_SELF_MUTATION_HTML_BASELINE_ATTR,
     RAW_SELF_MUTATION_ACTIVE_ATTR,
+    INTERACTION_HOME_ATTR,
 ]);
+const RABBIT_MIRROR_OWNER_MODEL_ATTR_RE = /^data-(?:rabbit-mirror-(?:face-(?:index|count)|owner-(?:chat|mesid|swipe|source-hash|key)|external-(?:owner|source))|rm-(?:face-(?:index|count)|owner-(?:chat|mesid|swipe|source-hash)|external-owner-message|key|source|source-hash))$/i;
 const RABBIT_MIRROR_TAROT_ORIGIN = 'https://gfx.tarot.com';
 const RABBIT_MIRROR_TAROT_PATH_RE = /^\/images\/site\/decks\/rider\/full_size\/(?:[0-9]|[1-6][0-9]|7[0-7])\.jpg$/;
 const RABBIT_MIRROR_MAX_DATA_IMAGE_CHARS = 2_000_000;
@@ -17252,6 +17260,7 @@ export function sanitizeRabbitMirrorUntrustedTemplate(template) {
             const name = String(attribute.name || '').toLowerCase();
             const value = String(attribute.value || '');
             if (RABBIT_MIRROR_INTERNAL_MODEL_ATTRS.has(name)
+                || RABBIT_MIRROR_OWNER_MODEL_ATTR_RE.test(name)
                 || /^on[a-z]+$/.test(name)
                 || name === 'srcdoc'
                 || name === 'action'
@@ -17496,14 +17505,63 @@ function independentMaintenanceHost(root){
  const direct=root.matches?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]')?root:null;
  return direct || root.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]') || null;
 }
+
+// A face number is runtime ownership data, never model output. Derive it only
+// from the direct child position inside the locally mounted external host, or
+// from a flat run of direct inline <toto> siblings. Nested generated markup and
+// data-* claims cannot appoint themselves as another face.
+export function getRabbitMirrorFacePosition(root) {
+    if (!root) return null;
+    const remembered = rabbitMirrorFacePositionHints.get(root) || null;
+    let details = root.matches?.('details') ? root : root.closest?.('details') || null;
+    const externalHost = independentMaintenanceHost(root);
+    if (externalHost) {
+        const faces = [...(externalHost.children || [])].filter(child =>
+            child?.matches?.('details') && isRabbitMirrorDetails(child));
+        if (faces.length >= 1 && faces.length <= 5) {
+            if (!details && faces.length === 1 && root === externalHost) details = faces[0];
+            const faceIndex = faces.indexOf(details);
+            if (faceIndex >= 0) {
+                const info = Object.freeze({ faceIndex, faceCount: faces.length, details, host: externalHost, source: 'independent' });
+                rabbitMirrorFacePositionHints.set(root, info);
+                rabbitMirrorFacePositionHints.set(details, info);
+                return info;
+            }
+        }
+        return remembered;
+    }
+
+    const toto = root.matches?.(MIRROR_TOTO_SELECTOR)
+        ? root
+        : root.closest?.(MIRROR_TOTO_SELECTOR) || null;
+    if (toto && !toto.parentElement?.closest?.(MIRROR_TOTO_SELECTOR)) {
+        const faces = [...(toto.parentElement?.children || [])].filter(child => child?.matches?.(MIRROR_TOTO_SELECTOR));
+        if (faces.length >= 1 && faces.length <= 5) {
+            const faceIndex = faces.indexOf(toto);
+            if (faceIndex >= 0) {
+                const directDetails = toto.querySelector?.(':scope > details') || null;
+                if (directDetails && isRabbitMirrorDetails(directDetails)) {
+                    const info = Object.freeze({ faceIndex, faceCount: faces.length, details: directDetails, host: toto.parentElement, source: 'inline' });
+                    rabbitMirrorFacePositionHints.set(root, info);
+                    rabbitMirrorFacePositionHints.set(toto, info);
+                    rabbitMirrorFacePositionHints.set(directDetails, info);
+                    return info;
+                }
+            }
+        }
+    }
+    return remembered;
+}
 function isIndependentMaintenanceRoot(root){
  if(independentMaintenanceHost(root)) return true;
  const details=root?.matches?.('details')?root:root?.querySelector?.('details');
  return String(details?.dataset?.rabbitMirrorExternalSource||'')==='independent';
 }
 function exactIndependentMaintenanceRoot(root){
+ const face=getRabbitMirrorFacePosition(root);
+ if(face?.source==='independent') return face.details || null;
  const host=independentMaintenanceHost(root);
- return host?.querySelector?.(':scope > details') || host || root;
+ return host ? null : root;
 }
 function independentMaintenanceRootHasBody(root){
  const details=exactIndependentMaintenanceRoot(root)?.matches?.('details')
@@ -17621,10 +17679,12 @@ function maintenanceSnapshotKey(root) {
         : root?.closest?.('[data-rabbit-mirror-external-source="true"]');
     const sourceKind = String(host?.dataset?.rmSource || '');
     const ownerKey = sourceKind === 'independent' ? String(host?.dataset?.rmKey || '') : '';
+    const faceIndex = getRabbitMirrorFacePosition(root)?.faceIndex;
     let chatKey = 'chat';
     try { chatKey = String(getCurrentChatKey?.(chat) || 'chat'); } catch {}
     const mirrorIdentity = ownerKey ? '' : followMaintenanceMirrorIdentity(root);
-    return ownerKey ? `${chatKey}:${ownerKey}` : `${chatKey}:${index}:${swipe}:${mirrorIdentity}`;
+    const facePart = Number.isInteger(faceIndex) ? `:face:${faceIndex}` : '';
+    return ownerKey ? `${chatKey}:${ownerKey}${facePart}` : `${chatKey}:${index}:${swipe}:${mirrorIdentity}${facePart}`;
 }
 
 function captureMaintenanceRepairOrigin(root) {
@@ -17643,8 +17703,11 @@ function captureMaintenanceRepairOrigin(root) {
         ? getSelectedMessageSource(message, { preferDisplay: messageUsesDistinctDisplaySource(message) })
         : '';
     const sourceHash = String(host?.dataset?.rmSourceHash || (selectedSource ? hashInteractionSignature(selectedSource) : ''));
-    const mirrorIdentity = ownerKey || followMaintenanceMirrorIdentity(root);
-    return Object.freeze({ chatKey, index, swipe, sourceHash, mirrorIdentity, ownerKey });
+    const faceIndex = getRabbitMirrorFacePosition(root)?.faceIndex;
+    const mirrorIdentity = ownerKey
+        ? `${ownerKey}${Number.isInteger(faceIndex) ? `:face:${faceIndex}` : ''}`
+        : followMaintenanceMirrorIdentity(root);
+    return Object.freeze({ chatKey, index, swipe, sourceHash, mirrorIdentity, ownerKey, faceIndex });
 }
 
 function maintenanceRepairOriginKey(origin) {
@@ -17663,9 +17726,12 @@ function maintenanceRepairOriginIsCurrent(origin) {
         if (typeof document === 'undefined') return false;
         const host = [...(document.querySelectorAll?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]') || [])]
             .find(candidate => String(candidate?.dataset?.rmKey || '') === origin.ownerKey);
-        if (!host?.isConnected) return false;
+        if (!host?.isConnected || !Number.isInteger(origin.faceIndex)) return false;
         const currentSourceHash = String(host.dataset?.rmSourceHash || '');
-        return !!origin.sourceHash && !!currentSourceHash && currentSourceHash === origin.sourceHash;
+        const faces = [...(host.children || [])].filter(child => child?.matches?.('details') && isRabbitMirrorDetails(child));
+        const currentFace = faces[origin.faceIndex];
+        return !!origin.sourceHash && !!currentSourceHash && currentSourceHash === origin.sourceHash
+            && !!currentFace && getRabbitMirrorFacePosition(currentFace)?.faceIndex === origin.faceIndex;
     }
     const message = Number.isInteger(origin.index) && origin.index >= 0 ? chat[origin.index] : null;
     if (!message || message?.is_user) return false;
@@ -17830,7 +17896,50 @@ function cleanRabbitMirrorInteractionResetClone(details) {
     clone.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}]`)?.forEach(node => node.remove());
     clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
     clone.querySelectorAll?.('[data-rabbit-mirror-maintenance-checked-sandbox]')?.forEach(node => node.remove());
+    clone.querySelectorAll?.(`[${INTERACTION_HOME_ATTR}]`)?.forEach(node => node.remove());
     return clone;
+}
+
+function ensureRabbitMirrorInteractionHomeControl(root) {
+    const key = rabbitMirrorInteractionResetSnapshotKey(root, false);
+    if (!key || !rabbitMirrorInteractionResetSnapshots.has(key)) return null;
+    const details = getRabbitMirrorFacePosition(root)?.details
+        || (root.matches?.('details') ? root : root.querySelector?.(':scope > details') || null);
+    if (!details?.isConnected) return null;
+    let button = details.querySelector?.(`:scope > [${INTERACTION_HOME_ATTR}]`) || null;
+    if (!button) {
+        button = details.ownerDocument?.createElement?.('button');
+        if (!button) return null;
+        button.type = 'button';
+        button.setAttribute(INTERACTION_HOME_ATTR, 'true');
+        button.className = 'rabbit-mirror-interaction-home';
+        button.textContent = '↶ 返回初始页';
+        button.setAttribute('aria-label', '返回这面兔子镜的交互初始页');
+        button.style.cssText = 'display:block;max-width:100%;margin:12px auto 8px;padding:6px 12px;border:1px solid currentColor;border-radius:999px;background:transparent;color:inherit;font:inherit;font-size:.86em;line-height:1.35;cursor:pointer;opacity:.78;';
+        details.appendChild(button);
+    }
+    if (!button.__rabbitMirrorInteractionHomeHandler) {
+        button.__rabbitMirrorInteractionHomeHandler = event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const liveRoot = rabbitMirrorInteractionRootFromTarget(button) || details;
+            const maintenanceButton = liveRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
+            const repairRun = beginMaintenanceRepairRun(liveRoot, maintenanceButton);
+            if (!repairRun) return;
+            try {
+                if (!rejectOversizedMaintenanceRepair(liveRoot, maintenanceButton, '恢复交互初始状态')) {
+                    restoreRabbitMirrorInteractionResetSnapshot(liveRoot, maintenanceButton);
+                }
+            } catch (error) {
+                console.debug('[RabbitMirror] inline interaction reset failed:', error);
+                failMaintenanceRabbit(maintenanceButton, '恢复交互初始状态执行失败，请生成全链路诊断');
+            } finally {
+                finishMaintenanceRepairRun(repairRun);
+            }
+        };
+        button.addEventListener('click', button.__rabbitMirrorInteractionHomeHandler);
+    }
+    return button;
 }
 
 function invalidateRabbitMirrorInteractionResetSnapshot(root) {
@@ -17854,6 +17963,7 @@ function captureRabbitMirrorInteractionResetSnapshot(root) {
     const instanceId = rabbitMirrorInteractionResetInstanceId(root, false);
     rabbitMirrorInteractionResetSnapshots.set(key, { node, instanceId, sourceSignature: rabbitMirrorInteractionResetSourceSignature(root), ts: Date.now() });
     trimRabbitMirrorInteractionResetSnapshots();
+    ensureRabbitMirrorInteractionHomeControl(root);
     return true;
 }
 
@@ -17884,7 +17994,14 @@ function captureRabbitMirrorInteractionResetFromEventTarget(target) {
     if (!(target instanceof Element)) return false;
     if (target.closest?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return false;
     const root = rabbitMirrorInteractionRootFromTarget(target);
-    return root ? captureRabbitMirrorInteractionResetSnapshot(root) : false;
+    if (!root) return false;
+    const details = getRabbitMirrorFacePosition(root)?.details
+        || (root.matches?.('details') ? root : root.querySelector?.(':scope > details') || null);
+    const summary = target.closest?.('summary');
+    if (summary?.parentElement === details) return false;
+    const actionable = target.closest?.('input, button, label, select, textarea, a[href], [role="button"], [tabindex], summary, [data-rabbit-mirror-change-pseudo-rescue], [data-rabbit-mirror-direct-id-click-rescue], [data-rabbit-mirror-clickable-adjacent-popup-fallback], [data-rabbit-mirror-container-internal-reveal-fallback]');
+    if (!actionable || !details?.contains?.(actionable)) return false;
+    return captureRabbitMirrorInteractionResetSnapshot(root);
 }
 
 function restoreRabbitMirrorInteractionResetSnapshot(root, button) {
@@ -17906,8 +18023,10 @@ function restoreRabbitMirrorInteractionResetSnapshot(root, button) {
     try { activateRabbitMirrorInteractionRescue(restoredRoot); } catch (error) { console.debug('[RabbitMirror] interaction reset rescue rebind skipped:', error); }
     try { rehydrateRabbitMirrorMaintenanceRepairs(restoredRoot); } catch (error) { console.debug('[RabbitMirror] interaction reset maintenance rehydrate skipped:', error); }
     try { refreshRabbitMirrorToolsInScope(restoredRoot); } catch (error) { console.debug('[RabbitMirror] interaction reset tool refresh skipped:', error); }
+    try { ensureRabbitMirrorInteractionHomeControl(restoredRoot); } catch (error) { console.debug('[RabbitMirror] interaction home control refresh skipped:', error); }
     const restoredButton = restoredRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || restoredDetails.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
     setMaintenanceRabbitState(restoredButton, MAINTENANCE_STATES.idle, '已恢复这面兔子镜的交互初始状态；外层展开状态保持不变');
+    if (isIndependentMaintenanceRoot(restoredRoot)) notifyIndependentRepairPersistence(restoredRoot);
     return true;
 }
 
@@ -18246,6 +18365,7 @@ function feedbackCatIndependentOwner(root, button = null) {
     const message = chat[finalMesid] || null;
     let ownerChat = '';
     try { ownerChat = String(getCurrentChatKey?.(chat) || ''); } catch {}
+    const faceIndex = getRabbitMirrorFacePosition(root)?.faceIndex;
     return {
         chat: String(resolvedHost?.dataset?.rmOwnerChat
             || details?.dataset?.rabbitMirrorOwnerChat
@@ -18261,6 +18381,7 @@ function feedbackCatIndependentOwner(root, button = null) {
             || details?.dataset?.rabbitMirrorOwnerSourceHash
             || button?.dataset?.rmFeedbackOwnerSourceHash
             || ''),
+        ...(Number.isInteger(faceIndex) ? { faceIndex } : {}),
     };
 }
 
@@ -18458,7 +18579,8 @@ function rabbitMirrorRecipeIdentity(root) {
             ? message.swipe_id
             : 0;
     const chatKey = ownerChat || getCurrentChatKey(chat);
-    return { chatKey, messageIndex, swipeId, message };
+    const faceIndex = getRabbitMirrorFacePosition(root)?.faceIndex;
+    return { chatKey, messageIndex, swipeId, message, ...(Number.isInteger(faceIndex) ? { faceIndex } : {}) };
 }
 
 function rabbitMirrorRecipeForRoot(root) {
@@ -24822,6 +24944,7 @@ const pendingObservedMessageRoots = new Set();
 let toolEntryDelegationRoot = null;
 let toolEntryDelegatedClickHandler = null;
 let toolEntryDelegatedPointerHandler = null;
+let toolEntryDelegatedKeydownHandler = null;
 
 const maintenanceInstallTimers = new Set();
 let startupMaintenanceInstallTimer = 0;
@@ -25122,9 +25245,13 @@ function removeToolEntryDelegation() {
     if (toolEntryDelegationRoot && toolEntryDelegatedPointerHandler) {
         toolEntryDelegationRoot.removeEventListener('pointerdown', toolEntryDelegatedPointerHandler, true);
     }
+    if (toolEntryDelegationRoot && toolEntryDelegatedKeydownHandler) {
+        toolEntryDelegationRoot.removeEventListener('keydown', toolEntryDelegatedKeydownHandler, true);
+    }
     toolEntryDelegationRoot = null;
     toolEntryDelegatedClickHandler = null;
     toolEntryDelegatedPointerHandler = null;
+    toolEntryDelegatedKeydownHandler = null;
 }
 
 function installToolEntryDelegation(chatRoot = getChatRoot()) {
@@ -25135,12 +25262,37 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
     toolEntryDelegatedPointerHandler = event => {
         // Capture the pristine per-mirror interaction baseline at the earliest existing delegated
         // pointer boundary. This covers pointerdown-driven rescue/UI paths before their later click
-        // handlers mutate state; keyboard activation is still covered by the capture-phase click
-        // delegate below. Tool buttons are excluded by the capture helper itself.
+        // handlers mutate state. Keyboard checkbox/radio activation is captured by the keydown
+        // delegate below before its native toggle. Tool buttons are excluded by the capture helper.
         captureRabbitMirrorInteractionResetFromEventTarget(event.target);
         const button = event.target?.closest?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`);
         if (!button || !chatRoot.contains(button)) return;
         event.stopPropagation();
+    };
+    toolEntryDelegatedKeydownHandler = event => {
+        const activationKey = event.key === 'Enter' || event.key === ' ';
+        const radioArrowKey = event.key === 'ArrowLeft' || event.key === 'ArrowRight'
+            || event.key === 'ArrowUp' || event.key === 'ArrowDown';
+        if (!activationKey && !radioArrowKey) return;
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        let control = target.closest?.('input[type="checkbox"], input[type="radio"]') || null;
+        if (!control) {
+            const label = target.closest?.('label');
+            control = label?.control || label?.querySelector?.('input[type="checkbox"], input[type="radio"]') || null;
+            if (!control) {
+                const forId = String(label?.getAttribute?.('for') || '').trim();
+                const candidate = forId ? label?.ownerDocument?.getElementById?.(forId) : null;
+                if (candidate?.matches?.('input[type="checkbox"], input[type="radio"]')) control = candidate;
+            }
+        }
+        if (!control) return;
+        if (radioArrowKey && !control.matches?.('input[type="radio"]')) return;
+        // Native keyboard activation toggles checkbox/radio state before the
+        // later click delegate runs. Radio arrow navigation also changes the
+        // checked item without a reliable pre-toggle click. Capture both paths
+        // in keydown-capture so “return to initial page” stores the pristine state.
+        captureRabbitMirrorInteractionResetFromEventTarget(control);
     };
     toolEntryDelegatedClickHandler = event => {
         captureRabbitMirrorInteractionResetFromEventTarget(event.target);
@@ -25159,6 +25311,7 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
         handleFeedbackCatClick(event, root, button);
     };
     chatRoot.addEventListener('pointerdown', toolEntryDelegatedPointerHandler, true);
+    chatRoot.addEventListener('keydown', toolEntryDelegatedKeydownHandler, true);
     chatRoot.addEventListener('click', toolEntryDelegatedClickHandler, true);
     return true;
 }
