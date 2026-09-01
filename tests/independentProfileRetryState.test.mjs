@@ -87,6 +87,7 @@ assert.equal(api.get(settings, true), 'chat_system_user_full_nostream');
     const callSandbox = {
         getSettings: () => settings,
         swipeId: message => Number(message?.swipe_id || 0),
+        messageSourceFingerprint: () => 'source-hash',
         createIndependentVisibleTextReader: () => Object.assign(() => ({ text: 'VISIBLE FINAL', filteredRabbitMirrorChars: 0, filteredExcludedTagChars: 0, filteredExcludedTags: [] }), { renderedIndexes: [1] }),
         isRabbitMirrorEligibleAssistantMessage: message => !!message && !message.is_user && !message.is_system,
         buildRabbitMirrorPromptDetails: () => ({ prompt: 'BASE', executionLock: 'LOCK', metadata: {} }),

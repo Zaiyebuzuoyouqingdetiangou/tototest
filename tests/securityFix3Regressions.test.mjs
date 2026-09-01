@@ -24,7 +24,7 @@ assert.match(mobileModal, /rh_independent_tag_filter_close/);
 
 // Forced resay must enter the existing loading renderer. That renderer is the one
 // which preserves current ready details and installs exactly one aria-live status.
-const generateStart = independent.indexOf('async function generateFor(index,msg,force=false,sourceAware=true)');
+const generateStart = independent.indexOf('async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay=null)');
 const generateEnd = independent.indexOf('function independentHostForRoot', generateStart);
 const generateBlock = independent.slice(generateStart, generateEnd);
 assert.ok(generateBlock.length > 0);

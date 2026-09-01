@@ -97,7 +97,7 @@ assert.match(source, /本轮不会自动重发。点击“重新生成兔子镜�
 
 // 4) Resay is transactional: do not delete the last persisted owner before the
 // replacement succeeds, and keep a previous ready mirror visible while waiting.
-const generateStart = source.indexOf('async function generateFor(index,msg,force=false,sourceAware=true)');
+const generateStart = source.indexOf('async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay=null)');
 const generateEnd = source.indexOf('function independentHostForRoot', generateStart);
 const generateBlock = source.slice(generateStart, generateEnd);
 assert.ok(generateBlock.length > 0);

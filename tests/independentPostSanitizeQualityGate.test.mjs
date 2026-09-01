@@ -4,6 +4,35 @@ import vm from 'node:vm';
 
 import { evaluateIndependentPostSanitizeQuality } from '../src/independentQualityGate.js';
 
+const tarotBase = 'https://gfx.tarot.com/images/site/decks/rider/full_size/';
+
+for (const [label, html] of [
+    ['missing image', '<details><summary>【兔子镜：命运牌阵】</summary><p>愚者正位</p></details>'],
+    ['non-official image', '<details><summary>【兔子镜：命运牌阵】</summary><img src="https://example.com/0.jpg" alt="愚者牌"></details>'],
+    ['out-of-range image', `<details><summary>【兔子镜：命运牌阵】</summary><img src="${tarotBase}78.jpg" alt="愚者牌"></details>`],
+    ['query-bearing image', `<details><summary>【兔子镜：命运牌阵】</summary><img src="${tarotBase}0.jpg?cache=1" alt="愚者牌"></details>`],
+    ['non-Chinese alt', `<details><summary>【兔子镜：命运牌阵】</summary><img src="${tarotBase}0.jpg" alt="The Fool"></details>`],
+]) {
+    const result = evaluateIndependentPostSanitizeQuality(html, { tarotRules: true });
+    assert.equal(result.ok, false, label);
+    assert.equal(result.code, 'tarot-image-missing', label);
+    assert.ok(result.flags.includes('tarot_entity_image_required'), label);
+}
+
+for (const id of [0, 77]) {
+    const validTarot = evaluateIndependentPostSanitizeQuality(
+        `<details><summary>【兔子镜：命运牌阵】</summary><img src="${tarotBase}${id}.jpg" alt="塔罗牌：愚者"><p>牌面解读。</p></details>`,
+        { tarotRules: true },
+    );
+    assert.equal(validTarot.ok, true, `official tarot entity image ${id}.jpg with Chinese alt must pass`);
+}
+
+assert.equal(
+    evaluateIndependentPostSanitizeQuality('<details><summary>普通成品</summary><p>没有图片。</p></details>', { tarotRules: false }).ok,
+    true,
+    'the tarot image gate must remain inactive for non-tarot selections',
+);
+
 function genericTabbedMirror() {
     return `
         <details open>
@@ -140,14 +169,21 @@ assert.doesNotMatch(gateSource, /Math\.random|favoriteMultiplier|blacklist|sampl
 assert.doesNotMatch(gateSource, /outputSanitizer|sanitizeRabbitMirror/i, 'quality gate must not call or modify the sanitizer');
 
 const apiSource = fs.readFileSync(new URL('../src/independentApi.js', import.meta.url), 'utf8');
+const guardSource = fs.readFileSync(new URL('../src/generationGuard.js', import.meta.url), 'utf8');
+const visualScannerSource = fs.readFileSync(new URL('../src/visualScanner.js', import.meta.url), 'utf8');
+assert.match(guardSource, /tarotRules:\s*metadata\.tarotRules === true/, 'follow batch metadata must retain the per-face tarot requirement');
+assert.match(visualScannerSource, /hasRequiredTarotEntityImage\(newRoot\.outerHTML \|\| ''\)/, 'follow faces must reuse the post-sanitize tarot entity-image proof');
 const callStart = apiSource.indexOf('async function callIndependentApi(');
 const callEnd = apiSource.indexOf('\nfunction externalOwnerMesid(', callStart);
 const callSource = apiSource.slice(callStart, callEnd);
 const prepareIndex = callSource.indexOf('const preparedHtml=prepareIndependentReadyHtml(inner)');
 const evaluateIndex = callSource.indexOf('evaluateIndependentPostSanitizeQuality(preparedHtml');
-const rememberIndex = callSource.indexOf('rememberApiProfile(st,profile)');
+const multifacePrepareIndex = callSource.indexOf('prepareIndependentMultifaceResult(raw,');
+const firstRememberIndex = callSource.indexOf('rememberApiProfile(st,profile)');
+const lastRememberIndex = callSource.lastIndexOf('rememberApiProfile(st,profile)');
 assert.ok(prepareIndex >= 0 && evaluateIndex > prepareIndex, 'the quality gate must evaluate the actual post-sanitize fragment');
-assert.ok(rememberIndex > evaluateIndex, 'a connection profile may be remembered only after post-sanitize quality acceptance');
+assert.ok(multifacePrepareIndex >= 0 && firstRememberIndex > multifacePrepareIndex, 'a multiface profile may be remembered only after every face passes protocol, sanitize and quality acceptance');
+assert.ok(lastRememberIndex > evaluateIndex, 'a single-face profile may be remembered only after post-sanitize quality acceptance');
 assert.match(callSource, /return \{html:preparedHtml,/, 'the exact fragment that passed the gate must be persisted and rendered');
 assert.equal((callSource.match(/requestIndependentCompletion\(/g) || []).length, 1, 'quality rejection must not introduce a second paid request');
 assert.match(apiSource, /INDEPENDENT_QUALITY_RETRY_GUARD_LIMIT=64/, 'failure hints must remain bounded without a timer');
@@ -165,6 +201,7 @@ try {
         preparedReadyHtmlCache: new Map(),
         assertIndependentMarkupComplexity: () => true,
         hashText: value => `hash:${String(value || '')}`,
+        hasMultifaceMarkup: () => false,
         repairMalformedLabelMarkup: value => String(value || ''),
         cleanRabbitMirrorOutput: value => String(value || '').trim(),
         compactTotoBlock: value => String(value || '').replace('RAW-MIRROR', 'SANITIZED-MIRROR'),

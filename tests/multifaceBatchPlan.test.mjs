@@ -106,8 +106,8 @@ const batchContext = () => ({ batchIdentity: { mesid: 7, swipeId: 0, sourceHash:
 // ── 7. faceCount 归一化：异常值不得意外开启多面 ────────────────────────
 {
     const cases = [
-        [undefined, 1], [1, 1], [2, 2], [3, 3],
-        [0, 1], [4, 1], [-1, 1], ['2', 1], [2.7, 1],
+        [undefined, 1], [1, 1], [2, 2], [3, 3], [4, 4], [5, 5],
+        [0, 1], [6, 1], [-1, 1], ['2', 1], [2.7, 1],
         [Number.NaN, 1], [Number.POSITIVE_INFINITY, 1], [null, 1],
     ];
     for (const [input, expected] of cases) {

@@ -5,7 +5,17 @@
     "src/picker.js",
     "src/storage.js",
     "src/promptBuilder.js",
-    "src/ui.js"
+    "src/ui.js",
+    "src/blacklist.js",
+    "src/generationGuard.js",
+    "src/independentApi.js",
+    "src/independentQualityGate.js",
+    "src/injector.js",
+    "src/multifaceProof.js",
+    "src/multifaceProtocol.js",
+    "src/outputSanitizer.js",
+    "src/visualScanner.js",
+    "style.css"
   ],
   "entries": [
     {
@@ -105,10 +115,6 @@
       "normalizedSha256": "9984ee1dd6f930d39c14ca5be32e2b35494f73985b5727542e2d3306f1b5765a"
     },
     {
-      "file": "src/blacklist.js",
-      "normalizedSha256": "4eb2142ce88ecee2279fa03646c7f2bf71577a581de9a7999b7f0189785fbf0c"
-    },
-    {
       "file": "src/checkedSelectorRepair.js",
       "normalizedSha256": "d8e0f629dcc5b5839a86ec325c68353a7ff9223556fd1531e50a8a492e1e53d0"
     },
@@ -121,28 +127,12 @@
       "normalizedSha256": "91faba089d3671e3c9bce497e9863d8fec0054a41fae684e7d4f237004836f61"
     },
     {
-      "file": "src/generationGuard.js",
-      "normalizedSha256": "1db393b8aebfa75d67140baa0338905c47fa4eba6ef87c33b38a7f8f8611f454"
-    },
-    {
-      "file": "src/independentApi.js",
-      "normalizedSha256": "fb9d0a10d08d2b2c29f2a441acf4ce10f6da8b61e63ca1cc44abfb5de1abd556"
-    },
-    {
       "file": "src/independentProfileSelectorHotfix.js",
       "normalizedSha256": "76a80dd75f19f7e11e35d352ca6f15f73ab0fc58508e9c3598efd091858bf526"
     },
     {
-      "file": "src/independentQualityGate.js",
-      "normalizedSha256": "8d1477a7abdb80726cefc6fdd851ee032786bc2f16f2dc6f3f43b7a1ca545150"
-    },
-    {
       "file": "src/independentSecurityGuard.js",
       "normalizedSha256": "901a3be1de04b911a3733061d0898bb585703213e8c82a63fef56aecf0beaca2"
-    },
-    {
-      "file": "src/injector.js",
-      "normalizedSha256": "50fb3c9834e5c800168004611d817f91ddd5a0034984557a79abf9590fba5be6"
     },
     {
       "file": "src/maintenanceRecommendationHotfix.js",
@@ -155,10 +145,6 @@
     {
       "file": "src/mobileModalHotfix.js",
       "normalizedSha256": "2dd40733e16efba8c6c8bba8b02530f9ebac33c6c3aab116acd0e4520143f79b"
-    },
-    {
-      "file": "src/outputSanitizer.js",
-      "normalizedSha256": "0d2e03b9f5f43af76a5e33b44af75b1e0618a4647277a3ab56024f5e3253ea30"
     },
     {
       "file": "src/paletteCooldown.js",
@@ -183,14 +169,6 @@
     {
       "file": "src/touchTheater.js",
       "normalizedSha256": "c13ed4d1765526857fd305849e9c319328312badc0a99ef5655ebcc75b9a1683"
-    },
-    {
-      "file": "src/visualScanner.js",
-      "normalizedSha256": "5e7cde9f6089fc7f0fca6b602ff21cd68b06068c1289ade0ae1520dfb6843c60"
-    },
-    {
-      "file": "style.css",
-      "normalizedSha256": "38a9e1f0e81a04edaedb952332cd5881cf306c2918b69fe1845af915992a3304"
     }
   ]
 }

@@ -23,6 +23,15 @@ function functionBlock(name) {
     throw new Error(`${name} body is not balanced`);
 }
 
+// This file exercises owner-identity recovery with deliberately tiny single-
+// face DOM fixtures. Multiface completeness itself is covered by the dedicated
+// protocol/lifecycle suites; keep this fixture focused without importing the
+// production helper's full DOM/parser dependency graph into each VM sandbox.
+const singleFaceCompleteReadyBlock = `function completeReadyFaceDetails(host){
+ const details=host?.querySelector?.(':scope > details');
+ return host?.dataset?.rmState==='ready' && details && usableReadyDetails(details) ? [details] : [];
+}`;
+
 
 function makeDetails(content) {
     return {
@@ -284,6 +293,7 @@ function createSyncFixture({ messages, hosts, persistedOwner = null, lockedRecor
     vm.createContext(sandbox);
     const blocks = [
         functionBlock('savedRecordMatchesObserved'),
+        singleFaceCompleteReadyBlock,
         functionBlock('readyDetailsFromHost'),
         functionBlock('mountedIndependentReadyHostMatchesObserved'),
         functionBlock('mountedIndependentReadyHostSharesStableOwner'),
@@ -458,6 +468,7 @@ function createGenerationFixture({ currentSwipe, currentHash, hostSwipe, hostHas
     vm.createContext(sandbox);
     vm.runInContext([
         functionBlock('savedRecordMatchesObserved'),
+        singleFaceCompleteReadyBlock,
         functionBlock('readyDetailsFromHost'),
         functionBlock('mountedIndependentReadyHostMatchesObserved'),
         functionBlock('readyRecordFromHost'),
@@ -549,6 +560,7 @@ function runPassiveRestore({ hostSwipe, currentSwipe, sourceHash = 'same-hash' }
     vm.createContext(sandbox);
     vm.runInContext([
         functionBlock('savedRecordMatchesObserved'),
+        singleFaceCompleteReadyBlock,
         functionBlock('readyDetailsFromHost'),
         functionBlock('mountedIndependentReadyHostMatchesObserved'),
         functionBlock('restoreIndependentMirrorPassively'),
@@ -622,6 +634,7 @@ function runAutomaticTimeoutSettlement({ hostSwipe, currentSwipe, sourceHash = '
     };
     vm.createContext(sandbox);
     vm.runInContext([
+        singleFaceCompleteReadyBlock,
         functionBlock('readyDetailsFromHost'),
         functionBlock('mountedIndependentReadyHostMatchesObserved'),
         functionBlock('stopAutomaticHostGenerationSettlement'),

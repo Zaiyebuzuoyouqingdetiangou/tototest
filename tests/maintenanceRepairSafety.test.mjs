@@ -199,6 +199,7 @@ const originSandbox = {
     messageUsesDistinctDisplaySource: () => false,
     hashInteractionSignature: value => `h:${value}`,
     followMaintenanceMirrorIdentity: root => root.identity,
+    getRabbitMirrorFacePosition: root => ({ faceIndex: root === secondFollowRoot ? 1 : 0, faceCount: 2 }),
     getRenderedMessageElement: () => ({ isConnected: true }),
     getRenderedRabbitMirrorInteractionRoots: () => [followRoot, secondFollowRoot],
 };

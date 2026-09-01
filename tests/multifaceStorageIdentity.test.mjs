@@ -50,7 +50,7 @@ check('strict numeric face count and unchanged visual setting', () => {
     const cases = [
         [1, 1], [2, 2], [3, 3], ['2', 1], ['3', 1], [2.7, 1], [3.1, 1],
         [null, 1], [undefined, 1], [true, 1], [false, 1], [NaN, 1], [Infinity, 1],
-        [0, 1], [-1, 1], [4, 1], [[2], 1], [{ valueOf: () => 2 }, 1],
+        [0, 1], [-1, 1], [4, 4], [5, 5], [6, 1], [[2], 1], [{ valueOf: () => 2 }, 1],
     ];
     for (const [value, expected] of cases) {
         const liveSettings = settingsModule.getSettings();
@@ -138,7 +138,7 @@ check('invalid face counts, holes and nulls never silently change a plan', () =>
     storage.setPendingCombo(combo('single'));
     const before = snapshot();
     for (const bad of [null, {}, [], [combo('0'), null, combo('1')], [combo('0'), , combo('1')],
-        [combo('0'), combo('1'), combo('2'), combo('3')], [combo('0'), 'invalid'],
+        [combo('0'), combo('1'), combo('2'), combo('3'), combo('4'), combo('5')], [combo('0'), 'invalid'],
         [combo('0'), { ...combo('1'), themeIds: ['T.same', 'T.same'] }]]) {
         operations.length = 0;
         assert.equal(storage.setPendingComboBatch(bad, identity()), '');
@@ -415,7 +415,8 @@ for (const mutate of [
     batch => { batch.faces[1].faceIndex = '1'; },
     batch => { batch.faces[1].batchId = 'other-batch'; },
     batch => { batch.faces[1].formatIds = ['F.modified-without-a-new-plan']; },
-    batch => { batch.faces.push({ ...batch.faces[0], faceIndex: 2 }, { ...batch.faces[0], faceIndex: 3 }); },
+    batch => { batch.faces.push({ ...batch.faces[0], faceIndex: 2 }, { ...batch.faces[0], faceIndex: 3 },
+        { ...batch.faces[0], faceIndex: 4 }, { ...batch.faces[0], faceIndex: 5 }); },
 ]) {
     check('damaged or stale batch is rejected without history', () => {
         storage.setPendingComboBatch([combo('0'), combo('1')], identity());

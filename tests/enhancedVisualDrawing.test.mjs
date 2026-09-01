@@ -11,7 +11,7 @@ const fixtures = JSON.parse(fs.readFileSync(new URL('./prompt-baseline-fixtures.
 const extraFixtures = JSON.parse(fs.readFileSync(new URL('./prompt-extra-fixtures.json', import.meta.url), 'utf8'));
 const allCases = [...fixtures.cases, ...extraFixtures.cases];
 const uiSource = fs.readFileSync(new URL('../src/ui.js', import.meta.url), 'utf8');
-const permission = '可随本轮内容自由活用 HTML / CSS / 安全内联 SVG 等视觉技法；媒介与组合方式自由选择，不要求每轮使用 SVG。';
+const permission = '增强视觉绘制：先确定清晰的主体轮廓与阅读焦点，再建立前中后景、遮挡和留白；用真实 CSS 落实材质、接缝、光源、阴影与排版层级，并让交互前后出现可逆且有意义的内容或空间变化。可自由组合 HTML、CSS 与安全内联 SVG，不要求固定布局或每轮使用 SVG。';
 const hash = value => createHash('sha256').update(value).digest('hex');
 const values = new Map();
 const previousStorage = globalThis.localStorage;
@@ -75,7 +75,7 @@ try {
         const expectedOn = `${off.prompt.slice(0, insertion)}\n\n${permission}${off.prompt.slice(insertion)}`;
         assert.equal(on.prompt, expectedOn, `${fixture.name}: permission must not override, reorder, or replace any original block`);
         const delta = estimatePromptTokens(on.prompt).estimatedTokens - fixture.tokens.estimatedTokens;
-        assert.ok(delta > 0 && delta <= 64, `${fixture.name}: the sole permission must stay a short addition, got ${delta} tokens`);
+        assert.ok(delta > 0 && delta <= 96, `${fixture.name}: the sole permission must stay a bounded addition, got ${delta} tokens`);
         tokenDeltas.push(delta);
 
         // Model choice, temperatures, API triggering and runtime output are not
@@ -121,8 +121,14 @@ try {
     assert.match(labelMatch[0], /增强视觉绘制/);
     assert.equal((uiSource.match(/id="rh_enhanced_visual_drawing"/g) || []).length, 1);
     assert.equal((uiSource.match(/id="rh_enhanced_visual_drawing_help"/g) || []).length, 1);
-    assert.ok(uiSource.indexOf(labelMatch[0]) > uiSource.indexOf('id="rh_advanced_page_visual"'));
-    assert.ok(uiSource.indexOf(labelMatch[0]) < uiSource.indexOf('id="rh_visual_prompt_enabled"'), 'drawing must be independent of editable visual prompt enablement');
+    assert.ok(uiSource.indexOf(labelMatch[0]) > uiSource.indexOf('id="rh_advanced_page_generation"'));
+    const generationPageStart = uiSource.indexOf('id="rh_force_visual_scenery"');
+    const generationPageEnd = uiSource.indexOf('id="rh_user_directive"');
+    assert.ok(generationPageStart >= 0, 'dynamic visual control must exist in the generation-and-draw page');
+    assert.ok(uiSource.indexOf(labelMatch[0]) > generationPageStart, 'drawing must sit after dynamic visual effects');
+    assert.ok(generationPageEnd < 0 || uiSource.indexOf(labelMatch[0]) < generationPageEnd, 'drawing must remain adjacent to dynamic visual instead of drifting to another section');
+    assert.match(uiSource.slice(generationPageStart, generationPageEnd > generationPageStart ? generationPageEnd : undefined), /可与动态视觉(?:场景|效果)一起开启/);
+    assert.ok(uiSource.indexOf(labelMatch[0]) < uiSource.indexOf('id="rh_visual_prompt_enabled"'), 'drawing must remain independent of editable visual prompt enablement');
 
     const bindStart = uiSource.indexOf("$('#rh_enhanced_visual_drawing').on('change', e => {");
     const bindEnd = uiSource.indexOf('\n    });', bindStart) + '\n    });'.length;

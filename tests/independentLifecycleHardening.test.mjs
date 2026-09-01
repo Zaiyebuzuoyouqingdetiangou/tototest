@@ -290,7 +290,7 @@ globalThis.schedule=scheduleAutomaticHostGenerationSettlement;`, sandbox);
 }
 
 {
-    const start = source.indexOf('async function generateFor(index,msg,force=false,sourceAware=true)');
+    const start = source.indexOf('async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay=null)');
     const end = source.indexOf('function independentHostForRoot', start);
     const block = source.slice(start, end);
     assert.match(block, /createIndependentRequestDeadline\(/);

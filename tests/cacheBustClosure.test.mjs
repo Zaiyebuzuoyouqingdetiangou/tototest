@@ -11,9 +11,9 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const RELEASE_COHORT = '1.5.6-abc1';
-const RELEASE_RUNTIME = '1.5.6';
-const RETIRED_RELEASE_COHORTS = new Set(['1.5-qualityfix1', '1.5-qualityfix2', '1.5-qualityfix3', '1.5-qualityfix4', '1.5-qualityfix5', '1.5-varietyfix1']);
+const RELEASE_COHORT = '1.5.7-multiface5';
+const RELEASE_RUNTIME = '1.5.7';
+const RETIRED_RELEASE_COHORTS = new Set(['1.5-qualityfix1', '1.5-qualityfix2', '1.5-qualityfix3', '1.5-qualityfix4', '1.5-qualityfix5', '1.5-varietyfix1', '1.5.6-abc1']);
 const REQUIRED_RELEASE_MODULES = [
     'src/settings.js',
     'src/tokenMeter.js',
@@ -28,6 +28,8 @@ const REQUIRED_RELEASE_MODULES = [
     'src/blacklist.js',
     'src/storage.js',
     'src/picker.js',
+    'src/multifaceProtocol.js',
+    'src/multifaceProof.js',
     'src/mobileModalHotfix.js',
     'src/renderedVisualFeedbackHotfix.js',
     'data/structured/thematicIndex.js',
@@ -114,7 +116,22 @@ assert.deepEqual(conflicting, [], '同一模块不得被多种 ?rmv 键引用');
 
 // Compute transitive parents from the actual URL graph. Changing a child URL
 // inside an old-cached parent is insufficient even if the child itself is fresh.
-const changedRoots = new Set(['src/settings.js', 'src/picker.js', 'src/storage.js', 'src/promptBuilder.js', 'src/ui.js']);
+const changedRoots = new Set([
+    'src/settings.js',
+    'src/storage.js',
+    'src/blacklist.js',
+    'src/picker.js',
+    'src/promptBuilder.js',
+    'src/multifaceProtocol.js',
+    'src/multifaceProof.js',
+    'src/generationGuard.js',
+    'src/visualScanner.js',
+    'src/outputSanitizer.js',
+    'src/independentApi.js',
+    'src/independentQualityGate.js',
+    'src/injector.js',
+    'src/ui.js',
+]);
 let grew = true;
 while (grew) {
     grew = false;

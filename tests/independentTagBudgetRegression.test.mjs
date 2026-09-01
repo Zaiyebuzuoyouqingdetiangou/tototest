@@ -132,6 +132,7 @@ const createReader = helperSandbox.globalThis.reader;
     const callSandbox = {
         getSettings: () => currentSettings,
         swipeId: message => Number(message?.swipe_id || 0),
+        messageSourceFingerprint: () => 'source-hash',
         createIndependentVisibleTextReader: createReader,
         isRabbitMirrorEligibleAssistantMessage: helperSandbox.isRabbitMirrorEligibleAssistantMessage,
         buildRabbitMirrorPromptDetails: () => ({ prompt: 'BASE_RULES', executionLock: 'EXECUTION_LOCK', metadata: {} }),

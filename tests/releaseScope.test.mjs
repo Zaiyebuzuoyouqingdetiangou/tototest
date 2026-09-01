@@ -3,12 +3,13 @@ import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 
 // Captured from the untouched uploaded baseline, not current-source self hashes.
-// Only cache queries and the explicitly named 1.5.5/1.5.6 release constants may
+// Only cache queries and the explicitly named 1.5.5/1.5.6/1.5.7 release constants may
 // differ in protected files. No whitespace/comment/logic normalization is used.
 const baseline = JSON.parse(fs.readFileSync(new URL('./protected-baseline-hashes.json', import.meta.url), 'utf8'));
-const normalize = text => text.replace(/\?rmv=[a-z\d._-]+/gi, '').replace(/(const (?:RABBIT_MIRROR_RUNTIME_VERSION|GOLDEN_MERGE_VERSION|RUNTIME_VERSION|RELEASE_VERSION|VERSION)\s*=\s*')1\.5\.[56]'/g, "$1<release>'");
-assert.equal(baseline.allowedFunctional.length, 5);
-assert.ok(baseline.entries.length >= 40, 'cover all protected production modules, mother libraries and styles');
+const normalize = text => text.replace(/\?rmv=[a-z\d._-]+/gi, '').replace(/(const (?:RABBIT_MIRROR_RUNTIME_VERSION|GOLDEN_MERGE_VERSION|RUNTIME_VERSION|RELEASE_VERSION|VERSION)\s*=\s*')1\.5\.[567]'/g, "$1<release>'");
+assert.equal(baseline.allowedFunctional.length, 15);
+assert.equal(baseline.entries.length, 38, 'cover every unchanged production module and mother-library source after the explicitly authorized quality gate joined this release');
+assert.equal(baseline.entries.some(item => baseline.allowedFunctional.includes(item.file)), false, 'authorized multiface files must be explicit exclusions, never self-hashed current-source approvals');
 for (const item of baseline.entries) {
     const source = fs.readFileSync(new URL(`../${item.file}`, import.meta.url), 'utf8');
     const digest = createHash('sha256').update(normalize(source)).digest('hex');

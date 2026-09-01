@@ -38,7 +38,7 @@ assert.match(normalize, /examined < 6/);
 assert.match(external, /CHAT_SAMPLE_DELAYS = \[0, 500, 2000\]/);
 assert.match(external, /if \(!hasNativeLongTask\)/, 'stall interval is fallback-only');
 assert.doesNotMatch(external, /target\?\.textContent|target\.textContent/);
-assert.match(prompt, /String\(generationType \|\| 'normal'\) !== 'independent' && hasSharedMemoryTheme/, 'memory setting remains but independent generation cannot read plugin memory');
+assert.match(prompt, /String\(generationType \|\| 'normal'\) !== 'independent' &&[\s\S]{0,120}hasSharedMemoryTheme/, 'memory setting remains but independent generation cannot read plugin memory');
 
 assert.doesNotMatch(visual.slice(visual.indexOf('const captureEvents'), visual.indexOf('const generationEvents')), /MESSAGE_UPDATED/);
 const outputEvents = sanitizer.slice(sanitizer.indexOf('const currentMessageEvents'), sanitizer.indexOf('const generationFinishedEvents'));

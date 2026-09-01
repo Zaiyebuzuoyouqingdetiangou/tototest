@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const source = readFileSync(resolve(ROOT, 'src/independentApi.js'), 'utf8');
 
-function manualRequestHarness(readApiResponse) {
+function manualRequestHarness(readApiResponse, { responsePayloadErrorText = () => '' } = {}) {
     const start = source.indexOf('async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={})');
     const end = source.indexOf('function wrappedIndependentMirrorHtml', start);
     assert.ok(start >= 0 && end > start, 'requestIndependentCompletion must exist');
@@ -34,7 +34,8 @@ function manualRequestHarness(readApiResponse) {
         headers: () => ({}),
         readApiResponse,
         extractMirrorInner: value => /<toto\b[^>]*>[\s\S]*<\/details>\s*<\/toto>/i.test(String(value || '')) ? 'complete' : '',
-        responsePayloadErrorText: () => '',
+        responsePayloadErrorText,
+        compactRemoteError: (_status, value) => String(value || ''),
         retryableParameterError: () => false,
         safeJson: value => JSON.stringify(value),
         API_PROFILE_ORDER: ['chat_system_user_full', 'chat_system_user_full_nostream'],
@@ -53,6 +54,34 @@ function manualRequestHarness(readApiResponse) {
     vm.runInContext(`${source.slice(abortBoundaryStart, abortBoundaryEnd)}\n${source.slice(start, end)}\nglobalThis.request=requestIndependentCompletion;`, sandbox);
     return { request: sandbox.globalThis.request, fetchCalls: () => fetchCalls };
 }
+
+test('HTTP 200 provider error envelope wins over complete-looking content and stays single-shot', async () => {
+    const complete = '<toto><details><summary>B</summary><div>READY</div></details></toto>';
+    const harness = manualRequestHarness(
+        async () => ({
+            raw: JSON.stringify({ error: { message: 'quota exceeded' }, choices: [{ message: { content: complete } }] }),
+            payload: { error: { message: 'quota exceeded' }, choices: [{ message: { content: complete } }] },
+            text: complete,
+            streamed: false,
+            contentType: 'application/json',
+        }),
+        { responsePayloadErrorText: payload => String(payload?.error?.message || '') },
+    );
+
+    const result = await harness.request(
+        { independentApiModel: 'model-b', independentConnectionProfileId: '', independentApiBaseUrl: 'https://b.example/v1' },
+        'S',
+        'U',
+        { signal: { aborted: false } },
+    );
+    assert.match(String(result?.semanticError || ''), /副 API 返回错误/);
+    assert.match(String(result?.semanticError || ''), /quota exceeded/);
+    assert.equal(result?.requestDiagnostic?.ok, false);
+    assert.equal(result?.requestDiagnostic?.semanticFailure, 'error-payload');
+    assert.equal(result?.requestDiagnostic?.requestCount, 1);
+    assert.equal(result?.requestDiagnostic?.automaticRetry, false);
+    assert.equal(harness.fetchCalls(), 1, 'a provider-error envelope must never trigger an automatic paid retry');
+});
 
 test('an unexpected bare AbortError becomes a visible single-shot transport failure', async () => {
     const nakedAbort = Object.assign(new Error('upstream body aborted after provider accepted the request'), { name: 'AbortError' });
@@ -253,7 +282,7 @@ test('Connection Manager Error with nested AbortError stages one exact manual no
 });
 
 test('generation catch does not silently swallow a naked AbortError', () => {
-    const start = source.indexOf('async function generateFor(index,msg,force=false,sourceAware=true)');
+    const start = source.indexOf('async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay=null)');
     const end = source.indexOf('function independentHostForRoot', start);
     const block = source.slice(start, end);
     assert.ok(block.length > 0, 'generateFor block must exist');
@@ -265,7 +294,7 @@ test('generation catch does not silently swallow a naked AbortError', () => {
 });
 
 test('existing and shared flights adopt a remounted loading host for later abort settlement', () => {
-    const start = source.indexOf('async function generateFor(index,msg,force=false,sourceAware=true)');
+    const start = source.indexOf('async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay=null)');
     const end = source.indexOf('function independentHostForRoot', start);
     const block = source.slice(start, end);
     const existingStart = block.indexOf('const existing=pending.get(slot);');

@@ -42,7 +42,14 @@ assert.equal(sandbox.lastDiagnostic?.failure, 'markup-too-complex');
 assert.equal(sandbox.lastDiagnostic?.extra?.markupScope, 'raw');
 assert.equal(sandbox.lastDiagnostic?.extra?.markupKind, 'tags');
 assert.equal(sandbox.lastDiagnostic?.extra?.responseChars, '<i></i>'.repeat(2101).length);
-assert.match(source, /assertIndependentMarkupComplexityWithDiagnostic\(raw,'raw',requestDiagnostic\);[\s\S]{0,240}extractMirrorInner/, 'raw output must be checked and diagnostic state corrected before extraction/parsing');
+const callStart = source.indexOf('async function callIndependentApi(');
+const callEnd = source.indexOf('\nfunction externalOwnerMesid(', callStart);
+const callSource = source.slice(callStart, callEnd);
+const rawGateIndex = callSource.indexOf("assertIndependentMarkupComplexityWithDiagnostic(raw,'raw',requestDiagnostic)");
+const multifaceBranchIndex = callSource.indexOf('if(faceCount>1)', rawGateIndex);
+const singleExtractIndex = callSource.indexOf('const inner=extractMirrorInner(raw)', multifaceBranchIndex);
+assert.ok(rawGateIndex >= 0 && multifaceBranchIndex > rawGateIndex && singleExtractIndex > multifaceBranchIndex, 'raw output must be checked before either multiface parsing or single-face extraction');
+assert.match(callSource.slice(multifaceBranchIndex, singleExtractIndex), /prepareIndependentMultifaceResult\(raw,/, 'multiface output must enter its bounded protocol parser after the shared raw gate');
 assert.match(source, /assertIndependentMarkupComplexityWithDiagnostic\(inner,'inner',requestDiagnostic\)/, 'inner output complexity failure must also correct the diagnostic state');
 assert.match(source, /if\(!independentRecordWithinBudget\(completed\)\)/, 'completed records must be capped before persistence');
 

@@ -205,6 +205,7 @@ function createFixture({ open = false, bodyWidth = 227, authoredWidth = 0, histo
             hostAttributes.delete(name);
         },
     };
+    details.parentElement = host;
 
     return {
         body,
