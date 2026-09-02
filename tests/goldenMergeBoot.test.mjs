@@ -10,8 +10,8 @@ const independent = fs.readFileSync(path.join(root, 'src', 'independentApi.js'),
 assert.match(index, /GOLDEN_MERGE_VERSION\s*=\s*'1\.5\.8'/);
 assert.doesNotMatch(index, /performanceDiagnostics\.js/);
 assert.doesNotMatch(index, /^import .*outputSanitizer|^import .*independentApi|^import .*ui\.js/m, 'heavy runtime must not be in the static bootstrap graph');
-assert.match(index, /import\('\.\/src\/ui\.js\?rmv=1\.5\.8-visualstream8'\)/);
-assert.match(index, /import\('\.\/src\/externalDiagnostics\.js\?rmv=1\.5\.8-visualstream8'\)/);
+assert.match(index, /import\('\.\/src\/ui\.js\?rmv=1\.5\.8-visualstream8-boundary1'\)/);
+assert.match(index, /import\('\.\/src\/externalDiagnostics\.js\?rmv=1\.5\.8-visualstream8-boundary1'\)/);
 assert.match(index, /initRabbitMirrorIndependentSecurityGuard\(\{ getSettings, updateSettings \}\);/);
 assert.match(index, /output\.initOutputSanitizer[\s\S]*visual\.initVisualScanner[\s\S]*independent\.initIndependentRabbitMirror[\s\S]*touch\.initTouchTheaterBridge[\s\S]*ui\.initRabbitMirrorUI/);
 assert.match(index, /requestDeferredIdleCheck\(3500\)/, 'heavy runtime must wait through the fixed host startup window');

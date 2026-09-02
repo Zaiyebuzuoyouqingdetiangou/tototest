@@ -11,13 +11,14 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const RELEASE_COHORT = '1.5.8-visualstream8';
+const RELEASE_COHORT = '1.5.8-visualstream8-boundary1';
 const RELEASE_RUNTIME = '1.5.8';
-const RETIRED_RELEASE_COHORTS = new Set(['1.5-qualityfix1', '1.5-qualityfix2', '1.5-qualityfix3', '1.5-qualityfix4', '1.5-qualityfix5', '1.5-varietyfix1', '1.5.6-abc1', '1.5.7-multiface5']);
+const RETIRED_RELEASE_COHORTS = new Set(['1.5-qualityfix1', '1.5-qualityfix2', '1.5-qualityfix3', '1.5-qualityfix4', '1.5-qualityfix5', '1.5-varietyfix1', '1.5.6-abc1', '1.5.7-multiface5', '1.5.8-visualstream8']);
 const REQUIRED_RELEASE_MODULES = [
     'src/settings.js',
     'src/tokenMeter.js',
     'src/independentApi.js',
+    'src/independentSecurityGuard.js',
     'src/independentQualityGate.js',
     'src/ui.js',
     'src/outputSanitizer.js',
@@ -128,6 +129,7 @@ const changedRoots = new Set([
     'src/visualScanner.js',
     'src/outputSanitizer.js',
     'src/independentApi.js',
+    'src/independentSecurityGuard.js',
     'src/independentQualityGate.js',
     'src/injector.js',
     'src/ui.js',

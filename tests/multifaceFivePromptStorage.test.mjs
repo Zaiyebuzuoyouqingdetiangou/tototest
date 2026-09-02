@@ -37,6 +37,7 @@ const { defaultSettings } = await import(settingsUrl.href);
 const { PRESENTATION_FORMATS } = await import(importedUrl(pickerSource, pickerUrl, 'presentationIndex.js').href);
 const { THEMATIC_CATEGORIES } = await import(importedUrl(pickerSource, pickerUrl, 'thematicIndex.js').href);
 const { buildRabbitMirrorPromptDetails } = await import(promptUrl.href);
+const { sanitizeRabbitMirrorCompletionBody } = await import(new URL('../src/independentSecurityGuard.js', import.meta.url).href);
 const storage = await import(storageUrl.href);
 const HISTORY = 'rabbit_mirror_theater:last_combo:v11';
 const BATCH_V1 = 'rabbit_mirror_theater:pending_batch:v1';
@@ -69,6 +70,21 @@ assert.equal(Object.isFrozen(details.batchPlan.faces), true);
 assert.equal(details.batchPlan.identity.kind, 'generation-operation');
 assert.equal('sourceHash' in details.batchPlan.identity, false, 'main API must not invent a final-body hash');
 assert.deepEqual(details.metadata.faces.map(face => face.faceIndex), [0, 1, 2, 3, 4]);
+assert.match(details.executionLock, /^<兔子镜近输出短锁 data-source="independent-api-near-output">/);
+assert.match(details.executionLock, /<\/兔子镜近输出短锁>$/);
+assert.doesNotMatch(details.executionLock, /兔子镜多面近输出短锁/);
+const guardedMultiface = sanitizeRabbitMirrorCompletionBody(JSON.stringify({
+    model: 'fixture',
+    messages: [
+        { role: 'system', content: details.prompt },
+        { role: 'user', content: `请生成多面兔子镜：\n\n【当前聊天逐轮正文】\n[59 ASSISTANT]\n正文已经完整结束。\n\n【当前角色卡摘要】\n{"name":"A"}\n\n${details.executionLock}\n\n现在完成所有面。` },
+    ],
+    stream: true,
+}));
+assert.equal(guardedMultiface.rabbitMirror, true,
+    'the production multiface execution lock must pass the production independent-request guard');
+assert.equal(guardedMultiface.changed, false,
+    'modern multiface context must not require a legacy-sensitive-section rewrite');
 assert.equal(new Set(details.metadata.faces.flatMap(face => face.themeIds)).size,
     details.metadata.faces.flatMap(face => face.themeIds).length, 'random themes are exact-distinct across faces');
 assert.equal(new Set(details.metadata.faces.flatMap(face => face.formatIds)).size,

@@ -1,7 +1,7 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5.8-visualstream8",
+  "js": "index.js?rmv=1.5.8-visualstream8-boundary1",
   "css": "style.css?rmv=1.5.8",
   "author": "Toto",
   "version": "1.5.8",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.5.8 VisualStreamFix8｜修复流式等待、独立 API 边界、外置多面和文字裁切，并降低动态视觉移动端负载。"
+  "description": "兔子镜测试版 1.5.8 BoundaryFix1｜修复独立 API 多面安全边界、流式等待、外置多面和文字裁切，并降低动态视觉移动端负载。"
 }
