@@ -1,15 +1,15 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.5.7-multiface5';
-import { clearLastCombo } from './storage.js?rmv=1.5.7-multiface5';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.7-multiface5';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.7-multiface5';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.7-multiface5';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.5.8-visualstream8';
+import { clearLastCombo } from './storage.js?rmv=1.5.8-visualstream8';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.8-visualstream8';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.8-visualstream8';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.8-visualstream8';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.7-multiface5';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.7-multiface5';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.7-multiface5';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.8-visualstream8';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.8-visualstream8';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.8-visualstream8';
 
 const SETTINGS_UI_VERSION = '1.5';
-const RUNTIME_VERSION = '1.5.7';
+const RUNTIME_VERSION = '1.5.8';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -278,19 +278,29 @@ function formatMeterNumber(value) {
     return Math.max(0, Number(value) || 0).toLocaleString('zh-CN');
 }
 
+function tokenMeterSourceLabel(generationSource) {
+    return String(generationSource || '').toLowerCase() === 'independent' ? '独立 API' : '跟随正文 API';
+}
+
+function tokenMeterRecordAgeLabel(record) {
+    const recordedAt = Number(record?.recordedAt);
+    const age = recordedAt > 0 ? Date.now() - recordedAt : Number.POSITIVE_INFINITY;
+    return age >= 0 && age <= 30 * 60 * 1000 ? '最近记录' : '历史记录';
+}
+
 function tokenMeterNoInjectionLabel(reason) {
     const labels = {
-        disabled: '本轮未注入：兔子镜已关闭',
-        'quiet-skipped': '本轮未注入：静默生成已跳过',
-        'impersonate-skipped': '本轮未注入：角色扮演生成已跳过',
-        'directive-skipped': '本轮未注入：用户指令要求跳过',
-        'independent-api': '本轮未注入：兔子镜由独立 API 生成',
+        disabled: '最近状态：未注入（兔子镜已关闭）',
+        'quiet-skipped': '最近状态：未注入（静默生成已跳过）',
+        'impersonate-skipped': '最近状态：未注入（角色扮演生成已跳过）',
+        'directive-skipped': '最近状态：未注入（用户指令要求跳过）',
+        'independent-api': '最近状态：正文 API 未注入（兔子镜由独立 API 生成）',
         'mode-change': '当前注入已按生成方式切换清空',
-        empty: '本轮未注入：没有形成有效 Prompt',
+        empty: '最近状态：未注入（没有形成有效 Prompt）',
         cleared: '当前注入已清空',
         manual: '当前注入已手动清空',
     };
-    return labels[String(reason || '')] || '本轮未注入';
+    return labels[String(reason || '')] || '最近状态：未注入';
 }
 
 function renderTokenMeter(record = getLastRabbitMirrorTokenRecordForSource(getSettings().generationSource)) {
@@ -299,16 +309,19 @@ function renderTokenMeter(record = getLastRabbitMirrorTokenRecordForSource(getSe
     const main = root.find('[data-rh-token-meter-main]');
     const exact = root.find('[data-rh-token-meter-exact]');
     const detail = root.find('[data-rh-token-meter-detail]');
+    const generationSource = getSettings().generationSource;
+    const sourceLabel = tokenMeterSourceLabel(generationSource);
     if (!record) {
-        main.text('尚无生成记录');
-        exact.text('下一轮生成后更新。');
-        detail.text('只统计兔子镜自己的 Prompt。');
+        main.text(`${sourceLabel} · 尚无估算记录`);
+        exact.text('下一次生成准备请求时更新。');
+        detail.text('这里只显示兔子镜 Prompt 的本地估算，不是服务商账单 Token。');
         return;
     }
+    const ageLabel = tokenMeterRecordAgeLabel(record);
     if (record.status === 'independent') {
         const tokens = record.tokens || {};
         const chars = record.chars || {};
-        main.text(`兔子镜规则约 ${formatMeterNumber(tokens.estimated)} Token`);
+        main.text(`${sourceLabel} · ${ageLabel} · 请求前规则估算约 ${formatMeterNumber(tokens.estimated)} Token（非账单）`);
         const layerText = chars.independentContextLayers
             ? ` · 最近 ${formatMeterNumber(chars.independentContextLayers)}/${formatMeterNumber(chars.independentContextMaxLayers || chars.independentContextLayers)} 层`
             : '';
@@ -316,7 +329,8 @@ function renderTokenMeter(record = getLastRabbitMirrorTokenRecordForSource(getSe
             chars.filteredRabbitMirrorChars ? `历史兔子镜 ${formatMeterNumber(chars.filteredRabbitMirrorChars)} 字符` : '',
             chars.filteredContextTagChars ? `指定标签 ${formatMeterNumber(chars.filteredContextTagChars)} 字符` : '',
         ].filter(Boolean).join(' · ');
-        exact.text(`规则约 ${formatMeterNumber(tokens.min)}–${formatMeterNumber(tokens.max)} Token；上下文 ${formatMeterNumber(chars.independentContext)} 字符${layerText}${filteredText ? ` · 已过滤 ${filteredText}` : ''}。`);
+        const totalRequestChars = Number(chars.totalRequest) || (Number(chars.total) || 0) + (Number(chars.independentContext) || 0);
+        exact.text(`规则估算范围 ${formatMeterNumber(tokens.min)}–${formatMeterNumber(tokens.max)} Token；请求消息内容合计 ${formatMeterNumber(totalRequestChars)} 字符（规则 ${formatMeterNumber(chars.total)}；上下文 ${formatMeterNumber(chars.independentContext)}）${layerText}${filteredText ? ` · 已过滤 ${filteredText}` : ''}。`);
         const parts = [
             `基础约 ${formatMeterNumber(tokens.baseEstimated)}`,
             chars.feedback ? `反馈约 ${formatMeterNumber(tokens.feedbackEstimated)}` : '反馈 0',
@@ -329,16 +343,16 @@ function renderTokenMeter(record = getLastRabbitMirrorTokenRecordForSource(getSe
         return;
     }
     if (record.status !== 'injected') {
-        main.text('0 Token');
+        main.text(`${sourceLabel} · ${ageLabel} · 追加量 0`);
         exact.text(tokenMeterNoInjectionLabel(record.reason));
-        detail.text('本轮没有追加兔子镜 Prompt。');
+        detail.text('最近状态没有追加兔子镜 Prompt；这不是服务商账单 Token。');
         return;
     }
 
     const tokens = record.tokens || {};
     const chars = record.chars || {};
-    main.text(`约 ${formatMeterNumber(tokens.estimated)} Token`);
-    exact.text(`保守范围 ${formatMeterNumber(tokens.min)}–${formatMeterNumber(tokens.max)}；精确字符数 ${formatMeterNumber(chars.total)}`);
+    main.text(`${sourceLabel} · ${ageLabel} · 兔子镜待注入 Prompt 估算约 ${formatMeterNumber(tokens.estimated)} Token（非账单）`);
+    exact.text(`估算范围 ${formatMeterNumber(tokens.min)}–${formatMeterNumber(tokens.max)} Token；Prompt 字符数 ${formatMeterNumber(chars.total)}`);
     const parts = [
         `基础约 ${formatMeterNumber(tokens.baseEstimated)}`,
         chars.feedback ? `反馈约 ${formatMeterNumber(tokens.feedbackEstimated)}` : '反馈 0',
@@ -508,7 +522,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.7</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.8</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -524,14 +538,14 @@ export function initRabbitMirrorUI() {
 
       <details id="rh_token_meter" class="rabbit-mirror-token-meter" aria-live="polite">
         <summary class="rabbit-mirror-token-meter-head">
-          <span class="rabbit-mirror-token-meter-label">本轮 Token</span>
+          <span class="rabbit-mirror-token-meter-label">Prompt 估算</span>
           <span data-rh-token-meter-main>尚无生成记录</span>
         </summary>
         <div class="rabbit-mirror-token-meter-body">
           <div data-rh-token-meter-exact class="rabbit-mirror-token-meter-exact">下一轮生成后更新。</div>
           <div data-rh-token-meter-detail class="rabbit-mirror-token-meter-detail">只统计兔子镜自己的 Prompt。</div>
           <div id="rh_independent_api_diagnostic" style="padding:7px 9px;border-left:2px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);opacity:.78;font-size:11px;line-height:1.5;word-break:break-word;">最近请求：暂无记录</div>
-          <div class="rabbit-mirror-token-meter-note">Token 是估算值。</div>
+          <div class="rabbit-mirror-token-meter-note">仅为本地 Prompt 估算，不是服务商账单 Token；记录在请求发送前生成。</div>
         </div>
       </details>
 

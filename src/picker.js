@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.7-multiface5';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.7-multiface5';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.8-visualstream8';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.8-visualstream8';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -16,8 +16,8 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.5.7-multiface5';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.7-multiface5';
+} from './storage.js?rmv=1.5.8-visualstream8';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.8-visualstream8';
 
 function randomUnit() {
     try {

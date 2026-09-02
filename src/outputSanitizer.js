@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.5.7-multiface5';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.7-multiface5';
+import { getSettings } from './settings.js?rmv=1.5.8-visualstream8';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.8-visualstream8';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,14 +9,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.7-multiface5';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.7-multiface5';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.7-multiface5';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.7-multiface5';
+} from './feedbackCat.js?rmv=1.5.8-visualstream8';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.8-visualstream8';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.8-visualstream8';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.8-visualstream8';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
 
 
-const RUNTIME_VERSION = '1.5.7';
+const RUNTIME_VERSION = '1.5.8';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -12593,6 +12593,73 @@ function maintenanceHasIntentionalMarquee(element) {
     return false;
 }
 
+function maintenanceCssPixelValue(value) {
+    const match = String(value ?? '').trim().match(/^(-?(?:\d+\.?\d*|\.\d+))px$/i);
+    if (!match) return Number.NaN;
+    const parsed = Number(match[1]);
+    return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
+function maintenanceSafeTextClippingAncestorEvidence(element, root, textRects) {
+    if (!element || !root || !Array.isArray(textRects) || !textRects.length) return null;
+    let ancestor = element.parentElement;
+    let depth = 0;
+    while (ancestor && ancestor !== root && depth < 5) {
+        if (root.contains?.(ancestor) === false) break;
+        const style = maintenanceSafeComputedStyle(ancestor);
+        const rect = ancestor.getBoundingClientRect?.();
+        if (!style || !rect || Number(rect.width || 0) <= 1 || Number(rect.height || 0) <= 1) {
+            ancestor = ancestor.parentElement;
+            depth += 1;
+            continue;
+        }
+        const position = String(style.position || '').trim().toLowerCase();
+        const tag = String(ancestor.tagName || '').trim().toLowerCase();
+        const interactiveSelf = !!ancestor.matches?.('input,button,select,textarea,a[href],[role="button"],[tabindex],[aria-expanded],details,summary');
+        const unsafeStructure = interactiveSelf
+            || /^(?:details|summary|table|ul|ol|form|svg|canvas|picture|video|audio|iframe)$/.test(tag)
+            || !!ancestor.querySelector?.('input,button,select,textarea,a[href],[role="button"],[tabindex],[aria-expanded],details,summary,svg,canvas,img,picture,video,audio,iframe,table,ul,ol,form');
+        if (position === 'absolute' || position === 'fixed' || unsafeStructure) {
+            ancestor = ancestor.parentElement;
+            depth += 1;
+            continue;
+        }
+        const overflow = String(style.overflow || '').trim().toLowerCase();
+        const overflowX = String(style.overflowX || overflow).trim().toLowerCase();
+        const overflowY = String(style.overflowY || overflow).trim().toLowerCase();
+        const clipsX = /^(?:hidden|clip)$/.test(overflowX);
+        const clipsY = /^(?:hidden|clip)$/.test(overflowY);
+        const horizontal = clipsX && textRects.some(textRect => textRect.left < rect.left - 1 || textRect.right > rect.right + 1);
+        const vertical = clipsY && textRects.some(textRect => textRect.top < rect.top - 1 || textRect.bottom > rect.bottom + 1);
+        if ((horizontal || vertical) && !(horizontal && !vertical && maintenanceHasIntentionalMarquee(ancestor))) {
+            return { element: ancestor, horizontal, vertical, depth: depth + 1 };
+        }
+        ancestor = ancestor.parentElement;
+        depth += 1;
+    }
+    return null;
+}
+
+function maintenanceHasReachableTextRevealPath(element, root) {
+    if (!element || !root) return false;
+    let cursor = element;
+    let depth = 0;
+    while (cursor && cursor !== root && depth < 4) {
+        if (cursor.matches?.('details:not([open]), label, summary, input, button, select, textarea, a[href], [role="button"], [tabindex], [aria-expanded]')) return true;
+        const previous = cursor.previousElementSibling;
+        if (previous?.matches?.('input[type="checkbox"], input[type="radio"], button, label[for], summary, a[href], [role="button"], [tabindex], [aria-controls], [aria-expanded]')) return true;
+        cursor = cursor.parentElement;
+        depth += 1;
+    }
+    const id = String(element.id || element.getAttribute?.('id') || '').trim();
+    if (!id || !root.querySelectorAll) return false;
+    for (const control of root.querySelectorAll('label[for], [aria-controls], a[href^="#"]')) {
+        const target = String(control.getAttribute?.('for') || control.getAttribute?.('aria-controls') || control.getAttribute?.('href')?.replace(/^#/, '') || '').trim();
+        if (target === id) return true;
+    }
+    return false;
+}
+
 function maintenanceTextClippingEvidence(element, root) {
     if (!maintenanceIsVisibleContentElement(element) || !maintenanceHasMeaningfulText(element)) return null;
     // 护照／证件专项维修会单独恢复封面、内页滚动与印章详情。
@@ -12615,6 +12682,10 @@ function maintenanceTextClippingEvidence(element, root) {
     const lineClamp = String(style.webkitLineClamp || element.style?.getPropertyValue?.('-webkit-line-clamp') || '').trim().toLowerCase();
     const lineClamped = !!lineClamp && !/^(?:none|unset|initial|0)$/.test(lineClamp);
     const noWrap = /^(?:nowrap|pre)$/.test(whiteSpace);
+    const writingMode = String(style.writingMode || 'horizontal-tb').trim().toLowerCase();
+    const verticalWriting = /^(?:vertical|sideways)/.test(writingMode);
+    const fontSizePx = maintenanceCssPixelValue(style.fontSize);
+    const lineHeightPx = maintenanceCssPixelValue(style.lineHeight);
     const directText = maintenanceDirectTextLength(element) > 0;
     const semanticTextTag = /^(?:p|span|div|li|td|th|h[1-6]|blockquote|pre|code|label|button|summary|figcaption|dd|dt)$/.test(String(element.tagName || '').toLowerCase());
 
@@ -12628,14 +12699,34 @@ function maintenanceTextClippingEvidence(element, root) {
     // 只有直属文本，或自身就是文字载体且没有块级结构子树时，才把滚动尺寸当文字证据。
     const hasBlockStructure = !!element.querySelector?.('div,section,article,main,aside,header,footer,ul,ol,table,figure,details,form');
     const scrollTextEvidence = directText || (semanticTextTag && !hasBlockStructure);
+    const lineHeightCramped = !verticalWriting
+        && Number.isFinite(fontSizePx) && fontSizePx >= 8
+        && Number.isFinite(lineHeightPx) && lineHeightPx > 0
+        && lineHeightPx < fontSizePx * 0.88
+        && textOutsideY;
+    const clippingAncestor = scrollTextEvidence
+        ? maintenanceSafeTextClippingAncestorEvidence(element, root, textRects)
+        : null;
     let horizontal = (clipsX && textOutsideX)
-        || ((clipsX || noWrap || textOverflow === 'ellipsis') && scrollTextEvidence && scrollOverflowX);
+        || ((clipsX || noWrap || textOverflow === 'ellipsis') && scrollTextEvidence && scrollOverflowX)
+        || !!clippingAncestor?.horizontal;
     const vertical = lineClamped
         || (clipsY && textOutsideY)
-        || (clipsY && scrollTextEvidence && scrollOverflowY);
+        || (clipsY && scrollTextEvidence && scrollOverflowY)
+        || lineHeightCramped
+        || !!clippingAncestor?.vertical;
     // 滚动字幕会故意把 nowrap 文本移出裁切窗口；这是媒介动画，不是文字丢失。
     if (horizontal && !vertical && clipsX && maintenanceHasIntentionalMarquee(element)) horizontal = false;
     if (!horizontal && !vertical) return null;
+
+    // Automatic repair is intentionally narrower than the maintenance-rabbit
+    // diagnostic. Line clamp, ellipsis and compact display typography can be
+    // deliberate; only a separate, simple clipping ancestor with no reachable
+    // reveal control is safe enough to rewrite without asking the player.
+    const highConfidence = !lineClamped
+        && !lineHeightCramped
+        && !!clippingAncestor
+        && !maintenanceHasReachableTextRevealPath(clippingAncestor.element, root);
 
     return {
         element,
@@ -12643,12 +12734,16 @@ function maintenanceTextClippingEvidence(element, root) {
         vertical,
         noWrap,
         lineClamped,
+        lineHeightCramped,
+        verticalWriting,
+        clippingAncestor,
+        highConfidence,
         rootWidth: Number(root?.getBoundingClientRect?.().width || 0),
         elementWidth: rect.width,
     };
 }
 
-function findMaintenanceTextClippingCandidates(root) {
+function findMaintenanceTextClippingCandidates(root, limit = 24) {
     if (!root?.querySelectorAll) return [];
     const candidates = [];
     const seen = new Set();
@@ -12659,7 +12754,7 @@ function findMaintenanceTextClippingCandidates(root) {
         if (!evidence) continue;
         seen.add(element);
         candidates.push(evidence);
-        if (candidates.length >= 24) break;
+        if (candidates.length >= Math.max(1, Number(limit) || 24)) break;
     }
     return candidates;
 }
@@ -12681,11 +12776,12 @@ function encodeTextClippingBaseline(element, properties) {
 }
 
 
-function repairMaintenanceTextClipping(root) {
+function repairMaintenanceTextClipping(root, { highConfidenceOnly = false, maxCandidates = 24 } = {}) {
     if (!root?.querySelectorAll) return 0;
     let repaired = 0;
-    const candidates = findMaintenanceTextClippingCandidates(root);
+    const candidates = findMaintenanceTextClippingCandidates(root, maxCandidates);
     for (const evidence of candidates) {
+        if (highConfidenceOnly && !evidence.highConfidence) continue;
         const element = evidence.element;
         if (!element?.style) continue;
         const tag = String(element.tagName || '').toLowerCase();
@@ -12698,7 +12794,7 @@ function repairMaintenanceTextClipping(root) {
             'white-space', 'overflow-wrap', 'word-break', 'text-overflow',
             'width', 'max-width', 'min-width', 'box-sizing',
             'height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y',
-            'display', '-webkit-line-clamp', 'line-clamp', '-webkit-box-orient',
+            'display', 'line-height', '-webkit-line-clamp', 'line-clamp', '-webkit-box-orient',
         ];
         encodeTextClippingBaseline(element, properties);
         element.style.setProperty('min-width', '0', 'important');
@@ -12709,13 +12805,13 @@ function repairMaintenanceTextClipping(root) {
         element.style.setProperty('text-overflow', 'clip', 'important');
         const computedPosition = String(maintenanceSafeComputedStyle(element)?.position || '').toLowerCase();
         // 仅解除叶级、非绝对定位文字自身的裁切；绝不打开媒介外壳或叠层页面的 overflow。
-        if (evidence.lineClamped && computedPosition !== 'absolute' && computedPosition !== 'fixed') {
+        if ((evidence.lineClamped || evidence.vertical) && computedPosition !== 'absolute' && computedPosition !== 'fixed') {
             element.style.setProperty('overflow', 'visible', 'important');
-            element.style.setProperty('overflow-x', 'visible', 'important');
             element.style.setProperty('overflow-y', 'visible', 'important');
+            if (evidence.horizontal) element.style.setProperty('overflow-x', 'visible', 'important');
         }
 
-        if (evidence.noWrap || evidence.horizontal) {
+        if ((evidence.noWrap || evidence.horizontal) && !evidence.verticalWriting) {
             element.style.setProperty('white-space', tag === 'pre' || tag === 'code' ? 'pre-wrap' : 'normal', 'important');
             // 解除 nowrap 后文字会新增行；即使首次采样只有横向溢出，也必须同步释放固定高度。
             element.style.setProperty('height', 'auto', 'important');
@@ -12728,6 +12824,9 @@ function repairMaintenanceTextClipping(root) {
             element.style.setProperty('height', 'auto', 'important');
             element.style.setProperty('max-height', 'none', 'important');
         }
+        if (evidence.lineHeightCramped) {
+            element.style.setProperty('line-height', '1.35', 'important');
+        }
         if (evidence.lineClamped) {
             element.style.setProperty('-webkit-line-clamp', 'unset', 'important');
             element.style.setProperty('line-clamp', 'unset', 'important');
@@ -12737,10 +12836,91 @@ function repairMaintenanceTextClipping(root) {
             }
         }
         element.setAttribute(TEXT_CLIPPING_ITEM_ATTR, 'true');
+        const clippingAncestor = evidence.clippingAncestor?.element;
+        if (clippingAncestor?.style) {
+            const ancestorProperties = [
+                'width', 'min-width', 'max-width', 'height', 'min-height', 'max-height',
+                'overflow', 'overflow-x', 'overflow-y', 'box-sizing',
+            ];
+            encodeTextClippingBaseline(clippingAncestor, ancestorProperties);
+            clippingAncestor.style.setProperty('box-sizing', 'border-box', 'important');
+            if (evidence.clippingAncestor.vertical) {
+                clippingAncestor.style.setProperty('height', 'auto', 'important');
+                clippingAncestor.style.setProperty('max-height', 'none', 'important');
+                clippingAncestor.style.setProperty('overflow-y', 'visible', 'important');
+            }
+            if (evidence.clippingAncestor.horizontal) {
+                clippingAncestor.style.setProperty('min-width', '0', 'important');
+                clippingAncestor.style.setProperty('max-width', '100%', 'important');
+                clippingAncestor.style.setProperty('overflow-x', 'visible', 'important');
+            }
+            clippingAncestor.setAttribute(TEXT_CLIPPING_ITEM_ATTR, 'true');
+        }
         repaired += 1;
     }
     if (repaired > 0) root.setAttribute(TEXT_CLIPPING_REPAIR_ATTR, String(repaired));
     return repaired;
+}
+
+let maintenanceHighConfidenceTextCheckedRoots = new WeakSet();
+const maintenanceHighConfidenceTextRepairFrames = new Map();
+
+function maintenanceRootIsLatestAssistant(root) {
+    const messageIndex = getMessageIndexFromMirrorNode(root);
+    const chat = getAvailableHostChat();
+    if (messageIndex < 0 || !Array.isArray(chat) || !chat[messageIndex]
+        || chat[messageIndex]?.is_user || chat[messageIndex]?.is_system) return false;
+    for (let index = chat.length - 1; index >= 0; index -= 1) {
+        const message = chat[index];
+        if (!message || message.is_user || message.is_system) continue;
+        return index === messageIndex;
+    }
+    return false;
+}
+
+function maintenanceCurrentHighConfidenceTextRepairEligible(root) {
+    if (!isCurrentRuntime() || !root?.isConnected || !root?.querySelectorAll || !isInsideChatMessage(root)) return false;
+    if (!maintenanceRootIsLatestAssistant(root) || outputHostGenerationLooksActive()) return false;
+    if (root.closest?.('[data-rm-pending="true"], [data-rm-awaiting-fresh-source="true"]')) return false;
+    const details = getRabbitMirrorFacePosition(root)?.details
+        || (root.matches?.('details') ? root : root.querySelector?.(':scope > details') || null);
+    if (details && !details.hasAttribute?.('open')) return false;
+    const budget = maintenanceRepairRootBudget(root);
+    return !!budget.ok && budget.nodes <= 800 && budget.attributes <= 2600;
+}
+
+function scheduleCurrentHighConfidenceTextRepair(root) {
+    if (!root?.isConnected || maintenanceHighConfidenceTextCheckedRoots.has(root)
+        || maintenanceHighConfidenceTextRepairFrames.has(root)) return false;
+    const run = () => {
+        maintenanceHighConfidenceTextRepairFrames.delete(root);
+        if (!maintenanceCurrentHighConfidenceTextRepairEligible(root)) return;
+        maintenanceHighConfidenceTextCheckedRoots.add(root);
+        try {
+            // One current, settled, bounded mirror only. This deliberately repairs just
+            // high-confidence leaf text/nearest safe ancestors and never persists a scan.
+            repairMaintenanceTextClipping(root, { highConfidenceOnly: true, maxCandidates: 12 });
+        } catch (error) {
+            console.debug('[RabbitMirror] bounded current text-clipping repair skipped:', error);
+        }
+    };
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+        const frame = globalThis.requestAnimationFrame(run);
+        maintenanceHighConfidenceTextRepairFrames.set(root, frame);
+    } else {
+        run();
+    }
+    return true;
+}
+
+function cancelCurrentHighConfidenceTextRepairs() {
+    if (typeof globalThis.cancelAnimationFrame === 'function') {
+        for (const frame of maintenanceHighConfidenceTextRepairFrames.values()) {
+            try { globalThis.cancelAnimationFrame(frame); } catch {}
+        }
+    }
+    maintenanceHighConfidenceTextRepairFrames.clear();
+    maintenanceHighConfidenceTextCheckedRoots = new WeakSet();
 }
 
 
@@ -17900,46 +18080,17 @@ function cleanRabbitMirrorInteractionResetClone(details) {
     return clone;
 }
 
-function ensureRabbitMirrorInteractionHomeControl(root) {
-    const key = rabbitMirrorInteractionResetSnapshotKey(root, false);
-    if (!key || !rabbitMirrorInteractionResetSnapshots.has(key)) return null;
-    const details = getRabbitMirrorFacePosition(root)?.details
-        || (root.matches?.('details') ? root : root.querySelector?.(':scope > details') || null);
-    if (!details?.isConnected) return null;
-    let button = details.querySelector?.(`:scope > [${INTERACTION_HOME_ATTR}]`) || null;
-    if (!button) {
-        button = details.ownerDocument?.createElement?.('button');
-        if (!button) return null;
-        button.type = 'button';
-        button.setAttribute(INTERACTION_HOME_ATTR, 'true');
-        button.className = 'rabbit-mirror-interaction-home';
-        button.textContent = '↶ 返回初始页';
-        button.setAttribute('aria-label', '返回这面兔子镜的交互初始页');
-        button.style.cssText = 'display:block;max-width:100%;margin:12px auto 8px;padding:6px 12px;border:1px solid currentColor;border-radius:999px;background:transparent;color:inherit;font:inherit;font-size:.86em;line-height:1.35;cursor:pointer;opacity:.78;';
-        details.appendChild(button);
+function removeRabbitMirrorInteractionHomeControls(root) {
+    if (!root) return 0;
+    const controls = new Set();
+    if (root.matches?.(`[${INTERACTION_HOME_ATTR}]`)) controls.add(root);
+    root.querySelectorAll?.(`[${INTERACTION_HOME_ATTR}]`)?.forEach(node => controls.add(node));
+    let removed = 0;
+    for (const control of controls) {
+        control.remove?.();
+        removed += 1;
     }
-    if (!button.__rabbitMirrorInteractionHomeHandler) {
-        button.__rabbitMirrorInteractionHomeHandler = event => {
-            event.preventDefault();
-            event.stopPropagation();
-            const liveRoot = rabbitMirrorInteractionRootFromTarget(button) || details;
-            const maintenanceButton = liveRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
-            const repairRun = beginMaintenanceRepairRun(liveRoot, maintenanceButton);
-            if (!repairRun) return;
-            try {
-                if (!rejectOversizedMaintenanceRepair(liveRoot, maintenanceButton, '恢复交互初始状态')) {
-                    restoreRabbitMirrorInteractionResetSnapshot(liveRoot, maintenanceButton);
-                }
-            } catch (error) {
-                console.debug('[RabbitMirror] inline interaction reset failed:', error);
-                failMaintenanceRabbit(maintenanceButton, '恢复交互初始状态执行失败，请生成全链路诊断');
-            } finally {
-                finishMaintenanceRepairRun(repairRun);
-            }
-        };
-        button.addEventListener('click', button.__rabbitMirrorInteractionHomeHandler);
-    }
-    return button;
+    return removed;
 }
 
 function invalidateRabbitMirrorInteractionResetSnapshot(root) {
@@ -17963,7 +18114,9 @@ function captureRabbitMirrorInteractionResetSnapshot(root) {
     const instanceId = rabbitMirrorInteractionResetInstanceId(root, false);
     rabbitMirrorInteractionResetSnapshots.set(key, { node, instanceId, sourceSignature: rabbitMirrorInteractionResetSourceSignature(root), ts: Date.now() });
     trimRabbitMirrorInteractionResetSnapshots();
-    ensureRabbitMirrorInteractionHomeControl(root);
+    // Recovery remains available from Maintenance Rabbit; never inject a generic
+    // reset pill into the model-authored artwork. Also clear a persisted legacy pill.
+    removeRabbitMirrorInteractionHomeControls(root);
     return true;
 }
 
@@ -18023,7 +18176,7 @@ function restoreRabbitMirrorInteractionResetSnapshot(root, button) {
     try { activateRabbitMirrorInteractionRescue(restoredRoot); } catch (error) { console.debug('[RabbitMirror] interaction reset rescue rebind skipped:', error); }
     try { rehydrateRabbitMirrorMaintenanceRepairs(restoredRoot); } catch (error) { console.debug('[RabbitMirror] interaction reset maintenance rehydrate skipped:', error); }
     try { refreshRabbitMirrorToolsInScope(restoredRoot); } catch (error) { console.debug('[RabbitMirror] interaction reset tool refresh skipped:', error); }
-    try { ensureRabbitMirrorInteractionHomeControl(restoredRoot); } catch (error) { console.debug('[RabbitMirror] interaction home control refresh skipped:', error); }
+    try { removeRabbitMirrorInteractionHomeControls(restoredRoot); } catch (error) { console.debug('[RabbitMirror] legacy interaction home cleanup skipped:', error); }
     const restoredButton = restoredRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || restoredDetails.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
     setMaintenanceRabbitState(restoredButton, MAINTENANCE_STATES.idle, '已恢复这面兔子镜的交互初始状态；外层展开状态保持不变');
     if (isIndependentMaintenanceRoot(restoredRoot)) notifyIndependentRepairPersistence(restoredRoot);
@@ -22439,6 +22592,9 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, a
 
     getRenderedRabbitMirrorInteractionRoots(scope).forEach(root => {
         if (!isInsideChatMessage(root)) return;
+        // Migrate cached/serialized mirrors created by the short-lived inline reset
+        // control. Recovery snapshots stay intact and remain reachable from Maintenance Rabbit.
+        removeRabbitMirrorInteractionHomeControls(root);
         // If SillyTavern replaced a follow-mode mirror after a successful manual repair,
         // replay only that recorded recipe on the new live root. This is bounded and does
         // not touch chat source, sibling mirrors, cache, or the independent-API path.
@@ -22500,6 +22656,7 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, a
         } catch (error) {
             console.debug('[RabbitMirror] recipe button install recovered for one mirror:', error);
         }
+        if (!historyRestoreLight) scheduleCurrentHighConfidenceTextRepair(root);
     });
     if (feedbackEnabled) updateFeedbackCatButtonTitles();
     perfEnd?.();
@@ -25295,6 +25452,16 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
         captureRabbitMirrorInteractionResetFromEventTarget(control);
     };
     toolEntryDelegatedClickHandler = event => {
+        // Reuse this existing delegated boundary: after a collapsed current mirror is
+        // opened, one animation frame is enough for layout before the bounded text check.
+        // No per-mirror listener, observer or polling loop is introduced.
+        const clickedSummary = event.target?.closest?.('summary');
+        if (clickedSummary && !event.target?.closest?.(`[${TOOL_ENTRY_HOST_ATTR}]`)) {
+            const summaryRoot = rabbitMirrorInteractionRootFromTarget(clickedSummary);
+            const outerDetails = getRabbitMirrorFacePosition(summaryRoot)?.details
+                || (summaryRoot?.matches?.('details') ? summaryRoot : summaryRoot?.querySelector?.(':scope > details') || null);
+            if (clickedSummary.parentElement === outerDetails) scheduleCurrentHighConfidenceTextRepair(summaryRoot);
+        }
         captureRabbitMirrorInteractionResetFromEventTarget(event.target);
         const button = event.target?.closest?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`);
         if (!button || !chatRoot.contains(button)) return;
@@ -25510,6 +25677,7 @@ export function destroyOutputSanitizer() {
         chatInstallDebounceTimer = 0;
     }
     pendingObservedMessageRoots.clear();
+    cancelCurrentHighConfidenceTextRepairs();
     for (const timer of maintenanceInstallTimers) clearTimeout(timer);
     maintenanceInstallTimers.clear();
     cancelStartupMaintenanceHistoryInstall();

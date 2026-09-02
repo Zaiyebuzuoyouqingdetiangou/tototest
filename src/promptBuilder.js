@@ -1,12 +1,12 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.17';
 import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.17';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.30.17';
-import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.7-multiface5';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.7-multiface5';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.7-multiface5';
+import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.8-visualstream8';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.8-visualstream8';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.8-visualstream8';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.17';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.7-multiface5';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.7-multiface5';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.8-visualstream8';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.8-visualstream8';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -315,7 +315,7 @@ ${themes}
 ${face.selectedFormats}
 局部构思硬要求：从本面的选题与媒介重新确定主体、视线入口、空间层级、材质细节与交互链。即使用户固定了同一形式，本面也必须采用不同于其他面的内容焦点、构图路径和可逆第二状态；不得复制DOM骨架后换皮。`;
     }).join('\n\n');
-    return `兔子镜逐面冻结计划【各面平级；不得互相借用】:\n${plans}`;
+    return `兔子镜逐面冻结计划【各面平级；不得互相借用】:\n${plans}\n\n同批视觉去同构硬锁:\n  - 写 HTML 前先逐面冻结互不相同的亮度、色系、材质、轮廓、阅读路径与交互家族；不得复制同一骨架后只换标题或颜色。\n  - 至少一面必须采用明亮或中高明度的背景与材质；只有本批所有选中内容与媒介都硬要求黑暗时才可例外，其余各面也不得默认回落为深黑矩形系统卡。\n  - 若固定了同一展现形式，保留该媒介的固定识别特征，但仍必须在构图、材质组织、阅读路径和可逆交互中做出真实差异，不把必要的媒介特征误判为重复。\n  - 每面最多使用 1 条主连续动画 + 1 条辅助连续动画；其他状态只在交互或短暂过渡时变化。\n  - 禁止用粒子群、大量重复动画节点或大面积 blur、filter、backdrop-filter 兜底质感。`;
 }
 
 function tarotPhysicalImageRule(faceIndexes = []) {
@@ -326,7 +326,7 @@ function tarotPhysicalImageRule(faceIndexes = []) {
 }
 
 function enhancedVisualDrawingRule() {
-    return '增强视觉绘制：先确定清晰的主体轮廓与阅读焦点，再建立前中后景、遮挡和留白；用真实 CSS 落实材质、接缝、光源、阴影与排版层级，并让交互前后出现可逆且有意义的内容或空间变化。可自由组合 HTML、CSS 与安全内联 SVG，不要求固定布局或每轮使用 SVG。';
+    return '增强视觉绘制：先确定清晰的主体轮廓与阅读焦点，再建立前中后景、遮挡和留白；用真实 CSS 落实材质、接缝、光源、阴影与排版层级，并让交互前后出现可逆且有意义的内容或空间变化。主要正文和交互反馈必须进入正常文档流并由内容撑高；按 360px 手机宽度校验字号、行高与换行，最后一行不得被固定高度、transform 或 overflow 裁切。可自由组合 HTML、CSS 与安全内联 SVG，不要求固定布局或每轮使用 SVG。';
 }
 
 function compactCreativeRule(enabled, formatOnly = false) {
@@ -351,7 +351,7 @@ function complexInteractiveCore() {
     return String.raw`
 复杂交互视觉核心:
   - 兔子镜必须是复杂精美的微型交互媒介作品，不能退化为普通信息页、单列内容块、简单表单或文字摘要。
-  - 除最外层折叠外，每轮必须实际存在至少一组从本轮叙事核心、媒介本体或画面内部关系自然生长的完整交互链：可操作对象→明确操作→可识别且可保持的状态变化→对应的内容、关系或结构反馈→可继续推进、分支、组合、切换或返回。
+  - 除最外层折叠外，每轮至少一条源自本轮媒介的完整链：可触摸对象→操作→可保持状态变化→对应反馈；每个非终止第二状态必须有融入媒介本体的自然返回入口；禁止把通用“返回初始页／重置界面”按钮画进作品，异常恢复只由维修兔提供。
   - 交互产生、替换或推进后的主要正文与关键反馈，须由本轮展现形式自身的内容区域完整承载，并在对应状态中保持可读、可达；具体承载方式由媒介本体决定，不得因裁切、遮挡或脱离所属区域而显示不全。
   - 内容承载优先于复杂度：含主要正文、长句、段落或关键反馈的节点及其承载父级必须参与正常文档流并由内容撑高；禁止用 position:absolute/fixed、固定 px/vh 高度、height:100%、transform 位移或 overflow:hidden/clip 作为正文承载骨架，只有纯装饰、短标签与图形层可脱离文档流。
   - 需要状态叠层时，优先使用能由内容撑高的 grid 同格叠层、正常流显隐或媒介内部明确可操作的滚动／分页；禁止让两个含长正文的状态以 absolute 叠放在固定画布内。若使用内部 details/summary 表示正反面或状态替换，打开后 summary 不得继续以 height:100% 占据整块面板并把后续状态推到裁切区；正面必须收起或退出占位，暗面须在同一媒介区域内可见，并提供可触摸的返回方式。输出前按 360px 手机窄屏自检，每个状态的最后一行必须仍位于所属卡片、画框或页面边界内。
@@ -369,11 +369,11 @@ Visual Scenery 场景优先级【覆盖通用交互骨架的执行顺序】:
   - 本轮第一优先级是先让一幅完整动态场景本体成立，再把交互自然寄生在场景对象上；不得为了满足“复杂交互”先搭建按钮组、标签页、仪表盘、信息卡、播放器或说明面板。
   - 施工顺序必须是：①建立一个自适应手机宽度的完整舞台；②明确背景层、中景主体层、前景遮挡／叙事层；③让占据主要视觉权重的主体或环境关系持续运动；④再选择场景内真实存在的一个对象作为可触摸入口，使画面产生可保持的第二状态。
   - 首个主要场景根节点必须标记 data-rm-visual-scenery="true"，方便插件只读验收；该属性不产生可见文字，也不得被当作标题或说明。
-  - 至少一条主动画必须同时具备真实 @keyframes、可见元素上的 animation 声明、infinite 循环，并在打开后 1 秒内产生肉眼可见的位移、缩放、旋转、形变、遮罩推进、流体变化或光影扫动。只写 transform、transition、动画名、SVG、微尘闪烁或低对比呼吸不算主动画。
-  - 除主动画外，至少再有一个与场景空间有关的协同动态层，例如环境光、帘幕、影子、液面、雾、雨、丝线、纸片、轨迹或前景遮挡；两个动态层须共同服务同一构图，不能只是散落的小点。
+  - 每面最多 1 条主连续动画 + 1 条辅助连续动画。主动画须有真实 @keyframes、可见元素 animation 与 infinite，打开 1 秒内产生肉眼可见的位移／缩放／旋转／形变／遮罩／流体／光影变化；只写 transition、动画名、SVG、微尘或低对比呼吸不算。
+  - 辅助连续动画须是环境光／帘幕／影子／液面／雾雨／丝线／纸片／轨迹／前景遮挡之一，与主动画共同服务构图；禁止粒子群、批量重复动画节点及大面积 blur、filter、backdrop-filter。
   - 场景未操作时就必须完整、清晰、持续活动；交互只能推进、揭示或改变场景，不能作为显示核心画面的前置条件。
   - 允许场景画布中的纯装饰与短标签使用定位和裁切；主要正文与交互反馈仍须进入正常文档流并完整撑高，不能被固定高度或 overflow:hidden 截断。
-  - 交互要求收敛为一条与场景本体一致的完整链即可：场景对象→触摸操作→可保持的画面／关系／时间状态变化→明确反馈→可返回或继续。不得额外堆叠与场景无关的复杂控件。`;
+  - 交互要求收敛为一条与场景本体一致的完整链即可：场景对象→触摸操作→可保持的画面／关系／时间状态变化→明确反馈；每个非终止第二状态都由场景内对象自然返回。不得额外堆叠无关控件。`;
 }
 
 
@@ -399,7 +399,7 @@ function visualSceneryInteractionLinkRule() {
     return String.raw`
 Visual Scenery 动态与交互:
   - 画面打开后必须通过完整、持续且肉眼可见的 CSS 动画成立，核心内容不得依赖用户操作才能出现。
-  - 必须同时具备上述完整交互链；第二状态须发生清晰且有意义的内容、关系、结构、空间、材质、时间进程或观察方式变化；动画与交互不能互相替代。
+  - 必须同时具备上述完整交互链；第二状态须发生清晰且有意义的内容、关系、结构、空间、材质、时间进程或观察方式变化，并有场景内自然返回入口；动画与交互不能互相替代。
   - 交互须发生在画面本体内部，不得另加脱离场景的操作面板或大段说明；用户未操作时仍须具有完整构图、清晰主体与持续生命感。`;
 }
 
@@ -456,7 +456,7 @@ function presentationFinalAcceptanceLock(combo) {
     return String.raw`
 最终成品短检【只在脑内执行】:
   - 形式：${compactPresentationExecutionContract(combo?.formats)}。首个主体须以至少两项可见的轮廓／比例／空间／阅读／材质／排版证据呈现形式本体，真实 CSS 必须命中可见节点；不能只剩默认文字流、原生控件或通用卡片。
-  - 交互：必须有一条可触摸且可保持的完整链「对象→操作→第二状态→明确反馈→返回或继续」；动画、hover 与仅变色不能代替交互。
+  - 交互：必须有一条可触摸且可保持的完整链「对象→操作→第二状态→明确反馈→媒介内自然返回」；动画、hover 与仅变色不能代替交互。
   - 手机：按 360px 检查人物、关系节点、图例等数量群组，整组完整适配且正文由内容撑高，不得裁掉最后一项。任一项失败先重构再输出。`;
 }
 
@@ -720,7 +720,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     return [
         '<兔子镜近输出短锁 data-source="independent-api-near-output">',
         `本轮锁定：${samplingModeLabel(combo, settings)}；主题：${themes}；展现形式：${formats}。`,
-        `短检：${formatContract}。首个主体落实两项可见结构证据和真实 CSS；完成至少一条「对象→操作→可保持第二状态→反馈→返回或继续」交互，多节点媒介须有多入口或连续阶段，不用单次显隐敷衍。360px 下数量群组完整适配、正文不裁切。`,
+        `短检：${formatContract}。首个主体落实两项可见结构证据和真实 CSS；完成至少一条「对象→操作→可保持第二状态→反馈→媒介内自然返回」交互，多节点媒介须有多入口或连续阶段，不用单次显隐敷衍。360px 下数量群组完整适配、正文不裁切。`,
         directiveText ? `点菜优先：${directiveText}` : '',
         activeBans.length ? `近因避让：${activeBans.join('；')}。` : '',
         adultFictionExecutionRule(combo, true),
@@ -759,7 +759,7 @@ function buildMultiIndependentExecutionLock(faceContexts, settings, directive) {
         directiveText ? `点菜优先：${directiveText}` : '',
         activeBans.length ? `全批近因避让：${activeBans.join('；')}。` : '',
         visualPreferenceLock ? `最终视觉偏好裁决：${visualPreferenceLock}；近期避让不得覆盖。` : '',
-        '各面须具有不同的内容焦点、构图路径和交互第二状态；可读性与360px正文不裁切要求逐面成立。',
+        '各面须在亮度、色系、材质、轮廓、阅读路径、交互家族与第二状态中形成可见差异；除非内容硬要求黑暗，至少一面明亮，禁止用深黑矩形系统卡统一兜底。可读性与360px正文不裁切要求逐面成立。',
         `只有第 ${faceContexts.length} 面闭合后才结束，不得少面、合并、追加面外文字。`,
         '</兔子镜多面近输出短锁>',
     ].filter(Boolean).join('\n');

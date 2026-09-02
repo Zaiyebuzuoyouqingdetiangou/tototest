@@ -1,6 +1,6 @@
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.7-multiface5';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.7-multiface5';
-import { getSettings } from './settings.js?rmv=1.5.7-multiface5';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.8-visualstream8';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.8-visualstream8';
+import { getSettings } from './settings.js?rmv=1.5.8-visualstream8';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -9,15 +9,17 @@ import {
     getRabbitMirrorFollowBatchTargetIndexes,
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.5.7-multiface5';
+} from './generationGuard.js?rmv=1.5.8-visualstream8';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.5.7-multiface5';
+} from './multifaceProof.js?rmv=1.5.8-visualstream8';
 import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.4.30.23';
-import { hasRequiredTarotEntityImage } from './independentQualityGate.js?rmv=1.5.7-multiface5';
+import { hasRequiredTarotEntityImage } from './independentQualityGate.js?rmv=1.5.8-visualstream8';
+
+export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -1187,7 +1189,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.7-multiface5').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.8-visualstream8').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
@@ -1331,6 +1333,11 @@ async function scanFollowBatches(chat, lifecycle = visualScannerLifecycle) {
                 committed += 1;
                 followBatchScanAttempts.delete(attemptKey);
                 terminalFollowMessageIndexes.delete(terminalFollowOwnerKey(chat, set.owner.messageIndex));
+                try {
+                    globalThis.dispatchEvent?.(new CustomEvent(FOLLOW_MULTIFACE_COMMITTED_EVENT, {
+                        detail:{messageIndex:Number(set.owner.messageIndex),sourceHash:String(set.owner.sourceHash||''),batchId:String(set.batchId||'')},
+                    }));
+                } catch {}
                 const feedbackResult = consumeInjectedFeedbackForSuccessfulRabbitMirror(set.owner.message);
                 if (feedbackResult?.consumed) console.debug('[RabbitMirror] feedback cat consumed:', feedbackResult.remainingRounds);
                 console.debug('[RabbitMirror] follow multiface visual batch committed:', set.batchId, scans.length);

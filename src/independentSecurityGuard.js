@@ -53,6 +53,13 @@ function requestLimitError(maxBytes, observedBytes = 0) {
     return error;
 }
 
+function contextBoundaryError() {
+    const error = new TypeError('RabbitMirror 独立 API 请求缺少完整的上下文边界证据，已在发送前拒绝。');
+    error.name = 'RabbitMirrorContextBoundaryError';
+    error.code = 'RABBIT_MIRROR_CONTEXT_BOUNDARY_REJECTED';
+    return error;
+}
+
 function consumeDispatchLease(init) {
     const lease = init?.rabbitMirrorDispatchLease;
     if (!lease || typeof lease.consume !== 'function' || lease.consume() !== true) {
@@ -67,9 +74,7 @@ function prepareRabbitMirrorIndependentRequest(bodyText = '') {
     clearDormantLegacyApiKey();
     const rawBody = String(bodyText || '');
     const sanitized = sanitizeRabbitMirrorCompletionBody(rawBody);
-    if (!sanitized.rabbitMirror) {
-        throw new TypeError('RabbitMirror 独立 API 请求缺少完整的上下文边界证据，已在发送前拒绝。');
-    }
+    if (!sanitized.rabbitMirror) throw contextBoundaryError();
     const outboundBody = sanitized.changed ? sanitized.bodyText : rawBody;
     const outboundBytes = utf8ByteLength(outboundBody);
     if (outboundBytes > MAX_INDEPENDENT_REQUEST_BYTES) throw requestLimitError(MAX_INDEPENDENT_REQUEST_BYTES, outboundBytes);
@@ -351,9 +356,14 @@ export function assertRabbitMirrorIndependentResponseText(value = '') {
             throw error;
         }
     }
-    const observedBytes = utf8ByteLength(text);
-    if (observedBytes > MAX_INDEPENDENT_RESPONSE_BYTES) throw responseLimitError(MAX_INDEPENDENT_RESPONSE_BYTES, observedBytes);
+    assertRabbitMirrorIndependentResponseBytes(utf8ByteLength(text));
     return text;
+}
+
+export function assertRabbitMirrorIndependentResponseBytes(observedBytes = 0) {
+    const bytes = Math.max(0, Number(observedBytes) || 0);
+    if (bytes > MAX_INDEPENDENT_RESPONSE_BYTES) throw responseLimitError(MAX_INDEPENDENT_RESPONSE_BYTES, bytes);
+    return bytes;
 }
 
 export function destroyRabbitMirrorIndependentSecurityGuard() {

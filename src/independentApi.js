@@ -1,18 +1,18 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.7-multiface5';
-import { assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.7-multiface5';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.5.7-multiface5';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.7-multiface5';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.7-multiface5';
-import { markSanitizedRabbitMirrorFace } from './multifaceProof.js?rmv=1.5.7-multiface5';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.7-multiface5';
-import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.7-multiface5';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.7-multiface5';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.7-multiface5';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.7-multiface5';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.7-multiface5';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.8-visualstream8';
+import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.8-visualstream8';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.5.8-visualstream8';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.8-visualstream8';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.8-visualstream8';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.8-visualstream8';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.8-visualstream8';
+import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.8-visualstream8';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.8-visualstream8';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.8-visualstream8';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.8-visualstream8';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.8-visualstream8';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
-const RUNTIME_VERSION = '1.5.7';
+const RUNTIME_VERSION = '1.5.8';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -140,6 +140,7 @@ function clearAutomaticFailureStop(slot='',sourceHash=''){ automaticFailureStops
 function clearAutomaticFailureStops(){ automaticFailureStops.clear(); }
 let feedbackActionListenerInstalled = false;
 let repairPersistenceListenerInstalled = false;
+let followMultifaceCommitListenerInstalled = false;
 const orphanExternalHostTimers = new Map();
 const messageSourceRevisions = new Map();
 // Legacy "globalWorldInfo" runtime names are retained to avoid widening this patch; the capture
@@ -794,6 +795,14 @@ async function readIndependentSillyTavernVersion(){
  }catch{}finally{ clearTimeout(timeoutId); }
  return '';
 }
+function independentConnectionProfilePreflightError(message,reason='profile-invalid',cause=null){
+ const error=new Error(String(message||'兔子镜所选 Connection Profile 无法在发送前通过安全校验。'));
+ error.name='RabbitMirrorConnectionProfilePreflightError';
+ error.code='RABBIT_MIRROR_CONNECTION_PROFILE_REJECTED';
+ error.reason=String(reason||'profile-invalid');
+ if(cause && cause!==error){ try{ error.cause=cause; }catch{} }
+ return error;
+}
 async function assertIndependentConnectionProfileSupport(service){
  // 1.18.0 added request-level Connection Profile secret-id forwarding. 1.16
  // and 1.17 already expose sendRequest(), so method presence alone is unsafe.
@@ -802,9 +811,9 @@ async function assertIndependentConnectionProfileSupport(service){
  if(hasProfileSecrets && hasRequestOverrides) return true;
  const version=await readIndependentSillyTavernVersion();
  if(independentSemverAtLeast(version) && (!hasProfileSecrets || !hasRequestOverrides)){
-  throw new Error('酒馆版本显示为 1.18.0 或更高，但当前页面仍加载了不完整的旧 Connection Manager（缺少 Profile Secret 或请求级模型切换能力）。请强制刷新酒馆页面后重试；本次不会发送请求，以免误用 Profile 默认模型或错误凭据。');
- }
- throw new Error('酒馆 Connection Profile 一键配置仅支持 SillyTavern 1.18.0 及以上版本；这不影响兔子镜本体或手动 OpenAI 兼容独立 API。');
+   throw independentConnectionProfilePreflightError('酒馆版本显示为 1.18.0 或更高，但当前页面仍加载了不完整的旧 Connection Manager（缺少 Profile Secret 或请求级模型切换能力）。请强制刷新酒馆页面后重试；本次不会发送请求，以免误用 Profile 默认模型或错误凭据。','connection-manager-capability');
+  }
+  throw independentConnectionProfilePreflightError('酒馆 Connection Profile 一键配置仅支持 SillyTavern 1.18.0 及以上版本；这不影响兔子镜本体或手动 OpenAI 兼容独立 API。','sillytavern-version');
 }
 function independentConnectionManagerSettings(ctx=getContext()){
  const manager=ctx?.extensionSettings?.connectionManager;
@@ -819,15 +828,23 @@ function rawIndependentConnectionProfile(profileId,ctx=getContext()){
 async function validatedIndependentConnectionProfile(profileId,ctx=getContext()){
  const id=normalizeIndependentConnectionText(profileId,160);
  if(!id) return null;
- const profile=rawIndependentConnectionProfile(id,ctx);
- if(!profile) throw new Error('兔子镜引用的酒馆连接已不存在，请重新一键配置。');
+ let profile=null;
+ try{ profile=rawIndependentConnectionProfile(id,ctx); }
+ catch(error){ throw independentConnectionProfilePreflightError(error?.message||error,'connection-manager-unavailable',error); }
+ if(!profile) throw independentConnectionProfilePreflightError('兔子镜引用的酒馆连接已不存在，请重新一键配置。','profile-missing');
  const service=ctx?.ConnectionManagerRequestService;
- if(!service?.validateProfile || typeof service?.sendRequest!=='function') throw new Error('当前 SillyTavern 的 Connection Manager 不支持按 Profile 安全发送请求；这不影响手动 OpenAI 兼容独立 API。若要使用 Connection Profile，请升级到 SillyTavern 1.18.0 或更高版本。');
- await assertIndependentConnectionProfileSupport(service);
- const apiMap=service.validateProfile(profile);
+ if(!service?.validateProfile || typeof service?.sendRequest!=='function') throw independentConnectionProfilePreflightError('当前 SillyTavern 的 Connection Manager 不支持按 Profile 安全发送请求；这不影响手动 OpenAI 兼容独立 API。若要使用 Connection Profile，请升级到 SillyTavern 1.18.0 或更高版本。','request-service-unavailable');
+ try{ await assertIndependentConnectionProfileSupport(service); }
+ catch(error){
+  if(error?.code==='RABBIT_MIRROR_CONNECTION_PROFILE_REJECTED') throw error;
+  throw independentConnectionProfilePreflightError(error?.message||error,'connection-manager-capability',error);
+ }
+ let apiMap=null;
+ try{ apiMap=service.validateProfile(profile); }
+ catch(error){ throw independentConnectionProfilePreflightError(error?.message||error,'profile-secret-or-transport-invalid',error); }
  // RabbitMirror's existing independent request body is Chat Completions shaped.
  // Do not silently convert it to Text Completion or another request family here.
- if(apiMap?.selected!=='openai' || !apiMap?.source) throw new Error('当前酒馆连接不是兔子镜现有副 API 可复用的 Chat Completion 类型。请切换到 Chat Completion 连接后再一键配置。');
+ if(apiMap?.selected!=='openai' || !apiMap?.source) throw independentConnectionProfilePreflightError('当前酒馆连接不是兔子镜现有副 API 可复用的 Chat Completion 类型。请切换到 Chat Completion 连接后再一键配置。','profile-not-chat-completion');
  return {id,profile,apiMap,ctx};
 }
 function independentConnectionFingerprint(profile){
@@ -2069,6 +2086,28 @@ function customApiBaseFromUrl(url=''){
  // pathname 正规化，确保带 query 的 /models / chat/completions 不会把端点本身当成 base。
  return normalizeBase(url);
 }
+function independentLocalPreflightFailure(error){
+ const localCodes=new Set([
+  'RABBIT_MIRROR_CONTEXT_BOUNDARY_REJECTED',
+  'RABBIT_MIRROR_REQUEST_TOO_LARGE',
+   'RABBIT_MIRROR_DISPATCH_LEASE_REJECTED',
+   'RABBIT_MIRROR_BATCH_PLAN_REJECTED',
+   'RABBIT_MIRROR_CONNECTION_PROFILE_REJECTED',
+ ]);
+ const seen=new Set(); let cursor=error;
+ for(let depth=0;cursor && depth<4 && !seen.has(cursor);depth+=1){
+  seen.add(cursor);
+  if(localCodes.has(String(cursor?.code||''))) return cursor;
+  cursor=cursor?.cause;
+ }
+ return null;
+}
+function independentBatchPlanPreflightError(){
+ const error=new Error('多面抽取计划已失效或同时生成数量已达上限；本次未发送请求。');
+ error.name='RabbitMirrorBatchPlanPreflightError';
+ error.code='RABBIT_MIRROR_BATCH_PLAN_REJECTED';
+ return error;
+}
 async function fetchIndependentUrl(url,options={}){
  const method=String(options.method||'GET').toUpperCase();
  // Model-list buttons may inspect either transport without first mutating the
@@ -2134,6 +2173,7 @@ async function fetchIndependentUrl(url,options={}){
   });
  }catch(error){
   if(options.signal?.aborted || error?.name==='AbortError') throw error;
+  if(independentLocalPreflightFailure(error)) throw error;
   throw new Error(`SillyTavern 内置副 API 通道请求失败：${error?.message||error}`);
  }
 }
@@ -2627,7 +2667,7 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
  options=options||{};
  const service=runtime?.ctx?.ConnectionManagerRequestService;
  const profileId=normalizeIndependentConnectionText(runtime?.id,160);
- if(!profileId || typeof service?.sendRequest!=='function') throw new Error('当前 SillyTavern 无法按兔子镜选定的 Connection Profile 发送请求；这不影响手动 OpenAI 兼容独立 API。若要使用 Connection Profile，请升级到 SillyTavern 1.18.0 或更高版本。');
+ if(!profileId || typeof service?.sendRequest!=='function') throw independentConnectionProfilePreflightError('当前 SillyTavern 无法按兔子镜选定的 Connection Profile 发送请求；这不影响手动 OpenAI 兼容独立 API。若要使用 Connection Profile，请升级到 SillyTavern 1.18.0 或更高版本。','request-service-unavailable');
  const rawBody=profile?.body && typeof profile.body==='object' ? profile.body : {};
  const body=authorizeRabbitMirrorIndependentServiceRequest(rawBody,options.dispatchLease);
  const messages=Array.isArray(body?.messages)?body.messages:[];
@@ -2653,6 +2693,105 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
  },overrides);
  options.onProgress?.('connection-manager-response');
  let text=''; let terminatedAfterComplete=false; const observedHidden={};
+ // Validate only newly observed stream data. Re-serializing the cumulative
+ // response on every token is O(n²); the exact final object is still checked
+ // once after normal or recoverable stream termination.
+ const incrementalFieldBytes=new Map(); const incrementalStringPayloadBytes=new Map(); let incrementalObservedBytes=2;
+ const jsonStringByteLength=value=>{
+  const text=String(value??''); let bytes=2;
+  for(let index=0;index<text.length;index+=1){
+   const code=text.charCodeAt(index);
+   if(code===0x22 || code===0x5c || code===0x08 || code===0x0c || code===0x0a || code===0x0d || code===0x09){ bytes+=2; continue; }
+   if(code<=0x1f){ bytes+=6; continue; }
+   if(code<=0x7f){ bytes+=1; continue; }
+   if(code<=0x7ff){ bytes+=2; continue; }
+   if(code>=0xd800 && code<=0xdbff && index+1<text.length){
+    const low=text.charCodeAt(index+1);
+    if(low>=0xdc00 && low<=0xdfff){ bytes+=4; index+=1; continue; }
+   }
+   if(code>=0xd800 && code<=0xdfff){ bytes+=6; continue; }
+   bytes+=3;
+  }
+  return bytes;
+ };
+ const responseComplexityError=(work=0,depth=0)=>{
+  const error=new TypeError('RabbitMirror 独立 API 响应的隐藏状态结构过于复杂，已停止接收；可见正文不受此结构限制。');
+  error.name='RabbitMirrorResponseComplexityError';
+  error.code='RABBIT_MIRROR_RESPONSE_TOO_COMPLEX';
+  error.limitWork=512;
+  error.limitDepth=64;
+  error.observedWork=Math.max(0,Number(work)||0);
+  error.observedDepth=Math.max(0,Number(depth)||0);
+  return error;
+ };
+ const serializedResponseValueBytes=(value,arraySlot=false,seen=new WeakSet(),budget={work:0},depth=0)=>{
+  budget.work+=1;
+  if(budget.work>512 || depth>64) throw responseComplexityError(budget.work,depth);
+  if(typeof value==='string') return jsonStringByteLength(value);
+  if(typeof value==='bigint') return jsonStringByteLength(String(value));
+  if(value===null) return 4;
+  if(value===undefined || typeof value==='function' || typeof value==='symbol') return arraySlot?4:0;
+  if(typeof value==='boolean') return value?4:5;
+  if(typeof value==='number') return Number.isFinite(value)?String(Object.is(value,-0)?0:value).length:4;
+  if(!value || typeof value!=='object') return jsonStringByteLength(String(value??''));
+  if(seen.has(value)) return jsonStringByteLength('[Circular]');
+  seen.add(value);
+  let bytes=2;
+  if(Array.isArray(value)){
+   if(value.length>512) throw responseComplexityError(budget.work+value.length,depth);
+   for(let index=0;index<value.length;index+=1){
+    if(index) bytes+=1;
+    bytes+=serializedResponseValueBytes(value[index],true,seen,budget,depth+1);
+    assertRabbitMirrorIndependentResponseBytes(bytes);
+   }
+   return bytes;
+  }
+  let emitted=0;
+  for(const objectKey in value){
+   budget.work+=1;
+   if(budget.work>512) throw responseComplexityError(budget.work,depth);
+   if(!Object.prototype.hasOwnProperty.call(value,objectKey)
+    || !Object.prototype.propertyIsEnumerable.call(value,objectKey)) continue;
+   const nested=value[objectKey];
+   if(nested===undefined || typeof nested==='function' || typeof nested==='symbol') continue;
+   if(emitted) bytes+=1;
+   bytes+=jsonStringByteLength(objectKey)+1+serializedResponseValueBytes(nested,false,seen,budget,depth+1);
+   emitted+=1;
+   assertRabbitMirrorIndependentResponseBytes(bytes);
+  }
+  return bytes;
+ };
+ const setIncrementalResponseFieldBytes=(key,serializedValueBytes)=>{
+  const fieldBytes=jsonStringByteLength(String(key))+1+serializedValueBytes;
+  const previous=incrementalFieldBytes.get(key);
+  if(previous===undefined && incrementalFieldBytes.size>=64) throw responseComplexityError(incrementalFieldBytes.size+1,1);
+  if(previous===undefined && incrementalFieldBytes.size) incrementalObservedBytes+=1;
+  incrementalObservedBytes+=fieldBytes-(previous||0);
+  incrementalFieldBytes.set(key,fieldBytes);
+  assertRabbitMirrorIndependentResponseBytes(incrementalObservedBytes);
+ };
+ const setIncrementalResponseField=(key,value)=>{
+  const serializedValueBytes=serializedResponseValueBytes(value);
+  setIncrementalResponseFieldBytes(key,serializedValueBytes);
+  return serializedValueBytes;
+ };
+ const observeIncrementalNonStringField=(key,value)=>{
+  // Hidden objects are typically tiny usage/state envelopes. Measure them on
+  // each frame with a fixed-work JSON byte walk: this catches in-place
+  // arbitrary-key mutations immediately while avoiding cumulative
+  // JSON.stringify allocations that previously made long streams stutter.
+  setIncrementalResponseField(key,value);
+ };
+ const appendIncrementalResponseString=(key,previous,next)=>{
+  const oldText=String(previous||''); const newText=String(next||'');
+  const priorBytes=incrementalStringPayloadBytes.get(key)||0;
+  const payloadBytes=newText.startsWith(oldText)
+   ? priorBytes+jsonStringByteLength(newText.slice(oldText.length))-2
+   : jsonStringByteLength(newText)-2;
+  incrementalStringPayloadBytes.set(key,payloadBytes);
+  setIncrementalResponseFieldBytes(key,payloadBytes+2);
+ };
+ appendIncrementalResponseString('text','', '');
  if(stream){
   if(typeof serviceResult!=='function') throw new Error('Connection Manager 没有返回可读取的流式结果。');
   const generator=serviceResult();
@@ -2661,24 +2800,38 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
    for await(const frame of generator){
     options.onProgress?.('connection-manager-frame');
     const incoming=textFromContent(frame?.text ?? frame?.content ?? '');
-    if(incoming) text=mergeIndependentStreamText(text,incoming);
-    const hiddenKeys=frame && typeof frame==='object'
-     ? Object.keys(frame).filter(key=>key!=='text' && key!=='content' && frame[key]!=null)
-     : [];
+    if(incoming){
+     const previousText=text;
+     text=mergeIndependentStreamText(text,incoming);
+     if(text!==previousText) appendIncrementalResponseString('text',previousText,text);
+    }
+    const hiddenKeys=[];
+    if(frame && typeof frame==='object'){
+     let hiddenScanWork=0;
+     for(const key in frame){
+      hiddenScanWork+=1;
+      if(hiddenScanWork>64) throw responseComplexityError(hiddenScanWork,1);
+      if(!Object.prototype.hasOwnProperty.call(frame,key)
+       || !Object.prototype.propertyIsEnumerable.call(frame,key)
+       || key==='text' || key==='content' || frame[key]==null) continue;
+      hiddenKeys.push(key);
+      if(hiddenKeys.length>63) throw responseComplexityError(hiddenKeys.length+1,1);
+     }
+    }
     if(hiddenKeys.length){
      // Keep one cumulative logical response snapshot, not every token frame.
      // This covers reasoning/swipes/state without retaining an O(frame-count)
      // history. String fields support both cumulative and delta-style relays.
      for(const key of hiddenKeys){
       const value=frame[key];
-      observedHidden[key]=typeof value==='string'
-       ? mergeIndependentStreamText(String(observedHidden[key]||''),value)
-       : value;
+      if(typeof value==='string'){
+       const previous=String(observedHidden[key]||'');
+       const next=mergeIndependentStreamText(previous,value);
+       observedHidden[key]=next;
+       if(next!==previous) appendIncrementalResponseString(key,previous,next);
+       }else observeIncrementalNonStringField(key,value);
      }
-     assertRabbitMirrorIndependentResponseText({text,...observedHidden});
-    }else if(Object.keys(observedHidden).length){
-     assertRabbitMirrorIndependentResponseText({text,...observedHidden});
-    }else assertRabbitMirrorIndependentResponseText(text);
+    }
    }
   }catch(error){
    // Some relays close a successful stream with AbortError after the complete
@@ -2693,6 +2846,8 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
     throw error;
    }
   }
+  assertRabbitMirrorIndependentResponseBytes(incrementalObservedBytes);
+  assertRabbitMirrorIndependentResponseText(Object.keys(observedHidden).length?{text,...observedHidden}:text);
  }else{
   options.onProgress?.('connection-manager-complete');
   text=textFromContent(serviceResult?.content ?? serviceResult);
@@ -2739,7 +2894,18 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
    }
    cursor=cursor?.cause;
   }
-  const classification=evidence.join(' · ');
+ const classification=evidence.join(' · ');
+  const codedLocalPreflight=independentLocalPreflightFailure(error);
+  let dispatchWasNotConsumed=false;
+  try{
+   dispatchWasNotConsumed=typeof options.dispatchLease?.consumed==='function'
+    && options.dispatchLease.consumed()===false;
+  }catch{}
+  // The production lease is the exact paid-request boundary. If it is still
+  // reserved, every validation/adapter failure happened locally even when a
+  // host wrapper erased the original stable error code. Unknown third-party
+  // leases remain conservatively classified as one possible request.
+  const localPreflight=codedLocalPreflight || (dispatchWasNotConsumed?error:null);
   const connectionInterrupted=/(?:\bAbortError\b|operation was aborted|request aborted|socket (?:closed|hang up)|ECONNRESET|ERR_NETWORK|networkerror|load failed|failed to fetch)/i.test(classification);
   const rawDetail=String(error?.message||error||'网络连接失败')
    .replace(/Bearer\s+\S+/gi,'Bearer [已隐藏]')
@@ -2747,20 +2913,21 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
    .slice(0,280);
   const detail=connectionInterrupted?'连接在响应完成前中断（未收到完整响应）':rawDetail;
   const profileAuthFailure=!!connectionId && /(?:\b401\b|\b403\b|unauthori[sz]ed|forbidden|access[ _-]?token|api[ _-]?key|secret)/i.test(classification);
-  const responseBoundaryFailure=/RABBIT_MIRROR_RESPONSE_TOO_LARGE/.test(classification);
+  const responseBoundaryFailure=/RABBIT_MIRROR_RESPONSE_TOO_(?:LARGE|COMPLEX)/.test(classification);
   // Never retry automatically: the upstream may already have started billing.
   // A streamed transport failure only stages an exact same-parameter non-stream
   // profile for the player's explicit retry.
-  const next=profileUsesStreaming(profile.name) && !profileAuthFailure && !responseBoundaryFailure
+  const next=!localPreflight && profileUsesStreaming(profile.name) && !profileAuthFailure && !responseBoundaryFailure
    ? stageCompatibility(`${kind}-stream-failure`,true)
    : '';
-  attempts.push({profile:profile.name,status:0,detail,kind});
+  const failureKind=localPreflight?'local-preflight':(responseBoundaryFailure?'response-boundary':kind);
+  attempts.push({profile:profile.name,status:0,detail,kind:failureKind});
   const requestDiagnostic=publishIndependentApiRequestDiagnostic({
    ok:false,status:0,model:String(st.independentApiModel||''),baseUrl:independentDiagnosticBase(st),
    configuredTemperature:normalizedConfiguredTemperature(st),profile:profile.name,temperatureSent:Object.prototype.hasOwnProperty.call(profile.body||{},'temperature'),
    systemMessageSent:profileUsesSystemMessage(profile.name),streamSent:profile.body?.stream!==false,tokenField:profileTokenField(profile.name),
-   rememberedProfile,stagedProfile,attempts:[{profile:profile.name,status:0,kind}],requestCount:1,automaticProfileFallback:false,automaticRetry:false,
-   semanticFailure:kind,transportCause:connectionInterrupted?'connection-interrupted':'transport-failure',nextProfile:next,...diagnosticContext,
+   rememberedProfile,stagedProfile,attempts:[{profile:profile.name,status:0,kind:failureKind}],requestCount:localPreflight?0:1,automaticProfileFallback:false,automaticRetry:false,
+   semanticFailure:failureKind,transportCause:localPreflight?'local-preflight':(responseBoundaryFailure?'response-boundary':(connectionInterrupted?'connection-interrupted':'transport-failure')),nextProfile:next,...diagnosticContext,
   });
   const retryHint=next
    ? `；本轮只发送了 1 次生成请求，不会自动重发。点击“重新生成兔子镜”时可做一次诊断性尝试：只把 stream 改为 false，尝试：${next}`
@@ -2768,7 +2935,12 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
   const profileHint=profileAuthFailure
    ? '；请在 Connection Manager 中激活并重新保存兔子镜所选 Profile，确认它绑定了自己的 Secret，再切回正文连接。兔子镜不会读取或复制密钥'
    : '';
-  const wrapped=new Error(`副 API 网络／响应流失败：${detail}${profileHint}${retryHint}`);
+  const wrapped=localPreflight
+   ? new Error(`副 API 请求在发送前被安全检查拒绝：${rawDetail}；本轮未发送生成请求，也不会切换 nostream。`)
+   : responseBoundaryFailure
+    ? new Error(`副 API 响应被兔子镜安全上限停止：${rawDetail}；本轮已发送 1 次生成请求，不会自动重发，也不会切换 nostream。`)
+    : new Error(`副 API 网络／响应流失败：${detail}${profileHint}${retryHint}`);
+  if(localPreflight?.code || (responseBoundaryFailure && error?.code)) wrapped.code=String(localPreflight?.code||error.code);
   wrapped.rabbitMirrorRequestDiagnostic=requestDiagnostic;
   try{ wrapped.cause=error; }catch{}
   return wrapped;
@@ -3168,7 +3340,6 @@ function prepareIndependentMultifaceResult(raw,metadata,requestDiagnostic,reques
 async function callIndependentApi(ctx,index,msg,signal=null,requestOptions={}){
  const currentSettings=getSettings();
  const st=requestOptions.multifaceResay ? {...currentSettings,rabbitMirrorFaceCount:1} : currentSettings;
- if((!st.independentConnectionProfileId&&!st.independentApiBaseUrl)||!st.independentApiModel) throw new Error('独立 API 尚未完成酒馆连接与模型设置');
  const generationScopeKey=`independent:${Date.now().toString(36)}:${index}:${swipeId(msg)}`;
  const readVisible=createIndependentVisibleTextReader(index,st);
  // Feedback-cat history and memory-plugin content belong to the main-generation path.
@@ -3192,7 +3363,13 @@ async function callIndependentApi(ctx,index,msg,signal=null,requestOptions={}){
   ...(requestOptions.multifaceResay?{multifaceResay:requestOptions.multifaceResay}:{}),
  });
  const faceCount=Number(details.metadata?.faceCount)||1;
- const basePrompt=details.prompt;
+ const basePrompt=String(details.prompt||'').trim();
+ const executionLock=String(details.executionLock||'').trim();
+ if(details.metadata?.disabled || !basePrompt || !executionLock){
+  requestOptions.onBatchPlan?.(null);
+  return {skipped:true,reason:details.metadata?.disabled?'directive-disabled':'empty-prompt'};
+ }
+ if((!st.independentConnectionProfileId&&!st.independentApiBaseUrl)||!st.independentApiModel) throw new Error('独立 API 尚未完成酒馆连接与模型设置');
  const feedbackBlock=feedbackPrompt ? `
 
 ${feedbackPrompt}${feedbackFinalCheck?`
@@ -3211,7 +3388,6 @@ ${feedbackFinalCheck}`:''}` : '';
 ${independentBehaviorPatch}`:''}
 
 ${independentSystemRules}`;
- const executionLock=String(details.executionLock||'').trim();
  const independentUserLead='请根据以下当前聊天可见正文、紧凑角色卡、Persona 与本轮已激活世界书生成兔子镜：';
  const independentUserTail=faceCount>1
   ? `现在依据逐面抽取计划，依次完成 ${faceCount} 个独立成品，每个单独闭合 <toto>；不解释、不复述规则、不合并到一个 details。`
@@ -3274,7 +3450,7 @@ ${independentUserTail}`;
   ...originalLease,
   consume(){
    if(signal?.aborted) return false;
-   if(!markPendingBatchAttempt(batchPlan)) throw new Error('多面抽取计划已失效或同时生成数量已达上限；本次未发送请求。');
+   if(!markPendingBatchAttempt(batchPlan)) throw independentBatchPlanPreflightError();
    const accepted=originalLease?.consume?.()===true;
    if(!accepted) releasePendingComboBatch(batchPlan);
    return accepted;
@@ -6637,7 +6813,7 @@ function confirmFinalRenderedGeneration(index){
  state.queue?.(FINAL_RENDER_POLL_INTERVAL_MS);
  return true;
 }
-function scheduleMessageGeneration(index,delay=260,sourceAware=true,finalRenderConfirmed=false,sourceStabilityConfirmed=false){
+function scheduleMessageGeneration(index,delay=260,sourceAware=true,finalRenderConfirmed=false,sourceStabilityConfirmed=false,sourceStableSince=0){
  const initialContext=getContext();
  const initialMessage=initialContext.chat?.[index];
  if(suppressesAutomaticGeneration(initialContext,index) || hasExistingFollowRabbitMirror(initialContext,index,initialMessage)) return null;
@@ -6657,7 +6833,14 @@ function scheduleMessageGeneration(index,delay=260,sourceAware=true,finalRenderC
  state.queue=queue;
  if(finalRenderConfirmed){
   const rendered=currentGenerationIdentity(index);
-  if(rendered){ state.finalRenderHash=rendered.sourceHash; state.finalRenderRevision=rendered.revision; state.finalRenderAt=Date.now(); }
+  if(rendered){
+   state.finalRenderHash=rendered.sourceHash; state.finalRenderRevision=rendered.revision; state.finalRenderAt=Date.now();
+   const provenStableAt=Math.min(Date.now(),Math.max(0,Number(sourceStableSince)||0));
+   if(provenStableAt){
+    state.lastHash=rendered.sourceHash; state.lastRevision=rendered.revision; state.stableSince=provenStableAt;
+    if(Date.now()-provenStableAt>=FINAL_RENDER_SOURCE_STABLE_WAIT_MS) state.sourceStabilityConfirmed=true;
+   }
+  }
  }
  const poll=()=>{
   if(state.cancelled || !currentRuntime() || runtimeMode()!=='independent'){ finish(); return; }
@@ -7069,6 +7252,11 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
  });
  const apiTask=callIndependentApi(ctx,index,msg,controller.signal,{manualRetry:force,slot,dispatchLease,multifaceResay,onProgress:()=>flight.deadline?.progress?.(),onBatchPlan:plan=>{ flight.batchPlan=plan||null; }});
  const task=Promise.race([apiTask,timeoutPromise]).then(result=>{
+  if(result?.skipped){
+   settleCancelledIndependentFlightUi(flight,'prompt-skipped');
+   flight.uiSettled=true;
+   return result;
+  }
   const settledIdentity=currentIdentityForFlight();
   if(!settledIdentity){ stale=true; settleCancelledIndependentFlightUi(flight,'stale-owner'); return; }
   const settledCtx=settledIdentity.ctx; const settledMsg=settledIdentity.msg;
@@ -7521,6 +7709,30 @@ function removeFeedbackMirrorActionListeners(){
  feedbackActionListenerInstalled=false;
  closeIndependentHistoryPanel();
 }
+function handleFollowMultifaceCommitted(event){
+ if(runtimeMode()!=='follow-external') return false;
+ const detail=event?.detail;
+ const index=Number(detail?.messageIndex);
+ const sourceHash=String(detail?.sourceHash||'').slice(0,64);
+ const batchId=String(detail?.batchId||'').slice(0,180);
+ if(!Number.isInteger(index)||index<0||!sourceHash||!batchId) return false;
+ const ctx=getContext(); const msg=ctx?.chat?.[index];
+ if(!isRabbitMirrorEligibleAssistantMessage(msg) || messageSourceFingerprint(msg)!==sourceHash) return false;
+ // Proof and aggregate commit already succeeded for this exact owner. Do not
+ // consult weak host-generation flags here: some WebViews leave them stale.
+ queueMessageSync([index]);
+ return true;
+}
+function installFollowMultifaceCommitListener(){
+ if(followMultifaceCommitListenerInstalled) return;
+ globalThis.addEventListener?.(FOLLOW_MULTIFACE_COMMITTED_EVENT,handleFollowMultifaceCommitted);
+ followMultifaceCommitListenerInstalled=true;
+}
+function removeFollowMultifaceCommitListener(){
+ if(!followMultifaceCommitListenerInstalled) return;
+ globalThis.removeEventListener?.(FOLLOW_MULTIFACE_COMMITTED_EVENT,handleFollowMultifaceCommitted);
+ followMultifaceCommitListenerInstalled=false;
+}
 function externalizeFollowMirror(index,msg){
  const st=getSettings(); if(st.generationSource!=='follow'||st.followDisplayMode!=='external') return;
  const el=messageElement(index); const body=messageBody(el); if(!body) return;
@@ -7532,6 +7744,15 @@ function externalizeFollowMirror(index,msg){
  if(multiSource){
   const parsed=parseMultifaceOutput(multiSource,{allowProse:true});
   if(!parsed.ok || mirrors.length!==parsed.faces.length) return;
+  const proven=mirrors.every((details,faceIndex)=>{
+   const root=details.closest?.('toto[data-rabbit-mirror="true"]')||details;
+   const proof=getSanitizedRabbitMirrorFaceProof(root);
+   return proof?.origin==='follow'
+    && Number(proof.faceIndex)===faceIndex
+    && Number(proof.faceCount)===parsed.faces.length
+    && String(proof.sourceHash||'')===rabbitMirrorMultifaceSourceHash(parsed.faces[faceIndex]?.html||'');
+  });
+  if(!proven) return;
   followOriginMarker(el,mirror.closest?.('toto')||mirror,true);
   const html=parsed.faces.map(face=>wrapIndependentFace(face.inner,face.index)).join('\n');
   const host=ensureExternalUi(el,key,html,'ready','follow',messageSourceFingerprint(msg));
@@ -7814,16 +8035,22 @@ function deferredIndependentIntentHasFinalProof(intent,ctx,index){
   && isRabbitMirrorEligibleAssistantMessage(message)
    && messageBodyFingerprint(message)===String(intent?.finalBodyHash||'');
 }
+function deferredIndependentIntentCompletedAt(ctx,index){
+ const normalized=Number(index);
+ return deferredIndependentGenerationIntents()
+  .filter(intent=>deferredIndependentIntentCandidateIndex(intent,ctx)===normalized
+   && deferredIndependentIntentHasFinalProof(intent,ctx,normalized))
+  .reduce((latest,intent)=>Math.max(latest,Number(intent?.completedAt)||0),0);
+}
 function claimDeferredIndependentGenerationIntent(ctx,index,reason='deferred-generation-intent',{requireFinalProof=false}={}){
  const normalized=Number(index); const source=deferredIndependentGenerationIntents();
  const matching=source.filter(intent=>deferredIndependentIntentCandidateIndex(intent,ctx)===normalized
    && (!requireFinalProof || deferredIndependentIntentHasFinalProof(intent,ctx,normalized)));
  if(!matching.length || !unlockAutomaticGenerationCutover(ctx,normalized,reason)) return false;
- // The lightweight bridge keeps at most one current visible operation per chat.
- // Clear the whole chat cohort atomically so a superseded tool-intermediate proof
- // cannot be revived by a later duplicate END, hot update, or historical RENDER.
- const ownerChat=chatKey(ctx);
- globalThis[INDEPENDENT_GENERATION_INTENTS_KEY]=source.filter(intent=>String(intent?.chatKey||'')!==ownerChat);
+ // Consume only the exact target proof(s). Other completed messages in the same
+ // chat may have finished before the cold graph woke and remain recoverable.
+ const consumed=new Set(matching);
+ globalThis[INDEPENDENT_GENERATION_INTENTS_KEY]=source.filter(intent=>!consumed.has(intent));
  return true;
 }
 function ensureAutomaticGenerationCutover(ctx=getContext()){
@@ -8030,7 +8257,7 @@ function clearAutomaticGenerationCutovers(){
  for(const cutover of automaticGenerationCutovers.values()) clearAutomaticHostGenerationSettlement(cutover?.activeHostGeneration);
  automaticGenerationCutovers.clear();
 }
-function activateAuthorizedAutomaticGeneration(ctx,index,reason='host-final-render',finalRenderConfirmed=true,sourceStabilityConfirmed=false){
+function activateAuthorizedAutomaticGeneration(ctx,index,reason='host-final-render',finalRenderConfirmed=true,sourceStabilityConfirmed=false,sourceStableSince=0){
  const normalized=Number(index); const msg=ctx?.chat?.[normalized];
  if(!Number.isInteger(normalized)||normalized<0||!isRabbitMirrorEligibleAssistantMessage(msg)) return false;
  advanceOperationEpochForBase(
@@ -8047,9 +8274,20 @@ function activateAuthorizedAutomaticGeneration(ctx,index,reason='host-final-rend
    if(finalRenderConfirmed){
     confirmFinalRenderedGeneration(normalized);
     if(sourceStabilityConfirmed===true) existingPoll.sourceStabilityConfirmed=true;
+    const provenStableAt=Math.min(Date.now(),Math.max(0,Number(sourceStableSince)||0));
+    if(provenStableAt && live){
+     existingPoll.lastHash=live.sourceHash; existingPoll.lastRevision=live.revision; existingPoll.stableSince=provenStableAt;
+     if(Date.now()-provenStableAt>=FINAL_RENDER_SOURCE_STABLE_WAIT_MS) existingPoll.sourceStabilityConfirmed=true;
+    }
    }
    else existingPoll.queue?.(420);
- }else scheduleMessageGeneration(normalized,finalRenderConfirmed?FINAL_RENDER_POLL_INTERVAL_MS:420,true,finalRenderConfirmed,sourceStabilityConfirmed);
+ }else{
+  const provenStableAt=Math.min(Date.now(),Math.max(0,Number(sourceStableSince)||0));
+  const delay=finalRenderConfirmed && provenStableAt
+   ? Math.max(0,FINAL_RENDER_SOURCE_STABLE_WAIT_MS-(Date.now()-provenStableAt))
+   : (finalRenderConfirmed?FINAL_RENDER_POLL_INTERVAL_MS:420);
+  scheduleMessageGeneration(normalized,delay,true,finalRenderConfirmed,sourceStabilityConfirmed,provenStableAt);
+ }
  return true;
 }
 function finalizeAutomaticHostGeneration(ctx,index,reason='host-final-render'){
@@ -8154,9 +8392,10 @@ function recoverDeferredAutomaticHostCompletion(ctx,index,reason='deferred-host-
  if(runtimeMode()!=='independent') return false;
  const normalized=Number(index);
  if(!Number.isInteger(normalized)||normalized<0||externalHostGenerationActivity().active) return false;
- if(!claimDeferredIndependentGenerationIntent(ctx,normalized,reason,{requireFinalProof:true})) return false;
+ const completedAt=deferredIndependentIntentCompletedAt(ctx,normalized);
+ if(!completedAt || !claimDeferredIndependentGenerationIntent(ctx,normalized,reason,{requireFinalProof:true})) return false;
  hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearGenerationPlaceholderPoll();
- return activateAuthorizedAutomaticGeneration(ctx,normalized,reason,true);
+ return activateAuthorizedAutomaticGeneration(ctx,normalized,reason,true,false,completedAt);
 }
 function recoverDeferredIndependentGenerations(){
  if(!currentRuntime() || runtimeMode()!=='independent' || hostGenerationLooksActive()) return 0;
@@ -8173,13 +8412,17 @@ function recoverDeferredIndependentGenerations(){
   // final paint. Recovery therefore requires completion proof captured by the
   // lightweight bridge plus the same final正文 hash; nonempty partial text alone
   // is never enough to consume an intent.
-  if(!claimDeferredIndependentGenerationIntent(ctx,index,'deferred-runtime-recovery',{requireFinalProof:true})) continue;
+  const completedAt=deferredIndependentIntentCompletedAt(ctx,index);
+  if(!completedAt || !claimDeferredIndependentGenerationIntent(ctx,index,'deferred-runtime-recovery',{requireFinalProof:true})) continue;
   recovered+=1;
   advanceOperationEpochForBase(messageBaseSlotKey(ctx,index,msg),'deferred-runtime-recovery',automaticCutoverVersionToken(msg));
   ensureGenerationPlaceholderForIndex(index,hostGenerationLooksActive());
   queueMessageSync([index]);
   const finalRendered=!hostGenerationLooksActive() && !!liveVisibleIndependentMessageText(index,independentContextExcludedTagSet()).text;
-  scheduleMessageGeneration(index,finalRendered?FINAL_RENDER_POLL_INTERVAL_MS:GENERATION_PLACEHOLDER_POLL_INTERVAL_MS,true,finalRendered);
+  const recoveredDelay=finalRendered
+   ? Math.max(0,FINAL_RENDER_SOURCE_STABLE_WAIT_MS-(Date.now()-completedAt))
+   : GENERATION_PLACEHOLDER_POLL_INTERVAL_MS;
+  scheduleMessageGeneration(index,recoveredDelay,true,finalRendered,false,completedAt);
  }
  return recovered;
 }
@@ -8757,7 +9000,7 @@ function installObserverIfNeeded({skipHistoricalProbe=false}={}){
    // Streaming mutations are finalized by GENERATION_ENDED/STOPPED. Scanning the
    // current message on every token used to turn a long reply into repeated full
    // source/DOM passes even though no paid request may start before completion.
-    if(mode==='independent' && hostGenerationLooksActive()){
+    if(hostGenerationLooksActive()){
      // Do not scan streaming additions. Removals are different: SillyTavern may
      // replace an older message wrapper or its external RabbitMirror shell when
      // a new reply starts. Recover only those exact owner ids, with no chat-wide
@@ -8866,8 +9109,13 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
     for(const event of new Set(generationFinishedEvents)){
-      const handler=()=>{
+      const handler=payload=>{
         const finishedContext=getContext();
+        if(runtimeMode()==='follow-external'){
+          const id=resolveHostEventMessageIndex(payload,finishedContext,{fallbackLastAssistant:true});
+          if(Number.isInteger(id)&&id>=0) queueMessageSync([id]);
+          return;
+        }
         // END/STOP has neither type nor message id. Treat it only as a terminal
         // hint; a quiet/impersonate completion must not bind the partial tail or
         // clear the outer owner's placeholder and World Info capture.
@@ -8911,7 +9159,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
        if(Number.isInteger(id)&&id>=0){
          const active=hostGenerationLooksActive();
          if(active) ensureGenerationPlaceholderForIndex(id,true);
-         queueMessageSync([id]);
+         if(runtimeMode()!=='follow-external' || !active) queueMessageSync([id]);
          if(!active && !suppressesAutomaticGeneration(ctx,id)){
            const live=currentGenerationIdentity(id);
            if(live && String(live.msg?.mes||'').trim() && !hasGenerationWorkFor(id,live.slot,live.sourceHash)) scheduleMessageGeneration(id,180,true);
@@ -9099,6 +9347,7 @@ export async function initIndependentRabbitMirror(){
  globalThis.__rabbitMirrorIndependentCleanup=destroyIndependentRabbitMirror;
  migrateLegacyDeletedRecords();
  installIndependentActionBridge();
+ installFollowMultifaceCommitListener();
  hostGenerationInProgress=hostGenerationLooksActive();
  hostGenerationHintStartedAt=hostGenerationInProgress?Date.now():0;
  for(const key of LEGACY_GLOBAL_FLIGHT_KEYS){ const legacy=globalThis[key]; if(legacy?.values) for(const flight of legacy.values()) abortFlight(flight,'runtime-upgrade'); try{legacy?.clear?.();}catch{} delete globalThis[key]; }
@@ -9120,7 +9369,7 @@ export function destroyIndependentRabbitMirror(){
  }
  removeIndependentActionBridge();
  lastIndependentRequestConfig='';
- disconnectObserver(); unsubscribeHostEvents(); removeFeedbackMirrorActionListeners(); removeRepairPersistenceListener(); removeExternalGeometryListeners(); removeBackgroundLifecycleListeners();
+ disconnectObserver(); unsubscribeHostEvents(); removeFeedbackMirrorActionListeners(); removeFollowMultifaceCommitListener(); removeRepairPersistenceListener(); removeExternalGeometryListeners(); removeBackgroundLifecycleListeners();
  syncRunning=false; pending.clear(); clearAutomaticFailureStops(); messageSourceRevisions.clear(); activeGlobalWorldInfoCapture=null; globalWorldInfoSnapshots.clear(); preparedReadyHtmlCache.clear(); activeRestorableHtmlCache=null; activeOwnerLockBatch=null; activeOwnerLockBatchDirty=false;
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(host=>restoreFollowInline(host));
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());

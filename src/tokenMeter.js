@@ -265,6 +265,7 @@ export function recordRabbitMirrorIndependentPrompt({
     feedbackPrompt = '',
     executionLock = '',
     contextChars = 0,
+    totalRequestChars = 0,
     contextLayers = 0,
     contextMaxLayers = 0,
     filteredRabbitMirrorChars = 0,
@@ -287,6 +288,7 @@ export function recordRabbitMirrorIndependentPrompt({
         generationType: 'independent',
         chars: Object.freeze({
             total: finalPrompt.length,
+            totalRequest: safeInteger(totalRequestChars),
             base: base.length,
             feedback: feedback.length,
             executionLock: lock.length,

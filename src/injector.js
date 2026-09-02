@@ -1,15 +1,15 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.7-multiface5';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.8-visualstream8';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.5.7-multiface5';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5.7-multiface5';
-import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.5.7-multiface5';
+} from './feedbackCat.js?rmv=1.5.8-visualstream8';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5.8-visualstream8';
+import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.5.8-visualstream8';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -26,6 +26,8 @@ const INDEPENDENT_GENERATION_INTENT_MAX = 8;
 const INDEPENDENT_GENERATION_INTENT_TYPES = new Set(['normal', 'continue', 'swipe', 'regenerate']);
 let independentIntentBridgeSubscriptions = [];
 let independentCoreRuntimeWakeTimer = 0;
+let independentCoreRuntimeWakeRevision = 0;
+const INDEPENDENT_CORE_RUNTIME_WAKE_DELAY_MS = 120;
 
 function hashIndependentIntentText(text = '') {
     let hash = 2166136261;
@@ -129,6 +131,10 @@ function independentIntentCandidateIndex(intent, chat) {
 }
 
 function resolveIndependentIntentCompletionIndex(payload, chat) {
+    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+        const exactIndex = chat.indexOf(payload);
+        if (exactIndex >= 0 && isIndependentEligibleAssistantMessage(chat[exactIndex])) return exactIndex;
+    }
     const candidates = [payload, payload?.messageId, payload?.message_id, payload?.mesid, payload?.id];
     for (const value of candidates) {
         const index = Number(value);
@@ -149,6 +155,7 @@ function markIndependentGenerationIntentCompleted(payload, reason = 'host-comple
     const finalBodyHash = hashIndependentIntentText(message?.mes || '');
     if (!finalBodyHash || !String(message?.mes || '').trim()) return false;
     let changed = false;
+    let wakeEligible = false;
     const next = intents.map(intent => {
         if (String(intent.chatKey || '') !== chatKey || independentIntentCandidateIndex(intent, chat) !== index) return intent;
         changed = true;
@@ -165,12 +172,14 @@ function markIndependentGenerationIntentCompleted(payload, reason = 'host-comple
             next.intermediateIndex = index;
             return Object.freeze(next);
         }
+        wakeEligible = true;
         return Object.freeze({ ...next,
             completedAt: Date.now(), completionReason: String(reason || '').slice(0, 64),
             finalIndex: index, finalBodyHash, finalProof,
         });
     });
     globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = next;
+    if (changed && wakeEligible) scheduleIndependentCoreRuntimeWake();
     return changed;
 }
 
@@ -195,24 +204,55 @@ function markIndependentGenerationIntentTerminal(reason = 'host-terminal') {
         });
     });
     globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = next;
+    if (changed) scheduleIndependentCoreRuntimeWake();
     return changed;
+}
+
+function cancelIndependentCoreRuntimeWake() {
+    independentCoreRuntimeWakeRevision += 1;
+    if (independentCoreRuntimeWakeTimer) {
+        try { globalThis.clearTimeout?.(independentCoreRuntimeWakeTimer); } catch {}
+        independentCoreRuntimeWakeTimer = 0;
+    }
 }
 
 function scheduleIndependentCoreRuntimeWake() {
     if (independentCoreRuntimeWakeTimer || typeof globalThis.setTimeout !== 'function') return false;
-    // Intent proof is recorded synchronously, but the 2 MiB deferred graph starts in
-    // the next task so SillyTavern can dispatch its main request first.
+    // Completion proof is recorded synchronously, but the deferred graph gets a
+    // cancellable paint window. A recursive/new START revokes this wake before it
+    // can compete with the host's next paid request or tool continuation.
+    const revision = ++independentCoreRuntimeWakeRevision;
     independentCoreRuntimeWakeTimer = globalThis.setTimeout(() => {
+        if (revision !== independentCoreRuntimeWakeRevision) return;
         independentCoreRuntimeWakeTimer = 0;
         try {
             const runtimeLoad = globalThis.__rabbitMirrorEnsureDeferredCoreRuntime?.('independent-generation-intent');
             if (runtimeLoad && typeof runtimeLoad.catch === 'function') void runtimeLoad.catch(() => {});
         } catch {}
-    }, 0);
+    }, INDEPENDENT_CORE_RUNTIME_WAKE_DELAY_MS);
     return true;
 }
 
+function independentIntentHasCompletedProof(intent) {
+    return Number(intent?.completedAt) > 0
+        && Number.isInteger(Number(intent?.finalIndex))
+        && !!String(intent?.finalBodyHash || '')
+        && !!String(intent?.finalProof || '');
+}
+
+function independentIntentSupersededByStart(intent, start = {}) {
+    if (String(intent?.chatKey || '') !== String(start.chatKey || '')) return false;
+    if (!independentIntentHasCompletedProof(intent)) return true;
+    const finalIndex = Number(intent.finalIndex);
+    const tailIndex = Number(start.tailIndex);
+    const tailRole = String(start.tailRole || '');
+    if (tailRole === 'system' && start.type === 'normal') return finalIndex === tailIndex - 1;
+    if (tailRole === 'assistant') return finalIndex === tailIndex;
+    return false;
+}
+
 function recordIndependentGenerationIntent(chat, type = '') {
+    cancelIndependentCoreRuntimeWake();
     const messages = Array.isArray(chat) ? chat : [];
     const normalizedType = String(type || 'normal').trim().toLowerCase() || 'normal';
     const chatKey = String(getCurrentChatKey(messages) || '');
@@ -255,11 +295,12 @@ function recordIndependentGenerationIntent(chat, type = '') {
         tailBodyHash: hashIndependentIntentText(proofTail.mes || ''),
         tailSwipeId: Number(proofTail?.swipe_id ?? proofTail?.swipeId ?? 0) || 0,
     });
-    // Every visible START supersedes older proof for this chat. Tool recursion
-    // therefore revokes the pre-tool assistant before the nested final can render.
-    globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = [...previous.filter(item => String(item?.chatKey || '') !== chatKey), intent]
+    // Revoke only unfinished or exact same-operation proof. Completed replies
+    // from this chat may still be waiting for the deferred runtime and must not
+    // disappear merely because the user starts a second message.
+    const startIdentity = { chatKey, type: normalizedType, tailIndex, tailRole };
+    globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = [...previous.filter(item => !independentIntentSupersededByStart(item, startIdentity)), intent]
         .slice(-INDEPENDENT_GENERATION_INTENT_MAX);
-    scheduleIndependentCoreRuntimeWake();
     return intent;
 }
 
@@ -289,10 +330,7 @@ export function initIndependentGenerationIntentBridge() {
 }
 
 export function destroyIndependentGenerationIntentBridge({ clearIntents = false } = {}) {
-    if (independentCoreRuntimeWakeTimer) {
-        try { globalThis.clearTimeout?.(independentCoreRuntimeWakeTimer); } catch {}
-        independentCoreRuntimeWakeTimer = 0;
-    }
+    cancelIndependentCoreRuntimeWake();
     for (const { event, handler } of independentIntentBridgeSubscriptions) {
         try { eventSource?.off?.(event, handler); } catch {}
     }
@@ -308,7 +346,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.7-multiface5').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.8-visualstream8').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -318,7 +356,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.5.7-multiface5').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.5.8-visualstream8').catch(error => {
             generationGuardPromise = null;
             throw error;
         });
