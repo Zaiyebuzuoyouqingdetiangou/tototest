@@ -783,6 +783,42 @@ toto[data-rabbit-mirror="true"] summary {
 #chat .rabbit-mirror-external-shell.rabbit-mirror-multiface-host > details[data-rabbit-mirror-external-details="true"] + details[data-rabbit-mirror-external-details="true"]{
   margin-top:18px !important;
 }
+
+/* Collapsed mirrors keep their scene in the DOM but stop consuming animation frames.
+   The summary/tool row is excluded and stays immediately usable. */
+#chat toto[data-rabbit-mirror="true"] > details:not([open]) > :not(summary),
+#chat toto[data-rabbit-mirror="true"] > details:not([open]) > :not(summary) *,
+#chat details[data-rabbit-mirror-external-details="true"]:not([open]) > :not(summary),
+#chat details[data-rabbit-mirror-external-details="true"]:not([open]) > :not(summary) *,
+#chat toto[data-rabbit-mirror="true"] > details:not([open]) > :not(summary)::before,
+#chat toto[data-rabbit-mirror="true"] > details:not([open]) > :not(summary)::after,
+#chat toto[data-rabbit-mirror="true"] > details:not([open]) > :not(summary) *::before,
+#chat toto[data-rabbit-mirror="true"] > details:not([open]) > :not(summary) *::after,
+#chat details[data-rabbit-mirror-external-details="true"]:not([open]) > :not(summary)::before,
+#chat details[data-rabbit-mirror-external-details="true"]:not([open]) > :not(summary)::after,
+#chat details[data-rabbit-mirror-external-details="true"]:not([open]) > :not(summary) *::before,
+#chat details[data-rabbit-mirror-external-details="true"]:not([open]) > :not(summary) *::after{
+  animation-play-state:paused !important;
+}
+@media (prefers-reduced-motion: reduce){
+  #chat toto[data-rabbit-mirror="true"] > details > :not(summary),
+  #chat toto[data-rabbit-mirror="true"] > details > :not(summary) *,
+  #chat toto[data-rabbit-mirror="true"] > details > :not(summary)::before,
+  #chat toto[data-rabbit-mirror="true"] > details > :not(summary)::after,
+  #chat toto[data-rabbit-mirror="true"] > details > :not(summary) *::before,
+  #chat toto[data-rabbit-mirror="true"] > details > :not(summary) *::after,
+  #chat details[data-rabbit-mirror-external-details="true"] > :not(summary),
+  #chat details[data-rabbit-mirror-external-details="true"] > :not(summary) *,
+  #chat details[data-rabbit-mirror-external-details="true"] > :not(summary)::before,
+  #chat details[data-rabbit-mirror-external-details="true"] > :not(summary)::after,
+  #chat details[data-rabbit-mirror-external-details="true"] > :not(summary) *::before,
+  #chat details[data-rabbit-mirror-external-details="true"] > :not(summary) *::after{
+    animation-duration:.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;
+    scroll-behavior:auto !important;
+  }
+}
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
   display:block !important;
   width:auto !important;

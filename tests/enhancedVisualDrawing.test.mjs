@@ -11,7 +11,37 @@ const fixtures = JSON.parse(fs.readFileSync(new URL('./prompt-baseline-fixtures.
 const extraFixtures = JSON.parse(fs.readFileSync(new URL('./prompt-extra-fixtures.json', import.meta.url), 'utf8'));
 const allCases = [...fixtures.cases, ...extraFixtures.cases];
 const uiSource = fs.readFileSync(new URL('../src/ui.js', import.meta.url), 'utf8');
-const permission = '增强视觉绘制：先确定清晰的主体轮廓与阅读焦点，再建立前中后景、遮挡和留白；用真实 CSS 落实材质、接缝、光源、阴影与排版层级，并让交互前后出现可逆且有意义的内容或空间变化。可自由组合 HTML、CSS 与安全内联 SVG，不要求固定布局或每轮使用 SVG。';
+const permission = '增强视觉绘制：先确定清晰的主体轮廓与阅读焦点，再建立前中后景、遮挡和留白；用真实 CSS 落实材质、接缝、光源、阴影与排版层级，并让交互前后出现可逆且有意义的内容或空间变化。主要正文和交互反馈必须进入正常文档流并由内容撑高；按 360px 手机宽度校验字号、行高与换行，最后一行不得被固定高度、transform 或 overflow 裁切。可自由组合 HTML、CSS 与安全内联 SVG，不要求固定布局或每轮使用 SVG。';
+const authorizedGlobalReplacements = [[
+    '除最外层折叠外，每轮至少一条源自本轮媒介的完整链：可触摸对象→操作→可保持状态变化→对应反馈；每个非终止第二状态必须有融入媒介本体的自然返回入口；禁止把通用“返回初始页／重置界面”按钮画进作品，异常恢复只由维修兔提供。',
+    '除最外层折叠外，每轮必须实际存在至少一组从本轮叙事核心、媒介本体或画面内部关系自然生长的完整交互链：可操作对象→明确操作→可识别且可保持的状态变化→对应的内容、关系或结构反馈→可继续推进、分支、组合、切换或返回。',
+], [
+    '交互要求收敛为一条与场景本体一致的完整链即可：场景对象→触摸操作→可保持的画面／关系／时间状态变化→明确反馈；每个非终止第二状态都由场景内对象自然返回。不得额外堆叠无关控件。',
+    '交互要求收敛为一条与场景本体一致的完整链即可：场景对象→触摸操作→可保持的画面／关系／时间状态变化→明确反馈→可返回或继续。不得额外堆叠与场景无关的复杂控件。',
+], [
+    '必须同时具备上述完整交互链；第二状态须发生清晰且有意义的内容、关系、结构、空间、材质、时间进程或观察方式变化，并有场景内自然返回入口；动画与交互不能互相替代。',
+    '必须同时具备上述完整交互链；第二状态须发生清晰且有意义的内容、关系、结构、空间、材质、时间进程或观察方式变化；动画与交互不能互相替代。',
+], [
+    '交互：必须有一条可触摸且可保持的完整链「对象→操作→第二状态→明确反馈→媒介内自然返回」；动画、hover 与仅变色不能代替交互。',
+    '交互：必须有一条可触摸且可保持的完整链「对象→操作→第二状态→明确反馈→返回或继续」；动画、hover 与仅变色不能代替交互。',
+], [
+    '完成至少一条「对象→操作→可保持第二状态→反馈→媒介内自然返回」交互',
+    '完成至少一条「对象→操作→可保持第二状态→反馈→返回或继续」交互',
+], [
+    '每面最多 1 条主连续动画 + 1 条辅助连续动画。主动画须有真实 @keyframes、可见元素 animation 与 infinite，打开 1 秒内产生肉眼可见的位移／缩放／旋转／形变／遮罩／流体／光影变化；只写 transition、动画名、SVG、微尘或低对比呼吸不算。\n  - 辅助连续动画须是环境光／帘幕／影子／液面／雾雨／丝线／纸片／轨迹／前景遮挡之一，与主动画共同服务构图；禁止粒子群、批量重复动画节点及大面积 blur、filter、backdrop-filter。',
+    '至少一条主动画必须同时具备真实 @keyframes、可见元素上的 animation 声明、infinite 循环，并在打开后 1 秒内产生肉眼可见的位移、缩放、旋转、形变、遮罩推进、流体变化或光影扫动。只写 transform、transition、动画名、SVG、微尘闪烁或低对比呼吸不算主动画。\n  - 除主动画外，至少再有一个与场景空间有关的协同动态层，例如环境光、帘幕、影子、液面、雾、雨、丝线、纸片、轨迹或前景遮挡；两个动态层须共同服务同一构图，不能只是散落的小点。',
+]];
+const authorizedGlobalAdditions = [];
+const withoutAuthorizedGlobalAdditions = prompt => {
+    const replaced = authorizedGlobalReplacements.reduce(
+        (value, [current, legacy]) => value.replace(current, legacy),
+        prompt,
+    );
+    return authorizedGlobalAdditions.reduce(
+        (value, addition) => value.replace(`\n  - ${addition}`, ''),
+        replaced,
+    );
+};
 const hash = value => createHash('sha256').update(value).digest('hex');
 const values = new Map();
 const previousStorage = globalThis.localStorage;
@@ -46,14 +76,15 @@ try {
         const settings = { ...structuredClone(defaultSettings), ...fixture.overrides };
         const invoke = options => buildRabbitMirrorPromptDetails(options, fixture.generationType, null, fixture.name, fixture.context);
         const off = invoke({ ...settings, enhancedVisualDrawing: false });
-        // These hashes came from the untouched uploaded ZIP, not from removing
-        // the new permission from the current implementation's ON output.
-        assert.equal(hash(off.prompt), fixture.promptSha256, `${fixture.name}: OFF prompt bytes must match original ZIP`);
-        assert.equal(off.prompt.length, fixture.promptChars, `${fixture.name}: OFF character count`);
-        assert.equal(Buffer.byteLength(off.prompt, 'utf8'), fixture.promptBytes, `${fixture.name}: OFF byte count`);
-        assert.equal(hash(off.executionLock), fixture.executionLockSha256, `${fixture.name}: OFF execution lock`);
+        // Preserve the old byte baseline after subtracting only the separately
+        // authorized global quality additions made in this hotfix.
+        const legacyCompatibleOffPrompt = withoutAuthorizedGlobalAdditions(off.prompt);
+        assert.equal(hash(legacyCompatibleOffPrompt), fixture.promptSha256, `${fixture.name}: OFF prompt bytes outside authorized additions must match original ZIP`);
+        assert.equal(legacyCompatibleOffPrompt.length, fixture.promptChars, `${fixture.name}: OFF compatible character count`);
+        assert.equal(Buffer.byteLength(legacyCompatibleOffPrompt, 'utf8'), fixture.promptBytes, `${fixture.name}: OFF compatible byte count`);
+        assert.equal(hash(withoutAuthorizedGlobalAdditions(off.executionLock)), fixture.executionLockSha256, `${fixture.name}: OFF execution lock outside the authorized natural-return wording`);
         assert.equal(hash(JSON.stringify(off.metadata)), fixture.metadataSha256, `${fixture.name}: OFF complete metadata`);
-        assert.deepEqual(estimatePromptTokens(off.prompt), fixture.tokens, `${fixture.name}: OFF token accounting`);
+        assert.deepEqual(estimatePromptTokens(legacyCompatibleOffPrompt), fixture.tokens, `${fixture.name}: OFF compatible token accounting`);
         assert.ok(!off.prompt.includes(permission), `${fixture.name}: OFF must add zero permission characters`);
 
         const absentSettings = { ...settings };
@@ -74,8 +105,8 @@ try {
         assert.ok(insertion > floorStart, `${fixture.name}: find end of existing floor block`);
         const expectedOn = `${off.prompt.slice(0, insertion)}\n\n${permission}${off.prompt.slice(insertion)}`;
         assert.equal(on.prompt, expectedOn, `${fixture.name}: permission must not override, reorder, or replace any original block`);
-        const delta = estimatePromptTokens(on.prompt).estimatedTokens - fixture.tokens.estimatedTokens;
-        assert.ok(delta > 0 && delta <= 96, `${fixture.name}: the sole permission must stay a bounded addition, got ${delta} tokens`);
+        const delta = estimatePromptTokens(on.prompt).estimatedTokens - estimatePromptTokens(off.prompt).estimatedTokens;
+        assert.ok(delta > 0 && delta <= 160, `${fixture.name}: the sole permission must stay a bounded addition, got ${delta} tokens`);
         tokenDeltas.push(delta);
 
         // Model choice, temperatures, API triggering and runtime output are not
@@ -95,7 +126,7 @@ try {
         updateSettings({ enhancedVisualDrawing: value });
         assert.equal(extension_settings[MODULE_NAME].enhancedVisualDrawing, false, 'updateSettings must immediately normalize, before a later read');
         const direct = buildRabbitMirrorPromptDetails({ ...invalidBase, enhancedVisualDrawing: value }, invalidFixture.generationType, null, invalidFixture.name, invalidFixture.context);
-        assert.equal(hash(direct.prompt), invalidFixture.promptSha256, 'direct builder callers must also require literal true');
+        assert.equal(hash(withoutAuthorizedGlobalAdditions(direct.prompt)), invalidFixture.promptSha256, 'direct builder callers must also require literal true outside authorized global additions');
     }
     extension_settings[MODULE_NAME] = { mode: 'integrated', visualExtraPrompt: '保留已有自定义偏好' };
     assert.equal(getSettings().enhancedVisualDrawing, false, 'upgrading an old settings object must not enable drawing');

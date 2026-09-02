@@ -28,7 +28,7 @@ const settings = {
 const baseDetails = buildRabbitMirrorPromptDetails(settings, 'normal', null, 'budget:base', { chat: [] });
 const baseTokens = estimatePromptTokens(baseDetails.prompt).estimatedTokens;
 assert.ok(baseDetails.prompt.includes('最终成品短检'));
-assert.ok(baseDetails.prompt.includes('对象→操作→第二状态→明确反馈→返回或继续'));
+assert.ok(baseDetails.prompt.includes('对象→操作→第二状态→明确反馈→媒介内自然返回'));
 assert.ok(!baseDetails.prompt.includes('internal_check_format'));
 assert.ok(baseTokens <= 4000, `base Visual Scenery prompt should stay <= 4000, got ${baseTokens}`);
 

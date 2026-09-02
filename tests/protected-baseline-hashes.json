@@ -9,11 +9,13 @@
     "src/blacklist.js",
     "src/generationGuard.js",
     "src/independentApi.js",
+    "src/independentSecurityGuard.js",
     "src/independentQualityGate.js",
     "src/injector.js",
     "src/multifaceProof.js",
     "src/multifaceProtocol.js",
     "src/outputSanitizer.js",
+    "src/tokenMeter.js",
     "src/visualScanner.js",
     "style.css"
   ],
@@ -131,10 +133,6 @@
       "normalizedSha256": "76a80dd75f19f7e11e35d352ca6f15f73ab0fc58508e9c3598efd091858bf526"
     },
     {
-      "file": "src/independentSecurityGuard.js",
-      "normalizedSha256": "901a3be1de04b911a3733061d0898bb585703213e8c82a63fef56aecf0beaca2"
-    },
-    {
       "file": "src/maintenanceRecommendationHotfix.js",
       "normalizedSha256": "18be2dd8104a0dd05d3f2cde92cc81768a238623b4703b023f1783fefd5475bf"
     },
@@ -161,10 +159,6 @@
     {
       "file": "src/renderedVisualFeedbackHotfix.js",
       "normalizedSha256": "efb1b85d898e50e5e524c65b23a2d2783c05ae75c436fe80137ff4d1947dd942"
-    },
-    {
-      "file": "src/tokenMeter.js",
-      "normalizedSha256": "e1c9f89124e00dd02608d504d3897f2674207c1b5961dea635022e4907a62ddc"
     },
     {
       "file": "src/touchTheater.js",

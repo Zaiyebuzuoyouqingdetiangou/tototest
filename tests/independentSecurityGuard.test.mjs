@@ -178,7 +178,12 @@ await assert.rejects(
         method: 'POST',
         body: JSON.stringify({ messages: [{ role: 'user', content: 'ordinary' }] }),
     }),
-    /缺少完整的上下文边界证据/,
+    error => {
+        assert.match(String(error?.message || ''), /缺少完整的上下文边界证据/);
+        assert.equal(error?.name, 'RabbitMirrorContextBoundaryError');
+        assert.equal(error?.code, 'RABBIT_MIRROR_CONTEXT_BOUNDARY_REJECTED');
+        return true;
+    },
 );
 await assert.rejects(
     fetchRabbitMirrorIndependentCompletion('/api/other', { method: 'POST', body: JSON.stringify(payload) }),

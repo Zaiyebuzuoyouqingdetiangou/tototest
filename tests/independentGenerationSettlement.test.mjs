@@ -8,6 +8,18 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const source = readFileSync(resolve(ROOT, 'src/independentApi.js'), 'utf8');
 
+test('disabled or empty independent prompt exits quietly before the paid boundary', () => {
+    const start = source.indexOf('async function callIndependentApi(');
+    const end = source.indexOf('\nfunction externalOwnerMesid(', start);
+    const block = source.slice(start, end);
+    assert.match(block, /metadata\?\.disabled[\s\S]{0,220}skipped:\s*true/, 'independent prompt construction must preserve the user disable directive');
+    assert.ok(block.indexOf('metadata?.disabled') < block.indexOf('requestIndependentCompletion('), 'disabled prompt must exit before transport selection');
+    const generateStart = source.indexOf('async function generateFor(');
+    const generateEnd = source.indexOf('\nfunction independentHostForRoot', generateStart);
+    const generate = source.slice(generateStart, generateEnd);
+    assert.match(generate, /result\?\.skipped[\s\S]{0,260}uiSettled\s*=\s*true/, 'quiet skip must settle/remove its loading shell without persistence or error UI');
+});
+
 function manualRequestHarness(readApiResponse, { responsePayloadErrorText = () => '' } = {}) {
     const start = source.indexOf('async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={})');
     const end = source.indexOf('function wrappedIndependentMirrorHtml', start);
@@ -30,6 +42,7 @@ function manualRequestHarness(readApiResponse, { responsePayloadErrorText = () =
         profileUsesSystemMessage: () => true,
         profileTokenField: () => 'max_tokens',
         publishIndependentApiRequestDiagnostic: value => ({ ...value, ts: 1 }),
+        independentLocalPreflightFailure: () => null,
         fetchIndependentUrl: async () => { fetchCalls += 1; return { ok: true, status: 200 }; },
         headers: () => ({}),
         readApiResponse,
@@ -109,6 +122,76 @@ test('an unexpected bare AbortError becomes a visible single-shot transport fail
     assert.equal(harness.fetchCalls(), 1, 'settling a failed response body must never dispatch a second paid request');
 });
 
+test('local guard and batch-plan rejections are requestCount zero and never stage nostream', async () => {
+    let local = null;
+    let stageCalls = 0;
+    let profileServiceCalls = 0;
+    const start = source.indexOf('async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={})');
+    const end = source.indexOf('function wrappedIndependentMirrorHtml', start);
+    const sandbox = {
+        getRememberedApiProfile: () => '', getStagedApiProfile: () => '',
+        independentRequestProfiles: () => [{ name: 'chat_system_user_full', kind: 'chat', body: { stream: true } }],
+        normalizeIndependentConnectionText: value => String(value || ''), endpoint: () => '/chat/completions',
+        nextCompatibilityProfileName: () => 'chat_system_user_full_nostream',
+        stageManualNonStreamRetry: () => { stageCalls += 1; return 'chat_system_user_full_nostream'; },
+        stageNextApiProfile: () => {}, forgetRememberedApiProfileIfMatches: () => {},
+        normalizedConfiguredTemperature: () => 0.8, independentDiagnosticBase: () => 'b',
+        profileUsesStreaming: () => true, profileUsesSystemMessage: () => true, profileTokenField: () => 'max_tokens',
+        publishIndependentApiRequestDiagnostic: value => value,
+        fetchIndependentUrl: async () => { throw local; }, headers: () => ({}),
+        validatedIndependentConnectionProfile: async () => { throw local; },
+        requestIndependentConnectionProfileCompletion: async () => { profileServiceCalls += 1; throw new Error('must not reach paid Profile transport'); },
+        recoverableCompletedIndependentAbort: () => false, responsePayloadErrorText: () => '', retryableParameterError: () => false,
+        safeJson: JSON.stringify, API_PROFILE_ORDER: ['chat_system_user_full', 'chat_system_user_full_nostream'],
+        console, JSON, String, Number, Object, Error, Set, globalThis: {},
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(`${source.slice(source.indexOf('function independentLocalPreflightFailure('), source.indexOf('function independentBatchPlanPreflightError('))}\n${source.slice(start, end)}\nglobalThis.request=requestIndependentCompletion;`, sandbox);
+    for (const code of ['RABBIT_MIRROR_CONTEXT_BOUNDARY_REJECTED', 'RABBIT_MIRROR_BATCH_PLAN_REJECTED', 'RABBIT_MIRROR_CONNECTION_PROFILE_REJECTED']) {
+        local = Object.assign(new TypeError('本地安全边界在发送前拒绝。'), { code });
+        await assert.rejects(
+            () => sandbox.globalThis.request({
+                independentApiModel: 'm',
+                independentApiBaseUrl: 'https://b.example',
+                independentConnectionProfileId: code === 'RABBIT_MIRROR_CONNECTION_PROFILE_REJECTED' ? 'profile-b' : '',
+            }, 'S', 'U', { signal: { aborted: false } }),
+            error => {
+                assert.doesNotMatch(String(error?.message || ''), /网络／响应流失败/);
+                assert.match(String(error?.message || ''), /发送前/);
+                assert.equal(error?.code, code);
+                assert.equal(error?.rabbitMirrorRequestDiagnostic?.requestCount, 0);
+                assert.equal(error?.rabbitMirrorRequestDiagnostic?.nextProfile, '');
+                assert.equal(error?.rabbitMirrorRequestDiagnostic?.transportCause, 'local-preflight');
+                return true;
+            },
+        );
+    }
+    local = new TypeError('host adapter failed before dispatch without preserving a stable code');
+    await assert.rejects(
+        () => sandbox.globalThis.request({
+            independentApiModel: 'm',
+            independentApiBaseUrl: 'https://b.example',
+            independentConnectionProfileId: '',
+        }, 'S', 'U', {
+            signal: { aborted: false },
+            dispatchLease: { consumed: () => false },
+        }),
+        error => {
+            assert.match(String(error?.message || ''), /发送前/);
+            assert.doesNotMatch(String(error?.message || ''), /网络／响应流失败/);
+            assert.equal(error?.rabbitMirrorRequestDiagnostic?.requestCount, 0);
+            assert.equal(error?.rabbitMirrorRequestDiagnostic?.transportCause, 'local-preflight');
+            return true;
+        },
+        'the production lease is the final paid-boundary evidence even if a host wrapper erases the original code',
+    );
+    assert.equal(stageCalls, 0);
+    assert.equal(profileServiceCalls, 0, 'Profile validation rejection must happen before Connection Manager sendRequest');
+    const callStart = source.indexOf('async function callIndependentApi(');
+    const callEnd = source.indexOf('\nfunction externalOwnerMesid(', callStart);
+    assert.match(source.slice(callStart, callEnd), /if\(!markPendingBatchAttempt\(batchPlan\)\) throw independentBatchPlanPreflightError\(\)/);
+});
+
 test('manual response reader never salvages complete partial markup after a response-size error', async () => {
     const complete = '<toto><details><summary>B</summary><div>READY</div></details></toto>';
     const sizeError = Object.assign(new Error('response exceeded 2 MiB after complete-looking markup'), {
@@ -135,6 +218,33 @@ test('manual response reader never salvages complete partial markup after a resp
         },
     );
     assert.equal(harness.fetchCalls(), 1, 'rejecting an oversized complete partial must not dispatch another paid request');
+});
+
+test('post-dispatch hidden-state complexity stays a stable response boundary without nostream staging', async () => {
+    const complexityError = Object.assign(new TypeError('hidden state exceeded fixed work ceiling'), {
+        name: 'RabbitMirrorResponseComplexityError',
+        code: 'RABBIT_MIRROR_RESPONSE_TOO_COMPLEX',
+        limitWork: 512,
+        observedWork: 513,
+    });
+    const harness = manualRequestHarness(async () => { throw complexityError; });
+    await assert.rejects(
+        () => harness.request(
+            { independentApiModel: 'model-b', independentConnectionProfileId: '', independentApiBaseUrl: 'https://b.example/v1' },
+            'S',
+            'U',
+            { signal: { aborted: false }, dispatchLease: { consumed: () => true } },
+        ),
+        error => {
+            assert.equal(error?.code, 'RABBIT_MIRROR_RESPONSE_TOO_COMPLEX');
+            assert.match(String(error?.message || ''), /响应被兔子镜安全上限停止/);
+            assert.doesNotMatch(String(error?.message || ''), /网络／响应流失败|stream 改为 false/);
+            assert.equal(error?.rabbitMirrorRequestDiagnostic?.requestCount, 1);
+            assert.equal(error?.rabbitMirrorRequestDiagnostic?.transportCause, 'response-boundary');
+            assert.equal(error?.rabbitMirrorRequestDiagnostic?.nextProfile, '');
+            return true;
+        },
+    );
 });
 
 test('manual response reader never salvages complete partial markup after a generic non-Abort error', async () => {
@@ -181,6 +291,7 @@ test('Connection Manager nested 401 cause gives Profile/Secret repair guidance w
         profileUsesSystemMessage: () => true,
         profileTokenField: () => 'max_tokens',
         publishIndependentApiRequestDiagnostic: value => ({ ...value, ts: 1 }),
+        independentLocalPreflightFailure: () => null,
         validatedIndependentConnectionProfile: () => ({ id: 'profile-b', ctx: {}, profile: {}, apiMap: { selected: 'openai', source: 'custom' } }),
         requestIndependentConnectionProfileCompletion: async () => { serviceCalls += 1; throw outer; },
         recoverableCompletedIndependentAbort: () => false,
@@ -247,6 +358,7 @@ test('Connection Manager Error with nested AbortError stages one exact manual no
         profileUsesSystemMessage: () => true,
         profileTokenField: () => 'max_tokens',
         publishIndependentApiRequestDiagnostic: value => ({ ...value, ts: 1 }),
+        independentLocalPreflightFailure: () => null,
         validatedIndependentConnectionProfile: () => ({ id: 'profile-b', ctx: {}, profile: {} }),
         requestIndependentConnectionProfileCompletion: async () => { serviceCalls += 1; throw outer; },
         recoverableCompletedIndependentAbort: () => false,

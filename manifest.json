@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5.7-multiface5",
-  "css": "style.css?rmv=1.5.7",
+  "js": "index.js?rmv=1.5.8-visualstream8",
+  "css": "style.css?rmv=1.5.8",
   "author": "Toto",
-  "version": "1.5.7",
+  "version": "1.5.8",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.5.7 Multiface5｜一次请求生成可选 1～5 面，逐面独立展示与维修；增强视觉、塔罗实体牌图及交互返回同步加强。"
+  "description": "兔子镜测试版 1.5.8 VisualStreamFix8｜修复流式等待、独立 API 边界、外置多面和文字裁切，并降低动态视觉移动端负载。"
 }

@@ -97,7 +97,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'u
 
 assert.match(promptBuilder, /最终成品短检/);
 assert.match(promptBuilder, /compactPresentationExecutionContract\(combo\?\.formats\)/);
-assert.match(promptBuilder, /对象→操作→第二状态→明确反馈→返回或继续/);
+assert.match(promptBuilder, /对象→操作→第二状态→明确反馈→媒介内自然返回/);
 assert.match(promptBuilder, /存在多个值得探索的内容节点时，须提供多个有效入口或连续阶段/);
 assert.doesNotMatch(promptBuilder, /只需一条完整链/);
 assert.match(promptBuilder, /按 360px 检查人物、关系节点、图例等数量群组/);
@@ -121,9 +121,9 @@ assert.match(sanitizer, /if \(rootTraversal\.exceeded\) return stats/);
 assert.match(visualScanner, /missing_visual_program/);
 // multiface-step1 起 ui / injector / independentApi 全部进入本阶段 cache cohort。
 // 这里只断言链路仍然闭合在同一 cohort；完整闭包校验见 cacheBustClosure.test.mjs。
-assert.match(indexSource, /\.\/src\/ui\.js\?rmv=1\.5\.7-multiface5/);
-assert.match(uiSource, /\.\/injector\.js\?rmv=1\.5\.7-multiface5/);
-assert.match(uiSource, /\.\/independentApi\.js\?rmv=1\.5\.7-multiface5/);
-assert.equal(manifest.version, '1.5.7');
+assert.match(indexSource, /\.\/src\/ui\.js\?rmv=1\.5\.8-visualstream8/);
+assert.match(uiSource, /\.\/injector\.js\?rmv=1\.5\.8-visualstream8/);
+assert.match(uiSource, /\.\/independentApi\.js\?rmv=1\.5\.8-visualstream8/);
+assert.equal(manifest.version, '1.5.8');
 
 console.log('presentationQuality tests passed');

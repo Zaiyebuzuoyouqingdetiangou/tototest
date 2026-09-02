@@ -137,6 +137,8 @@ const deferredContext = {
     chat: [
         { is_user: true, mes: 'USER_SOURCE' },
         { is_user: false, mes: 'FINAL_ASSISTANT', swipe_id: 0 },
+        { is_user: true, mes: 'SECOND_USER_SOURCE' },
+        { is_user: false, mes: 'SECOND_FINAL_ASSISTANT', swipe_id: 0 },
     ],
 };
 lifecycleSandbox.globalThis.__testIntents = [{
@@ -160,10 +162,18 @@ lifecycleSandbox.globalThis.__testIntents = [{
     finalIndex: 1,
     finalBodyHash: 'FINAL_ASSISTANT',
     finalProof: 'exact-render',
+}, {
+    id: 'intent-2', chatKey: 'chat:deferred', startedAt: 12345, type: 'normal',
+    tailIndex: 2, tailRole: 'user', tailBodyHash: 'SECOND_USER_SOURCE', tailSwipeId: 0,
+    completedAt: 12345, terminalAt: 12345, finalIndex: 3,
+    finalBodyHash: 'SECOND_FINAL_ASSISTANT', finalProof: 'exact-render',
 }];
 assert.equal(lifecycleSandbox.globalThis.claimDeferred(deferredContext, 1, 'exact-final-render', { requireFinalProof: true }), true, 'the exact chat + tail + final-body proof may recover a missing END event');
 assert.equal(lifecycleSandbox.globalThis.suppresses(deferredContext, 1), false);
-assert.equal(lifecycleSandbox.globalThis.__testIntents.length, 0, 'a recovered intent must be consumed exactly once');
+assert.equal([...lifecycleSandbox.globalThis.__testIntents].map(intent => intent.id).join(','), 'intent-2', 'claiming the first completed reply must preserve another completed intent from the same chat');
+assert.equal(lifecycleSandbox.globalThis.claimDeferred(deferredContext, 3, 'second-exact-final-render', { requireFinalProof: true }), true);
+assert.equal(lifecycleSandbox.globalThis.suppresses(deferredContext, 3), false);
+assert.equal(lifecycleSandbox.globalThis.__testIntents.length, 0, 'completed intents must be consumed one exact target at a time');
 
 const injectorIntentStart = injectorSource.indexOf("const INDEPENDENT_GENERATION_INTENTS_KEY =");
 const injectorIntentEnd = injectorSource.indexOf('\nfunction loadPromptBuilder()', injectorIntentStart);
@@ -210,6 +220,12 @@ assert.equal(injectorSandbox.globalThis.markIntentCompleted(0, 'character-render
 const completedIntent = injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents[0];
 assert.equal(completedIntent.finalIndex, 0);
 assert.equal(completedIntent.finalBodyHash, injectorSandbox.globalThis.intentHash('FINAL_RAW_ASSISTANT'), 'lightweight final-render proof must bind the exact final raw正文 hash');
+assert.equal(
+    injectorSandbox.globalThis.markIntentCompleted(liveRawChat[0], 'character-rendered-object-payload'),
+    true,
+    'lightweight completion must resolve a host chat message object by the same identity semantics as chat.indexOf(payload)',
+);
+assert.equal(injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents[0].finalIndex, 0);
 liveRawChat.push({ is_user: false, is_system: true, mes: 'TOOL RESULT', extra: { isSmallSys: true, tool_invocations: [{}] } });
 const nestedIntent = injectorSandbox.globalThis.recordIntent(liveRawChat, 'normal');
 assert.equal(nestedIntent.tailRole, 'system');
@@ -219,6 +235,7 @@ liveRawChat.push({ is_user: false, mes: 'FINAL_AFTER_TOOL', swipe_id: 0 });
 assert.equal(injectorSandbox.globalThis.markIntentCompleted(2, 'character-rendered'), true);
 assert.equal(injectorSandbox.globalThis.markIntentTerminal('generation-ended'), true);
 assert.equal(injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents[0].finalIndex, 2);
+injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents = [];
 liveRawChat.splice(0, liveRawChat.length, { is_user: true, mes: 'NO-TOOL USER' });
 hostToolCapability = false;
 injectorSandbox.globalThis.recordIntent(liveRawChat, 'normal');
@@ -226,7 +243,7 @@ injectorSandbox.globalThis.recordIntent(liveRawChat, 'quiet');
 injectorSandbox.globalThis.markIntentTerminal('only-quiet-hide-stop-edge');
 liveRawChat.push({ is_user: false, mes: 'NO-TOOL FINAL' });
 injectorSandbox.globalThis.markIntentCompleted(1, 'final-without-second-end');
-const noToolIntent = injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents[0];
+const noToolIntent = injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents.at(-1);
 assert.equal(noToolIntent.terminalAt, undefined);
 assert.equal(noToolIntent.toolCapable, false);
 assert.equal(noToolIntent.finalProof, 'non-tool-final', 'cold-runtime proof also recovers a no-tool final when quiet consumed the only END');
@@ -234,9 +251,22 @@ hostToolCapability = true;
 injectorSandbox.globalThis.markIntentCompleted(1, 'tool-capability-enabled');
 hostToolCapability = false;
 injectorSandbox.globalThis.markIntentCompleted(1, 'tool-capability-later-disabled');
-assert.equal(injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents[0].toolCapable, true, 'tool ambiguity is monotonic for an in-flight intent');
-assert.equal(injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents[0].finalProof, 'exact-render');
+const upgradedNoToolIntent = injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents.find(intent => intent.id === noToolIntent.id);
+assert.equal(upgradedNoToolIntent.toolCapable, true, 'tool ambiguity is monotonic for an in-flight intent');
+assert.equal(upgradedNoToolIntent.finalProof, 'exact-render');
 assert.equal(injectorSandbox.globalThis.capability('normal', { canPerformToolCalls: () => { throw new Error('unavailable'); }, chatCompletionSettings: { function_calling: false } }), true);
+const retainedFirstIntent = upgradedNoToolIntent;
+liveRawChat.push({ is_user: true, mes: 'SECOND USER REQUEST' });
+const secondVisibleIntent = injectorSandbox.globalThis.recordIntent(liveRawChat, 'normal');
+assert.equal(
+    [...injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents].map(intent => intent.id).join(','),
+    `${retainedFirstIntent.id},${secondVisibleIntent.id}`,
+    'a second visible START must preserve the first reply completed before the deferred runtime woke',
+);
+liveRawChat.push({ is_user: false, mes: 'SECOND FINAL', swipe_id: 0 });
+assert.equal(injectorSandbox.globalThis.markIntentCompleted(3, 'second-character-rendered'), true);
+assert.equal(injectorSandbox.globalThis.markIntentTerminal('second-generation-ended'), true);
+assert.equal(injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents.filter(intent => Number(intent.completedAt) > 0).length, 2, 'the next delayed wake must retain both recoverable completed proofs');
 injectorSandbox.globalThis.__rabbitMirrorIndependentGenerationIntents = [];
 injectorSandbox.globalThis.__rabbitMirrorIndependentStoppedHostOperations = [{ chatKey: 'chat:raw-proof', startedAt: 777 }];
 liveRawChat.push({ is_user: false, is_system: true, mes: 'LATE TOOL RESULT', extra: { tool_invocations: [{}] } });

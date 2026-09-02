@@ -5,6 +5,13 @@ import vm from 'node:vm';
 const independentSource = readFileSync(new URL('../src/independentApi.js', import.meta.url), 'utf8');
 const sanitizerSource = readFileSync(new URL('../src/outputSanitizer.js', import.meta.url), 'utf8');
 
+assert.doesNotMatch(sanitizerSource, /↶ 返回初始页|function ensureRabbitMirrorInteractionHomeControl\(/,
+    'the runtime must not inject a generic visible reset button into generated artwork');
+assert.match(sanitizerSource, /data-rm-maintenance-action="reset-interaction"[\s\S]*恢复交互初始状态/,
+    'Maintenance Rabbit remains the explicit recovery surface');
+assert.match(sanitizerSource, /function removeRabbitMirrorInteractionHomeControls\(/,
+    'the current runtime must remove persisted legacy reset pills');
+
 function extractFunction(source, name) {
     const marker = `function ${name}(`;
     const start = source.indexOf(marker);

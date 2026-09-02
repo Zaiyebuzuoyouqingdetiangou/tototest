@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -9,6 +10,7 @@ const guard = read('src/independentSecurityGuard.js');
 const independent = read('src/independentApi.js');
 const profile = read('src/independentProfileSelectorHotfix.js');
 const sanitizer = read('src/outputSanitizer.js');
+const visual = read('src/visualScanner.js');
 const manifest = JSON.parse(read('manifest.json'));
 
 assert.doesNotMatch(guard, /globalThis\.fetch\s*=(?!=)/, 'security guard must not wrap ordinary global fetch');
@@ -65,6 +67,33 @@ const hostActivity = independent.slice(independent.indexOf('function hostGenerat
 assert.match(hostActivity, /if\(eventHint\) return \{active:true,strong:true/, 'the strong START-event latch must skip global DOM generation queries on streaming token mutations');
 assert.ok(hostActivity.indexOf('if(eventHint)') < hostActivity.indexOf('externalHostGenerationActivity()'), 'the cheap event latch must run before the document-wide fallback selector');
 assert.match(independent, /function confirmFinalRenderedGeneration\(index\)/);
+assert.match(independent, /function deferredIndependentIntentCompletedAt\(ctx,index\)/, 'cold recovery must expose the captured completion timestamp');
+assert.match(independent, /scheduleMessageGeneration\(index,recoveredDelay,true,finalRendered,false,completedAt\)/, 'cold recovery must reuse completedAt instead of restarting the source-stability wait');
+const mutationObserver = independent.slice(independent.indexOf('observer=new MutationObserver'), independent.indexOf('observer.observe(chat'));
+assert.match(mutationObserver, /if\(hostGenerationLooksActive\(\)\)/, 'all external modes must skip token-by-token synchronization while the host is streaming');
+assert.doesNotMatch(mutationObserver, /mode===['"]independent['"]\s*&&\s*hostGenerationLooksActive/, 'follow-external must share the streaming skip gate');
+const followExternalize = independent.slice(independent.indexOf('function externalizeFollowMirror'), independent.indexOf('function restoreFollowInline'));
+assert.match(followExternalize, /getSanitizedRabbitMirrorFaceProof/, 'follow multiface externalization must wait for every face sanitizer proof');
+assert.match(visual, /commitRabbitMirrorFollowBatch\(set\.batchId, chat, scans, set\.owner\)[\s\S]{0,500}FOLLOW_MULTIFACE_COMMITTED_EVENT/, 'successful proof+commit must emit one exact-owner local event');
+const followCommitHandlerStart = independent.indexOf('function handleFollowMultifaceCommitted(');
+const followCommitHandlerEnd = independent.indexOf('\nfunction installFollowMultifaceCommitListener', followCommitHandlerStart);
+const followCommitHandler = independent.slice(followCommitHandlerStart, followCommitHandlerEnd);
+assert.ok(followCommitHandlerStart >= 0 && followCommitHandlerEnd > followCommitHandlerStart);
+assert.doesNotMatch(followCommitHandler, /hostGenerationLooksActive/, 'proof-backed commit sync must not trust a stale weak generating flag');
+let exactSync = null;
+const commitSandbox = {
+    runtimeMode: () => 'follow-external',
+    getContext: () => ({ chat: [{ is_user: false, mes: 'COMMITTED SOURCE' }] }),
+    isRabbitMirrorEligibleAssistantMessage: message => message?.is_user === false,
+    messageSourceFingerprint: () => 'source-hash',
+    queueMessageSync: indices => { exactSync = [...indices]; },
+    Number, String, globalThis: {},
+    hostGenerationLooksActive: () => true,
+};
+vm.createContext(commitSandbox);
+vm.runInContext(`${followCommitHandler}\nglobalThis.handle=handleFollowMultifaceCommitted;`, commitSandbox);
+assert.equal(commitSandbox.globalThis.handle({ detail: { messageIndex: 0, sourceHash: 'source-hash', batchId: 'batch-1' } }), true);
+assert.deepEqual(exactSync, [0], 'a committed exact owner must sync even while the host weak flag remains stale true');
 assert.match(independent, /state\.finalRenderHash===live\.sourceHash[\s\S]{0,220}state\.finalRenderRevision===live\.revision/, 'fast path must bind to the exact正文 fingerprint and revision');
 assert.match(independent, /const finalRenderEvents=\[et\.CHARACTER_MESSAGE_RENDERED\]/);
 assert.match(independent, /if\(!confirmFinalRenderedGeneration\(id\)[\s\S]{0,220}scheduleMessageGeneration\(id,FINAL_RENDER_POLL_INTERVAL_MS,true,true\)/, 'final render event may only schedule the guarded generation path');
@@ -76,11 +105,11 @@ assert.doesNotMatch(sanitizerInit, /\n\s*installMaintenanceRabbitsInChatDom\(\);
 const index = read('index.js');
 // multiface-step1 起 ui.js 进入本阶段 cache cohort：不再断言旧的 1.4.30.25 键，
 // 改为断言 cohort 完整性（详见 cacheBustClosure.test.mjs）。
-assert.match(index, /\.\/src\/ui\.js\?rmv=1\.5\.7-multiface5/, '1.5 UI parent must use its dedicated cache key');
+assert.match(index, /\.\/src\/ui\.js\?rmv=1\.5\.8-visualstream8/, '1.5 UI parent must use its dedicated cache key');
 assert.doesNotMatch(index, /\.\/src\/ui\.js\?rmv=1\.4\.30\.2[0-9]/, 'stale 1.4.30.x UI cache key must not survive');
 assert.match(index, /\.\/src\/checkedSelectorRepair\.js\?rmv=1\.4\.30\.26/, 'formal checked-selector repair must be present in the test baseline');
 assert.match(index, /\.\/src\/maintenanceRecommendationHotfix\.js\?rmv=1\.4\.6/, 'formal maintenance recommendation must be present in the test baseline');
-assert.equal(manifest.js, 'index.js?rmv=1.5.7-multiface5');
-assert.equal(manifest.version, '1.5.7');
+assert.equal(manifest.js, 'index.js?rmv=1.5.8-visualstream8');
+assert.equal(manifest.version, '1.5.8');
 
 console.log('performance lifecycle tests passed');

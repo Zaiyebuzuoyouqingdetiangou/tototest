@@ -83,6 +83,16 @@ for (let ordinal = 1; ordinal <= 5; ordinal += 1) {
 }
 assert.doesNotMatch(details.prompt, /data-rabbit-mirror-face/);
 assert.match(details.prompt, /主体轮廓与阅读焦点.*前中后景.*材质.*可逆/);
+assert.match(details.prompt, /亮度.*色系.*材质.*轮廓.*阅读路径.*交互家族/s,
+    'one shared response must freeze distinct visual dimensions for sibling faces');
+assert.match(details.prompt, /至少一面.*明亮.*内容.*硬要求/s,
+    'a multiface batch needs one bright face unless the selected content truly requires darkness');
+assert.match(details.prompt, /深黑.*矩形.*系统卡/s,
+    'dark rectangular system cards must not become the multiface fallback');
+assert.match(details.prompt, /最多.*1.*主.*1.*辅.*连续动画/s,
+    'dynamic multiface work must keep a bounded continuous-animation budget per face');
+assert.match(details.prompt, /粒子群.*blur.*filter/s,
+    'dynamic scenery must forbid particle swarms and large-area filters on mobile');
 assert.equal(values.has(BATCH_V1), false);
 assert.equal(values.has(REGISTRY), false, 'Prompt construction and Token preview do not register an attempt');
 

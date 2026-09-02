@@ -50,7 +50,7 @@ function namedFunctionSource(name) {
     assert.fail(`could not find the end of ${name}`);
 }
 
-function connectionManagerAdapterHarness(serviceSendRequest, { stream = true } = {}) {
+function connectionManagerAdapterHarness(serviceSendRequest, { stream = true, responseByteLimit = Infinity } = {}) {
     const adapterSource = namedFunctionSource('requestIndependentConnectionProfileCompletion');
     const manager = {
         selectedProfile: 'profile-a',
@@ -88,12 +88,20 @@ function connectionManagerAdapterHarness(serviceSendRequest, { stream = true } =
     const dispatchLease = { id: 'lease-b' };
     const authorizationCalls = [];
     const responseChecks = [];
+    let stringifyCalls = 0;
+    const countedJson = {
+        parse: (...args) => JSON.parse(...args),
+        stringify: (...args) => {
+            stringifyCalls += 1;
+            return JSON.stringify(...args);
+        },
+    };
     const sandbox = {
         String,
         Number,
         Object,
         Array,
-        JSON,
+        JSON: countedJson,
         Error,
         Response,
         Headers,
@@ -109,6 +117,17 @@ function connectionManagerAdapterHarness(serviceSendRequest, { stream = true } =
         },
         assertRabbitMirrorIndependentResponseText: value => {
             responseChecks.push(typeof value === 'string' ? value : JSON.stringify(value));
+            return value;
+        },
+        assertRabbitMirrorIndependentResponseBytes: value => {
+            if (Number(value) > responseByteLimit) {
+                throw Object.assign(new Error('response exceeded test byte limit'), {
+                    name: 'RabbitMirrorResponseLimitError',
+                    code: 'RABBIT_MIRROR_RESPONSE_TOO_LARGE',
+                    limitBytes: responseByteLimit,
+                    observedBytes: Number(value),
+                });
+            }
             return value;
         },
         textFromContent: value => {
@@ -132,7 +151,7 @@ function connectionManagerAdapterHarness(serviceSendRequest, { stream = true } =
     };
     vm.createContext(sandbox);
     vm.runInContext(`${namedFunctionSource('recoverableCompletedIndependentAbort')}\n${adapterSource}\nglobalThis.adapter=requestIndependentConnectionProfileCompletion;`, sandbox);
-    return { adapterSource, adapter: sandbox.globalThis.adapter, runtime, requestProfile, dispatchLease, manager, calls, authorizationCalls, responseChecks };
+    return { adapterSource, adapter: sandbox.globalThis.adapter, runtime, requestProfile, dispatchLease, manager, calls, authorizationCalls, responseChecks, stringifyCalls: () => stringifyCalls };
 }
 
 test('Connection Manager stream factory calls profile B once, merges cumulative frames, and salvages a complete body before naked Abort', async () => {
@@ -154,12 +173,8 @@ test('Connection Manager stream factory calls profile B once, merges cumulative 
     assert.equal(output?.response?.ok, true);
     assert.equal(output?.result?.text, complete, 'cumulative snapshots and duplicate final frames must not repeat output');
     assert.equal(output?.result?.terminatedAfterComplete, true, 'a naked transport Abort after complete markup is a recoverable terminal');
-    assert.equal(harness.responseChecks.length, 3, 'the response-size guard must inspect the cumulative output after every frame');
-    assert.deepEqual(harness.responseChecks, [
-        '<toto><details><summary>B</summary><div>',
-        complete,
-        complete,
-    ]);
+    assert.equal(harness.responseChecks.length, 1, 'the complete accumulated response is fully serialized once at stream termination');
+    assert.deepEqual(harness.responseChecks, [complete]);
     assert.equal(harness.authorizationCalls.length, 1, 'the Connection Manager adapter must pass through the same one-dispatch security boundary');
     assert.ok(harness.authorizationCalls[0].includes(harness.dispatchLease) || harness.authorizationCalls[0].some(value => value?.dispatchLease === harness.dispatchLease));
     assert.doesNotMatch(harness.adapterSource, /selectedProfile\s*=/, 'the adapter must never switch Connection Manager global state as a transport shortcut');
@@ -235,7 +250,7 @@ test('Connection Manager rejects an incomplete stream Abort without a second req
         },
     );
     assert.equal(harness.calls.length, 1, 'an incomplete response must not trigger any automatic paid retry');
-    assert.equal(harness.responseChecks.length, 1, 'even an incomplete frame must pass through the response-size guard');
+    assert.equal(harness.responseChecks.length, 0, 'incomplete text is charged incrementally without repeatedly serializing the accumulated response');
     assert.equal(harness.manager.selectedProfile, 'profile-a');
 });
 
@@ -276,6 +291,96 @@ test('Connection Manager never salvages complete markup after a generic non-Abor
     assert.equal(harness.calls.length, 1);
 });
 
+test('Connection Manager delta stream performs one final full-object validation', async () => {
+    const frameCount = 4000;
+    const harness = connectionManagerAdapterHarness(async () => async function* streamFactory() {
+        for (let index = 0; index < frameCount; index += 1) yield { text: `x${index};` };
+    });
+    const output = await harness.adapter(harness.runtime, harness.requestProfile, { dispatchLease: harness.dispatchLease });
+    assert.equal(output.result.text.split(';').length-1, frameCount);
+    assert.equal(harness.responseChecks.length, 1, 'full accumulated serialization must be O(1) per response, not O(frame count)');
+    assert.equal(harness.calls.length, 1);
+});
+
+test('Connection Manager keeps small repeated hidden metadata bounded without cumulative serialization', async () => {
+    const frameCount = 4096;
+    const complete = '<toto><details><summary>B</summary><div>READY</div></details></toto>';
+    const harness = connectionManagerAdapterHarness(async () => async function* streamFactory() {
+        for (let index = 0; index < frameCount; index += 1) {
+            yield { text: index === 0 ? complete : '', usage: { completion_tokens: index, cached: false } };
+        }
+    });
+    const output = await harness.adapter(harness.runtime, harness.requestProfile, { dispatchLease: harness.dispatchLease });
+    assert.equal(output.result.text, complete);
+    assert.equal(harness.responseChecks.length, 1, 'the final visible/string response is still validated exactly once');
+    assert.ok(harness.stringifyCalls() < 100, `hidden metadata validation must not allocate cumulative JSON strings (saw ${harness.stringifyCalls()})`);
+    assert.equal(harness.calls.length, 1);
+});
+
+test('Connection Manager rejects growing hidden structures at a fixed work ceiling', async () => {
+    const complete = '<toto><details><summary>B</summary><div>READY</div></details></toto>';
+    const hiddenState = {};
+    const harness = connectionManagerAdapterHarness(async () => async function* streamFactory() {
+        for (let index = 0; index < 600; index += 1) {
+            hiddenState[`arbitrary_${index}`] = index;
+            yield { text: index === 0 ? complete : '', state: hiddenState };
+        }
+    });
+    await assert.rejects(
+        () => harness.adapter(harness.runtime, harness.requestProfile, { dispatchLease: harness.dispatchLease }),
+        error => error?.code === 'RABBIT_MIRROR_RESPONSE_TOO_COMPLEX',
+    );
+    assert.equal(harness.calls.length, 1);
+    assert.ok(harness.stringifyCalls() < 100, 'complexity rejection must not serialize every cumulative snapshot');
+});
+
+test('Connection Manager catches an in-place arbitrary-key size mutation on that frame', async () => {
+    const complete = '<toto><details><summary>B</summary><div>READY</div></details></toto>';
+    const hiddenState = { unusual_provider_slot: 'ok' };
+    let reachedAfterMutation = false;
+    const harness = connectionManagerAdapterHarness(async () => async function* streamFactory() {
+        yield { text: complete, state: hiddenState };
+        hiddenState.unusual_provider_slot = 'x'.repeat(4096);
+        yield { text: '', state: hiddenState };
+        reachedAfterMutation = true;
+    }, { responseByteLimit: 1024 });
+    await assert.rejects(
+        () => harness.adapter(harness.runtime, harness.requestProfile, { dispatchLease: harness.dispatchLease }),
+        error => error?.code === 'RABBIT_MIRROR_RESPONSE_TOO_LARGE',
+    );
+    assert.equal(reachedAfterMutation, false, 'the oversized mutation must stop consumption before another frame');
+});
+
+test('Connection Manager counts inherited enumerable scans toward the fixed work ceiling', async () => {
+    const complete = '<toto><details><summary>B</summary><div>READY</div></details></toto>';
+    const inherited = {};
+    for (let index = 0; index < 600; index += 1) inherited[`inherited_${index}`] = index;
+    const state = Object.create(inherited);
+    state.own = 'small';
+    const harness = connectionManagerAdapterHarness(async () => async function* streamFactory() {
+        yield { text: complete, state };
+    });
+    await assert.rejects(
+        () => harness.adapter(harness.runtime, harness.requestProfile, { dispatchLease: harness.dispatchLease }),
+        error => error?.code === 'RABBIT_MIRROR_RESPONSE_TOO_COMPLEX',
+    );
+    assert.equal(harness.calls.length, 1);
+});
+
+test('Connection Manager rejects one huge hidden object on its arrival without another request', async () => {
+    const complete = '<toto><details><summary>B</summary><div>READY</div></details></toto>';
+    const harness = connectionManagerAdapterHarness(async () => async function* streamFactory() {
+        yield { text: complete, state: { blob: 'x'.repeat(4096) } };
+        throw new Error('must stop before reading another frame');
+    }, { responseByteLimit: 1024 });
+    await assert.rejects(
+        () => harness.adapter(harness.runtime, harness.requestProfile, { dispatchLease: harness.dispatchLease }),
+        error => error?.code === 'RABBIT_MIRROR_RESPONSE_TOO_LARGE',
+    );
+    assert.equal(harness.calls.length, 1, 'a response-limit rejection must never dispatch a retry');
+    assert.equal(harness.responseChecks.length, 0, 'the oversized burst must be rejected before final full serialization');
+});
+
 test('Connection Manager stream response budget includes hidden reasoning, swipes and state', async () => {
     const complete = '<toto><details><summary>B</summary><div>READY</div></details></toto>';
     const firstFrame = {
@@ -295,12 +400,7 @@ test('Connection Manager stream response budget includes hidden reasoning, swipe
     assert.equal(output.result.text, complete);
     const checked = harness.responseChecks.join('\n');
     assert.match(checked, /HIDDEN_STREAM_REASONING/, 'stream response limit must count non-visible reasoning bytes');
-    assert.match(checked, /HIDDEN_STREAM_SWIPE/, 'stream response limit must count alternate/swipe bytes');
-    assert.match(checked, /HIDDEN_STREAM_STATE/, 'stream response limit must count provider state bytes');
-    assert.ok(
-        harness.responseChecks.some(value => /HIDDEN_STREAM_REASONING/.test(value) && /HIDDEN_STREAM_SWIPE/.test(value) && /HIDDEN_STREAM_STATE/.test(value)),
-        'the streamed response budget must accumulate hidden fields across frames, not enforce only a per-frame limit',
-    );
+    assert.doesNotMatch(checked, /HIDDEN_STREAM_SWIPE|HIDDEN_STREAM_STATE/, 'unused non-string provider state must be validated then discarded, not retained in the final logical response');
     assert.equal(harness.calls.length, 1);
 });
 
@@ -679,6 +779,7 @@ test('a 1.18 server with a stale Connection Manager frontend is blocked before a
     vm.createContext(sandbox);
     vm.runInContext(`${source.slice(source.indexOf('function independentSemver('), source.indexOf('async function readIndependentSillyTavernVersion('))}
 async function readIndependentSillyTavernVersion(){ return '1.18.0'; }
+${namedFunctionSource('independentConnectionProfilePreflightError')}
 ${source.slice(source.indexOf('async function assertIndependentConnectionProfileSupport('), source.indexOf('function independentConnectionManagerSettings('))}
 globalThis.check=assertIndependentConnectionProfileSupport;`, sandbox);
     const staleService = { sendRequest() { return { secret_id: profile['secret-id'], model: profile.model }; } };
@@ -687,6 +788,103 @@ globalThis.check=assertIndependentConnectionProfileSupport;`, sandbox);
         /旧 Connection Manager|请求级模型切换/,
         'a stale frontend must fail closed instead of silently sending Profile default model A',
     );
+});
+
+test('every pre-dispatch Connection Profile validation branch has one stable local-preflight code', async () => {
+    let profile = { id: 'profile-b' };
+    let supportFailure = null;
+    let validationFailure = null;
+    let apiMap = { selected: 'openai', source: 'custom' };
+    const ctx = {
+        ConnectionManagerRequestService: {
+            validateProfile() {
+                if (validationFailure) throw validationFailure;
+                return apiMap;
+            },
+            sendRequest() { throw new Error('paid transport must not run during validation'); },
+        },
+    };
+    const sandbox = {
+        String, Array, Object, Error,
+        getContext: () => ctx,
+        normalizeIndependentConnectionText: value => String(value ?? '').trim(),
+        rawIndependentConnectionProfile: () => profile,
+        assertIndependentConnectionProfileSupport: async () => {
+            if (supportFailure) throw supportFailure;
+            return true;
+        },
+        globalThis: {},
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(`${namedFunctionSource('independentConnectionProfilePreflightError')}
+${namedFunctionSource('validatedIndependentConnectionProfile')}
+globalThis.validate=validatedIndependentConnectionProfile;
+globalThis.preflight=independentConnectionProfilePreflightError;`, sandbox);
+
+    const cases = [
+        ['profile-missing', () => { profile = null; }],
+        ['request-service-unavailable', () => { profile = { id: 'profile-b' }; ctx.ConnectionManagerRequestService = {}; }],
+        ['sillytavern-version', () => {
+            ctx.ConnectionManagerRequestService = { validateProfile: () => apiMap, sendRequest() {} };
+            supportFailure = sandbox.globalThis.preflight('requires 1.18', 'sillytavern-version');
+        }],
+        ['profile-secret-or-transport-invalid', () => {
+            supportFailure = null;
+            validationFailure = new Error('missing Profile Secret');
+        }],
+        ['profile-not-chat-completion', () => {
+            validationFailure = null;
+            apiMap = { selected: 'textgenerationwebui', source: 'textgenerationwebui' };
+        }],
+    ];
+    for (const [reason, arrange] of cases) {
+        profile = { id: 'profile-b' };
+        supportFailure = null;
+        validationFailure = null;
+        apiMap = { selected: 'openai', source: 'custom' };
+        ctx.ConnectionManagerRequestService = {
+            validateProfile() {
+                if (validationFailure) throw validationFailure;
+                return apiMap;
+            },
+            sendRequest() {},
+        };
+        arrange();
+        await assert.rejects(
+            () => sandbox.globalThis.validate('profile-b', ctx),
+            error => error?.code === 'RABBIT_MIRROR_CONNECTION_PROFILE_REJECTED' && error?.reason === reason,
+            `${reason} must be a stable local preflight rejection`,
+        );
+    }
+});
+
+test('fetchIndependentUrl preserves coded Profile preflight rejection before any host fetch', async () => {
+    let fetchCalls = 0;
+    const rejected = Object.assign(new Error('profile missing'), {
+        code: 'RABBIT_MIRROR_CONNECTION_PROFILE_REJECTED',
+        reason: 'profile-missing',
+    });
+    const sandbox = {
+        String, Object, JSON, Error, Response,
+        getSettings: () => ({ independentConnectionProfileId: 'profile-b' }),
+        normalizeIndependentConnectionText: value => String(value ?? '').trim(),
+        validatedIndependentConnectionProfile: async () => { throw rejected; },
+        independentConnectionProxyPresets: async () => [],
+        independentConnectionPayload: () => ({}),
+        customApiBaseFromUrl: value => value,
+        serverRequestHeaders: async () => ({}),
+        customHeaderYaml: () => '{}',
+        fetchRabbitMirrorIndependentCompletion: async () => { fetchCalls += 1; },
+        fetch: async () => { fetchCalls += 1; },
+        independentLocalPreflightFailure: error => error?.code === rejected.code ? error : null,
+        globalThis: {},
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(`const ST_CUSTOM_STATUS_ENDPOINT='/status'; const ST_CUSTOM_GENERATE_ENDPOINT='/generate';
+${source.slice(source.indexOf('async function fetchIndependentUrl('), source.indexOf('function independentModelListError('))}
+globalThis.fetchUrl=fetchIndependentUrl;`, sandbox);
+    await assert.rejects(() => sandbox.globalThis.fetchUrl('/models', { method: 'GET' }), error => error === rejected);
+    assert.equal(fetchCalls, 0);
 });
 
 test('late model-list responses cannot overwrite a newer transport or edited manual connection', () => {

@@ -31,10 +31,12 @@ recordRabbitMirrorIndependentPrompt({
     basePrompt: '独立 API 规则'.repeat(50),
     executionLock: '最终短锁'.repeat(5),
     contextChars: 4321,
+    totalRequestChars: 8765,
 });
 const independent = getLastRabbitMirrorTokenRecordForSource('independent');
 assert.equal(independent.status, 'independent');
 assert.equal(independent.chars.independentContext, 4321);
+assert.equal(independent.chars.totalRequest, 8765);
 
 // This is the exact bookkeeping sequence that used to make the UI show 0 Token.
 recordRabbitMirrorNoInjection('independent-api', 'normal');
