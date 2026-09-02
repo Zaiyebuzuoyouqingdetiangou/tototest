@@ -1,15 +1,15 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.8-visualstream8';
-import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.8-visualstream8';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.5.8-visualstream8';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.8-visualstream8';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.8-visualstream8';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.8-visualstream8';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.8-visualstream8';
-import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.8-visualstream8';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.8-visualstream8';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.8-visualstream8';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.8-visualstream8';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.8-visualstream8';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.8-visualstream8-boundary1';
+import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.8-visualstream8-boundary1';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.5.8-visualstream8-boundary1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.8-visualstream8-boundary1';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.8-visualstream8-boundary1';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.8-visualstream8-boundary1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.8-visualstream8-boundary1';
+import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.8-visualstream8-boundary1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.8-visualstream8-boundary1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.8-visualstream8-boundary1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.8-visualstream8-boundary1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.8-visualstream8-boundary1';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
 const RUNTIME_VERSION = '1.5.8';

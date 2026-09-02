@@ -1,15 +1,15 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.8-visualstream8';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.8-visualstream8-boundary1';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.5.8-visualstream8';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5.8-visualstream8';
-import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.5.8-visualstream8';
+} from './feedbackCat.js?rmv=1.5.8-visualstream8-boundary1';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5.8-visualstream8-boundary1';
+import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.5.8-visualstream8-boundary1';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -346,7 +346,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.8-visualstream8').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.8-visualstream8-boundary1').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -356,7 +356,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.5.8-visualstream8').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.5.8-visualstream8-boundary1').catch(error => {
             generationGuardPromise = null;
             throw error;
         });

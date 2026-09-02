@@ -1,12 +1,12 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.17';
 import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.17';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.30.17';
-import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.8-visualstream8';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.8-visualstream8';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.8-visualstream8';
+import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.8-visualstream8-boundary1';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.8-visualstream8-boundary1';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.8-visualstream8-boundary1';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.17';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.8-visualstream8';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.8-visualstream8';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.8-visualstream8-boundary1';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.8-visualstream8-boundary1';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -753,7 +753,7 @@ function buildMultiIndependentExecutionLock(faceContexts, settings, directive) {
         return `第 ${index + 1} 面：${samplingModeLabel(face.combo, settings)}；主题：${themes}；展现形式：${formats}。短检：${compactPresentationExecutionContract(face.combo?.formats)}；主体、空间层次、材质与可逆交互均须落实${tarot}。${adult}`;
     });
     return [
-        '<兔子镜多面近输出短锁 data-source="independent-api-near-output">',
+        '<兔子镜近输出短锁 data-source="independent-api-near-output">',
         `本轮必须按 data-rm-face="1" 至 "${faceContexts.length}" 顺序输出 ${faceContexts.length} 个平级、各自闭合的 <toto>；禁止单个 <toto> 内嵌多面。`,
         ...faceLocks,
         directiveText ? `点菜优先：${directiveText}` : '',
@@ -761,7 +761,7 @@ function buildMultiIndependentExecutionLock(faceContexts, settings, directive) {
         visualPreferenceLock ? `最终视觉偏好裁决：${visualPreferenceLock}；近期避让不得覆盖。` : '',
         '各面须在亮度、色系、材质、轮廓、阅读路径、交互家族与第二状态中形成可见差异；除非内容硬要求黑暗，至少一面明亮，禁止用深黑矩形系统卡统一兜底。可读性与360px正文不裁切要求逐面成立。',
         `只有第 ${faceContexts.length} 面闭合后才结束，不得少面、合并、追加面外文字。`,
-        '</兔子镜多面近输出短锁>',
+        '</兔子镜近输出短锁>',
     ].filter(Boolean).join('\n');
 }
 

@@ -1,6 +1,6 @@
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.8-visualstream8';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.8-visualstream8';
-import { getSettings } from './settings.js?rmv=1.5.8-visualstream8';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.8-visualstream8-boundary1';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.8-visualstream8-boundary1';
+import { getSettings } from './settings.js?rmv=1.5.8-visualstream8-boundary1';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -9,15 +9,15 @@ import {
     getRabbitMirrorFollowBatchTargetIndexes,
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.5.8-visualstream8';
+} from './generationGuard.js?rmv=1.5.8-visualstream8-boundary1';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.5.8-visualstream8';
+} from './multifaceProof.js?rmv=1.5.8-visualstream8-boundary1';
 import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.4.30.23';
-import { hasRequiredTarotEntityImage } from './independentQualityGate.js?rmv=1.5.8-visualstream8';
+import { hasRequiredTarotEntityImage } from './independentQualityGate.js?rmv=1.5.8-visualstream8-boundary1';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 
@@ -1189,7 +1189,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.8-visualstream8').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.8-visualstream8-boundary1').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;

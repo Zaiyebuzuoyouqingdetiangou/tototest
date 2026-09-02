@@ -2,9 +2,9 @@ import {
     commitPendingComboBatch,
     getCurrentChatKey,
     releasePendingComboBatch,
-} from './storage.js?rmv=1.5.8-visualstream8';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.8-visualstream8';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.8-visualstream8';
+} from './storage.js?rmv=1.5.8-visualstream8-boundary1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.8-visualstream8-boundary1';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.8-visualstream8-boundary1';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';
