@@ -1,3 +1,12 @@
+# 1.5.9 TerminalErrorFix1（测试候选）
+
+- 保留当前 chat／mesid／Swipe／sourceHash 下已经显示的精确终止错误；被动同步和单次请求租约检查不得再用通用错误壳覆盖空流、多面、净化或质量门失败。
+- “正文随后又发生变化”仅在存在明确正文替换证据时显示；否则使用不臆测原因的单次请求兜底提示。
+- 独立 API 最近请求诊断绑定当前消息身份、operation epoch 与终止阶段；不保存正文、Prompt、密钥或响应内容。
+- 不新增网络请求、自动重试、Observer、轮询或定时器；单次付费请求和旧 Swipe／sourceHash 隔离保持不变。
+- 运行时／manifest 更新为 `1.5.9`，cache cohort 更新为 `1.5.9-terminalerror1`。
+- 原基线 `libraryDataIntegrity.test.mjs` 的既有母本双库不一致失败未在本轮处理。
+
 # 1.5.8 VisualStreamFix8 BoundaryFix1（测试候选）
 
 - 正文 START 只登记 owner；准确完成／终止后再以 120ms 合并唤醒重模块。流式期间不逐 token 做重 DOM 同步，冷恢复复用完成时间、正文 hash 与 revision，缩短单面与独立 API 的额外等待。

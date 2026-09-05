@@ -61,8 +61,8 @@ test('SSE finishes at DONE without aborting/cancelling the successful upstream r
 
 test('NDJSON finishes at DONE without cancelling the successful upstream request', async () => {
     const raw = [
-        JSON.stringify({ choices: [{ delta: { content: 'A' } }] }),
-        JSON.stringify({ choices: [{ delta: { content: 'AB' } }] }),
+        JSON.stringify({ choices: [{ message: { content: 'A' } }] }),
+        JSON.stringify({ choices: [{ message: { content: 'AB' } }] }),
         JSON.stringify({ choices: [{ delta: { content: 'C' } }] }),
         '[DONE]',
     ].join('\n') + '\n';

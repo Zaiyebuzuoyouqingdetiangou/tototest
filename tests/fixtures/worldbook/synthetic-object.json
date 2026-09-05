@@ -1,0 +1,27 @@
+{
+  "name": "Synthetic Object Worldbook",
+  "entries": {
+    "0": {
+      "uid": 0,
+      "comment": "测试论坛玩法",
+      "key": ["论坛", "帖子"],
+      "keysecondary": ["回复"],
+      "content": "这是完全原创的测试内容。<section>HTML 仅作为文本数据存在。</section>{{user}} {{char}}",
+      "disable": false,
+      "constant": false,
+      "order": 100,
+      "position": 0
+    },
+    "1": {
+      "uid": 1,
+      "comment": "测试常驻玩法",
+      "key": [],
+      "keysecondary": [],
+      "content": "没有触发关键词的原创测试条目，用于验证标题与正文搜索。",
+      "disable": false,
+      "constant": true,
+      "order": 99,
+      "position": 0
+    }
+  }
+}

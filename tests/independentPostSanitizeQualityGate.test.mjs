@@ -172,7 +172,8 @@ const apiSource = fs.readFileSync(new URL('../src/independentApi.js', import.met
 const guardSource = fs.readFileSync(new URL('../src/generationGuard.js', import.meta.url), 'utf8');
 const visualScannerSource = fs.readFileSync(new URL('../src/visualScanner.js', import.meta.url), 'utf8');
 assert.match(guardSource, /tarotRules:\s*metadata\.tarotRules === true/, 'follow batch metadata must retain the per-face tarot requirement');
-assert.match(visualScannerSource, /hasRequiredTarotEntityImage\(newRoot\.outerHTML \|\| ''\)/, 'follow faces must reuse the post-sanitize tarot entity-image proof');
+assert.match(visualScannerSource, /evaluateIndependentPostSanitizeQuality\(newRoot\.outerHTML/, 'follow faces must reuse the full post-sanitize quality gate, including tarot');
+assert.match(visualScannerSource, /evaluateIndependentPostSanitizeQuality\(newRoot\.outerHTML,\s*\{\s*\.\.\.metadata/, 'follow quality must retain all per-face requirements including tarot');
 const callStart = apiSource.indexOf('async function callIndependentApi(');
 const callEnd = apiSource.indexOf('\nfunction externalOwnerMesid(', callStart);
 const callSource = apiSource.slice(callStart, callEnd);
@@ -201,6 +202,7 @@ try {
         preparedReadyHtmlCache: new Map(),
         assertIndependentMarkupComplexity: () => true,
         hashText: value => `hash:${String(value || '')}`,
+        getSettings: () => ({ rabbitMirrorBannedWords: [] }),
         hasMultifaceMarkup: () => false,
         repairMalformedLabelMarkup: value => String(value || ''),
         cleanRabbitMirrorOutput: value => String(value || '').trim(),

@@ -1,0 +1,25 @@
+{
+  "name": "Synthetic Array Worldbook",
+  "entries": [
+    {
+      "uid": 0,
+      "comment": "测试日记玩法",
+      "key": "日记",
+      "keysecondary": [],
+      "content": "原创测试日记正文。",
+      "enabled": true,
+      "constant": false,
+      "order": 10
+    },
+    {
+      "uid": 1,
+      "comment": "测试停用玩法",
+      "key": [],
+      "keysecondary": [],
+      "content": "原创测试停用正文。",
+      "enabled": false,
+      "constant": false,
+      "order": 9
+    }
+  ]
+}

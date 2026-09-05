@@ -147,7 +147,11 @@ test('local guard and batch-plan rejections are requestCount zero and never stag
     };
     vm.createContext(sandbox);
     vm.runInContext(`${source.slice(source.indexOf('function independentLocalPreflightFailure('), source.indexOf('function independentBatchPlanPreflightError('))}\n${source.slice(start, end)}\nglobalThis.request=requestIndependentCompletion;`, sandbox);
-    for (const code of ['RABBIT_MIRROR_CONTEXT_BOUNDARY_REJECTED', 'RABBIT_MIRROR_BATCH_PLAN_REJECTED', 'RABBIT_MIRROR_CONNECTION_PROFILE_REJECTED']) {
+    for (const code of ['RABBIT_MIRROR_CONTEXT_BOUNDARY_REJECTED', 'RABBIT_MIRROR_BATCH_PLAN_REJECTED', 'RABBIT_MIRROR_CONNECTION_PROFILE_REJECTED',
+        'RABBIT_MIRROR_DISPATCH_LEASE_REJECTED', 'RABBIT_MIRROR_EXTERNAL_PREFLIGHT_REJECTED',
+        'RABBIT_MIRROR_EXTERNAL_MATERIAL_MISSING', 'RABBIT_MIRROR_EXTERNAL_MATERIAL_INVALID', 'MULTIFACE_PLAN_UNAVAILABLE',
+        'WORLD_BOOK_NOT_FOUND', 'WORLD_BOOK_ENTRY_STATE_CONFLICT', 'WORLD_BOOK_ENTRY_CONTENT_INVALID', 'WORLD_BOOK_READ_FAILED',
+        'WORLD_BOOK_STORAGE_UNAVAILABLE', 'WORLD_BOOK_STORAGE_QUOTA', 'WORLD_BOOK_STORAGE_WRITE_FAILED', 'WORLD_BOOK_SCHEMA_UNSUPPORTED']) {
         local = Object.assign(new TypeError('本地安全边界在发送前拒绝。'), { code });
         await assert.rejects(
             () => sandbox.globalThis.request({
@@ -189,7 +193,47 @@ test('local guard and batch-plan rejections are requestCount zero and never stag
     assert.equal(profileServiceCalls, 0, 'Profile validation rejection must happen before Connection Manager sendRequest');
     const callStart = source.indexOf('async function callIndependentApi(');
     const callEnd = source.indexOf('\nfunction externalOwnerMesid(', callStart);
-    assert.match(source.slice(callStart, callEnd), /if\(!markPendingBatchAttempt\(batchPlan\)\) throw independentBatchPlanPreflightError\(\)/);
+    const call = source.slice(callStart, callEnd);
+    const leaseStart = call.indexOf(' const originalLease=requestOptions.dispatchLease;');
+    const leaseEnd = call.indexOf(' const {response:r,result,profile,attempts,requestDiagnostic,semanticError}=await requestIndependentCompletion(', leaseStart);
+    assert.ok(leaseStart >= 0 && leaseEnd > leaseStart, 'extract the real pre-dispatch lease adapter');
+    const errorStart = source.indexOf('function independentBatchPlanPreflightError(');
+    const errorEnd = source.indexOf('\nasync function fetchIndependentUrl(', errorStart);
+    assert.ok(errorStart >= 0 && errorEnd > errorStart);
+    let markingAccepted = false;
+    let originalAccepted = false;
+    let marks = 0;
+    let consumes = 0;
+    let releases = 0;
+    const leaseSandbox = {
+        markPendingBatchAttempt: () => { marks += 1; return markingAccepted; },
+        releasePendingComboBatch: () => { releases += 1; },
+        assertIndependentPromptOwner: () => assert.fail('this fixture has no external prefetch owner'),
+    };
+    // Production adapter, not a reimplementation: optional external owners must
+    // not weaken the existing batch mark -> original lease -> paid request order.
+    vm.runInNewContext(`${source.slice(errorStart, errorEnd)}
+function adapt(batchPlan, requestOptions, signal, promptOwner=null) {
+${call.slice(leaseStart, leaseEnd)}
+return dispatchLease;
+}
+globalThis.adapt=adapt;`, leaseSandbox);
+    const originalLease = { consume() { consumes += 1; return originalAccepted; } };
+    const plan = { batchId: 'local-fixture' };
+    const lease = leaseSandbox.adapt(plan, { dispatchLease: originalLease }, { aborted: false });
+    assert.throws(() => lease.consume(), error => error?.code === 'RABBIT_MIRROR_BATCH_PLAN_REJECTED');
+    assert.equal(consumes, 0, 'a rejected batch must never consume the original paid lease');
+    assert.equal(marks, 1);
+    markingAccepted = true;
+    assert.equal(lease.consume(), false, 'successful marking cannot override a rejected original lease');
+    assert.equal(consumes, 1);
+    assert.equal(releases, 1, 'a rejected original lease releases the just-marked batch');
+    originalAccepted = true;
+    assert.equal(lease.consume(), true);
+    assert.equal(consumes, 2);
+    assert.equal(marks, 3);
+    assert.equal(leaseSandbox.adapt(null, { dispatchLease: originalLease }, { aborted: false }), originalLease,
+        'the builtin single-face path retains the original lease object');
 });
 
 test('manual response reader never salvages complete partial markup after a response-size error', async () => {

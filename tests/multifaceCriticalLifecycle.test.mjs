@@ -60,6 +60,10 @@ function independentCallHarness(raw) {
         isRabbitMirrorEligibleAssistantMessage: message => message?.is_user !== true,
         buildRabbitMirrorPromptDetails: () => ({ prompt: 'FIVE FACE PROMPT', executionLock: 'LOCK', metadata, batchPlan: plan }),
         messageSourceFingerprint: () => 'source-five',
+        chatKey: () => 'chat:test',
+        hashText: value => `hash:${String(value || '')}`,
+        messageBaseSlotKey: (_ctx, index, msg) => `chat:test:${index}:${Number(msg?.swipe_id || 0)}`,
+        operationEpochForBase: () => 1,
         recentIndependentVisualGuard: () => '',
         manualRetryVisualGuard: () => '',
         globalWorldInfoSnapshotFor: () => null,
@@ -87,6 +91,7 @@ function independentCallHarness(raw) {
             return { html: value, faceScans: parsed.faces.map(item => ({ faceIndex: item.index })) };
         },
         republishIndependentSemanticFailure() { semanticFailures += 1; },
+        independentMultifaceFailureSemantic(error) { const code = String(error?.code || ''); return code.startsWith('multiface-') ? code : 'multiface-quality'; },
         clearIndependentQualityFailure() {},
         rememberApiProfile() {},
         compactRemoteError: () => '',

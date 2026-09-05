@@ -1,0 +1,10 @@
+{
+  "name": "rabbitmirror-build-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "library:check": "node scripts/build-library-indexes.mjs --check",
+    "library:write": "node scripts/build-library-indexes.mjs --write",
+    "package:candidate": "node scripts/package-candidate.mjs"
+  }
+}

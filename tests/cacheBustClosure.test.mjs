@@ -11,11 +11,14 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const RELEASE_COHORT = '1.5.8-visualstream8-boundary1';
-const RELEASE_RUNTIME = '1.5.8';
-const RETIRED_RELEASE_COHORTS = new Set(['1.5-qualityfix1', '1.5-qualityfix2', '1.5-qualityfix3', '1.5-qualityfix4', '1.5-qualityfix5', '1.5-varietyfix1', '1.5.6-abc1', '1.5.7-multiface5', '1.5.8-visualstream8']);
+const RELEASE_COHORT = '1.5.18-audit1c2';
+const RELEASE_RUNTIME = '1.5.18';
+const RETIRED_RELEASE_COHORTS = new Set(['1.5-qualityfix1', '1.5-qualityfix2', '1.5-qualityfix3', '1.5-qualityfix4', '1.5-qualityfix5', '1.5-varietyfix1', '1.5.6-abc1', '1.5.7-multiface5', '1.5.8-visualstream8', '1.5.8-visualstream8-boundary1', '1.5.9-terminalerror1', '1.5.10-librarysync1', '1.5.11-librarybuilder1', '1.5.12-extworldbook1a', '1.5.13-extworldbook1a-whole1', '1.5.14-wholeguard1-mfquality1', '1.5.16-extworldbook1c1']);
 const REQUIRED_RELEASE_MODULES = [
+    'src/externalWorldBook/externalPool.js',
     'src/settings.js',
+    'src/bannedWords.js',
+    'src/regexConfigurator.js',
     'src/tokenMeter.js',
     'src/independentApi.js',
     'src/independentSecurityGuard.js',
@@ -38,7 +41,18 @@ const REQUIRED_RELEASE_MODULES = [
     'data/raw/rawSegmentLookup.js',
     'data/raw/rawThematicCategories.js',
     'data/raw/rawPresentationFormats.js',
+    'src/externalWorldBook/importWizard.js',
+    'src/externalWorldBook/selectionState.js',
+    'src/externalWorldBook/hostReader.js',
+    'src/externalWorldBook/fileReader.js',
+    'src/externalWorldBook/normalize.js',
+    'src/externalWorldBook/schema.js',
+    'src/externalWorldBook/errors.js',
+    'src/externalWorldBook/capabilities.js',
+    'src/externalWorldBook/classifier.js',
+    'src/externalWorldBook/store.js',
 ];
+RETIRED_RELEASE_COHORTS.add('1.5.17-bannedregex1');
 
 function collectJsFiles(dir) {
     const out = [];
@@ -118,7 +132,13 @@ assert.deepEqual(conflicting, [], '同一模块不得被多种 ?rmv 键引用');
 // Compute transitive parents from the actual URL graph. Changing a child URL
 // inside an old-cached parent is insufficient even if the child itself is fresh.
 const changedRoots = new Set([
+    'data/raw/rawPresentationFormats.js',
+    'data/structured/presentationIndex.js',
+    'data/raw/rawThematicCategories.js',
+    'data/structured/thematicIndex.js',
     'src/settings.js',
+    'src/bannedWords.js',
+    'src/regexConfigurator.js',
     'src/storage.js',
     'src/blacklist.js',
     'src/picker.js',

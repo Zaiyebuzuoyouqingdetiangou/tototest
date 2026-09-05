@@ -156,9 +156,12 @@ function createFixture(initialMessages, { ownerChat = 'chat:test' } = {}) {
         messageElement: index => owners.get(Number(index)) || null,
         suppressesAutomaticGeneration: () => false,
         hasExistingFollowRabbitMirror: () => false,
+        automaticFailureStopFor: () => null,
         hasAutomaticFailureStop: () => false,
         clearAutomaticFailureStop() {},
         markAutomaticFailureStop() {},
+        renderAutomaticFailureStop() {},
+        republishIndependentTerminalFailure: () => ({}),
 
         readStore: () => store,
         writeStore() {},

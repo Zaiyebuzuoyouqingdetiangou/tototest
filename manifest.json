@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5.8-visualstream8-boundary1",
-  "css": "style.css?rmv=1.5.8",
+  "js": "index.js?rmv=1.5.18-audit1c2",
+  "css": "style.css?rmv=1.5.18",
   "author": "Toto",
-  "version": "1.5.8",
+  "version": "1.5.18",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.5.8 BoundaryFix1｜修复独立 API 多面安全边界、流式等待、外置多面和文字裁切，并降低动态视觉移动端负载。"
+  "description": "兔子镜测试版 1.5.18 Audit1C2｜修复多面重复封装、跟随净化/禁词/质量次序、交互恢复过滤、SSE delta及精确错误保留；完善全局Regex能力降级。外部母本默认关闭，仅按本轮选中ID读取并接入Prompt；保留单次请求和安全净化。自动化验证候选，真实酒馆/模型/iPhone待验收。"
 }

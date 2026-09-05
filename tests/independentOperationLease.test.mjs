@@ -350,8 +350,11 @@ globalThis.destroyBridge=destroyIndependentGenerationIntentBridge;`, bridgeSandb
         clearRabbitMirrorPrompt: () => { clearCount += 1; },
     };
     vm.createContext(interceptorSandbox);
-    vm.runInContext(`${extractFunction(injectorSource, 'rabbitMirrorGenerateInterceptor')}
-globalThis.intercept=rabbitMirrorGenerateInterceptor;`, interceptorSandbox);
+    const sequenceDeclaration = injectorSource.match(/^let generationInvocationSequence\s*=\s*0;/m)?.[0];
+    assert.ok(sequenceDeclaration, 'the interceptor invocation identity must have its production initializer');
+    vm.runInContext(`${sequenceDeclaration}\n${extractFunction(injectorSource, 'rabbitMirrorGenerateInterceptor')}
+globalThis.intercept=rabbitMirrorGenerateInterceptor;
+globalThis.invocationSequence=()=>generationInvocationSequence;`, interceptorSandbox);
     for (const patch of [
         { enabled: false, autoRabbitMirrorInjection: true, mode: 'random' },
         { enabled: true, autoRabbitMirrorInjection: false, mode: 'random' },
@@ -362,10 +365,12 @@ globalThis.intercept=rabbitMirrorGenerateInterceptor;`, interceptorSandbox);
     }
     assert.equal(recordCount, 0, 'disabled independent generation must not wake the deferred runtime');
     assert.equal(clearCount, 3, 'disabled independent generation must still clear any stale main prompt');
+    assert.equal(interceptorSandbox.globalThis.invocationSequence(), 3, 'each new host invocation must invalidate an older pending follow prefetch');
     settings = { generationSource: 'independent', enabled: true, autoRabbitMirrorInjection: true, mode: 'random' };
     await interceptorSandbox.globalThis.intercept([], 0, null, 'normal');
     assert.equal(recordCount, 1);
     assert.equal(clearCount, 4);
+    assert.equal(interceptorSandbox.globalThis.invocationSequence(), 4, 'enabled independent invocation also advances the exact interceptor identity');
 }
 
 console.log('independent operation lease: one paid dispatch per host-operation epoch passed');

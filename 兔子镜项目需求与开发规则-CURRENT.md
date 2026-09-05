@@ -1,12 +1,23 @@
 # RabbitMirror／兔子镜现行需求与开发规则（CURRENT）
 
-更新：2026-09-03。对应测试候选：1.5.8 VisualStreamFix8 BoundaryFix1；运行时／manifest 为 `1.5.8`，核心模块 cache cohort 为 `1.5.8-visualstream8-boundary1`。本文是本包唯一 CURRENT；旧 README／CHANGELOG 历史段落和 `docs/multiface-phase2-design.md` 的早期方案不代替实际源码。
+更新：2026-09-05。当前测试候选：1.5.18 Audit1C2；manifest/runtime 为 `1.5.18`，主 cache cohort 为 `1.5.18-audit1c2`。本文是本包唯一 CURRENT；旧 README／CHANGELOG 历史段落和 `docs/multiface-phase2-design.md` 的早期方案不代替实际源码。此为自动化验证后的测试候选，不是已完成真实宿主/模型/iPhone 验收的正式版。
 
 ## 基线与授权
 
-本轮实际源码基线为已打包并逐文件冻结的 1.5.7 Multiface5 候选；更早的 `tototest-main(1).zip`、`兔子镜-multiface-step1(1).zip` 和移植说明只作历史／设计参考。输入包未覆盖；本轮未 commit、push、创建 branch／PR，也未写入正式或测试 GitHub 仓库。
+本轮唯一源码基线为上传的 `RabbitMirror-1.5.17-BannedWordsRegex1.zip`，SHA-256 `f76b795d80429a4a428f1a82ee8751be18a2d2b34b770ed698cd8f0360991f77`。1.5.16 仅作只读比较，不作为修改起点。输入包未覆盖；GitHub 保持只读，本轮未 commit、push、创建 branch／PR，也未写入正式或测试仓库。
 
-当前实现只允许用户本轮明确提出的文字裁切、动态／增强视觉、进入与流式性能、单／多面等待生命周期、独立 API 预检、跟随外置多面、自然交互返回和 Token 表意修复，以及必要的版本、缓存、说明和测试更新。不得借此改写随机库、母本正文、兔子洞强约束、维修兔／挨打猫安全边界、Touch Theater、标签／世界书选择或上下文预算。
+本轮先独立审计，再窄修：禁词标题比较/快照恢复/安全赋值、跟随每面质量与最终 DOM 扫描、CSS/ID 隔离、独立多面重复 TOTO 包装、SSE delta 保真、精确终止错误与 Regex 能力失败处理。A/B/C 闭环后才接入外部世界书 1C-2：冻结一次抽签→按选中 ID 一次预取→同步渲染；未改全栈 async、未放宽 sanitizer、未增加自动模型请求。
+
+## 精确终止错误与无正文诊断
+
+- 独立 API 已跨过单次付费请求边界后，若空流、多面解析、净化、质量门或其他后处理失败，必须保留当前 chat／mesid／Swipe／sourceHash 下的精确错误；后续被动同步不得用通用“正文变化”提示覆盖。
+- 只有明确的新 Swipe、重说、继续、编辑或其他可靠正文替换证据成立时，才允许说明“正文随后又发生了变化”。没有精确错误且没有替换证据时，只能诚实说明本轮已请求但未形成可恢复完整成品。
+- 上述保留机制只复挂同一精确身份的 error host；不得跨聊天、消息、Swipe 或 sourceHash 恢复旧错误，也不得因此发第二次请求。
+- 最近请求诊断应记录不含正文的 chat key 摘要、mesid、Swipe、sourceHash、operation epoch、requestCount、terminal stage／code 和失败面序号；不得保存聊天正文、Prompt、API Key、响应正文、reasoning 或世界书正文。
+- 本轮不改变多面“任一面不合格则整批不保存”的既有语义；部分批次保存仍需另行设计和授权。
+- 独立 API 单面与多面质量门现在都从结构化展现形式索引取得 `{id,title,summary,tags}`；summary 只用于判断当前媒介是否原生需要页签／翻页／频道等结构，不注入新 Prompt，也不放宽 sanitizer。真正与媒介无关的通用三按钮＋平铺文字流仍会被拒绝。
+- 跟随与独立均以净化且过滤后的最终可见 HTML 进行质量/视觉检查。原始 owner/hash 与过滤后的显示标题分开验证；独立多面每面只保留一层规范 TOTO，整批再验 exact 协议。旧历史缺少精确展现形式证据时推迟不确定恢复，不能伪造 recipe 或恢复已被拒绝的原始内容。
+- 多面后处理错误使用精确 code／face 记录：缺面保持 `multiface-incomplete`，重复正文、空面、净化后空面、视觉程序失败和具体质量 code 不再统一误标为 `multiface-quality`；失败仍不会自动补发。
 
 ## 1～5 面生成
 
@@ -23,6 +34,7 @@
 
 - 跟随当前 API：仍只用主回复原本的一次生成；生成拦截器注入共享多面 Prompt，正文完成后按同一 owner 解析 N 面、逐面离线净化、整批终检和一次提交。
 - 独立 API：仍只从当前目标消息的完整最终正文构造一次副 API 请求；同一个 Response 兼容 SSE、NDJSON 和非流式，DeepSeek `reasoning_content`／thought 不进入兔子镜正文。
+- 显式 `delta.content` 原样累加，包括首尾空白与重复片段；非 delta snapshot 保留既有快照合并语义，不将流式重复字符误删。
 - 独立成品在响应结束后先做总协议与总预算检查，再逐面离线净化、质量门、身份终检和聚合提交；不会逐 token 挂载半成品。
 - 轻量桥在正文 START 时只记录 owner，不加载约 2 MiB 的重运行图；重模块只在准确完成／终止证据后以 120ms 合并唤醒。流式正文期间跟随外置与独立模式都跳过逐 token 的重 DOM 同步。
 - 最终正文的 `completedAt`、正文 hash 和 revision 会被冷启动恢复复用；已满足稳定窗口时只做一次约 120ms 的精确复核，不重新叠加旧的 1.6～4 秒退避。
@@ -58,10 +70,51 @@
 - 规则只允许兔子镜既有白名单 `https://gfx.tarot.com/images/site/decks/rider/full_size/0.jpg`～`77.jpg`，必须使用真实 `<img>` 且有可见中文 `alt`。CSS 假画、emoji、文字牌名或其他外链不算实体牌图。
 - 跟随与独立 API 都在安全净化后复核上述条件；缺图、被净化、越界编号、错误域名或无中文 `alt` 均不得记为成功。失败不自动补请求。
 
+## 母本单一内容源与打包前索引构建
+
+- 运行时继续保留双库：`data/structured/*Index.js` 供 picker／精简 Prompt 快速读取；抽中编号后，均衡／完整模式再由 `rawSegmentLookup` 只读取该编号对应的完整母本。不会把整库发送给模型。
+- 开发时完整文字只维护在 `data/raw/rawPresentationFormats.js` 与 `data/raw/rawThematicCategories.js`。`data/metadata/*IndexMetadata.json` 只保存无法从母本安全推导的 tags、旧标题 aliases、非标准 source 映射、缩进及少量人工确认的 compact `summaryOverride`。
+- `scripts/build-library-indexes.mjs --check` 只在内存中确定性重建两份索引并逐字节比较，不修改文件；`--write` 会先完成两套母本与 metadata 全部校验，全部通过后才写入临时文件并替换过期索引；捕获到写入异常时恢复原文件，随后再次执行 check。
+- 新增、删除、重复或错序 ID，未知 metadata 字段，source 映射错误，标题改名却未保留旧 alias，手工改写生成索引等情况必须失败并停止；构建失败不得留下半份索引。
+- 带编号、粗体标题的母本条目正文当前必须保持单行。普通非空缩进续写会报告源文件、行号与最近条目并 fail-closed；`library:check`、`library:write` 和候选打包都不得继续。现有少量缩进的非编号子弹点是明确的 raw-only 补充语法，继续允许，并只在按编号读取完整母本时作为补充使用。
+- `scripts/package-candidate.mjs` 在打包前依次执行：索引 write/check、完整测试、全部 JS/MJS 语法、确定性 ZIP、CRC、重解压后的索引／测试／语法复测，以及源码与成品逐文件 SHA-256 比较。
+- 构建器只使用 Node／Python 标准库，不使用 AI、网络、DOM 或 SillyTavern API；不被任何运行时模块 import，不在进入酒馆、打开聊天或每轮生成时执行，因此不增加 Token、请求、Observer、轮询或手机主线程负担。
+- 当前构建结果固定为 208 个展现形式与 165 个主题。1.5.10 已完成的 52 项展现形式同步与旧标题 aliases 全部保留；本轮另外将 B.3.3、B.7.4、B.7.5、C.1.6、C.2.2、G.4.7、G.7.19 七项主题 structured `raw` 指针同步到当前母本，同时保留原 compact `summaryOverride`。
+- 结构化索引是构建产物，不再作为第二份人工内容源。新增母本仍需在 metadata 中明确登记其 tags／必要映射；脚本不得猜测语义、调用 AI 总结、改写母本或自动改变 group／权重。
+- “不固定布局的媒介语义最低验收”本轮仍未实现。它是独立未来任务，只能检查最低可辨认媒介关系，不得生成 208 套固定 DOM 模板。
+
+## 禁词表与不发送兔子镜正则一键配置
+
+- 新增 `rabbitMirrorBannedWords` 本地禁词表，默认空数组；最多 256 条、单条最多 80 字符，保存时去空白、去重复。空列表严格短路，不遍历镜面 DOM，不增加 Prompt／Token。
+- 禁词只作用于 RabbitMirror 自己的净化后可见 Text Node：匹配按字面量、大小写不敏感地删除；不修改酒馆正文、HTML 属性、class/id、style、CSS、SVG 属性、script/style/template 内容。单面跟随、跟随多面、独立 API、维修重解析都复用同一过滤边界；交互恢复中的安全文字赋值也会先通过同一禁词过滤，避免已删词被恢复。
+- 独立 API 已净化 HTML 缓存键加入禁词表指纹；用户修改禁词后，不得命中旧禁词配置下的 prepared HTML 缓存。禁词表只影响显示成品，不进入模型 Prompt，不作为请求上下文，也不自动重试。
+- 跟随当前 API 的“不发送兔子镜”Regex 仍使用既有推荐规则 `/<toto\b[^>]*>[\s\S]*?<\/toto>\s*/gi`，替换为空、placement=AI_OUTPUT、promptOnly=true。新增一键配置仅调用 SillyTavern Regex 自己导出的 global scripts 读取／保存能力，不写 scoped/preset，不覆盖用户其他规则。
+- RabbitMirror 管理正则使用稳定 managed ID；重复点击幂等。已存在同指纹规则时不重复添加；managed ID 的旧版可更新；若发现同名但用户自行修改且不是 managed ID，则 fail-closed，不自动覆盖，并提示用户查看酒馆 Regex。
+- 选择“跟随当前 API”时设置页显示正则状态和“一键配置正则／查看酒馆正则”；独立 API 明确提示不依赖此酒馆正则。若无法加载 Regex 功能，保留“复制推荐正则” fallback。自动打开 Regex 界面是辅助能力，失败不得回滚已经成功保存的正则。
+- GLOBAL=0 为有效值；读取抛错、非数组或能力缺失不得保存未知 scope。Regex 被禁用时不得显示已生效，也不自动启用。宿主已打开的列表不保证立即刷新：保存与跳转解耦，不调用私有 `loadRegexScripts`，列表未更新时提示刷新页面。官方 1.14～1.18 已做可获得源码能力核对，1.13 未完成实机或可验证源码兼容证明；运行时仍按能力降级，不写版本白名单。
+
+## 外部世界书母本导入（阶段 1C-2：选中材料接入，默认关闭）
+
+- 1A／1B 已有能力继续保留：两个只读来源（SillyTavern 已有世界书／本地 JSON）、entry 级整本选择与筛选、纯本地分类建议、人工确认、独立 IndexedDB 事务保存以及本地启用／停用／删除管理。源世界书始终只读。
+- 只有 `library.enabled=true`、`entry.enabled=true`、`userConfirmed=true` 且最终分类明确为 `theme` 或 `format` 的条目能够进入轻量外部池；mixed／auxiliary／ignore／pending／unknown 及停用库、停用条目全部排除。轻量池只保存 externalId／libraryId／classification，不保存 rawContent、summary、正文或关键词。
+- 默认 `externalWorldBookRandomEnabled=false`，`externalWorldBookMixMode='builtin-only'`。通过单面、多面、跟随、独立、预算、missing 和身份竞态验证后，在“外部世界书母本”管理窗口开放“外部母本参与抽签”和来源偏好。旧 enabled=true + builtin-only 显示为关闭；用户开启时使用内置优先。不自动启用任何本地库，也不自动打开增强视觉。
+- 无外部随机时必须严格短路到 1.5.15 原 picker：不读取 external snapshot、不进入来源选择、不调用额外 `randomUnit()`。固定 `Math.random`＋`crypto.getRandomValues` 时，1～5 面 ID 序列与随机调用次数必须逐轮等同 1.5.15 基线。
+- 外部随机启用后的来源层分三步：① 每个 theme／format slot 独立决定 builtin 或 external；② 若为 external，按该类型当前 eligible 数量的 `sqrt(n)` 给外部库加权；③ 在被选中的外部库内均匀抽具体 externalId。theme 与 format 分别计算 eligible 数量，外部库总规模不能直接决定另一类型的权重。
+- `sqrt(n)` 是库均匀与 entry 完全均匀之间的折中：例如 10 vs 1000 个 eligible 条目时，外部条件下库总机会约 1:10、单 entry 机会约 10:1；第一层 builtin/external 比例由 mix mode 独立控制，不随外部库数量或规模变化，也不使用轮播／每 N 轮强制外部。
+- 单面和 2～5 面共用同一 `applyDirectiveOrRandom` 来源选择层；`planBatchFace` 继续沿既有 batchIdentity、pending、history 与 exact 排重语义，只额外把此前 face 已选 externalId 纳入批内硬排除。没有可靠 semantic family 的外部条目不伪造内置 group/family，不参与内置 eligible-miss／soft-pity 统计。
+- `forceVisualScenery` 继续拥有 format 最高优先级：动态视觉开启时 format 固定内置 `10.2.2`，external format 不得覆盖；theme 仍可按来源规则抽取。`enhancedVisualDrawing` 默认 false、注入条件与 Prompt 位置不变，外部来源不会修改视觉开关。
+- `planRabbitMirrorPromptDetails` 与 `renderRabbitMirrorPromptPlan` 保持同步；两种异步生成入口在中间按唯一 selected external IDs 调用 `getSelectedExternalEntries`。一次只读 IDB 事务使用唯一 `byExternalId` 索引逐项 get；跨面同 ID 去重，不按面读库，不全库 getAll，不重抽替代 missing。临时 Map 在 finally 清空，不能跨下一轮缓存 raw。
+- 发送副本仅将实际抽中的 summary/raw 作为低优先级参考；转义保留标签、上下文/锁、宏与内部 data 标记，不执行外部 HTML/CSS/宏，不修改 IDB 原文。材料放在 RabbitMirror 自己的 Prompt，不混入独立 API 聊天 transcript；诊断不记录 raw。
+- 外部材料复用原策略：compact summary170/raw0；balanced summary170、主题 raw 总360/单条180、形式总540/单条360；full summary210、主题总900/单条500、形式总1500/单条900。共享规则不复制 N 次，原完整请求上限不变。固定 selected IDs 时库总规模不进入 Prompt；全 builtin 则 external raw0、Prompt 增量0、随机额外调用0。
+- async 预取后及付费 lease 消费前复核 chat、消息、Swipe、sourceHash、operation epoch 和 batch。missing、停用、未确认、分类变化与迟到结果发送前停止，requestCount=0，不自动重抽、改参数或请求。
+- IDB v2 增加唯一 externalId 索引及轻量 poolMetadata；模块 import/启动不读 raw。开启外部抽签后的冷态按需恢复 ID-only metadata；旧库缺索引时需用户点击指定库的“重建抽签索引”，允许这一次用户操作读取该库，不能改成启动期自动全库扫描。停用旧库缺索引不阻塞其他已启用库；重复 externalId 升级失败保留旧数据。
+- external pool singleton 的所有生产 import 必须使用同一 `?rmv=1.5.18-audit1c2` specifier。保存／启用／停用／删除本地库时同步其轻量 ID 快照；toggle/delete 不读取整库 raw。冷态 metadata 有有界 I/O 成本，不能声称开启状态总成本严格为零。
+- 外部世界书导入与“独立 API 复用本轮已激活世界书上下文”继续完全解耦，不共用状态、缓存或设置。
+
 ## 随机、库与其他保护边界
 
 - 1.5.6 的普通路线展现形式 group 冷却窄修继续保留：普通路线不承担 group 连带降权；最终主题明确 `if` tag 时保留原 group 系数。exact 尝试记录、正式 history、family／group、soft-pity、收藏倍率、黑名单和小池回退不因多面被重写。
-- 多面只在同一批内排除前面已经随机抽中的精确项；不修改母本库内容、候选池编号、专属权重、主题规则、成人虚构角色扮演边界或配色冷却。
+- 多面只在同一批内排除前面已经随机抽中的精确项；除本轮已批准的构建工具与七项主题 raw 指针同步外，不修改候选池编号、专属权重、主题规则、成人虚构角色扮演边界或配色冷却。
 - 不修改标签扫描／过滤：选中标签的标签本身和包裹内容只从发给副 API 的上下文副本删除，不改酒馆正文、主 API 或历史；最近 X 层、角色卡／Persona 默认开启兼容和世界书选择保持原规则。
 - Token 卡分别保存跟随与独立两种来源的记录，再按当前生成方式读取；明确标注“跟随正文 API／独立 API”“最近／历史”和“Prompt 本地估算、非服务商账单”。独立路线显示的是 system＋user 请求消息内容字符合计；跟随路线显示兔子镜待注入／追加 Prompt，不冒充主请求完整 Token。
 - 单次付费 lease、当前最终正文读取、Swipe／重说／聊天切换隔离、SSE／NDJSON／非流式、DeepSeek reasoning 排除、Touch Theater 与安全净化边界保持不变。
@@ -71,11 +124,12 @@
 - 多面逻辑只在一次生成生命周期内按面数做有界 O(N) 解析、净化和局部工具安装；N 最大为 5。不得新增常驻轮询、无界 Observer、额外网络请求或全聊天扫描。
 - 跟随模式不新增独立模型请求，但会增加主请求 Prompt／输出；独立模式在正文请求后再发一次兔子镜请求，1～5 面仍共享这一次且不自动重发。首次未缓存的动态模块会产生同源 GET；是否影响真实家庭网络只能用目标设备 HAR／服务端日志验证，静态测试不得声称“完全不占网”。
 - 新增运行时工作均有严格上限：每个完成 owner 一次合并唤醒、每个 follow 批次一次精确 commit 事件、当前最新宿主中每个 face 一帧裁切检查，以及 Connection Manager 每帧固定上限的隐藏状态验证；不新增 `setInterval`、常驻轮询、第二个 MutationObserver 或后台模型请求。
-- 1.5.8 变化模块及所有反向父模块统一使用 `1.5.8-visualstream8-boundary1`，避免覆盖安装继续命中早先的 1.5.8 模块。更新后必须整页刷新酒馆；不要以清空设置／冷却历史代替刷新。
+- 1.5.18 主 cache cohort 为 `1.5.18-audit1c2`。导入/分类管理仍在用户点击后加载；外部 raw 读取只在抽签计划已冻结且确实选中外部 ID 时发生。启动轻桥不增加 raw、Regex 或禁词全聊天扫描；无新常驻 Observer/轮询。更新后必须整页刷新酒馆；不要以清空设置／冷却历史代替刷新。
 - 正式仓库默认只读。本包是测试候选，只有用户明确实机验收并当轮授权仓库、分支和写入类型后才可晋升；正式交付名仍使用“兔子镜小剧场”。
 
-## 验证边界
+## 本轮验证边界
 
-- 串行使用包内 `tests/hostLoader.mjs` 运行完整测试，对全部 JS／MJS 做语法检查；打包后必须重新解压并重复相同验证，同时核对 root、manifest、CRC、文件清单及 SHA-256。
-- 不删除或放宽原安全／非回归断言。原基线唯一已知失败是 `libraryDataIntegrity.test.mjs:77`：豆瓣 structured raw 与母本文字不一致；本轮不改母本，故应与基线同样报告，而不能伪称全绿。
-- 源码与自动化能证明请求次数、协议、净化、身份、缓存闭包和静态性能边界；不能证明真实模型一定产出更美的 UI，也不能代替真实 SillyTavern、真实主／副 API、PC／Android／iPhone、移动网络、模型列表、视觉与交互实机验收。
+- 1.5.17 基线重新执行 223/223，1.5.16 只读比较重新执行 216/216；不沿用旧报告。最终源码测试、突变、浏览器矩阵、文件清单、逐文件 SHA 与重复封包 SHA 以随包交付的审计报告为准。
+- 当前机制已有 Node 契约测试与隔离 Edge 的真实生产 DOM/IndexedDB 接入测试；模型及宿主接口使用原创 synthetic fixture/底层 transport 替身。内置 Prompt/lock/随机 90 项字节对照、外部 5000 条按 selected IDs 读取、源码 import 闭包、母本重建与语法均独立核查。
+- 部分成功仅设计未实现；all-or-nothing 继续保留。模型审美、真实通过率、长聊天白屏/流式卡顿、家用网络与手机发热不由 synthetic 成功作保证。
+- 仅完成源码／自动化／synthetic验证，尚未完成真实 SillyTavern、真实模型网络及 iPhone Safari 实机验证。

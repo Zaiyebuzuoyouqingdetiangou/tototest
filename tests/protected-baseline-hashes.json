@@ -1,5 +1,5 @@
 {
-  "source": "Untouched uploaded tototest-main(1).zip, runtime 1.5.5",
+  "source": "Untouched uploaded 1.5.5 protected baseline; presentation/theme mother/index files are explicit 1.5.11 LibraryBuilder1 build inputs guarded by deterministic builder tests",
   "allowedFunctional": [
     "src/settings.js",
     "src/picker.js",
@@ -17,7 +17,10 @@
     "src/outputSanitizer.js",
     "src/tokenMeter.js",
     "src/visualScanner.js",
-    "style.css"
+    "style.css",
+    "data/raw/rawPresentationFormats.js",
+    "data/structured/presentationIndex.js",
+    "data/structured/thematicIndex.js"
   ],
   "entries": [
     {
@@ -61,10 +64,6 @@
       "normalizedSha256": "1cd9a67d485dd3d4dbf040e7e847a89e2f45a4cbffc5a2d06d0e751d3f0e9dcd"
     },
     {
-      "file": "data/raw/rawPresentationFormats.js",
-      "normalizedSha256": "5303c831d228047bb43d2e309e19e0f688609747a15ef6c076191e00415c6ade"
-    },
-    {
       "file": "data/raw/rawSegmentLookup.js",
       "normalizedSha256": "33aaebaeb760dd93c4cf65b871ab63d7b8e870fc1725e72ca92f40f65ad422a0"
     },
@@ -103,14 +102,6 @@
     {
       "file": "data/raw/visualSceneryRules.js",
       "normalizedSha256": "22a1f51ef8c925e7a77cae0d8bf62bab20bd8f9723bf76bd00028ce5ce8b07b6"
-    },
-    {
-      "file": "data/structured/presentationIndex.js",
-      "normalizedSha256": "49299e5e8e90c45857bf6c10a59e257a76acb4755186dab53b1ca1ea0a014068"
-    },
-    {
-      "file": "data/structured/thematicIndex.js",
-      "normalizedSha256": "cf2a2e6a7ce171fc8d7a231d2076c602cea6f02291bc6a2427318dc01fafbacc"
     },
     {
       "file": "index.js",
