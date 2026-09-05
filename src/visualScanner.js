@@ -1,6 +1,7 @@
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.8-visualstream8-boundary1';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.8-visualstream8-boundary1';
-import { getSettings } from './settings.js?rmv=1.5.8-visualstream8-boundary1';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.18-audit1c2';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.18-audit1c2';
+import { getSettings } from './settings.js?rmv=1.5.18-audit1c2';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.5.18-audit1c2';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -8,18 +9,21 @@ import {
     getRabbitMirrorFollowBatchSources,
     getRabbitMirrorFollowBatchTargetIndexes,
     inspectRabbitMirrorGenerationSource,
+    releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.5.8-visualstream8-boundary1';
+} from './generationGuard.js?rmv=1.5.18-audit1c2';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.5.8-visualstream8-boundary1';
+} from './multifaceProof.js?rmv=1.5.18-audit1c2';
 import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.4.30.23';
-import { hasRequiredTarotEntityImage } from './independentQualityGate.js?rmv=1.5.8-visualstream8-boundary1';
+import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.18-audit1c2';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.18-audit1c2';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
+export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -30,6 +34,8 @@ let visualScannerCaptureTimer = 0;
 const followBatchScanAttempts = new Map();
 const terminalFollowMessageIndexes = new Set();
 const followBatchScansInFlight = new Set();
+// Runtime-only exact-owner tombstones; never persist source text in diagnostics.
+const rejectedFollowBatches = new Map();
 let followBatchSanitizerModulePromise = null;
 let visualScannerLifecycle = 0;
 
@@ -1107,9 +1113,83 @@ function followOwnerStillCurrent(set, chat) {
     const owner = set?.owner;
     const message = Array.isArray(chat) ? chat[owner?.messageIndex] : null;
     const swipeId = Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
-    return !!owner && message === owner.message
+    return !!owner && owner.chatKey === getCurrentChatKey(Array.isArray(chat) ? chat : [])
+        && message === owner.message
         && swipeId === owner.swipeId
         && rabbitMirrorMultifaceSourceHash(message?.mes || '') === owner.sourceHash;
+}
+
+export function getRabbitMirrorFollowBatchFailure(chat, messageIndex) {
+    const key = terminalFollowOwnerKey(chat, messageIndex);
+    const entry = rejectedFollowBatches.get(key);
+    if (!entry || !followOwnerStillCurrent(entry, chat)) return null;
+    return { ...entry.failure };
+}
+
+function clearFollowBatchFailure(chat, messageIndex) {
+    const key = terminalFollowOwnerKey(chat, messageIndex);
+    const entry = rejectedFollowBatches.get(key);
+    entry?.notice?.remove?.();
+    rejectedFollowBatches.delete(key);
+}
+
+function followMultifaceRejection(code, terminalFace, message) {
+    const error = new Error(String(message || '本批兔子镜未通过净化后检查。'));
+    error.rabbitMirrorFollowRejection = true;
+    error.code = String(code || 'multiface-sanitized-invalid');
+    error.terminalFace = Number.isInteger(terminalFace) ? terminalFace : null;
+    return error;
+}
+
+function rejectFollowBatch(set, chat, error) {
+    if (!followOwnerStillCurrent(set, chat)) return false;
+    const key = terminalFollowOwnerKey(chat, set.owner.messageIndex);
+    clearFollowBatchFailure(chat, set.owner.messageIndex);
+    const failure = {
+        kind: 'follow-multiface-rejected',
+        chatKey: set.owner.chatKey,
+        messageIndex: Number(set.owner.messageIndex),
+        swipeId: set.owner.swipeId,
+        sourceHash: String(set.owner.sourceHash || ''),
+        batchId: String(set.batchId || ''),
+        operationId: String(set.identity?.operationId || ''),
+        code: String(error.code || 'multiface-sanitized-invalid'),
+        terminalFace: error.terminalFace,
+        expectedFaceCount: set.faces.length,
+        requestCount: 1,
+        message: String(error.message || '本批兔子镜未通过净化后检查。'),
+    };
+    const entry = { owner: { ...set.owner }, failure, notice: null };
+    // A rejection never mounts any partial prepared face or changes message.mes.
+    // Only hide a whole rendered batch when its original/display titles prove
+    // the exact source owner; absent or ambiguous host DOM is not borrowed.
+    const scopes = exactMessageScopes(chat, set.owner.messageIndex);
+    const proven = scopes.map(scope => ({ scope, matched: matchRenderedFollowFaces(scope, set, error.preparedFaces) }))
+        .filter(item => item.matched);
+    if (proven.length === 1) {
+        const { matched } = proven[0];
+        for (const item of matched) {
+            clearSanitizedRabbitMirrorFaceProof(item.root);
+            item.root.remove();
+        }
+    }
+    const noticeScope = proven.length === 1 ? proven[0].scope : scopes.length === 1 ? scopes[0] : null;
+    if (noticeScope) {
+        const notice = document.createElement('div');
+        notice.setAttribute('data-rabbit-mirror-follow-failure', 'true');
+        notice.setAttribute('role', 'status');
+        notice.textContent = `兔子镜本批生成失败${failure.terminalFace ? `（第 ${failure.terminalFace}/${failure.expectedFaceCount} 面）` : ''}：${failure.message} 本轮只发送了 1 次请求，不会自动重发。`;
+        noticeScope.appendChild(notice);
+        entry.notice = notice;
+    }
+    if (rejectedFollowBatches.size >= 32) rejectedFollowBatches.delete(rejectedFollowBatches.keys().next().value);
+    rejectedFollowBatches.set(key, entry);
+    releaseRabbitMirrorFollowBatch({ batchId: set.batchId, operationId: set.identity?.operationId });
+    terminalFollowMessageIndexes.delete(key);
+    try {
+        globalThis.dispatchEvent?.(new CustomEvent(FOLLOW_MULTIFACE_REJECTED_EVENT, { detail: { ...failure } }));
+    } catch {}
+    return true;
 }
 
 const FOLLOW_TOTO_SELECTOR = 'toto[data-rabbit-mirror="true"]';
@@ -1144,17 +1224,30 @@ function topLevelFollowTotos(scope) {
 }
 
 function sourceFaceTitle(face) {
-    const stripped = stripTags(face?.summaryHtml || '');
-    if (typeof document === 'undefined') return normalizedText(stripped);
-    const decoder = document.createElement('textarea');
-    decoder.innerHTML = stripped;
-    return normalizedText(decoder.value || decoder.textContent || '');
+    if (typeof document === 'undefined') return normalizedText(stripTags(face?.summaryHtml || ''));
+    const template = document.createElement('template');
+    template.innerHTML = String(face?.html || '');
+    const details = directDetailsChild(templateSingleFollowRoot(template));
+    return details ? renderedSummaryText(details) : '';
 }
 
-function matchRenderedFollowFaces(scope, set) {
+const followPresentationFormatsById = new Map(PRESENTATION_FORMATS.map(item => [String(item.id), item]));
+function followSelectedFormatDescriptors(metadata = {}) {
+    const external = new Map((Array.isArray(metadata.formatDescriptors) ? metadata.formatDescriptors : []).slice(0, 8)
+        .filter(item => item && typeof item.id === 'string' && item.id.startsWith('ext:')).map(item => [item.id, item]));
+    return (Array.isArray(metadata.formatIds) ? metadata.formatIds : []).map(id => {
+        const builtin = followPresentationFormatsById.get(String(id));
+        if (builtin) return { id: String(id), title: String(builtin.title || ''), summary: String(builtin.summary || ''), tags: Array.isArray(builtin.tags) ? [...builtin.tags] : [] };
+        const item = external.get(String(id));
+        return { id: String(id), title: String(item?.title || '').slice(0, 160), summary: String(item?.summary || '').slice(0, 210), tags: Array.isArray(item?.tags) ? item.tags.filter(tag => typeof tag === 'string').slice(0, 4).map(tag => tag.slice(0, 64)) : [] };
+    });
+}
+
+function matchRenderedFollowFaces(scope, set, preparedFaces = null) {
     const faces = Array.isArray(set?.faces) ? set.faces : [];
     const titles = faces.map(sourceFaceTitle);
     if (titles.some(title => !title) || new Set(titles).size !== titles.length) return null;
+    const displayTitles = faces.map((face, index) => preparedFaces?.[index]?.expectedTitle || titles[index]);
     const candidates = topLevelFollowTotos(scope)
         .map(root => ({ root, details: directDetailsChild(root) }))
         .filter(item => item.details && scope.contains(item.root));
@@ -1163,7 +1256,8 @@ function matchRenderedFollowFaces(scope, set) {
     const matched = [];
     const used = new Set();
     for (let faceIndex = 0; faceIndex < faces.length; faceIndex += 1) {
-        const matches = candidates.filter(item => !used.has(item.root) && renderedSummaryText(item.details) === titles[faceIndex]);
+        const matches = candidates.filter(item => !used.has(item.root)
+            && [titles[faceIndex], displayTitles[faceIndex]].includes(renderedSummaryText(item.details)));
         if (matches.length !== 1) return null;
         used.add(matches[0].root);
         matched.push({ ...matches[0], sourceFace: faces[faceIndex], faceIndex });
@@ -1189,7 +1283,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.8-visualstream8-boundary1').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.18-audit1c2').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
@@ -1223,37 +1317,75 @@ function rollbackMountedFollowFaces(prepared) {
     }
 }
 
-async function sanitizeAndMountFollowFaces(scope, set, sanitizer) {
+function prepareFollowFaces(set, sanitizer) {
     if (!sanitizer?.sanitizeRabbitMirrorUntrustedTemplate
+        || !sanitizer?.compactTotoBlock
         || !sanitizer?.isolateRabbitMirrorInteractionIds
         || !sanitizer?.refreshRabbitMirrorToolsInScope) return null;
-    const matched = matchRenderedFollowFaces(scope, set);
-    if (!matched) return null;
-
     const prepared = [];
-    for (const item of matched) {
+    for (let faceIndex = 0; faceIndex < set.faces.length; faceIndex += 1) {
+        const sourceFace = set.faces[faceIndex];
         const template = document.createElement('template');
-        template.innerHTML = String(item.sourceFace?.html || '');
-        if (!sanitizer.sanitizeRabbitMirrorUntrustedTemplate(template)) return null;
+        template.innerHTML = String(sourceFace?.html || '');
+        // This entry point handles newly generated source only, never trusted
+        // prepared history. A model cannot declare its own runtime CSS scope.
+        if (template.content.querySelector('[data-rabbit-mirror-css-scope]')) {
+            throw followMultifaceRejection('multiface-untrusted-css-scope', faceIndex + 1,
+                '生成内容携带了保留的样式隔离标记；本批结果不会保存。');
+        }
+        // Rebuild from the proven source, including the same per-mirror CSS and
+        // keyframe isolation as independent output, before the common sanitizer.
+        template.innerHTML = sanitizer.compactTotoBlock(String(sourceFace?.html || ''));
+        if (!sanitizer.sanitizeRabbitMirrorUntrustedTemplate(template)) {
+            throw followMultifaceRejection('multiface-sanitizer-rejected', faceIndex + 1,
+                '这一面未通过安全净化；本批结果不会保存。');
+        }
         const newRoot = templateSingleFollowRoot(template);
         const newDetails = directDetailsChild(newRoot);
-        const expectedTitle = sourceFaceTitle(item.sourceFace);
-        if (!newRoot || !newDetails || !isUsableSanitizedDetails(newDetails)
-            || renderedSummaryText(newDetails) !== expectedTitle) return null;
-        if (item.sourceFace?.metadata?.tarotRules === true
-            && !hasRequiredTarotEntityImage(newRoot.outerHTML || '')) return null;
-        if (item.details.open) newDetails.open = true;
-        else newDetails.removeAttribute('open');
-        prepared.push({
-            ...item,
-            expectedTitle,
-            newRoot,
-            newDetails,
-            parent: item.root.parentNode,
-            oldRoot: item.root,
-            sourceHash: rabbitMirrorMultifaceSourceHash(item.sourceFace.html),
+        if (!newRoot || !newDetails || !isUsableSanitizedDetails(newDetails)) {
+            throw followMultifaceRejection('multiface-sanitized-invalid', faceIndex + 1,
+                '净化后缺少独立完整的标题或内容；本批结果不会保存。');
+        }
+        // Match the actual TextNode-filtered DOM, not a flattened title string:
+        // a banned phrase spanning <b>/<span> nodes must not become a new match.
+        const expectedTitle = renderedSummaryText(newDetails);
+        const item = { sourceFace, faceIndex, expectedTitle, newRoot, newDetails,
+            sourceHash: rabbitMirrorMultifaceSourceHash(sourceFace.html) };
+        prepared.push(item);
+        if (!expectedTitle || prepared.slice(0, -1).some(other => other.expectedTitle === expectedTitle)) {
+            const error = followMultifaceRejection(!expectedTitle ? 'multiface-sanitized-empty-summary' : 'multiface-sanitized-duplicate-summary',
+                faceIndex + 1, '过滤后出现空标题或相同标题，无法确认每面的身份；本批结果不会保存。');
+            error.preparedFaces = prepared;
+            throw error;
+        }
+        const scan = scanRabbitMirrorHtml(newRoot.outerHTML, null);
+        const metadata = sourceFace?.metadata || {};
+        const quality = evaluateIndependentPostSanitizeQuality(newRoot.outerHTML, {
+            ...metadata,
+            interactionFamily: scan?.interactionFamily || null,
+            riskFlags: Array.isArray(scan?.riskFlags) ? scan.riskFlags : [],
+            selectedFormats: followSelectedFormatDescriptors(metadata),
         });
+        if (!quality.ok) {
+            const error = followMultifaceRejection(quality.code, faceIndex + 1, quality.message);
+            error.preparedFaces = prepared;
+            throw error;
+        }
     }
+    return prepared;
+}
+
+function sanitizeAndMountFollowFaces(scope, set, sanitizer, preparedFaces = null) {
+    const detached = preparedFaces || prepareFollowFaces(set, sanitizer);
+    if (!detached) return null;
+    const matched = matchRenderedFollowFaces(scope, set, detached);
+    if (!matched) return null;
+    const prepared = matched.map((item, index) => {
+        const safe = detached[index];
+        if (item.details.open) safe.newDetails.open = true;
+        else safe.newDetails.removeAttribute('open');
+        return { ...item, ...safe, parent: item.root.parentNode, oldRoot: item.root };
+    });
 
     if (prepared.length !== set.faces.length || prepared.some(item => !item.parent || !item.oldRoot.isConnected)) return null;
     let mounted = 0;
@@ -1296,14 +1428,16 @@ async function sanitizeAndMountFollowFaces(scope, set, sanitizer) {
     }
 }
 
-async function provenRenderedFollowFaces(set, chat, sanitizer) {
+function provenRenderedFollowFaces(set, chat, sanitizer) {
     const messageIndex = set?.owner?.messageIndex;
     if (!set || !Array.isArray(set.faces) || set.faces.length < 2 || set.faces.length > 5) return null;
     if (!followOwnerStillCurrent(set, chat)) return null;
+    const prepared = prepareFollowFaces(set, sanitizer);
+    if (!prepared) return null;
     const scopes = exactMessageScopes(chat, messageIndex)
-        .filter(scope => !!matchRenderedFollowFaces(scope, set));
+        .filter(scope => !!matchRenderedFollowFaces(scope, set, prepared));
     if (scopes.length !== 1) return null;
-    return sanitizeAndMountFollowFaces(scopes[0], set, sanitizer);
+    return sanitizeAndMountFollowFaces(scopes[0], set, sanitizer, prepared);
 }
 
 async function scanFollowBatches(chat, lifecycle = visualScannerLifecycle) {
@@ -1314,6 +1448,11 @@ async function scanFollowBatches(chat, lifecycle = visualScannerLifecycle) {
     for (const set of sets) {
         if (lifecycle !== visualScannerLifecycle) break;
         if (followBatchScansInFlight.has(set.batchId)) continue;
+        const previousFailure = getRabbitMirrorFollowBatchFailure(chat, set.owner.messageIndex);
+        if (previousFailure?.batchId === set.batchId) continue;
+        if (rejectedFollowBatches.has(terminalFollowOwnerKey(chat, set.owner.messageIndex))) {
+            clearFollowBatchFailure(chat, set.owner.messageIndex);
+        }
         followBatchScansInFlight.add(set.batchId);
         const attemptKey = `${set.batchId}\u0000${set.owner.sourceHash}`;
         const attempts = Number(followBatchScanAttempts.get(attemptKey) || 0) + 1;
@@ -1322,11 +1461,13 @@ async function scanFollowBatches(chat, lifecycle = visualScannerLifecycle) {
         }
         followBatchScanAttempts.set(attemptKey, attempts);
         try {
-            const rendered = await provenRenderedFollowFaces(set, chat, sanitizer);
-            if (!rendered) continue;
+            // Detached preparation, exact-owner mount and aggregate commit stay
+            // in one task; do not yield after mounting before owner validation.
+            const rendered = provenRenderedFollowFaces(set, chat, sanitizer);
+            if (!rendered || lifecycle !== visualScannerLifecycle || !followOwnerStillCurrent(set, chat)) continue;
             const scans = rendered.map(({ sourceFace, root }, faceIndex) => ({
                 faceIndex,
-                ...scanRabbitMirrorHtml(sourceFace.html, root),
+                ...scanRabbitMirrorHtml(root.outerHTML, root),
             }));
             if (scans.length !== set.faces.length) continue;
             if (commitRabbitMirrorFollowBatch(set.batchId, chat, scans, set.owner)) {
@@ -1341,6 +1482,13 @@ async function scanFollowBatches(chat, lifecycle = visualScannerLifecycle) {
                 const feedbackResult = consumeInjectedFeedbackForSuccessfulRabbitMirror(set.owner.message);
                 if (feedbackResult?.consumed) console.debug('[RabbitMirror] feedback cat consumed:', feedbackResult.remainingRounds);
                 console.debug('[RabbitMirror] follow multiface visual batch committed:', set.batchId, scans.length);
+            }
+        } catch (error) {
+            if (error?.rabbitMirrorFollowRejection && lifecycle === visualScannerLifecycle) {
+                rejectFollowBatch(set, chat, error);
+                followBatchScanAttempts.delete(attemptKey);
+            } else {
+                console.debug('[RabbitMirror] follow multiface preparation unavailable:', error);
             }
         } finally {
             followBatchScansInFlight.delete(set.batchId);
@@ -1427,7 +1575,12 @@ async function scanLatestAssistantMessage(mod) {
     lastScanAttempts += 1;
 
     const renderedToto = findRenderedToto(message, chat, message.mes);
-    const result = scanRabbitMirrorHtml(sourceForScan, renderedToto);
+    if (!renderedToto) return;
+    const bannedWords = getSettings()?.rabbitMirrorBannedWords;
+    if (renderedToto && Array.isArray(bannedWords) && bannedWords.length) {
+        applyRabbitMirrorBannedWordsToDom(renderedToto, bannedWords);
+    }
+    const result = scanRabbitMirrorHtml(renderedToto.outerHTML, renderedToto);
     const signature = result?.signature || '';
     const skeleton = result?.skeleton || '';
     const riskFlags = Array.isArray(result?.riskFlags) ? result.riskFlags : [];
@@ -1466,6 +1619,8 @@ export function destroyVisualScanner() {
     followBatchScanAttempts.clear();
     terminalFollowMessageIndexes.clear();
     followBatchScansInFlight.clear();
+    for (const entry of rejectedFollowBatches.values()) entry.notice?.remove?.();
+    rejectedFollowBatches.clear();
     if (globalThis.__rabbitMirrorVisualScannerCleanup === destroyVisualScanner) delete globalThis.__rabbitMirrorVisualScannerCleanup;
 }
 

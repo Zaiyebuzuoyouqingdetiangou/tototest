@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.8-visualstream8-boundary1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.8-visualstream8-boundary1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.18-audit1c2';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.18-audit1c2';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -16,8 +16,17 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.5.8-visualstream8-boundary1';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.8-visualstream8-boundary1';
+} from './storage.js?rmv=1.5.18-audit1c2';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.18-audit1c2';
+import {
+    chooseExternalSource,
+    externalPoolActive,
+    externalPoolHasAvailable,
+    externalPoolItem,
+    getExternalPoolSnapshot,
+    pickExternalItems,
+    sourceMixModeIsExternalOnly,
+} from './externalWorldBook/externalPool.js?rmv=1.5.18-audit1c2';
 
 function randomUnit() {
     try {
@@ -395,6 +404,120 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
     return shuffle(workingPool).slice(0, Math.max(1, Math.min(count, workingPool.length)));
 }
 
+function sourceAwareThemeSample({ settings, pool, count, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, externalHardExcludedIds = [] }) {
+    if (!externalPoolActive(settings, 'theme')) {
+        return weightedThemeSample(pool, count, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys);
+    }
+    const target = Math.max(0, Number(count) || 0);
+    const sourceKinds = [];
+    const builtinAvailable = pool.length > 0;
+    for (let index = 0; index < target; index += 1) {
+        sourceKinds.push(chooseExternalSource(settings, 'theme', randomUnit, builtinAvailable) ? 'external' : 'builtin');
+    }
+    const builtinCount = sourceKinds.filter(kind => kind === 'builtin').length;
+    const externalCount = sourceKinds.length - builtinCount;
+    let builtins = builtinCount
+        ? weightedThemeSample(pool, builtinCount, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys)
+        : [];
+    let externals = externalCount
+        ? pickExternalItems(settings, 'theme', externalCount, {
+            randomUnit,
+            recentIds,
+            hardExcludedIds: [...hardExcludedIds, ...externalHardExcludedIds],
+            avoidRepeat,
+        })
+        : [];
+
+    if (externals.length < externalCount && !sourceMixModeIsExternalOnly(settings)) {
+        const deficit = externalCount - externals.length;
+        const extraHard = [...hardExcludedIds, ...builtins.map(item => item.id)];
+        builtins = [...builtins, ...weightedThemeSample(pool, deficit, recentIds, recentGroups, avoidRepeat, extraHard, favoriteIds, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys)];
+    }
+    if (builtins.length < builtinCount) {
+        const deficit = builtinCount - builtins.length;
+        externals = [...externals, ...pickExternalItems(settings, 'theme', deficit, {
+            randomUnit,
+            recentIds,
+            hardExcludedIds: [...hardExcludedIds, ...externalHardExcludedIds, ...externals.map(item => item.id)],
+            avoidRepeat,
+        })];
+    }
+
+    const builtinQueue = [...builtins];
+    const externalQueue = [...externals];
+    const selected = [];
+    for (const kind of sourceKinds) {
+        const next = kind === 'external' ? externalQueue.shift() : builtinQueue.shift();
+        if (next) selected.push(next);
+    }
+    selected.push(...builtinQueue, ...externalQueue);
+    return uniqueById(selected).slice(0, target);
+}
+
+function sourceAwareFormatSample({ settings, pool, count, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, eligibleMisses, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, groupCooldownEnabled, externalHardExcludedIds = [] }) {
+    if (!externalPoolActive(settings, 'format')) {
+        return weightedSample(pool, count, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, eligibleMisses, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, groupCooldownEnabled);
+    }
+    const target = Math.max(0, Number(count) || 0);
+    const sourceKinds = [];
+    const builtinAvailable = pool.length > 0;
+    for (let index = 0; index < target; index += 1) {
+        sourceKinds.push(chooseExternalSource(settings, 'format', randomUnit, builtinAvailable) ? 'external' : 'builtin');
+    }
+    const builtinCount = sourceKinds.filter(kind => kind === 'builtin').length;
+    const externalCount = sourceKinds.length - builtinCount;
+    let builtinSample = builtinCount
+        ? weightedSample(pool, builtinCount, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, eligibleMisses, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, groupCooldownEnabled)
+        : { selected: [], eligibleIds: [] };
+    let externals = externalCount
+        ? pickExternalItems(settings, 'format', externalCount, {
+            randomUnit,
+            recentIds,
+            hardExcludedIds: [...hardExcludedIds, ...externalHardExcludedIds],
+            avoidRepeat,
+        })
+        : [];
+
+    if (externals.length < externalCount && !sourceMixModeIsExternalOnly(settings)) {
+        const deficit = externalCount - externals.length;
+        const extraHard = [...hardExcludedIds, ...builtinSample.selected.map(item => item.id)];
+        const extra = weightedSample(pool, deficit, recentIds, recentGroups, avoidRepeat, extraHard, favoriteIds, eligibleMisses, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, groupCooldownEnabled);
+        builtinSample = { selected: [...builtinSample.selected, ...extra.selected], eligibleIds: [...new Set([...builtinSample.eligibleIds, ...extra.eligibleIds])] };
+    }
+    if (builtinSample.selected.length < builtinCount) {
+        const deficit = builtinCount - builtinSample.selected.length;
+        externals = [...externals, ...pickExternalItems(settings, 'format', deficit, {
+            randomUnit,
+            recentIds,
+            hardExcludedIds: [...hardExcludedIds, ...externalHardExcludedIds, ...externals.map(item => item.id)],
+            avoidRepeat,
+        })];
+    }
+
+    const builtinQueue = [...builtinSample.selected];
+    const externalQueue = [...externals];
+    const selected = [];
+    for (const kind of sourceKinds) {
+        const next = kind === 'external' ? externalQueue.shift() : builtinQueue.shift();
+        if (next) selected.push(next);
+    }
+    selected.push(...builtinQueue, ...externalQueue);
+    return {
+        selected: uniqueById(selected).slice(0, target),
+        // Fairness bookkeeping remains strictly builtin; external entries do not participate
+        // in the builtin eligible-miss state.
+        eligibleIds: builtinSample.eligibleIds,
+    };
+}
+
+function randomCandidateAvailable(settings, kind, builtinPool, usedIds = new Set()) {
+    const builtinAvailable = builtinPool.some(item => !usedIds.has(item.id));
+    if (!externalPoolActive(settings, kind)) return builtinAvailable;
+    const externalAvailable = externalPoolHasAvailable(kind, [...usedIds]);
+    if (sourceMixModeIsExternalOnly(settings)) return externalAvailable;
+    return builtinAvailable || externalAvailable;
+}
+
 function getCurrentTurnUserMessage(chatOverride = null) {
     try {
         const context = globalThis.SillyTavern?.getContext?.() || {};
@@ -679,7 +802,7 @@ function getVisualSceneryFormat() {
     return PRESENTATION_FORMATS.find(item => item.id === '10.2.2' || normalizeText(item.title) === normalizeText('Visual Scenery')) || null;
 }
 
-function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, themeCount, formatCount, recent, formalRecent, hardRecent, previousThemeFamilyKeys = [], previousFormatFamilyKeys = [], favoriteThemeIds, favoriteFormatIds, favoriteThemeMultipliers, favoriteFormatMultipliers, formatEligibleMisses }) {
+function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, themeCount, formatCount, recent, formalRecent, hardRecent, previousThemeFamilyKeys = [], previousFormatFamilyKeys = [], favoriteThemeIds, favoriteFormatIds, favoriteThemeMultipliers, favoriteFormatMultipliers, formatEligibleMisses, externalExcludedThemeIds = [], externalExcludedFormatIds = [] }) {
     if (directive?.disabled) return { disabled: true, directive };
     const themeFamilyHitMap = recentFamilyHits(recent.themeIdHits, themeFamilyKey);
     // 格式兄弟家族只参考既有正式提交记录；失败 attempt 仍参与 exact 防重，
@@ -688,19 +811,21 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
 
     const pickedThemes = directive?.hasThemeRequest
         ? []
-        : weightedThemeSample(
-            themePool,
-            themeCount,
-            recent.themeIds,
-            recent.themeGroups,
-            settings.avoidRepeat,
-            hardRecent.themeIds,
-            favoriteThemeIds,
-            favoriteThemeMultipliers,
-            recent.themeGroupHits,
-            themeFamilyHitMap,
-            previousThemeFamilyKeys,
-        );
+        : sourceAwareThemeSample({
+            settings,
+            pool: themePool,
+            count: themeCount,
+            recentIds: recent.themeIds,
+            recentGroups: recent.themeGroups,
+            avoidRepeat: settings.avoidRepeat,
+            hardExcludedIds: hardRecent.themeIds,
+            favoriteIds: favoriteThemeIds,
+            favoriteMultipliers: favoriteThemeMultipliers,
+            recentGroupHitMap: recent.themeGroupHits,
+            recentFamilyHitMap: themeFamilyHitMap,
+            immediateFamilyKeys: previousThemeFamilyKeys,
+            externalHardExcludedIds: externalExcludedThemeIds,
+        });
     // 这里只提前组装最终主题，不省略 format_only 原有的主题随机抽数。
     // 与 Prompt 的 IF 判据一致：只认已选主题的显式 tag，不猜标题或编号。
     const formatOnly = settings.samplingMode === 'format_only';
@@ -711,21 +836,39 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
         Array.isArray(item?.tags) && item.tags.some(tag => String(tag || '').trim().toLowerCase() === 'if'));
     const formatSample = directive?.hasFormatRequest
         ? { selected: [], eligibleIds: [] }
-        : weightedSample(
-            formatPool,
-            formatCount,
-            recent.formatIds,
-            formalRecent?.formatGroups || [],
-            settings.avoidRepeat,
-            hardRecent.formatIds,
-            favoriteFormatIds,
-            formatEligibleMisses,
-            favoriteFormatMultipliers,
-            formalRecent?.formatGroupHits || {},
-            formatFamilyHitMap,
-            previousFormatFamilyKeys,
-            formatGroupCooldownEnabled,
-        );
+        : settings.forceVisualScenery
+            ? weightedSample(
+                formatPool,
+                formatCount,
+                recent.formatIds,
+                formalRecent?.formatGroups || [],
+                settings.avoidRepeat,
+                hardRecent.formatIds,
+                favoriteFormatIds,
+                formatEligibleMisses,
+                favoriteFormatMultipliers,
+                formalRecent?.formatGroupHits || {},
+                formatFamilyHitMap,
+                previousFormatFamilyKeys,
+                formatGroupCooldownEnabled,
+            )
+            : sourceAwareFormatSample({
+                settings,
+                pool: formatPool,
+                count: formatCount,
+                recentIds: recent.formatIds,
+                recentGroups: formalRecent?.formatGroups || [],
+                avoidRepeat: settings.avoidRepeat,
+                hardExcludedIds: hardRecent.formatIds,
+                favoriteIds: favoriteFormatIds,
+                eligibleMisses: formatEligibleMisses,
+                favoriteMultipliers: favoriteFormatMultipliers,
+                recentGroupHitMap: formalRecent?.formatGroupHits || {},
+                recentFamilyHitMap: formatFamilyHitMap,
+                immediateFamilyKeys: previousFormatFamilyKeys,
+                groupCooldownEnabled: formatGroupCooldownEnabled,
+                externalHardExcludedIds: externalExcludedFormatIds,
+            });
     const pickedFormats = formatSample.selected;
     const visualSceneryFormat = getVisualSceneryFormat();
     const forcedFormats = settings.forceVisualScenery && visualSceneryFormat ? [visualSceneryFormat] : [];
@@ -801,6 +944,8 @@ function directiveScopeKey(directive, settings) {
         settings.themesMax,
         settings.formatsMin,
         settings.formatsMax,
+        settings.externalWorldBookRandomEnabled === true ? 'external-on' : 'external-off',
+        String(settings.externalWorldBookMixMode || 'builtin-only'),
         directiveRandomPreferenceScopeKey(settings),
     ].join('|');
     return hashText(`${directive.messageKey}|${directive.rawDirective}|${config}`);
@@ -844,6 +989,8 @@ function batchRandomSettingsKey(settings, total, favorites, exclusions, directiv
         cooldownRounds: settings.cooldownRounds || 10,
         userDirectivePriority: !!settings.userDirectivePriority,
         forceVisualScenery: !!settings.forceVisualScenery,
+        externalWorldBookRandomEnabled: settings.externalWorldBookRandomEnabled === true,
+        externalWorldBookMixMode: String(settings.externalWorldBookMixMode || 'builtin-only'),
         blacklistEnabled: settings.blacklistEnabled !== false,
         blacklistedThemeIds: sortedIds(settings.blacklistedThemeIds),
         blacklistedFormatIds: sortedIds(settings.blacklistedFormatIds),
@@ -943,6 +1090,8 @@ function planBatchFace(settings, snapshot, usedThemeIds, usedFormatIds, counts =
         favoriteThemeMultipliers: snapshot.favorites.themeMultipliers,
         favoriteFormatMultipliers: snapshot.favorites.formatMultipliers,
         formatEligibleMisses: snapshot.formatEligibleMisses,
+        externalExcludedThemeIds: [...usedThemeIds],
+        externalExcludedFormatIds: [...usedFormatIds],
     });
     return { result, payload: { combo: comboFromSelection(result, settings, snapshot.recent), last: snapshot.last, directive: snapshot.directive || null } };
 }
@@ -1024,8 +1173,8 @@ function pickLiveCombinationBatch(settings, planning, faceCount) {
     const needsRandomFormats = !settings.forceVisualScenery && !snapshot.directive?.hasFormatRequest;
     const results = [];
     for (let faceIndex = 0; faceIndex < faceCount; faceIndex += 1) {
-        if ((needsRandomThemes && !snapshot.themePool.some(item => !usedThemeIds.has(item.id))) ||
-            (needsRandomFormats && !snapshot.formatPool.some(item => !usedFormatIds.has(item.id)))) {
+        if ((needsRandomThemes && !randomCandidateAvailable(settings, 'theme', snapshot.themePool, usedThemeIds)) ||
+            (needsRandomFormats && !randomCandidateAvailable(settings, 'format', snapshot.formatPool, usedFormatIds))) {
             throw multiFacePlanningError(`当前候选池不足以抽取 ${faceCount} 面不同的随机内容；请调整黑名单或面数，本次尚未发送请求。`);
         }
         const selected = planBatchFace(settings, snapshot, usedThemeIds, usedFormatIds);
@@ -1059,14 +1208,22 @@ export function pickCombinationForMultifaceResay(settings, resay) {
     if (Number(face?.customThemeCount || 0) > 0 || Number(face?.customFormatCount || 0) > 0 || Number(face?.customRequestCount || 0) > 0) {
         throw multiFacePlanningError('原面包含未入库的自定义点菜，仅凭面元数据无法安全还原；请重新选择整批生成。');
     }
-    const resolveIds = (ids, pool) => {
+    const externalSnapshot = getExternalPoolSnapshot();
+    const resolveIds = (ids, pool, kind) => {
         if (!Array.isArray(ids) || ids.length > 16) throw multiFacePlanningError('原面抽取记录不完整，不能静默更换选题。');
-        const selected = ids.map(id => pool.find(item => item.id === id));
+        const externalLibraries = kind === 'format' ? externalSnapshot.formatsByLibrary : externalSnapshot.themesByLibrary;
+        const selected = ids.map(id => {
+            if (typeof id !== 'string' || !id.startsWith('ext:')) return pool.find(item => item.id === id);
+            // Re-say is an exact selection, not another random draw. The ID-only
+            // constructor cannot prove membership: use the current eligible pool.
+            if (!externalLibraries.some(library => library.ids.includes(id))) return null;
+            return externalPoolItem(id, kind);
+        });
         if (selected.some(item => !item)) throw multiFacePlanningError('原面使用的库条目已不存在，不能静默更换选题。');
         return selected;
     };
-    const themes = resolveIds(face?.themeIds, THEMATIC_CATEGORIES);
-    const formats = resolveIds(face?.formatIds, PRESENTATION_FORMATS);
+    const themes = resolveIds(face?.themeIds, THEMATIC_CATEGORIES, 'theme');
+    const formats = resolveIds(face?.formatIds, PRESENTATION_FORMATS, 'format');
     if (!themes.length && !formats.length) throw multiFacePlanningError('原面只有自定义指令，缺少可复用抽取记录；请重新选择整批生成。');
     const selectedSettings = { ...settings, samplingMode: face.samplingMode || settings.samplingMode, forceVisualScenery: face.forcedVisualScenery === true };
     return { combo: comboFromSelection({ themes, formats }, selectedSettings, getRecentIds(settings.cooldownRounds || 10)), directive: null, last: null };
@@ -1101,8 +1258,8 @@ export function pickCombinationBatch(settings, generationScopeKey = '', generati
     const wantsThemes = settings.samplingMode !== 'format_only';
     if (usedFormatIds.size && (!wantsThemes || usedThemeIds.size)) {
         for (let index = 1; index < faceCount; index += 1) {
-            if (!snapshot.formatPool.some(item => !usedFormatIds.has(item.id)) ||
-                (wantsThemes && !snapshot.themePool.some(item => !usedThemeIds.has(item.id)))) break;
+            if (!randomCandidateAvailable(settings, 'format', snapshot.formatPool, usedFormatIds) ||
+                (wantsThemes && !randomCandidateAvailable(settings, 'theme', snapshot.themePool, usedThemeIds))) break;
             const next = planBatchFace(settings, snapshot, usedThemeIds, usedFormatIds);
             if (!next.payload.combo.formatIds.length || (wantsThemes && !next.payload.combo.themeIds.length)) break;
             faces.push(next.payload);

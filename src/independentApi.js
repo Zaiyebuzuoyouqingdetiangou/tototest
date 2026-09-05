@@ -1,18 +1,20 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.8-visualstream8-boundary1';
-import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.8-visualstream8-boundary1';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.5.8-visualstream8-boundary1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.8-visualstream8-boundary1';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.8-visualstream8-boundary1';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.8-visualstream8-boundary1';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.8-visualstream8-boundary1';
-import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.8-visualstream8-boundary1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.8-visualstream8-boundary1';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.8-visualstream8-boundary1';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.8-visualstream8-boundary1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.8-visualstream8-boundary1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.18-audit1c2';
+import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.18-audit1c2';
+import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.18-audit1c2';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.18-audit1c2';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.18-audit1c2';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.18-audit1c2';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.18-audit1c2';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.18-audit1c2';
+import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.18-audit1c2';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.18-audit1c2';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.18-audit1c2';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.18-audit1c2';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.18-audit1c2';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.18-audit1c2';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
-const RUNTIME_VERSION = '1.5.8';
+const RUNTIME_VERSION = '1.5.18';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -129,12 +131,35 @@ const pending = new Map();
 const automaticFailureStops = new Map();
 const AUTOMATIC_FAILURE_STOP_LIMIT = 320;
 function automaticFailureKey(slot='',sourceHash=''){ return flightIdentity(String(slot||''),String(sourceHash||'')); }
-function hasAutomaticFailureStop(slot='',sourceHash=''){ return automaticFailureStops.has(automaticFailureKey(slot,sourceHash)); }
-function markAutomaticFailureStop(slot='',sourceHash='',reason=''){
- const key=automaticFailureKey(slot,sourceHash); if(!key) return;
+function automaticFailureStopFor(slot='',sourceHash=''){
+ const value=automaticFailureStops.get(automaticFailureKey(slot,sourceHash));
+ if(!value||typeof value!=='object') return null;
+ return value.operationEpoch===operationEpochForBase(value.baseSlot)?value:null;
+}
+function hasAutomaticFailureStop(slot='',sourceHash=''){ return !!automaticFailureStopFor(slot,sourceHash); }
+function markAutomaticFailureStop(slot='',sourceHash='',reason='',details={}){
+ const key=automaticFailureKey(slot,sourceHash); if(!key) return null;
+ const metadata=details&&typeof details==='object'?details:{};
+ const baseSlot=String(metadata.baseSlot||baseSlotOf(slot));
+ const message=String(metadata.message||reason||'独立 API 生成失败。').replace(/\u0000/g,'').trim().slice(0,2400);
+ const record={
+  baseSlot,
+  operationEpoch:Number.isSafeInteger(metadata.operationEpoch)&&metadata.operationEpoch>=1?metadata.operationEpoch:operationEpochForBase(baseSlot),
+  ts:Date.now(),
+  reason:String(reason||'generation-failed').slice(0,180),
+  message:message||'独立 API 生成失败。',
+  code:String(metadata.code||'').slice(0,120),
+  semanticFailure:String(metadata.semanticFailure||'').slice(0,120),
+  terminalStage:String(metadata.terminalStage||'').slice(0,120),
+  terminalFace:Number.isInteger(metadata.terminalFace)&&metadata.terminalFace>=1&&metadata.terminalFace<=5?metadata.terminalFace:undefined,
+  requestCount:metadata.requestCount===0||metadata.requestCount===1?metadata.requestCount:undefined,
+  protocolErrorCode:String(metadata.protocolErrorCode||'').replace(/[^a-z0-9-]/gi,'').slice(0,120),
+  protocolOffset:Number.isSafeInteger(metadata.protocolOffset)&&metadata.protocolOffset>=0?metadata.protocolOffset:undefined,
+ };
  automaticFailureStops.delete(key);
- automaticFailureStops.set(key,{ts:Date.now(),reason:String(reason||'').slice(0,180)});
+ automaticFailureStops.set(key,record);
  while(automaticFailureStops.size>AUTOMATIC_FAILURE_STOP_LIMIT){ automaticFailureStops.delete(automaticFailureStops.keys().next().value); }
+ return record;
 }
 function clearAutomaticFailureStop(slot='',sourceHash=''){ automaticFailureStops.delete(automaticFailureKey(slot,sourceHash)); }
 function clearAutomaticFailureStops(){ automaticFailureStops.clear(); }
@@ -2093,6 +2118,18 @@ function independentLocalPreflightFailure(error){
    'RABBIT_MIRROR_DISPATCH_LEASE_REJECTED',
    'RABBIT_MIRROR_BATCH_PLAN_REJECTED',
    'RABBIT_MIRROR_CONNECTION_PROFILE_REJECTED',
+   'RABBIT_MIRROR_EXTERNAL_PREFLIGHT_REJECTED',
+   'RABBIT_MIRROR_EXTERNAL_MATERIAL_MISSING',
+   'RABBIT_MIRROR_EXTERNAL_MATERIAL_INVALID',
+   'MULTIFACE_PLAN_UNAVAILABLE',
+   'WORLD_BOOK_NOT_FOUND',
+   'WORLD_BOOK_ENTRY_STATE_CONFLICT',
+   'WORLD_BOOK_ENTRY_CONTENT_INVALID',
+   'WORLD_BOOK_READ_FAILED',
+   'WORLD_BOOK_STORAGE_UNAVAILABLE',
+   'WORLD_BOOK_STORAGE_QUOTA',
+   'WORLD_BOOK_STORAGE_WRITE_FAILED',
+   'WORLD_BOOK_SCHEMA_UNSUPPORTED',
  ]);
  const seen=new Set(); let cursor=error;
  for(let depth=0;cursor && depth<4 && !seen.has(cursor);depth+=1){
@@ -2331,11 +2368,11 @@ export async function testIndependentConnection(){
 }
 function textFromContent(value){
  if(typeof value==='string') return value;
- if(Array.isArray(value)) return value.map(item=>{
-   if(typeof item==='string') return item;
-   return item?.text ?? item?.content ?? item?.output_text ?? item?.value ?? '';
- }).filter(Boolean).join('\n');
- if(value&&typeof value==='object') return String(value.text ?? value.content ?? value.output_text ?? value.value ?? '');
+ if(Array.isArray(value)) return value.map(textFromContent).filter(Boolean).join('\n');
+ if(value&&typeof value==='object'){
+  if(value.thought===true || /^(?:reasoning|reasoning_text|analysis|thinking|thought)$/i.test(String(value.type||''))) return '';
+  return String(value.text ?? value.content ?? value.output_text ?? value.value ?? '');
+ }
  return '';
 }
 function extractResponseText(payload){
@@ -2363,6 +2400,21 @@ function extractResponseText(payload){
  // A 200 response without ordinary content is handled as incomplete and requires a user retry.
  return '';
 }
+function independentStreamDeltaText(content){
+ if(Array.isArray(content)) return content.map(independentStreamDeltaText).join('');
+ return textFromContent(content);
+}
+function mergeIndependentStreamPayload(current='',payload=null){
+ const previous=String(current||'');
+ const delta=payload?.choices?.[0]?.delta;
+ // An explicit delta is append-only, including spaces and repeated tokens.
+ // Cumulative snapshots keep their separate, existing merge semantics.
+ if(delta&&typeof delta==='object'&&Object.prototype.hasOwnProperty.call(delta,'content')){
+  return previous+independentStreamDeltaText(delta.content);
+ }
+ const part=extractResponseText(payload);
+ return part?mergeIndependentStreamText(previous,part):previous;
+}
 function parseSsePayload(text=''){
  const state={payload:null,text:'',dataLines:[],done:false};
  const consumePayload=data=>{
@@ -2371,7 +2423,7 @@ function parseSsePayload(text=''){
   if(value==='[DONE]'){ state.done=true; return true; }
   try{
    const payload=JSON.parse(value); state.payload=payload;
-   const part=extractResponseText(payload); if(part) state.text=mergeIndependentStreamText(state.text,part);
+   state.text=mergeIndependentStreamPayload(state.text,payload);
    return true;
   }catch{return false;}
  };
@@ -2391,16 +2443,16 @@ function parseSsePayload(text=''){
   if(consumePayload(state.dataLines.join('\n'))) state.dataLines=[];
  }
  flush();
- return {payload:state.payload,text:state.text.trim(),done:state.done};
+ return {payload:state.payload,text:state.text,done:state.done};
 }
 function parseNdjsonPayload(text=''){
  let payload=null; let merged=''; let done=false;
  for(const line of String(text).split(/\r\n|\n|\r/)){
   const data=line.trim(); if(!data) continue;
   if(data==='[DONE]'){ done=true; continue; }
-  try{ payload=JSON.parse(data); const part=extractResponseText(payload); if(part) merged=mergeIndependentStreamText(merged,part); }catch{}
+   try{ payload=JSON.parse(data); merged=mergeIndependentStreamPayload(merged,payload); }catch{}
  }
- return {payload,text:merged.trim(),done};
+ return {payload,text:merged,done};
 }
 function mergeIndependentStreamText(current='',incoming=''){
  const previous=String(current||''); const next=String(incoming||'');
@@ -2418,7 +2470,7 @@ function incrementalIndependentStreamState(kind='sse'){
   if(value==='[DONE]'){ state.done=true; return true; }
   try{
    const payload=JSON.parse(value); state.payload=payload;
-   const part=extractResponseText(payload); if(part) state.text=mergeIndependentStreamText(state.text,part);
+   state.text=mergeIndependentStreamPayload(state.text,payload);
    return true;
   }catch{return false;}
  };
@@ -2458,7 +2510,7 @@ function incrementalIndependentStreamState(kind='sse'){
  return {
   state,
   push(text){ const chunk=String(text||''); if(chunk) state.rawChunks.push(chunk); state.lineBuffer+=chunk; drainLines(false); },
-  finish(){ drainLines(true); if(state.kind!=='ndjson') flushSseEvent(); return {raw:state.rawChunks.join(''),payload:state.payload,text:state.text.trim(),streamed:true}; },
+   finish(){ drainLines(true); if(state.kind!=='ndjson') flushSseEvent(); return {raw:state.rawChunks.join(''),payload:state.payload,text:state.text,streamed:true}; },
  };
 }
 async function readApiResponse(response,{expectedStream=false,signal=null,onProgress=null}={}){
@@ -2617,6 +2669,65 @@ function republishIndependentSemanticFailure(requestDiagnostic,semanticFailure,n
   semanticFailure:String(semanticFailure||'semantic-failure'),
   nextProfile:String(nextProfile||''),
   ...(extra&&typeof extra==='object'?extra:{}),
+  ts:Date.now(),
+ });
+}
+function independentRequestDiagnosticMatchesOwner(diagnostic,ctx,index,msg,sourceHash='',operationEpoch=0){
+ if(!diagnostic || typeof diagnostic!=='object') return false;
+ const expectedEpoch=Math.max(0,Number(operationEpoch)||0);
+ return String(diagnostic.chatKeyHash||'')===hashText(chatKey(ctx))
+  && Number(diagnostic.mesid)===Number(index)
+  && Number(diagnostic.swipe)===swipeId(msg)
+  && String(diagnostic.sourceHash||'')===String(sourceHash||'')
+  && (!expectedEpoch || Number(diagnostic.operationEpoch)===expectedEpoch);
+}
+function independentTerminalFailureDetails(error,diagnostic={}){
+ const message=String(error?.message||error||'独立 API 生成失败。');
+ const faceMatch=message.match(/第\s*(\d+)\s*面/);
+ const detail=error?.rabbitMirrorMultifaceDiagnostic||{};
+ const locatedFace=[detail.terminalFace,diagnostic.terminalFace,faceMatch?Number(faceMatch[1]):0].find(face=>Number.isInteger(face)&&face>=1&&face<=5)||0;
+ const protocolOffset=[detail.protocolOffset,diagnostic.protocolOffset].find(offset=>Number.isSafeInteger(offset)&&offset>=0);
+ const semanticFailure=String(diagnostic?.semanticFailure||'');
+ const code=String(error?.code||semanticFailure||(faceMatch?'multiface-face-rejected':'independent-generation-failed')).slice(0,120);
+ let terminalStage='postprocess';
+ if(/local-preflight|context-boundary|batch-plan|connection-profile/i.test(`${semanticFailure} ${code}`)) terminalStage='preflight';
+ else if(/transport|empty-stream|unparsed-stream|gateway-timeout|parameter-error|empty-content|error-payload|response-boundary/i.test(`${semanticFailure} ${code}`)) terminalStage='transport';
+ else if(/multiface|第\s*\d+\s*面/i.test(`${semanticFailure} ${code} ${message}`)) terminalStage='multiface-postprocess';
+ else if(/quality|sanitize|visual-program|empty-mirror-body|incomplete-mirror|truncated-output/i.test(`${semanticFailure} ${code}`)) terminalStage='postprocess';
+ return {message,code,semanticFailure:semanticFailure||code,terminalStage,terminalFace:locatedFace,
+  protocolErrorCode:String(detail.protocolErrorCode||diagnostic.protocolErrorCode||'').replace(/[^a-z0-9-]/gi,'').slice(0,120),protocolOffset};
+}
+function republishIndependentTerminalFailure(ctx,index,msg,sourceHash,baseSlot,operationEpoch,error,dispatchLease=null){
+ const expectedEpoch=Math.max(1,Number(operationEpoch)||operationEpochForBase(baseSlot));
+ const attached=error?.rabbitMirrorRequestDiagnostic;
+ const latest=readLastIndependentApiRequestDiagnostic();
+ const diagnostic=independentRequestDiagnosticMatchesOwner(attached,ctx,index,msg,sourceHash,expectedEpoch)
+  ? attached
+  : independentRequestDiagnosticMatchesOwner(latest,ctx,index,msg,sourceHash,expectedEpoch)
+   ? latest
+   : {};
+ const terminal=independentTerminalFailureDetails(error,diagnostic);
+ let requestCount=Number(diagnostic?.requestCount);
+ if(!Number.isFinite(requestCount)){
+  try{ requestCount=dispatchLease?.consumed?.()===true?1:0; }catch{ requestCount=0; }
+ }
+ return publishIndependentApiRequestDiagnostic({
+  ...diagnostic,
+  ok:false,
+  chatKeyHash:hashText(chatKey(ctx)),
+  mesid:Number(index),
+  swipe:swipeId(msg),
+  sourceHash:String(sourceHash||''),
+  baseSlotHash:hashText(baseSlot||messageBaseSlotKey(ctx,index,msg)),
+  operationEpoch:expectedEpoch,
+  requestCount:Math.max(0,requestCount),
+  semanticFailure:terminal.semanticFailure,
+  terminalStage:terminal.terminalStage,
+  terminalErrorCode:terminal.code,
+  terminalFace:terminal.terminalFace||undefined,
+  protocolErrorCode:terminal.protocolErrorCode||undefined,
+  protocolOffset:terminal.protocolOffset,
+  diagnosticUpdatedAt:Date.now(),
   ts:Date.now(),
  });
 }
@@ -3054,6 +3165,20 @@ function hasMultifaceMarkup(html=''){
 function wrapIndependentFace(inner,index){
  return `<toto data-rabbit-mirror="true" data-rm-face="${index+1}">${String(inner||'')}</toto>`;
 }
+// Only used AFTER the common sanitizer. cleanRabbitMirrorOutput may already
+// supply the one safe toto shell; adding another shell makes every batch invalid.
+function wrapPreparedIndependentFace(html,index){
+ const source=String(html||'').trim();
+ if(!/^<toto\b/i.test(source)) return wrapIndependentFace(source,index);
+ const template=document.createElement('template');
+ template.innerHTML=source;
+ const nodes=[...template.content.childNodes].filter(node=>node.nodeType===1||(node.nodeType===3&&node.textContent.trim()));
+ const root=nodes[0];
+ if(nodes.length!==1||root?.tagName!=='TOTO'||root.querySelector('toto')) return '';
+ root.setAttribute('data-rabbit-mirror','true');
+ root.setAttribute('data-rm-face',String(index+1));
+ return root.outerHTML;
+}
 function externalFaceDetails(host){
  return [...(host?.children||[])].filter(node=>node?.tagName==='DETAILS').slice(0,5);
 }
@@ -3300,42 +3425,184 @@ function commitIndependentVisualResult(inner=''){
   return scanned.paletteFingerprint||null;
  }catch(error){ console.debug('[RabbitMirror] independent visual signature skipped:',error); return null; }
 }
+const independentPresentationFormatById=new Map(PRESENTATION_FORMATS.map(item=>[String(item?.id||''),item]).filter(([id])=>id));
+function independentSelectedFormatDescriptors(faceMetadata={}){
+ const ids=Array.isArray(faceMetadata?.formatIds)?faceMetadata.formatIds:[];
+ const labels=Array.isArray(faceMetadata?.formatLabels)?faceMetadata.formatLabels:[];
+ const descriptors=Array.isArray(faceMetadata?.formatDescriptors)?faceMetadata.formatDescriptors.slice(0,8):[];
+ const text=(value,max)=>typeof value==='string'?value.trim().slice(0,max):'';
+ let externalCount=0;
+ return ids.map((value,index)=>{
+  const id=String(value||'');
+  const item=independentPresentationFormatById.get(id)||null;
+  // Preserve the native quality-input contract byte-for-byte. Limits below
+  // apply only to the newly introduced external metadata fallback.
+  if(item||!id.startsWith('ext:')) return {
+   id,
+   title:String(item?.title||labels[index]||''),
+   summary:String(item?.summary||''),
+   tags:Array.isArray(item?.tags)?item.tags.map(tag=>String(tag||'')).filter(Boolean):[],
+  };
+  if(typeof value!=='string'||id.length>2048||externalCount>=8) return null;
+  externalCount+=1;
+  const external=descriptors.find(item=>item?.id===id)||null;
+  return {
+   id,
+   title:text(external?.title||labels[index]||'',160),
+   summary:text(external?.summary,210),
+   tags:Array.isArray(external?.tags)?external.tags.slice(0,4).map(tag=>text(tag,64)).filter(Boolean):[],
+  };
+ }).filter(Boolean);
+}
+function independentMultifacePostprocessError(message,code,faceIndex=0,extra={}){
+ const error=new Error(String(message||'多面兔子镜处理失败。'));
+ error.code=String(code||'multiface-quality').slice(0,120);
+ error.rabbitMirrorMultifaceDiagnostic={
+  ...(Number.isInteger(faceIndex)&&faceIndex>=0?{terminalFace:faceIndex+1}:{}),
+  ...(extra&&typeof extra==='object'?extra:{}),
+ };
+ return error;
+}
+function independentMultifaceFailureSemantic(error){
+ const code=String(error?.code||'');
+ return code.startsWith('multiface-')?code:'multiface-quality';
+}
 function prepareIndependentMultifaceResult(raw,metadata,requestDiagnostic,requestOptions={}){
  const parsed=parseMultifaceOutput(raw,{expectedCount:Number(metadata.faceCount)});
  if(!parsed.ok){
-  republishIndependentSemanticFailure(requestDiagnostic,'multiface-incomplete','',{responseChars:raw.length,completedFaces:parsed.faces?.length||0,expectedFaces:metadata.faceCount});
-  throw new Error(`⚠️ 多面结果未完整生成（完整 ${parsed.faces?.length||0}/${metadata.faceCount} 面）。本轮只发送了 1 次请求，不会自动补发；请检查最大输出设置后手动重试。`);
+  const first=parsed.errors?.[0]||{};
+  const detail={completedFaces:parsed.faces?.length||0,expectedFaces:metadata.faceCount,
+   protocolErrorCode:String(first.code||'face-count-mismatch').slice(0,120),
+   protocolOffset:Number.isSafeInteger(first.offset)&&first.offset>=0?first.offset:undefined,
+   terminalFace:first.terminalFace};
+  republishIndependentSemanticFailure(requestDiagnostic,'multiface-incomplete','',{responseChars:raw.length,...detail});
+  throw independentMultifacePostprocessError(`⚠️ 多面结果未完整生成（完整 ${parsed.faces?.length||0}/${metadata.faceCount} 面${detail.terminalFace?`，第 ${detail.terminalFace} 面`:''}；${detail.protocolErrorCode}）。本轮只发送了 1 次请求，不会自动补发；请检查最大输出设置后手动重试。`,'multiface-incomplete',-1,detail);
  }
  const prepared=[]; const scans=[]; const seenBodies=new Set();
  for(const face of parsed.faces){
   const faceMetadata=metadata.faces?.[face.index]||{};
   const prefix=`⚠️ 第 ${face.index+1} 面：`;
+  // Only fresh model output reaches this path. Runtime scope belongs to the
+  // sanitizer, never the model; trusting it permits sibling CSS collisions.
+  if(typeof document!=='undefined'){
+   const sourceTemplate=document.createElement('template'); sourceTemplate.innerHTML=face.html;
+   if(sourceTemplate.content.querySelector('[data-rabbit-mirror-css-scope]'))
+    throw independentMultifacePostprocessError(`${prefix}返回了保留的运行时样式标记，未挂载；不会自动补发。`,'multiface-untrusted-css-scope',face.index);
+  }
   const bodyFingerprint=String(face.inner||'').replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi,'').replace(/<summary\b[^>]*>[\s\S]*?<\/summary\s*>/gi,'').replace(/<[^>]+>/g,'').replace(/\s+/g,'').trim();
-  if(bodyFingerprint.length>80 && seenBodies.has(bodyFingerprint)) throw new Error(`${prefix}与另一面正文重复，未作为多面成品保存；不会自动补发。`);
+  if(bodyFingerprint.length>80 && seenBodies.has(bodyFingerprint)) throw independentMultifacePostprocessError(`${prefix}与另一面正文重复，未作为多面成品保存；不会自动补发。`,'multiface-duplicate-body',face.index);
   seenBodies.add(bodyFingerprint);
-  if(!independentMirrorBodyEvidence(face.inner)) throw new Error(`${prefix}仅有标题或样式，没有可用正文；不会自动补发。`);
+  if(!independentMirrorBodyEvidence(face.inner)) throw independentMultifacePostprocessError(`${prefix}仅有标题或样式，没有可用正文；不会自动补发。`,'multiface-empty-face',face.index);
   const visual=independentVisualProgramIntegrity(face.inner);
-  if(!visual.ok) throw new Error(`${prefix}交互或样式程序不完整；不会自动补发。`);
+  if(!visual.ok) throw independentMultifacePostprocessError(`${prefix}交互或样式程序不完整；不会自动补发。`,'multiface-visual-program-invalid',face.index,{visualFailure:String(visual.reason||'')});
   const html=prepareIndependentReadyHtml(face.inner);
-  if(!html || !independentMirrorBodyEvidence(html)) throw new Error(`${prefix}安全净化后没有可用正文；不会自动补发。`);
+  if(!html || !independentMirrorBodyEvidence(html)) throw independentMultifacePostprocessError(`${prefix}安全净化后没有可用正文；不会自动补发。`,'multiface-post-sanitize-empty',face.index);
   const safeVisual=independentVisualProgramIntegrity(html);
-  if(!safeVisual.ok) throw new Error(`${prefix}安全净化后交互或样式不完整；不会自动补发。`);
+  if(!safeVisual.ok) throw independentMultifacePostprocessError(`${prefix}安全净化后交互或样式不完整；不会自动补发。`,'multiface-post-sanitize-visual-invalid',face.index,{visualFailure:String(safeVisual.reason||'')});
   const scan=scanRabbitMirrorHtml(wrappedIndependentMirrorHtml(html),null)||{};
   const quality=evaluateIndependentPostSanitizeQuality(html,{
    ...faceMetadata,
    interactionFamily:scan.interactionFamily||null,
    riskFlags:Array.isArray(scan.riskFlags)?scan.riskFlags:[],
-   selectedFormats:(faceMetadata.formatIds||[]).map((id,index)=>({id:String(id),title:String(faceMetadata.formatLabels?.[index]||'')})),
+   selectedFormats:independentSelectedFormatDescriptors(faceMetadata),
   });
   if(!quality.ok){
    rememberIndependentQualityFailure(requestOptions.slot,quality);
-   throw new Error(`${prefix}${quality.message||'未达到成品质量门槛。'} 本轮只发送了 1 次请求，不会自动补发。`);
+   throw independentMultifacePostprocessError(`${prefix}${quality.message||'未达到成品质量门槛。'} 本轮只发送了 1 次请求，不会自动补发。`,quality.code||'multiface-quality',face.index,{qualityCode:String(quality.code||''),qualityFlags:Array.isArray(quality.flags)?quality.flags.slice(0,12):[]});
   }
-  prepared.push(wrapIndependentFace(html,face.index)); scans.push(scan);
+  prepared.push(wrapPreparedIndependentFace(html,face.index)); scans.push(scan);
  }
  const html=prepared.join('\n');
+ const finalProtocol=parseMultifaceOutput(html,{expectedCount:Number(metadata.faceCount)});
+ if(!finalProtocol.ok){
+  const first=finalProtocol.errors?.[0]||{};
+  throw independentMultifacePostprocessError('净化后的多面结构或标题不再完整，未保存或挂载；不会自动补发。','multiface-post-sanitize-protocol',-1,{
+   protocolErrorCode:String(first.code||'face-count-mismatch').slice(0,120),
+   protocolOffset:Number.isSafeInteger(first.offset)&&first.offset>=0?first.offset:undefined,
+   terminalFace:first.terminalFace,
+  });
+ }
  assertIndependentMarkupComplexityWithDiagnostic(html,'multiface-sanitized',requestDiagnostic);
  return {html,faceScans:scans};
+}
+function independentPromptOwnerPreflightError(){
+ const error=new Error('读取外部母本期间，当前聊天、正文或本次生成身份已变化；本轮未发送请求，不会重抽或自动重试。');
+ error.name='RabbitMirrorPromptOwnerPreflightError';
+ error.code='RABBIT_MIRROR_DISPATCH_LEASE_REJECTED';
+ error.requestCount=0;
+ return error;
+}
+function independentExternalPromptPreflightError(cause,owner){
+ const known=independentLocalPreflightFailure(cause);
+ const needsRebuild=cause?.code==='WORLD_BOOK_ENTRY_STATE_CONFLICT'&&cause?.details?.reason==='metadata-rebuild-required';
+ const error=new Error(needsRebuild
+  ? '已启用的旧外部库尚无轻量抽取索引，请在外部库管理中重建索引或重新导入；本轮未发送请求，不会扫描整库或改抽内置条目。'
+  : '外部母本在发送前读取或校验失败；本轮未发送请求，不会自动重抽、切换 nostream 或重复请求。');
+ error.name='RabbitMirrorExternalPromptPreflightError';
+ error.code=known?.code||'RABBIT_MIRROR_EXTERNAL_PREFLIGHT_REJECTED';
+ error.requestCount=0;
+ error.cause=cause;
+ error.rabbitMirrorRequestDiagnostic={
+  ok:false,requestCount:0,semanticFailure:'local-preflight',transportCause:'local-preflight',nextProfile:'',
+  automaticRetry:false,automaticProfileFallback:false,
+  chatKeyHash:hashText(owner.chatKey),mesid:owner.index,swipe:owner.swipe,sourceHash:owner.sourceHash,
+  baseSlotHash:hashText(owner.baseSlot),operationEpoch:owner.operationEpoch,
+ };
+ return error;
+}
+function independentPromptBatchSignature(plan,owner){
+ if(!plan) return '';
+ const identity=plan.identity;
+ const count=plan.requestedFaceCount;
+ if(plan.kind!=='rabbit-mirror-multiface-plan'||plan.schemaVersion!==1
+  ||typeof plan.batchId!=='string'||!plan.batchId||plan.batchId.length>2048
+  ||identity?.chatKey!==owner.chatKey||identity?.generationScopeKey!==owner.generationScopeKey
+  ||identity?.mesid!==owner.index||identity?.swipeId!==owner.swipe||identity?.sourceHash!==owner.sourceHash
+  ||!Number.isSafeInteger(count)||count<2||count>5||!Array.isArray(plan.faces)||plan.faces.length!==count) throw independentPromptOwnerPreflightError();
+ const faces=plan.faces.map((face,index)=>{
+  if(face?.faceIndex!==index||!face.combo) throw independentPromptOwnerPreflightError();
+  const ids=kind=>{
+   const values=face.combo[kind];
+   if(!Array.isArray(values)||values.length>16||values.some(id=>typeof id!=='string'||!id||id.length>2048)) throw independentPromptOwnerPreflightError();
+   return values;
+  };
+  return [index,ids('themeIds'),ids('formatIds')];
+ });
+ return JSON.stringify([plan.batchId,identity.chatKey,identity.generationScopeKey,identity.mesid,identity.swipeId,identity.sourceHash,identity.settingsKey,count,faces]);
+}
+function captureIndependentPromptOwner(ctx,index,msg,signal,requestOptions,generationScopeKey){
+ const baseSlot=messageBaseSlotKey(ctx,index,msg);
+ const owner={chat:ctx?.chat,index,message:msg,chatKey:chatKey(ctx),swipe:swipeId(msg),sourceHash:messageSourceFingerprint(msg),
+  baseSlot,operationEpoch:operationEpochForBase(baseSlot),signal,requestOptions,generationScopeKey,
+  awaited:false,batchPlan:null,batchSignature:'',batchBound:false,batchPublished:false,batchReleaseIdentity:null};
+ assertIndependentPromptOwner(owner);
+ return owner;
+}
+function assertIndependentPromptOwner(owner){
+ const live=getContext();
+ if(owner.signal?.aborted||!Array.isArray(owner.chat)||live?.chat!==owner.chat
+  ||!Number.isSafeInteger(owner.index)||owner.index<0||live.chat[owner.index]!==owner.message
+  ||chatKey(live)!==owner.chatKey||swipeId(owner.message)!==owner.swipe
+  ||messageSourceFingerprint(owner.message)!==owner.sourceHash
+  ||messageBaseSlotKey(live,owner.index,owner.message)!==owner.baseSlot
+  ||operationEpochForBase(owner.baseSlot)!==owner.operationEpoch
+  ||(Number.isSafeInteger(owner.requestOptions.dispatchLease?.epoch)&&owner.requestOptions.dispatchLease.epoch!==owner.operationEpoch)
+  ||(owner.awaited&&typeof owner.requestOptions.isPromptOwnerCurrent==='function'&&!owner.requestOptions.isPromptOwnerCurrent())
+  ||independentPromptBatchSignature(owner.batchPlan,owner)!==owner.batchSignature
+  ||(owner.batchPublished&&typeof owner.requestOptions.currentBatchPlan==='function'&&owner.requestOptions.currentBatchPlan()!==owner.batchPlan)) throw independentPromptOwnerPreflightError();
+}
+function bindIndependentPromptBatch(owner,plan=null){
+ const signature=independentPromptBatchSignature(plan,owner);
+ if(owner.batchBound&&signature!==owner.batchSignature) throw independentPromptOwnerPreflightError();
+ if(!owner.batchBound&&plan){
+  const identity=plan.identity;
+  owner.batchReleaseIdentity=Object.freeze({batchId:plan.batchId,identity:Object.freeze({
+   chatKey:identity.chatKey,generationScopeKey:identity.generationScopeKey,mesid:identity.mesid,
+   swipeId:identity.swipeId,sourceHash:identity.sourceHash,settingsKey:identity.settingsKey,
+  })});
+ }
+ owner.batchPlan=plan; owner.batchSignature=signature; owner.batchBound=true;
+ assertIndependentPromptOwner(owner);
 }
 async function callIndependentApi(ctx,index,msg,signal=null,requestOptions={}){
  const currentSettings=getSettings();
@@ -3357,16 +3624,58 @@ async function callIndependentApi(ctx,index,msg,signal=null,requestOptions={}){
    is_user:!!message?.is_user,
    mes:realIndex===index?targetVisibleAtStart.text:readVisible(message,realIndex).text,
   })):[];
- const details=buildRabbitMirrorPromptDetails(st,'independent',null,generationScopeKey,{
+ const generationContext={
   chat:boundedDirectiveChat,
   batchIdentity:{mesid:index,swipeId:swipeId(msg),sourceHash:messageSourceFingerprint(msg)},
   ...(requestOptions.multifaceResay?{multifaceResay:requestOptions.multifaceResay}:{}),
- });
+ };
+ const externalEnabled=st.externalWorldBookRandomEnabled===true&&String(st.externalWorldBookMixMode||'builtin-only')!=='builtin-only';
+ const resayFace=requestOptions.multifaceResay?.faces?.[requestOptions.multifaceResay?.faceIndex];
+ const externalResay=[...(Array.isArray(resayFace?.themeIds)?resayFace.themeIds:[]),...(Array.isArray(resayFace?.formatIds)?resayFace.formatIds:[])].some(id=>typeof id==='string'&&id.startsWith('ext:'));
+ let details; let promptOwner=null;
+ if(externalEnabled||externalResay){
+  promptOwner=captureIndependentPromptOwner(ctx,index,msg,signal,requestOptions,generationScopeKey);
+  try{
+  if(getExternalPoolHydrationStatus().hydrated!==true){
+   assertIndependentPromptOwner(promptOwner);
+   try{ await hydrateExternalPoolMetadata(); }
+   finally{ promptOwner.awaited=true; assertIndependentPromptOwner(promptOwner); }
+  }
+  if(externalEnabled&&!externalResay&&getExternalPoolHydrationStatus().enabledMetadataRebuildRequired?.length){
+   const error=new Error('enabled external metadata needs rebuilding');
+   error.code='WORLD_BOOK_ENTRY_STATE_CONFLICT'; error.details={reason:'metadata-rebuild-required'};
+   throw error;
+  }
+  const plan=planRabbitMirrorPromptDetails(st,'independent',null,generationScopeKey,generationContext);
+  bindIndependentPromptBatch(promptOwner,plan.batchPlan||null);
+  let materials=null;
+  try{
+   if(plan.selectedExternalIds.length){
+    assertIndependentPromptOwner(promptOwner);
+    try{ materials=await getSelectedExternalEntries(plan.selectedExternalIds); }
+    finally{ promptOwner.awaited=true; assertIndependentPromptOwner(promptOwner); }
+   }
+   details=renderRabbitMirrorPromptPlan(plan,materials);
+   bindIndependentPromptBatch(promptOwner,details.batchPlan||null);
+  }finally{ materials?.clear?.(); materials=null; }
+  }catch(error){
+   // The caller has not received onBatchPlan yet. Release only this frozen
+   // identity; a stale chat/plan must never clear another in-flight batch.
+   if(!promptOwner.batchPublished&&promptOwner.batchReleaseIdentity){
+    try{ releasePendingComboBatch(promptOwner.batchReleaseIdentity); }catch{}
+   }
+   throw independentExternalPromptPreflightError(error,promptOwner);
+  }
+ }else{
+  // Keep the builtin-only route synchronous: no hydration, raw read or second draw.
+  details=buildRabbitMirrorPromptDetails(st,'independent',null,generationScopeKey,generationContext);
+ }
  const faceCount=Number(details.metadata?.faceCount)||1;
  const basePrompt=String(details.prompt||'').trim();
  const executionLock=String(details.executionLock||'').trim();
  if(details.metadata?.disabled || !basePrompt || !executionLock){
   requestOptions.onBatchPlan?.(null);
+  if(promptOwner) assertIndependentPromptOwner(promptOwner);
   return {skipped:true,reason:details.metadata?.disabled?'directive-disabled':'empty-prompt'};
  }
  if((!st.independentConnectionProfileId&&!st.independentApiBaseUrl)||!st.independentApiModel) throw new Error('独立 API 尚未完成酒馆连接与模型设置');
@@ -3426,6 +3735,12 @@ ${independentUserTail}`;
   metadata:details.metadata,
  });
  const requestSelectionDiagnostic={
+  chatKeyHash:hashText(chatKey(ctx)),
+  mesid:Number(index),
+  swipe:swipeId(msg),
+  sourceHash:messageSourceFingerprint(msg),
+  baseSlotHash:hashText(messageBaseSlotKey(ctx,index,msg)),
+  operationEpoch:Math.max(1,Number(requestOptions.dispatchLease?.epoch)||operationEpochForBase(messageBaseSlotKey(ctx,index,msg))),
   ...(faceCount>1?{faceCount,faces:details.metadata.faces}:{}),
   samplingMode:String(details.metadata?.samplingMode||''),
   themeIds:Array.isArray(details.metadata?.themeIds)?details.metadata.themeIds:[],
@@ -3445,19 +3760,26 @@ ${independentUserTail}`;
  };
  const batchPlan=details.batchPlan||null;
  requestOptions.onBatchPlan?.(batchPlan);
+ if(promptOwner){ promptOwner.batchPublished=true; assertIndependentPromptOwner(promptOwner); }
  const originalLease=requestOptions.dispatchLease;
- const dispatchLease=batchPlan ? {
+ const dispatchLease=batchPlan||promptOwner ? {
   ...originalLease,
   consume(){
+   if(promptOwner) assertIndependentPromptOwner(promptOwner);
    if(signal?.aborted) return false;
-   if(!markPendingBatchAttempt(batchPlan)) throw independentBatchPlanPreflightError();
+   if(batchPlan&&!markPendingBatchAttempt(batchPlan)) throw independentBatchPlanPreflightError();
+   if(promptOwner) assertIndependentPromptOwner(promptOwner);
    const accepted=originalLease?.consume?.()===true;
-   if(!accepted) releasePendingComboBatch(batchPlan);
+   if(!accepted&&batchPlan) releasePendingComboBatch(batchPlan);
    return accepted;
   },
  } : originalLease;
  const {response:r,result,profile,attempts,requestDiagnostic,semanticError}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,manualRetry:requestOptions.manualRetry===true,diagnosticContext:requestSelectionDiagnostic,dispatchLease,onProgress:requestOptions.onProgress});
- if(semanticError) throw new Error(semanticError);
+ if(semanticError){
+  const error=new Error(semanticError);
+  error.rabbitMirrorRequestDiagnostic=requestDiagnostic;
+  throw error;
+ }
  if(!r.ok){
    const detail=compactRemoteError(r.status,result.raw||'');
    const mode=String(profile||'');
@@ -3468,7 +3790,9 @@ ${independentUserTail}`;
       ? `；本轮只发送了 1 次生成请求，不会自动重发。点击“重新生成兔子镜”时将仅把 stream 改为 false，其他消息结构、温度与输出字段保持不变，尝试：${next}`
       : `；本轮只发送了 1 次生成请求，不会自动重发。点击“重新生成兔子镜”时将尝试下一兼容模式：${next}`
     : '；本轮只发送了 1 次生成请求，不会自动重复请求，请手动重新生成兔子镜';
-   throw new Error(`独立 API 请求失败：HTTP ${r.status}${detail?` · ${detail}`:''}${mode?`；参数模式：${mode}`:''}${retryHint}`);
+   const error=new Error(`独立 API 请求失败：HTTP ${r.status}${detail?` · ${detail}`:''}${mode?`；参数模式：${mode}`:''}${retryHint}`);
+   error.rabbitMirrorRequestDiagnostic=requestDiagnostic;
+   throw error;
  }
  const raw=String(result.text||'').trim();
  if(!raw){
@@ -3479,7 +3803,13 @@ ${independentUserTail}`;
  if(faceCount>1){
   let prepared;
   try{ prepared=prepareIndependentMultifaceResult(raw,details.metadata,requestDiagnostic,requestOptions); }
-  catch(error){ republishIndependentSemanticFailure(requestDiagnostic,'multiface-quality','',{responseChars:raw.length,expectedFaces:faceCount}); throw error; }
+  catch(error){
+   const detail=error?.rabbitMirrorMultifaceDiagnostic&&typeof error.rabbitMirrorMultifaceDiagnostic==='object'?error.rabbitMirrorMultifaceDiagnostic:{};
+   const semantic=independentMultifaceFailureSemantic(error);
+   const diagnostic=republishIndependentSemanticFailure(requestDiagnostic,semantic,'',{responseChars:raw.length,expectedFaces:faceCount,...detail});
+   error.rabbitMirrorRequestDiagnostic=diagnostic;
+   throw error;
+  }
   clearIndependentQualityFailure(requestOptions.slot);
   rememberApiProfile(st,profile);
   return {...prepared,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length,batchPlan:details.batchPlan};
@@ -3534,10 +3864,7 @@ ${independentUserTail}`;
    throw new Error('⚠️ 兔子镜的视觉样式程序在安全净化后变得不完整。本次半成品不会保存；本轮只发送了 1 次生成请求，不会自动重发，请手动重新生成兔子镜。');
  }
  const postSanitizeScan=scanRabbitMirrorHtml(wrappedIndependentMirrorHtml(preparedHtml),null)||{};
- const selectedFormats=requestSelectionDiagnostic.formatIds.map((id,formatIndex)=>({
-  id:String(id||''),
-  title:String(requestSelectionDiagnostic.formatLabels[formatIndex]||''),
- }));
+ const selectedFormats=independentSelectedFormatDescriptors(details.metadata);
  const postSanitizeQuality=evaluateIndependentPostSanitizeQuality(preparedHtml,{
   ...details.metadata,
   interactionFamily:postSanitizeScan.interactionFamily||null,
@@ -4888,17 +5215,20 @@ function sanitizeIndependentReadyFragment(html=''){
 function prepareIndependentReadyHtml(html=''){
  const source=String(html||'').trim();
  try{ assertIndependentMarkupComplexity(source); }catch{return '';}
- const cacheKey=`${RUNTIME_VERSION}:${source.length}:${hashText(source)}`;
+ const bannedWords=getSettings()?.rabbitMirrorBannedWords;
+ const bannedFingerprint=hashText(Array.isArray(bannedWords)?bannedWords.join('\u001f'):'');
+ const cacheKey=`${RUNTIME_VERSION}:${bannedFingerprint}:${source.length}:${hashText(source)}`;
  if(preparedReadyHtmlCache.has(cacheKey)) return preparedReadyHtmlCache.get(cacheKey);
  if(hasMultifaceMarkup(source)){
   const parsed=parseMultifaceOutput(source);
   if(!parsed.ok) return '';
   const preparedFaces=parsed.faces.map(face=>({index:face.index,inner:prepareIndependentReadyHtml(face.inner)}));
   if(preparedFaces.some(face=>!face.inner)) return '';
-  const prepared=preparedFaces.map(face=>wrapIndependentFace(face.inner,face.index)).join('\n');
+  const prepared=preparedFaces.map(face=>wrapPreparedIndependentFace(face.inner,face.index)).join('\n');
+  if(!parseMultifaceOutput(prepared,{expectedCount:parsed.faces.length}).ok) return '';
   try{ assertIndependentMarkupComplexity(prepared); }catch{return '';}
   cachePreparedReadyHtml(cacheKey,prepared);
-  cachePreparedReadyHtml(`${RUNTIME_VERSION}:${prepared.length}:${hashText(prepared)}`,prepared);
+  cachePreparedReadyHtml(`${RUNTIME_VERSION}:${bannedFingerprint}:${prepared.length}:${hashText(prepared)}`,prepared);
   return prepared;
  }
  const repaired=repairMalformedLabelMarkup(source);
@@ -4915,7 +5245,7 @@ function prepareIndependentReadyHtml(html=''){
  // mount receives those exact bytes. Seed that value's own key as well so the
  // mount is a cache hit instead of parsing/sanitizing a large mirror twice.
  if(sanitized){
-  const sanitizedKey=`${RUNTIME_VERSION}:${sanitized.length}:${hashText(sanitized)}`;
+  const sanitizedKey=`${RUNTIME_VERSION}:${bannedFingerprint}:${sanitized.length}:${hashText(sanitized)}`;
   if(sanitizedKey!==cacheKey) cachePreparedReadyHtml(sanitizedKey,sanitized);
  }
  return sanitized;
@@ -5197,6 +5527,21 @@ function readyDetailsFromHost(host){
 }
 function mountedIndependentReadyHostMatchesObserved(host,ctx,index,msg,observed,key=''){
  if(!readyDetailsFromHost(host) || !observed) return false;
+ const dataset=host.dataset||{};
+ const expectedChat=chatKey(ctx);
+ const expectedMesid=String(Number(index));
+ const expectedSwipe=String(swipeId(msg));
+ const expectedKey=String(key||recordKey(ctx,index,msg));
+ const expectedSourceHash=String(observed.sourceHash||'');
+ return String(dataset.rmOwnerChat||'')===expectedChat
+  && String(dataset.rmOwnerMesid ?? dataset.rmExternalOwnerMessage ?? '')===expectedMesid
+  && String(dataset.rmOwnerSwipe ?? '')===expectedSwipe
+  && String(dataset.rmKey||'')===expectedKey
+  && !!expectedSourceHash
+  && String(dataset.rmSourceHash||'')===expectedSourceHash;
+}
+function mountedIndependentErrorHostMatchesObserved(host,ctx,index,msg,observed,key=''){
+ if(!host?.isConnected || host.dataset?.rmSource!=='independent' || host.dataset?.rmState!=='error' || !host.querySelector?.(':scope > details') || !observed) return false;
  const dataset=host.dataset||{};
  const expectedChat=chatKey(ctx);
  const expectedMesid=String(Number(index));
@@ -6792,6 +7137,30 @@ function restoreExactIndependentReadyForIdentity(index,live,result){
  }
  return host;
 }
+function exactIndependentErrorForIdentity(index,live=currentGenerationIdentity(index)){
+ if(!live) return null;
+ const el=messageElement(Number(index));
+ if(!el) return null;
+ return externalHosts(el).find(host=>mountedIndependentErrorHostMatchesObserved(host,live.ctx,index,live.msg,live,live.key))||null;
+}
+function restoreExactIndependentErrorForIdentity(index,live,host){
+ if(!live || !host?.isConnected) return null;
+ const el=messageElement(Number(index)); if(!el) return null;
+ placeExternalHost(el,host,host.dataset?.rmKey||live.key,'independent');
+ host.dataset.rmState='error';
+ host.hidden=false;
+ clearExternalHostFreshSourceState(host);
+ ensureExternalTools(host);
+ return host;
+}
+function renderAutomaticFailureStop(index,live,failure){
+ if(!live || !failure) return null;
+ const existing=exactIndependentErrorForIdentity(index,live);
+ if(existing) return restoreExactIndependentErrorForIdentity(index,live,existing);
+ const el=messageElement(Number(index)); if(!el) return null;
+ const message=String(failure.message||failure.reason||'独立 API 生成失败。');
+ return ensureExternalUi(el,live.key,message,'error','independent',live.sourceHash);
+}
 function renderAutomaticDispatchConsumed(index,sourceHash=''){
  const live=currentGenerationIdentity(index); if(!live) return null;
  const ready=exactIndependentReadyForIdentity(index,live);
@@ -6799,9 +7168,23 @@ function renderAutomaticDispatchConsumed(index,sourceHash=''){
   clearAutomaticFailureStop(live.slot,live.sourceHash);
   return restoreExactIndependentReadyForIdentity(index,live,ready)||ready.host||null;
  }
+ const preciseFailure=automaticFailureStopFor(live.slot,sourceHash||live.sourceHash);
+ if(preciseFailure) return renderAutomaticFailureStop(index,live,preciseFailure);
+ const exactError=exactIndependentErrorForIdentity(index,live);
+ if(exactError) return restoreExactIndependentErrorForIdentity(index,live,exactError);
  const el=messageElement(index); if(!el) return null;
- markAutomaticFailureStop(live.slot,sourceHash||live.sourceHash,'host-operation-already-dispatched');
- return ensureExternalUi(el,live.key,'这次宿主生成已经发送过 1 次独立 API 请求；正文随后又发生了变化。为避免重复扣费，兔子镜没有自动发送第二次。确认最终正文后请点击“重新生成兔子镜”。','error','independent',sourceHash||live.sourceHash);
+ const previousHost=externalHosts(el).find(host=>host?.dataset?.rmSource==='independent')||null;
+ const sourceReplaced=hasExplicitSourceReplacementEvidence(live.ctx,index,live.msg,previousHost);
+ const message=sourceReplaced
+  ? '这次宿主生成已经发送过 1 次独立 API 请求；正文随后又发生了变化。为避免重复扣费，兔子镜没有自动发送第二次。确认最终正文后请点击“重新生成兔子镜”。'
+  : '本轮已经发送过 1 次独立 API 请求，但没有形成可恢复的完整成品。为避免重复扣费，兔子镜不会自动补发；请查看本轮错误原因或手动重新生成。';
+ const failure=markAutomaticFailureStop(live.slot,sourceHash||live.sourceHash,'host-operation-already-dispatched',{
+  message,
+  code:sourceReplaced?'source-replaced-after-dispatch':'dispatch-consumed-without-complete-output',
+  semanticFailure:sourceReplaced?'source-replaced-after-dispatch':'dispatch-consumed-without-complete-output',
+  terminalStage:'passive-reconcile',
+ });
+ return renderAutomaticFailureStop(index,live,failure);
 }
 function confirmFinalRenderedGeneration(index){
  const state=generationPolls.get(generationPollKey(index));
@@ -6866,8 +7249,9 @@ function scheduleMessageGeneration(index,delay=260,sourceAware=true,finalRenderC
    // remounts its shell and must not replace it with a false failure card.
    finish(); return;
   }
+  const preciseFailure=automaticFailureStopFor(live.slot,live.sourceHash);
+  if(preciseFailure){ finish(); renderAutomaticFailureStop(index,live,preciseFailure); return; }
   if(automaticDispatchAlreadyConsumed(live.baseSlot)){ finish(); renderAutomaticDispatchConsumed(index,live.sourceHash); return; }
-  if(hasAutomaticFailureStop(live.slot,live.sourceHash)){ finish(); return; }
   const activity=hostGenerationActivity();
   if(activity.strong){
    state.weakActiveSince=0; state.stableSince=0; state.lastHash=''; state.lastRevision=-1; state.sourceStabilityConfirmed=false;
@@ -7120,7 +7504,10 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
  const baseSlot=messageBaseSlotKey(ctx,index,msg);
  if(st.enabled===false || st.autoRabbitMirrorInjection===false || st.generationSource!=='independent' || runtimeMode()!=='independent') return;
  if(!force && (suppressesAutomaticGeneration(ctx,index) || hasExistingFollowRabbitMirror(ctx,index,msg))) return;
- if(!force && hasAutomaticFailureStop(slot,sourceHash)) return;
+ if(!force){
+  const preciseFailure=automaticFailureStopFor(slot,sourceHash);
+  if(preciseFailure){ renderAutomaticFailureStop(index,currentGenerationIdentity(index),preciseFailure); return; }
+ }
  if(force) clearAutomaticFailureStop(slot,sourceHash);
  const el=messageElement(index);
  // Keep cross-device migration/reconciliation out of the paid request critical
@@ -7214,7 +7601,11 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
  } else cancelFlightsForSlot(slot,sourceHash);
  const dispatchLease=force ? createManualDispatchLease() : reserveAutomaticDispatchLease(baseSlot,sourceHash);
  if(!dispatchLease){
-  if(!force && automaticDispatchAlreadyConsumed(baseSlot)) renderAutomaticDispatchConsumed(index,sourceHash);
+  if(!force){
+   const preciseFailure=automaticFailureStopFor(slot,sourceHash);
+   if(preciseFailure) renderAutomaticFailureStop(index,currentGenerationIdentity(index),preciseFailure);
+   else if(automaticDispatchAlreadyConsumed(baseSlot)) renderAutomaticDispatchConsumed(index,sourceHash);
+  }
   return null;
  }
  let loadingHost=null;
@@ -7250,7 +7641,7 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
   flight.timeoutError=error;
   timeoutReject?.(error);
  });
- const apiTask=callIndependentApi(ctx,index,msg,controller.signal,{manualRetry:force,slot,dispatchLease,multifaceResay,onProgress:()=>flight.deadline?.progress?.(),onBatchPlan:plan=>{ flight.batchPlan=plan||null; }});
+ const apiTask=callIndependentApi(ctx,index,msg,controller.signal,{manualRetry:force,slot,dispatchLease,multifaceResay,isPromptOwnerCurrent:stillCurrent,currentBatchPlan:()=>flight.batchPlan,onProgress:()=>flight.deadline?.progress?.(),onBatchPlan:plan=>{ flight.batchPlan=plan||null; }});
  const task=Promise.race([apiTask,timeoutPromise]).then(result=>{
   if(result?.skipped){
    settleCancelledIndependentFlightUi(flight,'prompt-skipped');
@@ -7379,7 +7770,19 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
    settleCancelledIndependentFlightUi(flight,flight.cancelReason||'stale-owner');
    return;
   }
-  markAutomaticFailureStop(slot,sourceHash,String(err?.message||err||'generation-failed'));
+  const failureMessage=String(err?.message||err||'generation-failed');
+  const terminalDiagnostic=republishIndependentTerminalFailure(ctx,index,msg,sourceHash,baseSlot,operationEpoch,err,dispatchLease);
+  markAutomaticFailureStop(slot,sourceHash,'generation-failed',{
+   baseSlot,operationEpoch,
+   message:failureMessage,
+   code:String(terminalDiagnostic?.terminalErrorCode||err?.code||'independent-generation-failed'),
+   semanticFailure:String(terminalDiagnostic?.semanticFailure||''),
+   terminalStage:String(terminalDiagnostic?.terminalStage||'postprocess'),
+   terminalFace:terminalDiagnostic?.terminalFace,
+   requestCount:terminalDiagnostic?.requestCount,
+   protocolErrorCode:terminalDiagnostic?.protocolErrorCode,
+   protocolOffset:terminalDiagnostic?.protocolOffset,
+  });
   console.error('[RabbitMirror] independent generation failed',err);
   {
    const liveEl=messageElement(index);
@@ -7394,7 +7797,7 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
       ensureExternalUi(liveEl,key,previousReadyRecord.html,'ready','independent',sourceHash);
      }
      flight.uiSettled=true;
-     toastr?.error?.(String(err?.message||err));
+     toastr?.error?.(failureMessage);
     } else {
      const liveHost=collapseDuplicateIdentityHosts(liveEl,key,'independent',sourceHash);
      if(readyDetailsFromHost(liveHost)){
@@ -7404,9 +7807,9 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
       // placeholder that carries the exact owner identity, feedback cat and a
       // direct retry action. The previous ready HTML remains in cache/history.
       clearExternalHostFreshSourceState(liveHost);
-     ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
+     ensureExternalUi(liveEl,key,failureMessage,'error','independent',sourceHash);
      flight.uiSettled=true;
-     } else ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
+     } else ensureExternalUi(liveEl,key,failureMessage,'error','independent',sourceHash);
      flight.uiSettled=true;
     }
    }
@@ -7726,37 +8129,65 @@ function handleFollowMultifaceCommitted(event){
 function installFollowMultifaceCommitListener(){
  if(followMultifaceCommitListenerInstalled) return;
  globalThis.addEventListener?.(FOLLOW_MULTIFACE_COMMITTED_EVENT,handleFollowMultifaceCommitted);
+ globalThis.addEventListener?.(FOLLOW_MULTIFACE_REJECTED_EVENT,handleFollowMultifaceRejected);
  followMultifaceCommitListenerInstalled=true;
 }
 function removeFollowMultifaceCommitListener(){
  if(!followMultifaceCommitListenerInstalled) return;
  globalThis.removeEventListener?.(FOLLOW_MULTIFACE_COMMITTED_EVENT,handleFollowMultifaceCommitted);
+ globalThis.removeEventListener?.(FOLLOW_MULTIFACE_REJECTED_EVENT,handleFollowMultifaceRejected);
  followMultifaceCommitListenerInstalled=false;
+}
+function handleFollowMultifaceRejected(event){
+ const index=Number(event?.detail?.messageIndex);
+ if(!Number.isInteger(index)||index<0) return false;
+ const ctx=getContext();
+ const failure=getRabbitMirrorFollowBatchFailure(ctx?.chat,index);
+ if(!failure || failure.batchId!==event?.detail?.batchId) return false;
+ queueMessageSync([index]);
+ return true;
 }
 function externalizeFollowMirror(index,msg){
  const st=getSettings(); if(st.generationSource!=='follow'||st.followDisplayMode!=='external') return;
  const el=messageElement(index); const body=messageBody(el); if(!body) return;
+ const ctx=getContext();
+ if(ctx?.chat?.[index]!==msg) return;
+ const rejected=getRabbitMirrorFollowBatchFailure(ctx.chat,index);
+ if(rejected){ showFollowRecoveryNotice(el,rejected); return; }
  const mirrors=inlineRabbitMirrorDetails(el);
  const mirror=mirrors[0]||null;
  if(!mirror) return;
- const ctx=getContext(); const key=`follow:${recordKey(ctx,index,msg)}`;
+ const key=`follow:${recordKey(ctx,index,msg)}`;
  const multiSource=followMessageSourceCandidates(msg).find(hasMultifaceMarkup);
  if(multiSource){
   const parsed=parseMultifaceOutput(multiSource,{allowProse:true});
   if(!parsed.ok || mirrors.length!==parsed.faces.length) return;
-  const proven=mirrors.every((details,faceIndex)=>{
+   const verifiedRoots=[];
+   const proven=mirrors.every((details,faceIndex)=>{
    const root=details.closest?.('toto[data-rabbit-mirror="true"]')||details;
    const proof=getSanitizedRabbitMirrorFaceProof(root);
-   return proof?.origin==='follow'
+    const valid=proof?.origin==='follow'
     && Number(proof.faceIndex)===faceIndex
     && Number(proof.faceCount)===parsed.faces.length
-    && String(proof.sourceHash||'')===rabbitMirrorMultifaceSourceHash(parsed.faces[faceIndex]?.html||'');
+     && String(proof.sourceHash||'')===rabbitMirrorMultifaceSourceHash(parsed.faces[faceIndex]?.html||'');
+    if(valid) verifiedRoots.push(root);
+    return valid;
   });
   if(!proven) return;
-  followOriginMarker(el,mirror.closest?.('toto')||mirror,true);
-  const html=parsed.faces.map(face=>wrapIndependentFace(face.inner,face.index)).join('\n');
-  const host=ensureExternalUi(el,key,html,'ready','follow',messageSourceFingerprint(msg));
-  if(!host || externalFaceDetails(host).length!==parsed.faces.length) return;
+   // Serialize the DOM that actually passed sanitation and quality, not the raw
+   // model source whose hash was used only to establish each face's identity.
+   const preparedFaces=verifiedRoots.map((root,faceIndex)=>{
+    const clone=root.cloneNode(true);
+    normalizeRecoveredFollowRoot(clone);
+    stripIndependentTransientLayoutArtifacts(clone);
+    return wrapPreparedIndependentFace(clone.outerHTML,faceIndex);
+   });
+   if(preparedFaces.some(face=>!face)) return;
+   const html=preparedFaces.join('\n');
+   if(!parseMultifaceOutput(html,{expectedCount:parsed.faces.length}).ok) return;
+   const host=ensureExternalUi(el,key,html,'ready','follow',messageSourceFingerprint(msg));
+   if(!host || externalFaceDetails(host).length!==parsed.faces.length || !externalFaceDetails(host).every(usableReadyDetails)) return;
+   followOriginMarker(el,mirror.closest?.('toto')||mirror,true);
   for(const original of mirrors) removeInlineMirrorDuplicate(original);
   return;
  }
@@ -7806,8 +8237,19 @@ function restoreFollowInline(elOrHost){
   ? elOrHost
   : externalHosts(el).find(node=>node.dataset.rmSource==='follow');
  if(!host) return false;
+ const owner=followRecoveryOwner(el);
+ const rejected=owner?getRabbitMirrorFollowBatchFailure(owner.ctx.chat,owner.index):null;
+ if(rejected){ showFollowRecoveryNotice(el,rejected); return false; }
  const faces=externalFaceDetails(host);
  if(faces.length>1){
+  if(!owner || host.dataset.rmSourceHash!==messageSourceFingerprint(owner.message)) return false;
+  const source=followMessageSourceCandidates(owner.message).find(hasMultifaceMarkup);
+  const parsed=source?parseMultifaceOutput(source,{allowProse:true}):null;
+  if(!parsed?.ok || parsed.faces.length!==faces.length || faces.some((details,faceIndex)=>{
+   const proof=getSanitizedRabbitMirrorFaceProof(details);
+   return proof?.origin!=='follow'||proof.faceIndex!==faceIndex||proof.faceCount!==faces.length
+    ||proof.sourceHash!==messageSourceFingerprint(owner.message);
+  })) return false;
   const body=messageBody(el); if(!body) return false;
   const marker=followOriginMarker(el,null,false);
   const fragment=document.createDocumentFragment();
@@ -7816,7 +8258,10 @@ function restoreFollowInline(elOrHost){
    const toto=document.createElement('toto');
    toto.setAttribute('data-rabbit-mirror','true');
    toto.setAttribute('data-rm-face',String(index+1));
-   toto.append(details); fragment.append(toto);
+   toto.append(details);
+   markSanitizedRabbitMirrorFace(toto,{origin:'follow',faceIndex:index,faceCount:faces.length,
+    sourceHash:rabbitMirrorMultifaceSourceHash(parsed.faces[index].html)});
+   fragment.append(toto);
   }
   if(marker) marker.replaceWith(fragment); else body.append(fragment);
   host.remove(); removeEmptyFollowExternalAnchors(el||document);
@@ -7870,19 +8315,105 @@ function followDetailsRootFromHtml(html=''){
   return root;
  }catch{return null;}
 }
-function recoveredFollowFaces(html=''){
+function followRecoveryOwner(el,message=null){
+ const ctx=getContext();
+ const raw=el?.getAttribute?.('mesid');
+ const index=raw==null?-1:Number(raw);
+ if(!Number.isInteger(index)||index<0||messageElement(index)!==el) return null;
+ const current=ctx?.chat?.[index];
+ if(!current||current.is_user===true||(message&&current!==message)) return null;
+ return {ctx,index,message:current};
+}
+function showFollowRecoveryNotice(el,failure={}){
+ if(!el) return;
+ let notice=el.querySelector?.('[data-rabbit-mirror-follow-failure], [data-rabbit-mirror-follow-recovery-notice]');
+ if(!notice){ notice=document.createElement('div'); (messageBody(el)||el).append(notice); }
+ notice.setAttribute('data-rabbit-mirror-follow-recovery-notice','true');
+ notice.setAttribute('role','status');
+ const face=Number(failure.terminalFace);
+ const label=Number.isInteger(face)&&face>0?`（第 ${face} 面）`:'';
+ const knownFailure=failure.kind==='follow-multiface-rejected';
+ notice.textContent=`兔子镜${knownFailure?'本批生成失败':'历史恢复暂缓'}${label}：${String(failure.message||'这批内容未通过恢复前检查。')} 不会自动发送新请求。`;
+ notice.dataset.rmRecoveryCode=String(failure.code||'follow-recovery-rejected');
+}
+function clearFollowRecoveryNotice(el){
+ el?.querySelectorAll?.('[data-rabbit-mirror-follow-failure], [data-rabbit-mirror-follow-recovery-notice]')?.forEach(node=>node.remove());
+}
+function followRecipeSource(message){
+ const swipe=Number.isInteger(message?.swipe_id)?message.swipe_id:-1;
+ return swipe>=0&&typeof message?.swipes?.[swipe]==='string'?message.swipes[swipe]:String(message?.mes||'');
+}
+function nativeRecoveredFollowMedia(details){
+ // Evidence must be in the sanitized working controls/scene, not a title that
+ // merely calls three generic tabs a radio or a book. This is a conservative
+ // exception for legacy output without its original selection record.
+ const radios=[...details.querySelectorAll('input[type="radio"][id]')];
+ const labels=[...details.querySelectorAll('label[for]')];
+ const linked=labels.filter(label=>radios.some(input=>input.id===label.getAttribute('for')));
+ const range=details.querySelector('input[type="range"][min][max]');
+ const text=String(details.textContent||'');
+ if(radios.length>=2&&linked.length>=2&&range&&/\b(?:FM|AM|MHz|kHz)\b/i.test(text)){
+  const min=Number(range.getAttribute('min')),max=Number(range.getAttribute('max'));
+  if(Number.isFinite(min)&&Number.isFinite(max)&&max>min&&linked.filter(label=>/(?:频道|电台|FM|AM|MHz|kHz)/i.test(label.textContent||'')).length>=2){
+   return [{id:'legacy-structure:radio-tuner',title:'电台调频',summary:'净化后保留有范围的调频控件及多个关联频道。',tags:['tuner']}];
+  }
+ }
+ const css=[...details.querySelectorAll('style')].map(style=>String(style.textContent||'')).join('\n');
+ if(radios.length>=2&&linked.filter(label=>/(?:翻页|上一页|下一页|第\s*[\d一二三四五六七八九十]+\s*页)/.test(label.textContent||'')).length>=2
+   &&/rotateY\s*\(/i.test(css)&&/transform-style\s*:\s*preserve-3d/i.test(css)&&/:checked\b/.test(css)){
+  return [{id:'legacy-structure:page-turn',title:'立体翻页',summary:'净化后保留页状态控件、关联翻页入口及实际三维翻转规则。',tags:['page-turn']}];
+ }
+ return [];
+}
+function recoveredFollowFaces(html='',options={}){
+ const fail=(code,message,terminalFace=null)=>{
+  options.onFailure?.({code,message,terminalFace});
+  return [];
+ };
  if(!hasMultifaceMarkup(html)) return [];
  const parsed=parseMultifaceOutput(html,{allowProse:true});
- if(!parsed.ok) return [];
+ if(!parsed.ok) return fail(parsed.errors?.[0]?.code||'multiface-incomplete','历史批次的面数、顺序或独立结构不完整；未自动恢复。',parsed.errors?.[0]?.terminalFace||null);
+ const ctx=options.ctx, index=Number(options.messageIndex), message=options.message;
+ if(!ctx||!Number.isInteger(index)||ctx.chat?.[index]!==message||!message) return fail('follow-recovery-owner-missing','无法确认这批历史内容所属的消息；未自动恢复。');
+ const rejected=getRabbitMirrorFollowBatchFailure(ctx.chat,index);
+ if(rejected){ options.onFailure?.(rejected); return []; }
+ const recipeSource=followRecipeSource(message);
+ const exactSource=html===recipeSource || (options.snapshotOwnerVerified===true && options.recipeSourceHash===rabbitMirrorMultifaceSourceHash(recipeSource));
  const roots=[];
  for(const face of parsed.faces){
-  const details=extractReadyDetails(face.inner);
-  if(!usableReadyDetails(details)) return [];
-  normalizeRecoveredFollowRoot(details);
+   const details=extractReadyDetails(face.inner);
+   if(!usableReadyDetails(details)) return fail('multiface-sanitized-invalid','净化后缺少可用的标题或内容；未自动恢复。',face.index+1);
+   normalizeRecoveredFollowRoot(details);
   const toto=document.createElement('toto');
   toto.setAttribute('data-rabbit-mirror','true');
   toto.setAttribute('data-rm-face',String(face.index+1));
-  toto.append(details); roots.push(toto);
+   toto.append(details);
+   const recipe=exactSource?getRabbitMirrorRecipe({chatKey:chatKey(ctx),messageIndex:index,
+    swipeId:Number.isInteger(message.swipe_id)?message.swipe_id:0,message,faceIndex:face.index}):null;
+   const exactRecipe=recipe?.faceIndex===face.index && Array.isArray(recipe.faces) && recipe.faces.length===parsed.faces.length ? recipe : null;
+   const recipeFormats=exactRecipe?independentSelectedFormatDescriptors(exactRecipe):[];
+   const selectedFormats=recipeFormats.length?recipeFormats:nativeRecoveredFollowMedia(details);
+   const scan=scanRabbitMirrorHtml(toto.outerHTML,null);
+   const quality=evaluateIndependentPostSanitizeQuality(toto.outerHTML,{
+    ...(exactRecipe||{}),selectedFormats,interactionFamily:scan?.interactionFamily||null,
+    riskFlags:Array.isArray(scan?.riskFlags)?scan.riskFlags:[],
+   });
+   if(!quality.ok){
+    const missingFormat=!recipeFormats.length&&!selectedFormats.length&&quality.code==='generic-tabbed-flat-layout';
+    return fail(missingFormat?'follow-recovery-format-unverified':quality.code,
+     missingFormat?'缺少原抽签记录，暂不能确认这个历史批次的展现形式；未自动恢复。':quality.message,face.index+1);
+   }
+   roots.push(toto);
+ }
+ const prepared=roots.map(root=>root.outerHTML).join('\n');
+ if(!parseMultifaceOutput(prepared,{expectedCount:parsed.faces.length}).ok){
+  return fail('multiface-sanitized-invalid','过滤后的历史批次出现空标题、同名或结构歧义；未自动恢复。');
+ }
+ for(let faceIndex=0;faceIndex<roots.length;faceIndex+=1){
+  const originalHash=options.snapshotOwnerVerified===true&&Array.isArray(options.faceSourceHashes)
+   &&options.faceSourceHashes.length===roots.length?options.faceSourceHashes[faceIndex]:null;
+  if(!markSanitizedRabbitMirrorFace(roots[faceIndex],{origin:'follow',faceIndex,faceCount:roots.length,
+   sourceHash:originalHash||rabbitMirrorMultifaceSourceHash(parsed.faces[faceIndex].html)})) return fail('follow-recovery-proof-rejected','历史内容的净化证明未建立；未自动恢复。',faceIndex+1);
  }
  return roots;
 }
@@ -7907,23 +8438,38 @@ function followMessageSourceCandidates(msg){
  return candidates;
 }
 function restoreFollowMirrorFromMessageSource(el,msg){
- if(!el || inlineRabbitMirrorDetails(el).length || externalHosts(el).some(node=>node.dataset.rmSource==='follow')) return false;
+ if(!el) return false;
+ const owner=followRecoveryOwner(el,msg); if(!owner) return false;
+ const rejected=getRabbitMirrorFollowBatchFailure(owner.ctx.chat,owner.index);
+ if(rejected){ showFollowRecoveryNotice(el,rejected); return false; }
+ if(inlineRabbitMirrorDetails(el).length || externalHosts(el).some(node=>node.dataset.rmSource==='follow')){
+  clearFollowRecoveryNotice(el);
+  return false;
+ }
  const body=messageBody(el); if(!body) return false;
+ let recoveryFailure=null;
  for(const source of followMessageSourceCandidates(msg)){
-   if(hasMultifaceMarkup(source)){
-    const faces=recoveredFollowFaces(source);
-    if(!faces.length) continue;
-    body.append(...faces);
-    for(const face of faces){ try{ refreshRabbitMirrorToolsInScope(face); }catch{} }
-    return true;
+    if(hasMultifaceMarkup(source)){
+     const faces=recoveredFollowFaces(source,{ctx:owner.ctx,messageIndex:owner.index,message:msg,onFailure:failure=>{recoveryFailure=failure;}});
+     if(!faces.length){
+      // A rejected complete source must not fall through to another copy or to
+      // the single-face recovery path and silently revive a partial batch.
+      if(recoveryFailure){ showFollowRecoveryNotice(el,recoveryFailure); return false; }
+      continue;
+     }
+     body.append(...faces);
+     for(const face of faces){ try{ refreshRabbitMirrorToolsInScope(face); }catch{} }
+     clearFollowRecoveryNotice(el);
+     return true;
    }
   const root=normalizeRecoveredFollowRoot(followDetailsRootFromHtml(source));
   if(!root) continue;
   const details=root.matches?.('details')?root:root.querySelector?.('details');
   if(!isRabbitMirrorDetails(details)) continue;
-  body.append(root);
-  try{ refreshRabbitMirrorToolsInScope(root); }catch{}
-  return true;
+   body.append(root);
+   try{ refreshRabbitMirrorToolsInScope(root); }catch{}
+   clearFollowRecoveryNotice(el);
+   return true;
  }
  return false;
 }
@@ -7938,33 +8484,63 @@ function mountedFollowRootForMessage(el){
 }
 function captureMountedFollowSnapshots(){
  const snapshots=[]; const seen=new Set(); const ctx=getContext();
- for(const {i} of assistantMessages(ctx)){
-  const index=Number(i); if(!Number.isInteger(index)||index<0) continue;
+  for(const {i} of assistantMessages(ctx)){
+   const index=Number(i); if(!Number.isInteger(index)||index<0) continue;
+   const message=ctx?.chat?.[index];
+   if(!message || getRabbitMirrorFollowBatchFailure(ctx.chat,index)) continue;
   const el=messageElement(index); const root=mountedFollowRootForMessage(el); if(!root) continue;
    const host=externalHosts(el).find(node=>node.dataset.rmSource==='follow');
    const inline=inlineRabbitMirrorDetails(el);
-   const html=host && externalFaceDetails(host).length>1 ? serializeExternalFaceDetails(host)
-    : inline.length>1 ? inline.slice(0,5).map((details,faceIndex)=>wrapIndependentFace(details.outerHTML,faceIndex)).join('\n')
-    : String(root.outerHTML||'').trim();
-   if(!html) continue;
+    const html=host && externalFaceDetails(host).length>1 ? serializeExternalFaceDetails(host)
+     : inline.length>1 ? inline.slice(0,5).map((details,faceIndex)=>wrapPreparedIndependentFace((details.closest?.('toto')||details).outerHTML,faceIndex)).join('\n')
+     : String(root.outerHTML||'').trim();
+    if(!html) continue;
+   let faceSourceHashes=null;
+   if(hasMultifaceMarkup(html)){
+    const source=followMessageSourceCandidates(message).find(hasMultifaceMarkup);
+    const original=source?parseMultifaceOutput(source,{allowProse:true}):null;
+    const mounted=host?externalFaceDetails(host):inline;
+    if(!original?.ok||mounted.length!==original.faces.length) continue;
+    faceSourceHashes=original.faces.map(face=>rabbitMirrorMultifaceSourceHash(face.html));
+    const current=mounted.every((details,faceIndex)=>{
+     const proof=getSanitizedRabbitMirrorFaceProof(host?details:(details.closest?.('toto')||details));
+     if(proof?.origin!=='follow'||proof.faceIndex!==faceIndex||proof.faceCount!==mounted.length) return false;
+     if(proof.sourceHash===faceSourceHashes[faceIndex]) return true;
+     return !!host && host.dataset.rmSourceHash===messageSourceFingerprint(message)
+      && proof.sourceHash===messageSourceFingerprint(message);
+    });
+    if(!current) continue;
+   }
   const fingerprint=hashText(html.replace(/\s+/g,' '));
   const identity=`${index}:${fingerprint}`; if(seen.has(identity)) continue; seen.add(identity);
-  snapshots.push({mesid:index,html});
+   // In-memory hot-update snapshot only. A DOM at the same numeric mesid in
+   // another chat/Swipe/source must never inherit this working copy.
+    snapshots.push({mesid:index,html,message,chatKey:chatKey(ctx),swipeId:swipeId(message),faceSourceHashes,
+    sourceHash:rabbitMirrorMultifaceSourceHash(message.mes||''),
+    recipeSourceHash:rabbitMirrorMultifaceSourceHash(followRecipeSource(message))});
  }
  return snapshots;
 }
 function restoreMountedFollowSnapshots(snapshots=[]){
+ const ctx=getContext();
  for(const item of snapshots){
   const index=Number(item?.mesid); if(!Number.isInteger(index)||index<0) continue;
+  const message=ctx?.chat?.[index];
+  if(!message || item.message!==message || item.chatKey!==chatKey(ctx) || item.swipeId!==swipeId(message)
+    || item.sourceHash!==rabbitMirrorMultifaceSourceHash(message.mes||'')
+    || item.recipeSourceHash!==rabbitMirrorMultifaceSourceHash(followRecipeSource(message))) continue;
   const el=messageElement(index); const body=messageBody(el); if(!body) continue;
+  const rejected=getRabbitMirrorFollowBatchFailure(ctx.chat,index);
+  if(rejected){ showFollowRecoveryNotice(el,rejected); continue; }
   if(inlineRabbitMirrorDetails(el).length || externalHosts(el).some(node=>node.dataset.rmSource==='follow')) continue;
    if(hasMultifaceMarkup(item.html)){
-    const roots=recoveredFollowFaces(item.html);
-    if(roots.length){ body.append(...roots); for(const root of roots){ try{ refreshRabbitMirrorToolsInScope(root); }catch{} } }
+     const roots=recoveredFollowFaces(item.html,{ctx,messageIndex:index,message,snapshotOwnerVerified:true,
+      recipeSourceHash:item.recipeSourceHash,faceSourceHashes:item.faceSourceHashes,onFailure:failure=>showFollowRecoveryNotice(el,failure)});
+    if(roots.length){ body.append(...roots); for(const root of roots){ try{ refreshRabbitMirrorToolsInScope(root); }catch{} } clearFollowRecoveryNotice(el); }
     continue;
    }
    const root=normalizeRecoveredFollowRoot(followDetailsRootFromHtml(item.html)); if(!root) continue;
-  body.append(root); try{ refreshRabbitMirrorToolsInScope(root); }catch{}
+  body.append(root); try{ refreshRabbitMirrorToolsInScope(root); }catch{} clearFollowRecoveryNotice(el);
  }
 }
 
@@ -8326,7 +8902,28 @@ function stopAutomaticHostGenerationSettlement(ctx,owner,reason='host-completion
  const message=reason==='final-proof-missing'
   ? '⚠️ 未能确认工具调用后的最终正文，本轮未发送副 API 请求。请等正文和工具执行结束后，点击“重新生成兔子镜”。'
   : '⚠️ 未收到当前正文的可靠结束信号，本轮未发送副 API 请求，已停止自动等待。确认正文已经完成后，请点击“重新生成兔子镜”。';
- markAutomaticFailureStop(live.slot,live.sourceHash,reason);
+ markAutomaticFailureStop(live.slot,live.sourceHash,reason,{
+  message,
+  code:String(reason||'host-completion-timeout'),
+  semanticFailure:String(reason||'host-completion-timeout'),
+  terminalStage:'preflight',
+ });
+ publishIndependentApiRequestDiagnostic({
+  ok:false,
+  status:0,
+  requestCount:0,
+  automaticRetry:false,
+  chatKeyHash:hashText(chatKey(ctx)),
+  mesid:index,
+  swipe:swipeId(msg),
+  sourceHash:live.sourceHash,
+  baseSlotHash:hashText(live.baseSlot),
+  operationEpoch:operationEpochForBase(live.baseSlot),
+  semanticFailure:String(reason||'host-completion-timeout'),
+  terminalStage:'preflight',
+  terminalErrorCode:String(reason||'host-completion-timeout'),
+  diagnosticUpdatedAt:Date.now(),
+ });
  const existing=collapseDuplicateIdentityHosts(el,live.key,'independent',live.sourceHash);
  if(mountedIndependentReadyHostMatchesObserved(existing,live.ctx,index,live.msg,live,live.key)){
   existing.dataset.rmState='ready'; clearIndependentResayStatus(existing);
@@ -8620,6 +9217,14 @@ function syncMessages(indices=null){
           // that exact owner shell; do not schedule or dispatch another request.
           keep=ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
           if(keep) activeBaseFlight.loadingHost=keep;
+        } else if(!saved?.html && !activeBaseFlight && !persistedSuppressed && !automaticGenerationSuppressed
+          && (!keep || keep.dataset?.rmState==='loading') && automaticFailureStopFor(slot,sourceHash)){
+          // Passive DOM replacement must restore the exact terminal state, never
+          // schedule a request or turn the previous failure back into waiting.
+          const live=currentGenerationIdentity(i);
+          if(live?.slot===slot && live.sourceHash===sourceHash){
+           keep=renderAutomaticFailureStop(i,live,automaticFailureStopFor(slot,sourceHash));
+          }
         } else if(!saved?.html && !keep && isActiveGenerationTarget && !automaticGenerationSuppressed){
           keep=ensureReplyGenerationPlaceholder(el,key,sourceHash,true);
         }

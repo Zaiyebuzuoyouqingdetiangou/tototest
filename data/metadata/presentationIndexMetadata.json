@@ -1,0 +1,1838 @@
+{
+  "schema": 1,
+  "kind": "presentation",
+  "source": "data/raw/rawPresentationFormats.js",
+  "generated": "data/structured/presentationIndex.js",
+  "entries": [
+    {
+      "id": "10.2",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "10.2.1",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "10.2.2",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "10.2.3",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "10.2.4",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual",
+        "emotion",
+        "css"
+      ]
+    },
+    {
+      "id": "10.2.5",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual",
+        "css",
+        "network"
+      ]
+    },
+    {
+      "id": "10.2.6",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual",
+        "css",
+        "cycle"
+      ]
+    },
+    {
+      "id": "10.2.7",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual",
+        "css",
+        "celestial"
+      ]
+    },
+    {
+      "id": "10.2.8",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual",
+        "css",
+        "color"
+      ]
+    },
+    {
+      "id": "10.2.9",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual",
+        "css",
+        "season",
+        "animation"
+      ]
+    },
+    {
+      "id": "1.1",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.1.1",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.1.1.1",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.1.1.2",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.1.1.3",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.1.1.4",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital",
+        "social",
+        "review"
+      ]
+    },
+    {
+      "id": "1.1.1.5",
+      "group": "1",
+      "tags": [
+        "independent",
+        "adult",
+        "fictional",
+        "digital",
+        "social"
+      ],
+      "summaryOverride": "模仿当前虚拟角色的 X/Twitter 成人向推文或串文，以账号栏、时间、媒体文字描述、互动数与回复层级推进番外情节；所有账号、媒体和互动均属于当前虚构世界，不复刻现实人物或真实账号，也不提供现实发布或运营指引。"
+    },
+    {
+      "id": "1.1.2",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.1.3",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.1.4",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "Lookus",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ],
+      "sourceId": null,
+      "sourceTitle": "Lookus (情侣桌面组件)"
+    },
+    {
+      "id": "1.2",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.2.1",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.3.3.platform",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ],
+      "sourceId": "1.3.3",
+      "sourceTitle": "网站与应用平台"
+    },
+    {
+      "id": "1.3.3.1",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.3.3.1.1",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital",
+        "video",
+        "meme",
+        "zodiac"
+      ],
+      "aliases": [
+        "XX 来临，十二星座决定你的 XX"
+      ]
+    },
+    {
+      "id": "1.3.3.1.2",
+      "group": "1",
+      "tags": [
+        "independent",
+        "adult",
+        "fictional",
+        "digital",
+        "video"
+      ],
+      "aliases": [
+        "P站等成人视频网站"
+      ],
+      "summaryOverride": "模仿当前虚拟角色扮演中的虚构成人视频网站观看页，以标题、频道、时长、标签、播放章节、评论与相关推荐推进番外情节；不使用现实人物、真实账号或真实上传内容，也不提供现实发布或运营指引。"
+    },
+    {
+      "id": "1.3.3.2",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.3.3.3",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.3.3.4",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.3.3.4.2",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.3.3.5",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.3.3.6",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.3.3.6.secret",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ],
+      "sourceId": null,
+      "sourceTitle": "秘密心事网页"
+    },
+    {
+      "id": "1.3.3.6.ecard",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ],
+      "sourceId": null,
+      "sourceTitle": "电子贺卡"
+    },
+    {
+      "id": "1.3.3.6.pet",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ],
+      "sourceId": null,
+      "sourceTitle": "桌面宠物 / 电子宠物"
+    },
+    {
+      "id": "1.3.3.6.ai",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital",
+        "humor"
+      ],
+      "sourceId": null,
+      "sourceTitle": "求助AI (AI Chatbot)"
+    },
+    {
+      "id": "1.3.3.6.charai",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital",
+        "humor"
+      ],
+      "sourceId": "1.3.3.6.1"
+    },
+    {
+      "id": "1.3.3.review",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ],
+      "sourceId": "1.3.3",
+      "sourceTitle": "评论系统"
+    },
+    {
+      "id": "1.3.4",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.4",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.4.1",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.4.2",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.5",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.6",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.7",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.8",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.9",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital",
+        "interactive"
+      ]
+    },
+    {
+      "id": "1.9.1",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital",
+        "interactive",
+        "mystery"
+      ],
+      "rawIndent": 2
+    },
+    {
+      "id": "2.1",
+      "group": "2",
+      "tags": [
+        "independent",
+        "physical"
+      ]
+    },
+    {
+      "id": "2.1.1",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper"
+      ]
+    },
+    {
+      "id": "2.1.2",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper"
+      ]
+    },
+    {
+      "id": "2.1.3",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper"
+      ]
+    },
+    {
+      "id": "2.1.4",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper"
+      ]
+    },
+    {
+      "id": "2.1.5",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper"
+      ]
+    },
+    {
+      "id": "2.1.6",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper"
+      ]
+    },
+    {
+      "id": "2.1.7",
+      "group": "2",
+      "tags": [
+        "independent",
+        "physical"
+      ]
+    },
+    {
+      "id": "2.1.7.1",
+      "group": "2",
+      "tags": [
+        "independent",
+        "visual",
+        "text-art",
+        "kaomoji"
+      ]
+    },
+    {
+      "id": "2.1.8",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper",
+        "interactive"
+      ]
+    },
+    {
+      "id": "2.1.9",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper",
+        "daily",
+        "family"
+      ]
+    },
+    {
+      "id": "2.1.10",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper",
+        "visual",
+        "memory"
+      ]
+    },
+    {
+      "id": "2.1.11",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper",
+        "digital",
+        "health"
+      ],
+      "rawIndent": 2
+    },
+    {
+      "id": "2.2",
+      "group": "2",
+      "tags": [
+        "independent",
+        "physical"
+      ]
+    },
+    {
+      "id": "2.2.1",
+      "group": "2",
+      "tags": [
+        "independent",
+        "physical"
+      ]
+    },
+    {
+      "id": "2.2.2",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper"
+      ]
+    },
+    {
+      "id": "2.3",
+      "group": "2",
+      "tags": [
+        "independent",
+        "physical"
+      ]
+    },
+    {
+      "id": "2.3.1",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper"
+      ]
+    },
+    {
+      "id": "2.4",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper"
+      ]
+    },
+    {
+      "id": "2.4.1",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper",
+        "object",
+        "mysticism"
+      ]
+    },
+    {
+      "id": "2.4.2",
+      "group": "2",
+      "tags": [
+        "independent",
+        "physical",
+        "object",
+        "interactive",
+        "discovery"
+      ],
+      "aliases": [
+        "翻各种物品 / 窥探式翻找"
+      ]
+    },
+    {
+      "id": "2.5",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper"
+      ]
+    },
+    {
+      "id": "3.3",
+      "group": "3",
+      "tags": [
+        "independent",
+        "analysis"
+      ]
+    },
+    {
+      "id": "3.3.1",
+      "group": "3",
+      "tags": [
+        "independent",
+        "analysis"
+      ]
+    },
+    {
+      "id": "3.3.2",
+      "group": "3",
+      "tags": [
+        "canon",
+        "analysis"
+      ]
+    },
+    {
+      "id": "3.4",
+      "group": "3",
+      "tags": [
+        "canon",
+        "analysis"
+      ]
+    },
+    {
+      "id": "3.5",
+      "group": "3",
+      "tags": [
+        "independent",
+        "analysis",
+        "academic",
+        "historical"
+      ]
+    },
+    {
+      "id": "3.6",
+      "group": "3",
+      "tags": [
+        "independent",
+        "analysis",
+        "academic",
+        "catalog"
+      ]
+    },
+    {
+      "id": "4.1",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media"
+      ]
+    },
+    {
+      "id": "4.1.1",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media"
+      ]
+    },
+    {
+      "id": "4.2",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media"
+      ]
+    },
+    {
+      "id": "4.2.1",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media"
+      ]
+    },
+    {
+      "id": "4.2.2",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media"
+      ]
+    },
+    {
+      "id": "4.2.3",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media"
+      ]
+    },
+    {
+      "id": "4.3",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media"
+      ]
+    },
+    {
+      "id": "4.3.1",
+      "group": "4",
+      "tags": [
+        "canon",
+        "media"
+      ]
+    },
+    {
+      "id": "4.3.2",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media"
+      ]
+    },
+    {
+      "id": "4.3.3",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media"
+      ]
+    },
+    {
+      "id": "4.3.4",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media"
+      ]
+    },
+    {
+      "id": "4.3.5",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media"
+      ]
+    },
+    {
+      "id": "4.3.6",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media"
+      ]
+    },
+    {
+      "id": "4.3.6.1",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media",
+        "humor"
+      ]
+    },
+    {
+      "id": "4.3.7",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media"
+      ]
+    },
+    {
+      "id": "4.3.8",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media",
+        "humor"
+      ]
+    },
+    {
+      "id": "4.3.9",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media",
+        "game",
+        "humor"
+      ]
+    },
+    {
+      "id": "4.3.10",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media",
+        "humor",
+        "academic"
+      ]
+    },
+    {
+      "id": "4.3.11",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media",
+        "mystery",
+        "documentary",
+        "humor"
+      ],
+      "summaryOverride": "模仿《走近科学》式电视调查节目，以悬念片头、当事人口述、现场复原、专家假设与验证调查角色相关的离奇现象；结尾必须回收前文证据，可作严肃解释或一本正经的荒诞反转。必须有栏目角标、字幕条或镜头切换，以及至少三条证据、两种假设和一次揭晓。"
+    },
+    {
+      "id": "4.4",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media"
+      ]
+    },
+    {
+      "id": "4.5",
+      "group": "4",
+      "tags": [
+        "independent",
+        "media"
+      ]
+    },
+    {
+      "id": "4.5.1",
+      "group": "4",
+      "tags": [
+        "independent",
+        "literary"
+      ]
+    },
+    {
+      "id": "4.5.1.1",
+      "group": "4",
+      "tags": [
+        "independent",
+        "literary"
+      ]
+    },
+    {
+      "id": "4.5.1.2",
+      "group": "4",
+      "tags": [
+        "independent",
+        "literary",
+        "poetry"
+      ]
+    },
+    {
+      "id": "4.5.2",
+      "group": "4",
+      "tags": [
+        "independent",
+        "literary"
+      ]
+    },
+    {
+      "id": "4.5.3",
+      "group": "4",
+      "tags": [
+        "independent",
+        "literary",
+        "religious",
+        "confession"
+      ],
+      "rawIndent": 2
+    },
+    {
+      "id": "4.5.4",
+      "group": "4",
+      "tags": [
+        "independent",
+        "literary",
+        "annotation",
+        "interactive"
+      ],
+      "rawIndent": 2
+    },
+    {
+      "id": "4.5.5",
+      "group": "4",
+      "tags": [
+        "independent",
+        "literary",
+        "poetry"
+      ],
+      "rawIndent": 2
+    },
+    {
+      "id": "5.1",
+      "group": "5",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "5.1.1",
+      "group": "5",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "5.1.1.2",
+      "group": "5",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "5.1.1.3",
+      "group": "5",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "5.1.1.4",
+      "group": "5",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "5.1.1.5",
+      "group": "5",
+      "tags": [
+        "independent",
+        "visual",
+        "art",
+        "adult"
+      ],
+      "aliases": [
+        "涩图 / 春宫图 (Erotic Art / Shunga)"
+      ]
+    },
+    {
+      "id": "5.1.1.6",
+      "group": "5",
+      "tags": [
+        "independent",
+        "visual",
+        "art",
+        "painting"
+      ]
+    },
+    {
+      "id": "5.1.2",
+      "group": "5",
+      "tags": [
+        "independent",
+        "performance"
+      ]
+    },
+    {
+      "id": "5.2",
+      "group": "5",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "5.2.1",
+      "group": "5",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "5.2.2",
+      "group": "5",
+      "tags": [
+        "independent",
+        "music"
+      ]
+    },
+    {
+      "id": "5.2.2.1",
+      "group": "5",
+      "tags": [
+        "independent",
+        "music",
+        "inner-voice"
+      ],
+      "summaryOverride": "把角色当下无法说出口的心理活动表现为只有其本人能听见的脑内 BGM，标注起奏、循环、变调、卡带或戛然而止等时点，让音乐变化与动作和情绪同步；不得伪装成真实音频播放器、只列歌单或搬运现实歌曲的完整歌词。"
+    },
+    {
+      "id": "5.2.3",
+      "group": "5",
+      "tags": [
+        "independent",
+        "music"
+      ]
+    },
+    {
+      "id": "5.2.3.1",
+      "group": "5",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "5.2.4",
+      "group": "5",
+      "tags": [
+        "independent",
+        "music",
+        "folk",
+        "humor"
+      ],
+      "rawIndent": 2
+    },
+    {
+      "id": "5.3",
+      "group": "5",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "5.3.1",
+      "group": "5",
+      "tags": [
+        "independent",
+        "mystic"
+      ]
+    },
+    {
+      "id": "5.3.2",
+      "group": "5",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "5.3.2.1",
+      "group": "5",
+      "tags": [
+        "independent",
+        "mystic"
+      ]
+    },
+    {
+      "id": "5.3.2.2",
+      "group": "5",
+      "tags": [
+        "independent",
+        "mystic"
+      ]
+    },
+    {
+      "id": "5.3.2.3",
+      "group": "5",
+      "tags": [
+        "independent",
+        "mystic"
+      ]
+    },
+    {
+      "id": "5.3.2.4",
+      "group": "5",
+      "tags": [
+        "independent",
+        "mystic"
+      ]
+    },
+    {
+      "id": "5.3.2.5",
+      "group": "5",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "5.3.3",
+      "group": "5",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "5.3.3.1",
+      "group": "5",
+      "tags": [
+        "canon",
+        "mystic"
+      ]
+    },
+    {
+      "id": "6.1",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game"
+      ]
+    },
+    {
+      "id": "6.1.1",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.2",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.2.1",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game"
+      ],
+      "aliases": [
+        "视觉小说",
+        "Visual Novel"
+      ],
+      "summaryOverride": "内存 / 读取档案接口、剧情选项分支图、CG回忆模式、角色好感度/属性面板、ADV等；必须实际呈现 ADV 对话框、人物舞台、选项分支、存读档、好感变化或 CG 回想中的至少一项，不得只是普通文本卡。",
+      "aliasesBeforeSummary": true
+    },
+    {
+      "id": "6.2.1.1",
+      "group": "6",
+      "tags": [
+        "canon",
+        "game"
+      ]
+    },
+    {
+      "id": "6.2.1.1.a",
+      "group": "6",
+      "tags": [
+        "canon",
+        "game"
+      ]
+    },
+    {
+      "id": "6.2.1.1.b",
+      "group": "6",
+      "tags": [
+        "canon",
+        "game"
+      ]
+    },
+    {
+      "id": "6.2.1.1.c",
+      "group": "6",
+      "tags": [
+        "canon",
+        "game"
+      ]
+    },
+    {
+      "id": "6.2.1.1.d",
+      "group": "6",
+      "tags": [
+        "canon",
+        "game",
+        "interactive",
+        "visual",
+        "emotion"
+      ],
+      "summaryOverride": "模仿《心跳回忆 GS4》的“萤火虫栖息地”系统。在特定情感节点后出现多个可交互光点，每个光点代表 {{char}} 心中一份“因 {{user}} 而生的感情”；触发光点后呈现对应的内心独白，并以红、青、黄、白、粉五类光点区分恋爱话题、恋爱烦恼、友人、高兴与隐秘欲望。"
+    },
+    {
+      "id": "6.2.1.1.e",
+      "group": "6",
+      "tags": [
+        "canon",
+        "game",
+        "interactive",
+        "visual",
+        "touch"
+      ],
+      "summaryOverride": "以当前 {{char}} 的近距离人物舞台为核心，根据姿态选择约 7～9 个常规触摸热点；明确成年且情境适合时可额外出现 0～2 个私密随机隐藏触点。普通关系只显示本轮预生成反应；热恋回合可选启用本轮 approach，并可少量使用 GS 风格可视化。Live2D 仅复用本地既有 expression / motion，触摸不触发新的模型生成。"
+    },
+    {
+      "id": "6.2.2",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.2.3",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive",
+        "adult"
+      ]
+    },
+    {
+      "id": "6.2.3.1",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive",
+        "adult"
+      ]
+    },
+    {
+      "id": "6.2.4",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.2.5",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.2.6",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.2.7",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game"
+      ]
+    },
+    {
+      "id": "6.2.7.a",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game"
+      ]
+    },
+    {
+      "id": "6.2.7.b",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game"
+      ]
+    },
+    {
+      "id": "6.3",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.3.1",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game"
+      ]
+    },
+    {
+      "id": "6.3.2",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game"
+      ]
+    },
+    {
+      "id": "6.3.3",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.3.4",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game"
+      ]
+    },
+    {
+      "id": "6.3.5",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.3.6",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.4",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.4.1",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game"
+      ]
+    },
+    {
+      "id": "6.4.1.1",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.4.1.2",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.4.1.3",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.4.1.4",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.4.2",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.5",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.5.1",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.5.1.1",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.5.2",
+      "group": "6",
+      "tags": [
+        "independent",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.5.3",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.5.4",
+      "group": "6",
+      "tags": [
+        "independent",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.5.4.1",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.5.4.2",
+      "group": "6",
+      "tags": [
+        "independent",
+        "interactive",
+        "adult"
+      ]
+    },
+    {
+      "id": "6.5.4.3",
+      "group": "6",
+      "tags": [
+        "canon",
+        "interactive",
+        "analysis"
+      ]
+    },
+    {
+      "id": "6.5.4.4",
+      "group": "6",
+      "tags": [
+        "independent",
+        "interactive",
+        "quiz",
+        "psychology"
+      ],
+      "rawIndent": 4
+    },
+    {
+      "id": "6.5.5",
+      "group": "6",
+      "tags": [
+        "independent",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.5.6",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.5.7",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.5.8",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive",
+        "choice"
+      ]
+    },
+    {
+      "id": "6.5.bingo",
+      "group": "6",
+      "tags": [
+        "independent",
+        "interactive"
+      ],
+      "sourceId": null,
+      "sourceTitle": "Bingo卡"
+    },
+    {
+      "id": "11.2.1",
+      "group": "11",
+      "tags": [
+        "canon",
+        "interactive",
+        "visual"
+      ]
+    },
+    {
+      "id": "7.1",
+      "group": "7",
+      "tags": [
+        "independent",
+        "literary"
+      ]
+    },
+    {
+      "id": "7.1.1",
+      "group": "7",
+      "tags": [
+        "independent",
+        "literary"
+      ]
+    },
+    {
+      "id": "7.1.2",
+      "group": "7",
+      "tags": [
+        "independent",
+        "literary"
+      ]
+    },
+    {
+      "id": "7.1.3",
+      "group": "7",
+      "tags": [
+        "independent",
+        "literary"
+      ]
+    },
+    {
+      "id": "7.1.4",
+      "group": "7",
+      "tags": [
+        "independent",
+        "literary"
+      ]
+    },
+    {
+      "id": "7.1.5",
+      "group": "7",
+      "tags": [
+        "independent",
+        "literary"
+      ]
+    },
+    {
+      "id": "7.1.6",
+      "group": "7",
+      "tags": [
+        "independent",
+        "literary",
+        "fanfic",
+        "emotion"
+      ]
+    },
+    {
+      "id": "7.2",
+      "group": "7",
+      "tags": [
+        "independent",
+        "literary"
+      ]
+    },
+    {
+      "id": "7.2.1",
+      "group": "7",
+      "tags": [
+        "independent",
+        "forum"
+      ]
+    },
+    {
+      "id": "7.2.1.1",
+      "group": "7",
+      "tags": [
+        "independent",
+        "forum",
+        "retro",
+        "supernatural"
+      ]
+    },
+    {
+      "id": "7.2.1.2",
+      "group": "7",
+      "tags": [
+        "independent",
+        "forum",
+        "digital"
+      ]
+    },
+    {
+      "id": "7.2.2",
+      "group": "7",
+      "tags": [
+        "independent",
+        "forum"
+      ]
+    },
+    {
+      "id": "7.2.3",
+      "group": "7",
+      "tags": [
+        "independent",
+        "forum",
+        "qa",
+        "anonymous"
+      ]
+    },
+    {
+      "id": "7.3",
+      "group": "7",
+      "tags": [
+        "independent",
+        "literary"
+      ]
+    },
+    {
+      "id": "7.3.1",
+      "group": "7",
+      "tags": [
+        "canon",
+        "forum"
+      ]
+    },
+    {
+      "id": "7.3.2",
+      "group": "7",
+      "tags": [
+        "independent",
+        "forum"
+      ]
+    },
+    {
+      "id": "7.4",
+      "group": "7",
+      "tags": [
+        "independent",
+        "forum"
+      ]
+    },
+    {
+      "id": "7.5",
+      "group": "7",
+      "tags": [
+        "independent",
+        "literary"
+      ]
+    },
+    {
+      "id": "7.6",
+      "group": "7",
+      "tags": [
+        "independent",
+        "forum"
+      ]
+    },
+    {
+      "id": "8.1",
+      "group": "8",
+      "tags": [
+        "independent",
+        "meta"
+      ]
+    },
+    {
+      "id": "8.1.1",
+      "group": "8",
+      "tags": [
+        "canon",
+        "meta"
+      ]
+    },
+    {
+      "id": "8.1.2",
+      "group": "8",
+      "tags": [
+        "canon",
+        "meta"
+      ]
+    },
+    {
+      "id": "8.2",
+      "group": "8",
+      "tags": [
+        "canon",
+        "meta"
+      ]
+    },
+    {
+      "id": "8.3",
+      "group": "8",
+      "tags": [
+        "canon",
+        "meta"
+      ]
+    },
+    {
+      "id": "8.4",
+      "group": "8",
+      "tags": [
+        "independent",
+        "meta"
+      ]
+    },
+    {
+      "id": "8.5",
+      "group": "8",
+      "tags": [
+        "independent",
+        "meta"
+      ]
+    },
+    {
+      "id": "8.6",
+      "group": "8",
+      "tags": [
+        "independent",
+        "meta"
+      ]
+    },
+    {
+      "id": "8.7",
+      "group": "8",
+      "tags": [
+        "independent",
+        "meta"
+      ]
+    },
+    {
+      "id": "8.translation",
+      "group": "8",
+      "tags": [
+        "independent",
+        "meta"
+      ],
+      "sourceId": null,
+      "sourceTitle": "直白翻译机"
+    }
+  ]
+}

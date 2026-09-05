@@ -2,9 +2,9 @@ import {
     commitPendingComboBatch,
     getCurrentChatKey,
     releasePendingComboBatch,
-} from './storage.js?rmv=1.5.8-visualstream8-boundary1';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.8-visualstream8-boundary1';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.8-visualstream8-boundary1';
+} from './storage.js?rmv=1.5.18-audit1c2';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.18-audit1c2';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.18-audit1c2';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';
@@ -255,6 +255,25 @@ function currentSwipeId(message) {
     return Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
 }
 
+function copyFormatDescriptors(metadata) {
+    const allowedIds = new Set(Array.isArray(metadata?.formatIds) ? metadata.formatIds : []);
+    const seen = new Set();
+    const descriptors = [];
+    const text = (value, max) => typeof value === 'string' ? value.trim().slice(0, max) : '';
+    for (const item of Array.isArray(metadata?.formatDescriptors) ? metadata.formatDescriptors.slice(0, 8) : []) {
+        const id = item?.id;
+        if (typeof id !== 'string' || !id || id.length > 2048 || !allowedIds.has(id) || seen.has(id)) continue;
+        seen.add(id);
+        descriptors.push({
+            id,
+            title: text(item.title, 160),
+            summary: text(item.summary, 210),
+            tags: Array.isArray(item.tags) ? item.tags.slice(0, 4).map(tag => text(tag, 64)).filter(Boolean) : [],
+        });
+    }
+    return descriptors;
+}
+
 function copySelectionMetadata(metadata = null) {
     if (!metadata || typeof metadata !== 'object') return null;
     const copy = {
@@ -265,6 +284,8 @@ function copySelectionMetadata(metadata = null) {
         forcedVisualScenery: !!metadata.forcedVisualScenery,
         tarotRules: metadata.tarotRules === true,
     };
+    const formatDescriptors = copyFormatDescriptors(metadata);
+    if (formatDescriptors.length) copy.formatDescriptors = formatDescriptors;
     if (Array.isArray(metadata.faces)) {
         copy.faces = metadata.faces.slice(0, 5).map(face => ({
             faceIndex: Number(face?.faceIndex),

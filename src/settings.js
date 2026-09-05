@@ -14,6 +14,32 @@ export const DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS = Object.freeze([
     'updatevarible',
 ]);
 
+export const RABBIT_MIRROR_BANNED_WORD_MAX_COUNT = 256;
+export const RABBIT_MIRROR_BANNED_WORD_MAX_CHARS = 80;
+
+export function normalizeRabbitMirrorBannedWords(value) {
+    const source = typeof value === 'string'
+        ? value.replace(/\r\n?/g, '\n').split('\n')
+        : Array.isArray(value) ? value : [];
+    const result = [];
+    const seen = new Set();
+    for (const raw of source) {
+        const term = String(raw ?? '')
+            .replace(/[\u0000-\u001F\u007F]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, RABBIT_MIRROR_BANNED_WORD_MAX_CHARS);
+        if (!term) continue;
+        const key = term.toLocaleLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        result.push(term);
+        if (result.length >= RABBIT_MIRROR_BANNED_WORD_MAX_COUNT) break;
+    }
+    return result;
+}
+
+
 export function normalizeIndependentContextExcludedTags(value) {
     const source = Array.isArray(value)
         ? value
@@ -109,6 +135,10 @@ export const defaultSettings = Object.freeze({
     maintenanceRabbitAutoSafeEnabled: false,
     maintenanceRabbitAutoSafeConsent: false,
     feedbackCatEnabled: true,
+    rabbitMirrorBannedWords: [],
+    // 1C-1 only: hidden production gate. The UI does not expose this until external raw lookup exists.
+    externalWorldBookRandomEnabled: false,
+    externalWorldBookMixMode: 'builtin-only',
     enhancedVisualDrawing: false,
     visualPromptEditingEnabled: false,
     visualPrompt: DEFAULT_VISUAL_PROMPT,
@@ -231,6 +261,11 @@ export function getSettings() {
         settings.maintenanceRabbitAutoSafeConsent = false;
     }
     settings.feedbackCatEnabled = settings.feedbackCatEnabled !== false;
+    settings.rabbitMirrorBannedWords = normalizeRabbitMirrorBannedWords(settings.rabbitMirrorBannedWords);
+    settings.externalWorldBookRandomEnabled = settings.externalWorldBookRandomEnabled === true;
+    settings.externalWorldBookMixMode = ['builtin-only','builtin-preferred','balanced','external-preferred','external-only'].includes(settings.externalWorldBookMixMode)
+        ? settings.externalWorldBookMixMode
+        : 'builtin-only';
     settings.enhancedVisualDrawing = settings.enhancedVisualDrawing === true;
     settings.visualPromptEditingEnabled = !!settings.visualPromptEditingEnabled;
     const normalizeVisualSetting = (value, fallback, maxChars) => {
@@ -268,6 +303,17 @@ export function updateSettings(patch) {
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'followTagIsolationEnabled')) {
         safePatch.followTagIsolationEnabled = safePatch.followTagIsolationEnabled === true;
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorBannedWords')) {
+        safePatch.rabbitMirrorBannedWords = normalizeRabbitMirrorBannedWords(safePatch.rabbitMirrorBannedWords);
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'externalWorldBookRandomEnabled')) {
+        safePatch.externalWorldBookRandomEnabled = safePatch.externalWorldBookRandomEnabled === true;
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'externalWorldBookMixMode')) {
+        safePatch.externalWorldBookMixMode = ['builtin-only','builtin-preferred','balanced','external-preferred','external-only'].includes(safePatch.externalWorldBookMixMode)
+            ? safePatch.externalWorldBookMixMode
+            : 'builtin-only';
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'enhancedVisualDrawing')) {
         safePatch.enhancedVisualDrawing = safePatch.enhancedVisualDrawing === true;

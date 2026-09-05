@@ -1,15 +1,16 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, resetSettings } from './settings.js?rmv=1.5.8-visualstream8-boundary1';
-import { clearLastCombo } from './storage.js?rmv=1.5.8-visualstream8-boundary1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.8-visualstream8-boundary1';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.8-visualstream8-boundary1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.8-visualstream8-boundary1';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.18-audit1c2';
+import { clearLastCombo } from './storage.js?rmv=1.5.18-audit1c2';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.18-audit1c2';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.18-audit1c2';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.18-audit1c2';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.8-visualstream8-boundary1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.8-visualstream8-boundary1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.8-visualstream8-boundary1';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.18-audit1c2';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.18-audit1c2';
+import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.18-audit1c2';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.18-audit1c2';
 
-const SETTINGS_UI_VERSION = '1.5';
-const RUNTIME_VERSION = '1.5.8';
+const SETTINGS_UI_VERSION = '1.6';
+const RUNTIME_VERSION = '1.5.18';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -522,7 +523,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.8</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.18</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -557,6 +558,13 @@ export function initRabbitMirrorUI() {
           <div id="rh_follow_display_row" style="margin-left:26px;padding:7px 10px;border-left:2px solid color-mix(in srgb, var(--SmartThemeBorderColor) 60%, transparent);">
             <label><input name="rh_follow_display" type="radio" value="inline"> 正文下方</label>
             <label style="margin-left:14px;"><input name="rh_follow_display" type="radio" value="external"> 外置弹窗</label>
+            <div id="rh_follow_regex_helper" style="margin-top:9px;padding-top:8px;border-top:1px solid color-mix(in srgb,currentColor 12%,transparent);">
+              <div data-rh-no-send-regex-status style="font-size:11px;line-height:1.45;opacity:.78;">不发送兔子镜正则：正在检测…</div>
+              <div class="flex-container" style="gap:7px;flex-wrap:wrap;margin-top:6px;">
+                <button class="menu_button rh_regex_configure" type="button">一键配置正则</button>
+                <button class="menu_button rh_regex_open" type="button">查看酒馆正则</button>
+              </div>
+            </div>
           </div>
           <label class="checkbox_label" style="margin-top:12px;"><input name="rh_generation_source" id="rh_generation_independent" type="radio" value="independent"> 使用独立 API</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.72;font-size:12px;line-height:1.45;">正文先生成，回复结束后再用独立 API 单独生成兔子镜；具体配置在下面的独立分区。</div>
@@ -622,14 +630,32 @@ export function initRabbitMirrorUI() {
         <summary><span>工具与维护</span><span class="rabbit-mirror-section-note">正则 · 诊断 · 重置</span></summary>
         <div class="rabbit-mirror-section-content">
           <div class="rabbit-mirror-regex-helper">
-            <div style="font-weight:600;margin-bottom:6px;">不发送小剧场正则</div>
-            <div style="opacity:.82;font-size:12px;margin-bottom:8px;">设置：替换留空／勾选 AI输出／勾选 仅格式提示词</div>
-            <button id="rh_copy_regex" class="menu_button" type="button">复制推荐正则</button>
+            <div style="font-weight:600;margin-bottom:6px;">不发送兔子镜正则</div>
+            <div data-rh-no-send-regex-status style="opacity:.82;font-size:12px;margin-bottom:8px;">正在检测酒馆 Regex 配置…</div>
+            <div class="flex-container" style="gap:7px;flex-wrap:wrap;">
+              <button class="menu_button rh_regex_configure" type="button">一键配置正则</button>
+              <button class="menu_button rh_regex_open" type="button">查看酒馆正则</button>
+              <button id="rh_copy_regex" class="menu_button" type="button">复制推荐正则</button>
+            </div>
+          </div>
+          <div class="rabbit-mirror-regex-helper" style="margin-top:10px;">
+            <div style="font-weight:600;margin-bottom:6px;">禁词表（本地过滤）</div>
+            <div style="opacity:.76;font-size:11px;line-height:1.45;margin-bottom:7px;">一行一个词；从下一面开始只删除兔子镜可见文字中的匹配词，不修改正文、HTML 属性、CSS 或 SVG 结构，也不进入 Prompt / Token。</div>
+            <textarea id="rh_banned_words" class="text_pole" spellcheck="false" style="width:100%;min-height:92px;resize:vertical;box-sizing:border-box;" placeholder="例如：\n某个称呼\n某个不想出现的词"></textarea>
+            <div class="flex-container" style="gap:7px;align-items:center;flex-wrap:wrap;margin-top:7px;">
+              <button id="rh_banned_words_save" class="menu_button" type="button">保存禁词表</button>
+              <span id="rh_banned_words_status" style="font-size:11px;opacity:.72;"></span>
+            </div>
           </div>
           <div class="rabbit-mirror-actions">
             <button id="rh_clear_last" class="menu_button">清除抽签历史与冷却记录</button>
             <button id="rh_clear_injection" class="menu_button">清空当前注入</button>
             <button id="rh_reset" class="menu_button">恢复默认设置</button>
+          </div>
+          <div style="margin-top:12px;padding:10px 11px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:10px;">
+            <div style="font-weight:700;">📚 外部世界书母本</div>
+            <div style="opacity:.74;font-size:11px;line-height:1.5;margin-top:4px;">从酒馆世界书或本地 JSON 导入并确认分类。在管理窗口按需开启外部抽签；仅使用本轮抽中的条目，新库默认停用。</div>
+            <button id="rh_external_worldbook_open" class="menu_button" type="button" style="margin-top:8px;font-weight:700;">打开外部世界书导入工具</button>
           </div>
           <div style="margin-top:12px;padding:10px 11px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:10px;">
             <div style="font-weight:700;">🛰 外部代码／宿主性能诊断（测试版）</div>
@@ -689,7 +715,7 @@ export function initRabbitMirrorUI() {
                 </select>
               </label>
             </div>
-            <div id="rh_multiface_help" class="rabbit-mirror-subnote" style="margin:0 0 10px 26px;">一次请求，多面各自抽取、独立展示。面数越多，生成越久。</div>
+            <div id="rh_multiface_help" class="rabbit-mirror-subnote" style="margin:0 0 10px 26px;">一次请求，多面各自抽取、独立展示。面数越多，输出越长；任一面不完整或未通过质量检查时整批不会保存，也不会自动补发。</div>
             <label for="rh_sampling_mode" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
               <span>抽取模式</span>
               <select id="rh_sampling_mode" class="text_pole" style="max-width:300px;">
@@ -870,6 +896,8 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_max_tokens').val(settings.independentApiMaxTokens ?? 30000);
     $('#rh_independent_context_layers').val(settings.independentContextMaxLayers ?? 20);
     checked('#rh_follow_tag_isolation', settings.followTagIsolationEnabled === true);
+    $('#rh_banned_words').val((settings.rabbitMirrorBannedWords || []).join('\n'));
+    $('#rh_banned_words_status').text(`已保存 ${(settings.rabbitMirrorBannedWords || []).length} / ${RABBIT_MIRROR_BANNED_WORD_MAX_COUNT} 个词`);
     $('#rh_independent_model').val(settings.independentApiModel || '');
     const tagFilterPresetLabels = new Map([
         ['thinking', 'thinking'],
@@ -1157,6 +1185,7 @@ export function initRabbitMirrorUI() {
         refreshRabbitMirrorGenerationMode();
         renderTokenMeter();
         toastr?.info?.(generationSource === 'independent' ? '已切换为独立 API。' : '已切换为跟随当前 API。');
+        void refreshNoSendRegexStatus();
         if (generationSource === 'independent') setWorldInfoPromptOpen(true);
     });
     $('input[name="rh_follow_display"]').on('change', e => { updateSettings({ followDisplayMode: e.target.value === 'external' ? 'external' : 'inline' }); refreshRabbitMirrorGenerationMode(); });
@@ -1655,6 +1684,93 @@ export function initRabbitMirrorUI() {
         toastr?.success?.('已清空全部收藏');
     });
 
+    $('#rh_external_worldbook_open').on('click', async () => {
+        const button = $('#rh_external_worldbook_open');
+        button.prop('disabled', true).text('正在加载…');
+        try {
+            const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.18-audit1c2');
+            if (!isCurrentRuntime()) return;
+            module.openExternalWorldBookImportWizard?.();
+        } catch (error) {
+            console.error('[RabbitMirror] external worldbook import tool failed:', error);
+            toastr?.warning?.(`外部世界书导入工具加载失败：${String(error?.message || error)}`);
+        } finally {
+            button.prop('disabled', false).text('打开外部世界书导入工具');
+        }
+    });
+
+    const setNoSendRegexStatus = (text, tone = '') => {
+        $('[data-rh-no-send-regex-status]').text(text).css('opacity', tone === 'ok' ? '.92' : '.78');
+    };
+    const refreshNoSendRegexStatus = async () => {
+        if (getSettings().generationSource !== 'follow') {
+            setNoSendRegexStatus('不发送兔子镜正则：独立 API 不依赖此正则。');
+            return;
+        }
+        setNoSendRegexStatus('不发送兔子镜正则：正在检测…');
+        const result = await inspectRabbitMirrorNoSendRegex();
+        if (!result?.available) {
+            setNoSendRegexStatus('未检测到酒馆 Regex 功能；可继续使用“复制推荐正则”。');
+            return;
+        }
+        if (result.status === 'read-failed') setNoSendRegexStatus('无法安全读取酒馆 Regex 列表；未修改配置，可使用“复制推荐正则”。');
+        else if (result.status === 'configured') setNoSendRegexStatus(result.disabled === true
+            ? '✓ 正则已配置，但酒馆 Regex 当前被禁用。'
+            : result.disabled === false ? '✓ 不发送兔子镜正则已配置。'
+                : '✓ 正则已配置；无法确认酒馆 Regex 是否启用，请到扩展设置检查。', result.disabled === false ? 'ok' : '');
+        else if (result.status === 'managed-update') setNoSendRegexStatus('检测到 RabbitMirror 旧配置，可一键更新。');
+        else if (result.status === 'conflict') setNoSendRegexStatus('检测到同名但已修改的正则；为避免覆盖，请先查看酒馆正则。');
+        else setNoSendRegexStatus('尚未配置不发送兔子镜正则。');
+    };
+    $('.rh_regex_configure').on('click', async function () {
+        const buttons = $('.rh_regex_configure');
+        buttons.prop('disabled', true);
+        setNoSendRegexStatus('正在配置不发送兔子镜正则…');
+        try {
+            const result = await configureRabbitMirrorNoSendRegex();
+            if (!result?.available) {
+                setNoSendRegexStatus('未检测到酒馆 Regex 功能；可使用“复制推荐正则”。');
+                toastr?.warning?.('未检测到酒馆 Regex 功能。');
+            } else if (result.status === 'conflict') {
+                setNoSendRegexStatus('检测到同名但已修改的正则；没有自动覆盖。');
+                toastr?.warning?.('发现同名自定义正则，为避免覆盖已停止自动配置。');
+            } else if (!result.ok) {
+                const message = result.saveAttempted
+                    ? '已尝试写入，但无法确认保存结果；请查看酒馆 Regex，不会自动重试。'
+                    : '无法安全读取酒馆 Regex 列表；未修改任何正则，可使用“复制推荐正则”。';
+                setNoSendRegexStatus(message);
+                toastr?.warning?.(message);
+            } else {
+                const message = result.status === 'updated' ? '不发送兔子镜正则已更新。' : '不发送兔子镜正则已配置。';
+                const enabledHint = result.disabled === true ? '酒馆 Regex 当前被禁用，请先启用该扩展。'
+                    : result.disabled === false ? '' : '无法确认酒馆 Regex 是否启用，请到扩展设置检查。';
+                const listHint = '若酒馆正则列表未刷新，请刷新页面后查看。';
+                const notice = `${message} ${enabledHint} ${listHint}`.replace(/\s+/g, ' ').trim();
+                setNoSendRegexStatus(`✓ ${notice}`, result.disabled === false ? 'ok' : '');
+                toastr?.[result.disabled === false ? 'success' : 'warning']?.(notice);
+            }
+        } catch (error) {
+            console.error('[RabbitMirror] regex auto-config failed:', error);
+            setNoSendRegexStatus('一键配置失败，可使用“复制推荐正则”。');
+            toastr?.warning?.(`正则配置失败：${String(error?.message || error)}`);
+        } finally {
+            buttons.prop('disabled', false);
+        }
+    });
+    $('.rh_regex_open').on('click', async () => {
+        const result = await openSillyTavernRegexSettings();
+        if (!result?.ok) toastr?.warning?.('未能自动打开酒馆 Regex 界面，请从魔法棒扩展菜单打开 Regex。');
+        else toastr?.info?.('已打开酒馆 Regex 区域；若列表未显示最新配置，请刷新页面后查看。');
+    });
+    $('#rh_banned_words_save').on('click', () => {
+        const words = normalizeRabbitMirrorBannedWords($('#rh_banned_words').val());
+        updateSettings({ rabbitMirrorBannedWords: words });
+        $('#rh_banned_words').val(words.join('\n'));
+        $('#rh_banned_words_status').text(`已保存 ${words.length} / ${RABBIT_MIRROR_BANNED_WORD_MAX_COUNT} 个词；从下一面生效`);
+        toastr?.success?.(words.length ? `禁词表已保存 ${words.length} 个词，从下一面兔子镜生效。` : '禁词表已清空。');
+    });
+    void refreshNoSendRegexStatus();
+
     $('#rh_copy_regex').on('click', async () => {
         try {
             await navigator.clipboard.writeText(noSendRegex);
@@ -1781,6 +1897,7 @@ export function destroyRabbitMirrorUI() {
     try { globalThis.__rabbitMirrorTagFilterScanUiCleanup?.(); } catch {}
     globalThis.__rabbitMirrorTagFilterScanUiCleanup = null;
     $('#rh_advanced_modal, #rh_world_info_prompt_modal, #rh_independent_tag_filter_modal').remove();
+    try { document.getElementById('rh_external_worldbook_import_modal')?.remove?.(); } catch {}
     if (uiMountRetryTimer) {
         clearTimeout(uiMountRetryTimer);
         uiMountRetryTimer = 0;

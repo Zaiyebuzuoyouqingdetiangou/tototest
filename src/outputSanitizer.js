@@ -1,5 +1,6 @@
-import { getSettings } from './settings.js?rmv=1.5.8-visualstream8-boundary1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.8-visualstream8-boundary1';
+import { getSettings } from './settings.js?rmv=1.5.18-audit1c2';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue } from './bannedWords.js?rmv=1.5.18-audit1c2';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.18-audit1c2';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,14 +10,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.8-visualstream8-boundary1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.8-visualstream8-boundary1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.8-visualstream8-boundary1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.8-visualstream8-boundary1';
+} from './feedbackCat.js?rmv=1.5.18-audit1c2';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.18-audit1c2';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.18-audit1c2';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.18-audit1c2';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
 
 
-const RUNTIME_VERSION = '1.5.8';
+const RUNTIME_VERSION = '1.5.18';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -6066,7 +6067,7 @@ function parseNamedTextAssignments(scriptText, targetMap, targetCollections = ne
     const source = String(scriptText || '');
     const rememberText = (target, mode, rawValue) => {
         if (!target) return;
-        const value = decodeSafeInlineString(rawValue);
+        const value = filterRabbitMirrorRuntimeText(decodeSafeInlineString(rawValue));
         // innerHTML 只接受纯文本；任何标签形态都放弃该条文字赋值。
         if (mode === 'innerHTML' && /<[^>]*>/.test(value)) return;
         textByTarget.set(target, value);
@@ -6194,8 +6195,8 @@ function parseCheckedTernaryStyleProgramFromSource(input, root, scriptText) {
         const target = resolveCheckedRelativeElementExpression(input, directMatch[1], root);
         const state = ensureTargetState(target);
         if (!state) continue;
-        state.activeText = decodeSafeInlineString(directMatch[4]);
-        state.inactiveText = decodeSafeInlineString(directMatch[6]);
+        state.activeText = filterRabbitMirrorRuntimeText(decodeSafeInlineString(directMatch[4]));
+        state.inactiveText = filterRabbitMirrorRuntimeText(decodeSafeInlineString(directMatch[6]));
     }
 
     const queryExpressionPattern = String.raw`(this(?:(?:\s*\.\s*(?:parentNode|parentElement))*)\s*\.\s*querySelector\(\s*(['"])([.#]?[a-zA-Z_][\w:.-]*)\2\s*\))`;
@@ -6377,13 +6378,13 @@ function applyCheckedChangeProgram(input, states) {
     for (const state of states || []) {
         if (!state?.target) continue;
         if (active) {
-            if (state.activeText !== undefined) state.target.textContent = state.activeText;
+            if (state.activeText !== undefined && isRabbitMirrorRuntimeTextTarget(state.target)) state.target.textContent = filterRabbitMirrorRuntimeText(state.activeText);
             applyPseudoStyleAssignments(state.target, state.activeAssignments);
             state.target.setAttribute(PSEUDO_ACTIVE_ATTR, 'true');
         } else {
             restorePseudoStyleState(state.target, state.originalStyles);
-            if (state.inactiveText !== undefined) state.target.textContent = state.inactiveText;
-            else if (state.originalText !== undefined) state.target.textContent = state.originalText;
+            if (state.inactiveText !== undefined && isRabbitMirrorRuntimeTextTarget(state.target)) state.target.textContent = filterRabbitMirrorRuntimeText(state.inactiveText);
+            else if (state.originalText !== undefined && isRabbitMirrorRuntimeTextTarget(state.target)) state.target.textContent = filterRabbitMirrorRuntimeText(state.originalText);
             applyPseudoStyleAssignments(state.target, state.inactiveAssignments);
             state.target.removeAttribute(PSEUDO_ACTIVE_ATTR);
         }
@@ -6841,7 +6842,7 @@ function applyDirectIdClickAssignments(actions) {
         if (action.type === 'style') {
             applyPseudoStyleAssignments(action.target, [action]);
         } else if (action.type === 'text') {
-            action.target.textContent = action.value;
+            if (isRabbitMirrorRuntimeTextTarget(action.target)) action.target.textContent = filterRabbitMirrorRuntimeText(action.value);
         } else if (action.type === 'checked') {
             const actionRoot = action.root?.contains?.(action.target)
                 ? action.root
@@ -7074,6 +7075,30 @@ function normalizeInteractionMatchText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
+function filterRabbitMirrorRuntimeText(value) {
+    const words = getSettings()?.rabbitMirrorBannedWords;
+    if (!Array.isArray(words) || !words.length) return String(value ?? '');
+    return filterRabbitMirrorVisibleTextValue(String(value ?? ''), words).text;
+}
+
+function filterRabbitMirrorRuntimeDom(root) {
+    const words = getSettings()?.rabbitMirrorBannedWords;
+    if (!Array.isArray(words) || !words.length) return 0;
+    return applyRabbitMirrorBannedWordsToDom(root, words);
+}
+
+const RABBIT_MIRROR_NON_CONTENT_TEXT_TAGS = new Set(['STYLE', 'SCRIPT', 'TEMPLATE', 'NOSCRIPT']);
+
+function isRabbitMirrorRuntimeTextTarget(target) {
+    let element = target?.nodeType === 3 ? target.parentElement || target.parentNode : target;
+    if (!element) return false;
+    // A recovered text assignment must never become a CSS/script rewrite.
+    for (; element; element = element.parentElement) {
+        if (RABBIT_MIRROR_NON_CONTENT_TEXT_TAGS.has(String(element.tagName || '').toUpperCase())) return false;
+    }
+    return true;
+}
+
 function resolveRenderedCounterpart(rawRoot, renderedRoot, rawElement, selector = '*') {
     if (!rawRoot || !renderedRoot || !rawElement) return null;
     const rawTag = String(rawElement.tagName || '').toLowerCase();
@@ -7120,14 +7145,14 @@ const rawSelfMutationDomBaselines = new WeakMap();
 
 function parseSafeSelfMutationText(mode, rawValue) {
     const decoded = decodeSafeInlineString(rawValue);
-    if (mode !== 'innerHTML') return decoded;
+    if (mode !== 'innerHTML') return filterRabbitMirrorRuntimeText(decoded);
     if (typeof document === 'undefined') return decoded.replace(/<[^>]*>/g, '');
     try {
         if (!validateRabbitMirrorMarkupLexicalBudget(decoded)) return null;
         const template = document.createElement('template');
         template.innerHTML = decoded;
         if (template.content.querySelector('script, style, iframe, object, embed, form, input, button, a')) return null;
-        return String(template.content.textContent || '').replace(/\s+/g, ' ').trim();
+        return filterRabbitMirrorRuntimeText(String(template.content.textContent || '').replace(/\s+/g, ' ').trim());
     } catch {
         return null;
     }
@@ -7403,14 +7428,15 @@ function applyRawSelfMutationEntry(entry, active) {
         restorePseudoStyleState(mutation.target, mutation.originalStyles);
     }
     if (entry.active) {
-        if (entry.activeText != null) entry.trigger.textContent = entry.activeText;
+        if (entry.activeText != null && isRabbitMirrorRuntimeTextTarget(entry.trigger)) entry.trigger.textContent = filterRabbitMirrorRuntimeText(entry.activeText);
         applyPseudoStyleAssignments(entry.trigger, entry.activeAssignments);
         for (const mutation of entry.relatedMutations || []) {
             applyPseudoStyleAssignments(mutation.target, mutation.assignments);
         }
-    } else if (entry.activeText != null) {
+    } else if (entry.activeText != null && isRabbitMirrorRuntimeTextTarget(entry.trigger)) {
         const restoredNodes = (entry.originalNodes || []).map(node => node.cloneNode(true));
         entry.trigger.replaceChildren(...restoredNodes);
+        filterRabbitMirrorRuntimeDom(entry.trigger);
     }
     entry.trigger.setAttribute('aria-pressed', entry.active ? 'true' : 'false');
     entry.trigger.setAttribute(RAW_SELF_MUTATION_ACTIVE_ATTR, entry.active ? 'true' : 'false');
@@ -8065,7 +8091,7 @@ function applyRawScriptTimelineActions(actions) {
     for (const action of actions || []) {
         if (!action?.target?.isConnected) continue;
         if (action.type === 'style') applyPseudoStyleAssignments(action.target, [action]);
-        else if (action.type === 'text') action.target.textContent = action.value;
+        else if (action.type === 'text' && isRabbitMirrorRuntimeTextTarget(action.target)) action.target.textContent = filterRabbitMirrorRuntimeText(action.value);
     }
 }
 
@@ -13372,6 +13398,26 @@ function diagnosticIndependentApiRequestSnapshot() {
     }
 }
 
+const DIAGNOSTIC_MULTIFACE_PROTOCOL_CODES = new Set([
+    'invalid-tag', 'tag-budget', 'invalid-attribute', 'duplicate-attribute', 'unclosed-attribute',
+    'attribute-budget', 'unclosed-tag', 'css-budget', 'cross-face-style', 'css-depth',
+    'unbalanced-style', 'unclosed-style', 'character-budget', 'byte-budget', 'data-uri-budget',
+    'invalid-input', 'invalid-expected-count', 'outside-wrapper', 'outside-content', 'unclosed-comment',
+    'unclosed-cdata', 'unsupported-declaration', 'mismatched-close', 'invalid-face-structure',
+    'duplicate-face-content', 'duplicate-face-summary', 'nested-face', 'invalid-face-marker',
+    'duplicate-face-index', 'unexpected-face-index', 'outside-markup', 'invalid-face-root',
+    'multiple-face-details', 'multiple-face-summaries', 'unsupported-raw-text', 'invalid-self-close',
+    'depth-budget', 'unclosed-raw-text', 'unclosed-face', 'face-count-mismatch',
+]);
+
+function diagnosticIndependentTerminalFields(value) {
+    const requestCount = value?.requestCount === 0 || value?.requestCount === 1 ? value.requestCount : '?';
+    const terminalFace = Number.isInteger(value?.terminalFace) && value.terminalFace >= 1 && value.terminalFace <= 5 ? value.terminalFace : '(无)';
+    const protocolErrorCode = DIAGNOSTIC_MULTIFACE_PROTOCOL_CODES.has(value?.protocolErrorCode) ? value.protocolErrorCode : '(无或未知)';
+    const protocolOffset = Number.isSafeInteger(value?.protocolOffset) && value.protocolOffset >= 0 ? value.protocolOffset : '(无)';
+    return `requestCount=${requestCount} terminalFace=${terminalFace} protocolErrorCode=${protocolErrorCode} protocolOffset=${protocolOffset}`;
+}
+
 function buildInteractionDiagnosticText(root, state, phase = 'capture complete') {
     const inputs = diagnosticQueryContentAll(root, 'input[type="checkbox"], input[type="radio"]').slice(0, 8);
     const labels = diagnosticQueryContentAll(root, 'label');
@@ -13414,6 +13460,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         independentRequest ? `状态=${independentRequest.ok ? 'success' : 'failed'} HTTP=${independentRequest.status || '?'} model=${independentRequest.model || '(无)'}` : '（暂无独立 API实际生成记录）',
         independentRequest ? `profile=${independentRequest.profile || '(无)'} systemMessage=${!!independentRequest.systemMessageSent} temperatureConfigured=${independentRequest.configuredTemperature ?? '(无)'} temperatureSent=${!!independentRequest.temperatureSent}` : '',
         independentRequest ? `tokenField=${independentRequest.tokenField || '(无)'} stream=${!!independentRequest.streamSent} remembered=${independentRequest.rememberedProfile || '(无)'} attempts=${Array.isArray(independentRequest.attempts) ? independentRequest.attempts.map(item => `${item.profile}:${item.status}`).join(' -> ') : '(无)'}` : '',
+        independentRequest ? diagnosticIndependentTerminalFields(independentRequest) : '',
         independentRequest ? `samplingMode=${independentRequest.samplingMode || '(无)'} themes=${Array.isArray(independentRequest.themeLabels) ? independentRequest.themeLabels.join(' + ') : '(无)'} formats=${Array.isArray(independentRequest.formatLabels) ? independentRequest.formatLabels.join(' + ') : '(无)'} executionLockChars=${Number(independentRequest.executionLockChars || 0)}` : '',
         '',
         '[1. HTML／Markdown 输入层]',
@@ -14355,8 +14402,8 @@ function ensureFillInChoiceStyle(root) {
 }
 
 function fillInChoiceSetBlankText(entry, value) {
-    if (!entry?.textNode) return;
-    entry.textNode.nodeValue = String(value ?? '');
+    if (!entry?.textNode || !isRabbitMirrorRuntimeTextTarget(entry.textNode)) return;
+    entry.textNode.nodeValue = filterRabbitMirrorRuntimeText(value);
 }
 
 function applyFillInChoiceState(state) {
@@ -17489,6 +17536,10 @@ export function sanitizeRabbitMirrorUntrustedTemplate(template) {
         }
     }
     sanitizeLocalGeneratedPopoverRoutes(template);
+    const bannedWords = getSettings()?.rabbitMirrorBannedWords;
+    if (Array.isArray(bannedWords) && bannedWords.length) {
+        applyRabbitMirrorBannedWordsToDom(template.content, bannedWords);
+    }
     return true;
 }
 
@@ -18168,6 +18219,7 @@ function restoreRabbitMirrorInteractionResetSnapshot(root, button) {
     if (!details?.parentNode) return false;
     const keepOpen = details.hasAttribute('open');
     const restoredDetails = snapshot.node.cloneNode(true);
+    filterRabbitMirrorRuntimeDom(restoredDetails);
     if (keepOpen) restoredDetails.setAttribute('open', ''); else restoredDetails.removeAttribute('open');
     rearmRabbitMirrorSerializedInteractionRoot(restoredDetails);
     details.replaceWith(restoredDetails);
@@ -18245,6 +18297,7 @@ function restoreMaintenancePreRepairSnapshot(root, button) {
     const details = root.matches?.('details') ? root : root.querySelector?.(':scope > details') || root.querySelector?.('details');
     if (!details?.parentNode) return false;
     const originalNode = snapshot.node;
+    filterRabbitMirrorRuntimeDom(originalNode);
     if (snapshot.open) originalNode.setAttribute('open', ''); else originalNode.removeAttribute('open');
     rearmRabbitMirrorSerializedInteractionRoot(originalNode);
     details.replaceWith(originalNode);

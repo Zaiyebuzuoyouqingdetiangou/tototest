@@ -212,7 +212,12 @@ export function parseMultifaceOutput(raw, { expectedCount, allowProse = false } 
     let aborted = false;
     const seenOrdinals = new Set();
     const seenSummaries = new Map();
-    const fail = error => { if (errors.length < 12) errors.push(error); aborted = true; };
+    const fail = (error, ordinal = active?.ordinal) => {
+        const located = Number.isInteger(ordinal) && ordinal >= 1 && ordinal <= 5
+            ? { ...error, terminalFace: ordinal } : error;
+        if (errors.length < 12) errors.push(located);
+        aborted = true;
+    };
     if (typeof raw !== 'string') fail(protocolError('invalid-input', 0, '多面响应必须是字符串。'));
     if (expectedCount !== undefined && (!Number.isInteger(expectedCount) || expectedCount < 2 || expectedCount > 5)) {
         fail(protocolError('invalid-expected-count', 0, '多面数量必须是 2 至 5 的整数。'));
@@ -305,10 +310,10 @@ export function parseMultifaceOutput(raw, { expectedCount, allowProse = false } 
             if (seenOrdinals.has(number)) {
                 const duplicate = faces.findIndex(face => face.index === number - 1);
                 if (duplicate >= 0) faces.splice(duplicate, 1);
-                fail(protocolError('duplicate-face-index', tag.start, '同批响应出现重复面序号。'));
+                fail(protocolError('duplicate-face-index', tag.start, '同批响应出现重复面序号。'), number);
                 break;
             }
-            if (expectedCount !== undefined && number > expectedCount) { fail(protocolError('unexpected-face-index', tag.start, '模型返回了计划以外的面序号。')); break; }
+            if (expectedCount !== undefined && number > expectedCount) { fail(protocolError('unexpected-face-index', tag.start, '模型返回了计划以外的面序号。'), number); break; }
             seenOrdinals.add(number);
             active = { ordinal: number, start: tag.start, innerStart: tag.end, details: 0, summaries: 0 };
         } else if (!active && !allowProse) {
@@ -357,7 +362,10 @@ export function parseMultifaceOutput(raw, { expectedCount, allowProse = false } 
     const wanted = expectedCount === undefined ? inferredCount : expectedCount;
     const orderedFaces = faces.sort((left, right) => left.index - right.index);
     const allOrdinals = wanted >= 2 && wanted <= 5 && count === wanted && orderedFaces.every((face, index) => face.index === index);
-    if (!aborted && !allOrdinals) errors.push(protocolError('face-count-mismatch', typeof raw === 'string' ? raw.length : 0, '完整面数量或序号与本批计划不一致。'));
+    if (!aborted && !allOrdinals) {
+        const missing = Array.from({ length: Math.max(0, Math.min(5, wanted)) }, (_, index) => index + 1).filter(ordinal => !orderedFaces.some(face => face.index === ordinal - 1));
+        errors.push({ ...protocolError('face-count-mismatch', typeof raw === 'string' ? raw.length : 0, '完整面数量或序号与本批计划不一致。'), ...(missing.length === 1 ? { terminalFace: missing[0] } : {}) });
+    }
     const complete = !aborted && allOrdinals;
     const ok = complete && errors.length === 0;
     return { ok, faces: orderedFaces, errors, complete, count, expectedCount: wanted, partial: count > 0 && !ok, stats };
