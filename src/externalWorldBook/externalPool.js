@@ -204,13 +204,22 @@ export function chooseExternalSource(settings, kind, randomUnit, builtinAvailabl
     return Number(randomUnit?.() ?? 0) < share;
 }
 
-function filteredLibraryPools(kind, hardExcludedIds = [], recentIds = [], avoidRepeat = true) {
+function filteredLibraryPools(kind, hardExcludedIds = [], recentIds = [], avoidRepeat = true, preferredExcludedIds = []) {
     const hard = new Set(Array.isArray(hardExcludedIds) ? hardExcludedIds : []);
     const recent = new Set(Array.isArray(recentIds) ? recentIds : []);
-    const base = kindLibraries(kind).map(library => ({
+    let base = kindLibraries(kind).map(library => ({
         libraryId: library.libraryId,
         ids: library.ids.filter(id => !hard.has(id)),
     })).filter(library => library.ids.length);
+    // Prior attempts are cooldown preferences, not permanent exclusions. Keep
+    // strict same-batch/user exclusions in base even when cooldown is exhausted.
+    // This is candidate ranking within one draw, never a second plan/request.
+    const preferred = new Set(Array.isArray(preferredExcludedIds) ? preferredExcludedIds : []);
+    if (preferred.size) {
+        const untried = base.map(library => ({ ...library, ids: library.ids.filter(id => !preferred.has(id)) }))
+            .filter(library => library.ids.length);
+        if (untried.length) base = untried;
+    }
     if (!avoidRepeat || !recent.size) return base;
     const fresh = base.map(library => ({
         libraryId: library.libraryId,
@@ -249,7 +258,7 @@ export function pickExternalItems(settings, kind, count, options = {}) {
 
     while (selected.length < target) {
         const dynamicHard = [...hardExcluded, ...selected.map(item => item.id)];
-        const libraries = filteredLibraryPools(kind, dynamicHard, recentIds, options.avoidRepeat !== false);
+        const libraries = filteredLibraryPools(kind, dynamicHard, recentIds, options.avoidRepeat !== false, options.preferredExcludedIds);
         if (!libraries.length) break;
         const library = weightedLibraryPick(libraries, randomUnit);
         if (!library?.ids?.length) break;

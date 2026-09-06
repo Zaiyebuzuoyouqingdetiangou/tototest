@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.20-runtimefix1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.20-runtimefix1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.22-batchfix1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.22-batchfix1';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -16,8 +16,9 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.5.20-runtimefix1';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.20-runtimefix1';
+} from './storage.js?rmv=1.5.22-batchfix1';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.22-batchfix1';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.22-batchfix1';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -26,7 +27,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.5.20-runtimefix1';
+} from './externalWorldBook/externalPool.js?rmv=1.5.22-batchfix1';
 
 function randomUnit() {
     try {
@@ -423,7 +424,8 @@ function sourceAwareThemeSample({ settings, pool, count, recentIds, recentGroups
         ? pickExternalItems(settings, 'theme', externalCount, {
             randomUnit,
             recentIds,
-            hardExcludedIds: [...hardExcludedIds, ...externalHardExcludedIds],
+            hardExcludedIds: externalHardExcludedIds,
+            preferredExcludedIds: hardExcludedIds,
             avoidRepeat,
         })
         : [];
@@ -438,7 +440,8 @@ function sourceAwareThemeSample({ settings, pool, count, recentIds, recentGroups
         externals = [...externals, ...pickExternalItems(settings, 'theme', deficit, {
             randomUnit,
             recentIds,
-            hardExcludedIds: [...hardExcludedIds, ...externalHardExcludedIds, ...externals.map(item => item.id)],
+            hardExcludedIds: [...externalHardExcludedIds, ...externals.map(item => item.id)],
+            preferredExcludedIds: hardExcludedIds,
             avoidRepeat,
         })];
     }
@@ -473,7 +476,8 @@ function sourceAwareFormatSample({ settings, pool, count, recentIds, recentGroup
         ? pickExternalItems(settings, 'format', externalCount, {
             randomUnit,
             recentIds,
-            hardExcludedIds: [...hardExcludedIds, ...externalHardExcludedIds],
+            hardExcludedIds: externalHardExcludedIds,
+            preferredExcludedIds: hardExcludedIds,
             avoidRepeat,
         })
         : [];
@@ -489,7 +493,8 @@ function sourceAwareFormatSample({ settings, pool, count, recentIds, recentGroup
         externals = [...externals, ...pickExternalItems(settings, 'format', deficit, {
             randomUnit,
             recentIds,
-            hardExcludedIds: [...hardExcludedIds, ...externalHardExcludedIds, ...externals.map(item => item.id)],
+            hardExcludedIds: [...externalHardExcludedIds, ...externals.map(item => item.id)],
+            preferredExcludedIds: hardExcludedIds,
             avoidRepeat,
         })];
     }
@@ -1009,24 +1014,25 @@ function batchRandomSettingsKey(settings, total, favorites, exclusions, directiv
     return key.length <= 8192 ? key : '';
 }
 
-function batchPlanningIdentity(settings, generationScopeKey, generationContext, total) {
+function batchPlanningIdentity(settings, generationScopeKey, generationContext, total, onRejected = null) {
+    const reject = reason => { if (onRejected) onRejected(reason); return null; };
     const source = generationContext?.batchIdentity;
     const operation = generationContext?.batchPlanningOnly === true ? generationContext?.batchOperation : null;
     const boundedString = (value, max) => typeof value === 'string' && value.trim().length > 0 && value.length <= max;
-    if (!boundedString(generationScopeKey, 1024)) return null;
+    if (!boundedString(generationScopeKey, 1024)) return reject('BATCH_PLAN_IDENTITY_INVALID');
     if (operation) {
-        if (!boundedString(operation.operationId, 1024) || !boundedString(operation.generationType, 64)) return null;
+        if (!boundedString(operation.operationId, 1024) || !boundedString(operation.generationType, 64)) return reject('BATCH_PLAN_IDENTITY_INVALID');
     } else if (!source || !Number.isSafeInteger(source.mesid) || source.mesid < 0 ||
-        !Number.isSafeInteger(source.swipeId) || source.swipeId < 0 || !boundedString(source.sourceHash, 512)) return null;
+        !Number.isSafeInteger(source.swipeId) || source.swipeId < 0 || !boundedString(source.sourceHash, 512)) return reject('BATCH_PLAN_IDENTITY_INVALID');
     const chatKey = getCurrentChatKey(generationContext?.chat || null);
-    if (!boundedString(chatKey, 1024)) return null;
+    if (!boundedString(chatKey, 1024)) return reject('BATCH_PLAN_IDENTITY_INVALID');
     const favorites = getFavoritesState(settings);
     const exclusions = {
         themeIds: compactUnique(Array.isArray(generationContext?.batchExcludedThemeIds) ? generationContext.batchExcludedThemeIds : []).sort(),
         formatIds: compactUnique(Array.isArray(generationContext?.batchExcludedFormatIds) ? generationContext.batchExcludedFormatIds : []).sort(),
     };
     // 先拒绝本来就超限的设置，不为缺身份/非法签名额外读取聊天。
-    if (!batchRandomSettingsKey(settings, total, favorites, exclusions)) return null;
+    if (!batchRandomSettingsKey(settings, total, favorites, exclusions)) return reject('BATCH_SETTINGS_TOO_LARGE');
     const currentTurn = settings.userDirectivePriority ? getCurrentTurnUserMessage(generationContext?.chat || null) : null;
     const directive = currentTurn ? parseUserDirective(currentTurn) : null;
     const settingsKey = batchRandomSettingsKey(settings, total, favorites, exclusions, directive);
@@ -1090,8 +1096,8 @@ function planBatchFace(settings, snapshot, usedThemeIds, usedFormatIds, counts =
         favoriteThemeMultipliers: snapshot.favorites.themeMultipliers,
         favoriteFormatMultipliers: snapshot.favorites.formatMultipliers,
         formatEligibleMisses: snapshot.formatEligibleMisses,
-        externalExcludedThemeIds: [...usedThemeIds],
-        externalExcludedFormatIds: [...usedFormatIds],
+        externalExcludedThemeIds: [...snapshot.exclusions.themeIds, ...usedThemeIds],
+        externalExcludedFormatIds: [...snapshot.exclusions.formatIds, ...usedFormatIds],
     });
     return { result, payload: { combo: comboFromSelection(result, settings, snapshot.recent), last: snapshot.last, directive: snapshot.directive || null } };
 }
@@ -1145,9 +1151,11 @@ function batchSinglePath(settings, generationScopeKey, generationContext, identi
     return [cloneBatchPlan(single)];
 }
 
-function multiFacePlanningError(message) {
-    const error = new Error(message);
+function multiFacePlanningError(message, reasonCode = 'BATCH_PLAN_INVALID') {
+    const reason = describeBatchPlanFailure(reasonCode);
+    const error = new Error(`${message} 诊断原因：${reason.code}。`);
     error.code = 'MULTIFACE_PLAN_UNAVAILABLE';
+    error.reasonCode = reason.code;
     return error;
 }
 
@@ -1157,8 +1165,9 @@ function liveBatchResult(plan, directive) {
     return faces;
 }
 
-function pickLiveCombinationBatch(settings, planning, faceCount) {
-    if (!planning || planning.signatureTooLarge) throw multiFacePlanningError('多面抽取缺少有效的本次生成身份，或抽取设置签名过长；本次尚未发送请求。');
+function pickLiveCombinationBatch(settings, planning, faceCount, planningReason = 'BATCH_PLAN_IDENTITY_INVALID') {
+    if (!planning || planning.signatureTooLarge) throw multiFacePlanningError('多面抽取缺少有效的本次生成身份，或抽取设置签名过长；本次尚未发送请求。',
+        planning?.signatureTooLarge ? 'BATCH_SETTINGS_TOO_LARGE' : planningReason);
     if (planning.directive?.disabled) return [{ disabled: true, combo: null, directive: planning.directive, last: null }];
     const identityKey = JSON.stringify(planning.identity);
     const cached = cachedLiveBatchPlans.get(identityKey) || findPendingComboBatchPlan(planning.identity);
@@ -1175,25 +1184,26 @@ function pickLiveCombinationBatch(settings, planning, faceCount) {
     for (let faceIndex = 0; faceIndex < faceCount; faceIndex += 1) {
         if ((needsRandomThemes && !randomCandidateAvailable(settings, 'theme', snapshot.themePool, usedThemeIds)) ||
             (needsRandomFormats && !randomCandidateAvailable(settings, 'format', snapshot.formatPool, usedFormatIds))) {
-            throw multiFacePlanningError(`当前候选池不足以抽取 ${faceCount} 面不同的随机内容；请调整黑名单或面数，本次尚未发送请求。`);
+            throw multiFacePlanningError(`当前候选池不足以抽取 ${faceCount} 面不同的随机内容；请调整黑名单或面数，本次尚未发送请求。`, 'BATCH_CANDIDATE_POOL_EXHAUSTED');
         }
         const selected = planBatchFace(settings, snapshot, usedThemeIds, usedFormatIds);
         const combo = selected.payload.combo;
         if ((needsRandomThemes && !combo.themeIds.length) || (needsRandomFormats && !combo.formatIds.length)) {
-            throw multiFacePlanningError('多面抽取未得到完整的随机选题／形式；本次尚未发送请求。');
+            throw multiFacePlanningError('多面抽取未得到完整的随机选题／形式；本次尚未发送请求。', 'BATCH_SELECTION_INCOMPLETE');
         }
         if (!combo.themeIds.length && !combo.formatIds.length && snapshot.directive) combo.customDirective = true;
         for (const id of combo.themeIds) if (!fixedThemes.has(id)) usedThemeIds.add(id);
         for (const id of combo.formatIds) if (!fixedFormats.has(id)) usedFormatIds.add(id);
         results.push(selected);
     }
+    let planRejection = 'BATCH_PLAN_INVALID';
     const plan = createPendingComboBatchPlan(results.map(result => result.payload.combo), planning.identity, {
         eligibleFormatIds: [...new Set(results.flatMap(result => result.result.formatFairnessEligibleIds || []))],
         selectedFormatIds: [...new Set(results.flatMap(result => result.result.formatFairnessSelectedIds || []))],
         validFormatIds: snapshot.validFormatIds,
         directiveScoped: !!snapshot.directive,
-    });
-    if (!plan) throw multiFacePlanningError('多面计划无法安全建立；本次尚未发送请求。');
+    }, { onRejected: code => { planRejection = code; } });
+    if (!plan) throw multiFacePlanningError('多面计划无法安全建立；本次尚未发送请求。', planRejection);
     cachedLiveBatchPlans.set(identityKey, cloneBatchPlan(plan));
     if (cachedLiveBatchPlans.size > 8) cachedLiveBatchPlans.delete(cachedLiveBatchPlans.keys().next().value);
     return liveBatchResult(plan, snapshot.directive);
@@ -1233,8 +1243,9 @@ export function pickCombinationBatch(settings, generationScopeKey = '', generati
     // 单面严格早返回：不得读取、清除或触碰另一轮 pending batch。
     if (!Number.isSafeInteger(faceCount) || faceCount < 2 || faceCount > 5) return [pickCombination(settings, generationScopeKey, generationContext)];
 
-    const planning = batchPlanningIdentity(settings, generationScopeKey, generationContext, faceCount);
-    if (generationContext?.batchPlanningOnly === true) return pickLiveCombinationBatch(settings, planning, faceCount);
+    let planningRejection = 'BATCH_PLAN_IDENTITY_INVALID';
+    const planning = batchPlanningIdentity(settings, generationScopeKey, generationContext, faceCount, code => { planningRejection = code; });
+    if (generationContext?.batchPlanningOnly === true) return pickLiveCombinationBatch(settings, planning, faceCount, planningRejection);
     if (!planning) return batchSinglePath(settings, generationScopeKey, generationContext);
     const { identity } = planning;
     const identityKey = planning.signatureTooLarge ? '' : JSON.stringify(identity);

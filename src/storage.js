@@ -811,10 +811,22 @@ function normalizeLocalBatchPlan(value) {
     };
 }
 
-export function createPendingComboBatchPlan(combos = [], identity = null, fairness = {}) {
-    if (!Array.isArray(combos) || combos.length < 2 || combos.length > 5) return null;
+// Diagnostics are a fixed code only, never IDs, source text or native storage
+// errors. The optional observer cannot turn a rejection into dispatch authority.
+function reportBatchRejection(options, code) {
+    try { if (typeof options?.onRejected === 'function') options.onRejected(code); } catch { /* Observer only. */ }
+}
+
+export function createPendingComboBatchPlan(combos = [], identity = null, fairness = {}, options = {}) {
+    const reject = code => { reportBatchRejection(options, code); return null; };
+    if (!Array.isArray(combos) || combos.length < 2 || combos.length > 5) return reject('BATCH_PLAN_INPUT_INVALID');
     const normalizedIdentity = normalizeBatchIdentity(identity);
-    if (!normalizedIdentity || combos.some(combo => !validBatchCombo(combo))) return null;
+    if (!normalizedIdentity) return reject('BATCH_PLAN_IDENTITY_INVALID');
+    if (combos.some(combo => !validBatchCombo(combo))) {
+        const duplicate = combos.some(combo => ['themeIds', 'formatIds'].some(key =>
+            Array.isArray(combo?.[key]) && new Set(combo[key]).size !== combo[key].length));
+        return reject(duplicate ? 'BATCH_PLAN_DUPLICATE_ID' : 'BATCH_PLAN_COMBO_INVALID');
+    }
     const candidate = normalizeLocalBatchPlan({
         batchId: `${PENDING_SESSION_TOKEN}:${Date.now().toString(36)}:${(++pendingBatchSequence).toString(36)}`,
         identity: normalizedIdentity,
@@ -822,9 +834,9 @@ export function createPendingComboBatchPlan(combos = [], identity = null, fairne
         faces: combos.map((combo, faceIndex) => ({ faceIndex, combo })),
         fairness,
     });
-    if (!candidate) return null;
+    if (!candidate) return reject('BATCH_PLAN_INVALID');
     const payload = JSON.stringify(candidate);
-    return payload.length <= 262144 ? cloneSerializable(candidate) : null;
+    return payload.length <= 262144 ? cloneSerializable(candidate) : reject('BATCH_PLAN_TOO_LARGE');
 }
 
 function normalizeActiveBatchRecord(value) {
@@ -865,22 +877,30 @@ export function findPendingComboBatchPlan(identity) {
     return record ? cloneSerializable(record.plan) : null;
 }
 
-function writeOwnedTransaction(changes = []) {
+function writeOwnedTransaction(changes = [], options = {}) {
     const completed = [];
+    let rejection = 'BATCH_STORAGE_WRITE_FAILED';
     try {
         for (const change of changes) {
-            if (localStorage.getItem(change.key) !== change.before) throw new Error('Concurrent storage change');
+            if (localStorage.getItem(change.key) !== change.before) {
+                rejection = 'BATCH_STORAGE_CHANGED';
+                throw new Error('Concurrent storage change');
+            }
             completed.push(change);
             localStorage.setItem(change.key, change.after);
-            if (localStorage.getItem(change.key) !== change.after) throw new Error('Storage read-back mismatch');
+            if (localStorage.getItem(change.key) !== change.after) {
+                rejection = 'BATCH_STORAGE_READBACK_MISMATCH';
+                throw new Error('Storage read-back mismatch');
+            }
         }
         return true;
-    } catch {
+    } catch (error) {
         for (const change of completed.reverse()) {
             try {
                 restoreOwnedStorageWrite(change.key, change.after, change.before);
             } catch { /* Fail closed; caller receives false and never dispatches/commits. */ }
         }
+        reportBatchRejection(options, isStorageQuotaError(error) ? 'BATCH_STORAGE_QUOTA_EXCEEDED' : rejection);
         return false;
     }
 }
@@ -929,11 +949,14 @@ function batchAttemptPayload(plan, beforeRaw, now) {
     return JSON.stringify(store);
 }
 
-export function markPendingBatchAttempt(planInput = null) {
+export function markPendingBatchAttempt(planInput = null, options = {}) {
+    const reject = code => { reportBatchRejection(options, code); return false; };
     const plan = normalizeLocalBatchPlan(planInput);
-    if (!plan || plan.identity.preview === true) return false;
+    if (!plan) return reject(planInput && typeof planInput === 'object' && !Array.isArray(planInput) && !normalizeBatchIdentity(planInput.identity)
+        ? 'BATCH_PLAN_IDENTITY_INVALID' : 'BATCH_PLAN_INVALID');
+    if (plan.identity.preview === true) return reject('BATCH_PREVIEW_NOT_DISPATCHABLE');
     const registry = readActiveBatchRegistry();
-    if (!registry) return false;
+    if (!registry) return reject('BATCH_REGISTRY_UNREADABLE');
     const now = Date.now();
     // A tab can be killed before its finally handler runs. Keep every plausible
     // in-flight request (the independent absolute deadline is 20 minutes), but
@@ -942,24 +965,31 @@ export function markPendingBatchAttempt(planInput = null) {
     // a live paid request; cleanup happens only inside this explicit dispatch CAS.
     const liveRecords = registry.records.filter(record => activeBatchRecordIsFresh(record, now));
     const existing = liveRecords.find(record => record.plan.batchId === plan.batchId);
-    if (existing) return JSON.stringify(existing.plan) === JSON.stringify(plan);
-    if (liveRecords.length >= ACTIVE_BATCH_REGISTRY_MAX) return false;
+    if (existing) return JSON.stringify(existing.plan) === JSON.stringify(plan) || reject('BATCH_ID_CONFLICT');
+    if (liveRecords.length >= ACTIVE_BATCH_REGISTRY_MAX) return reject('BATCH_REGISTRY_CAPACITY');
     const record = { plan, registrySession: PENDING_SESSION_TOKEN, createdAt: now };
     const registryAfter = JSON.stringify([...liveRecords, record]);
-    if (registryAfter.length > ACTIVE_BATCH_REGISTRY_MAX_CHARS) return false;
+    if (registryAfter.length > ACTIVE_BATCH_REGISTRY_MAX_CHARS) return reject('BATCH_REGISTRY_TOO_LARGE');
     let pityBefore;
     let attemptBefore;
     try {
         pityBefore = localStorage.getItem(FORMAT_ELIGIBLE_MISS_STORAGE_KEY);
         attemptBefore = localStorage.getItem(ATTEMPT_STORAGE_KEY);
-    } catch { return false; }
+    } catch { return reject('BATCH_STORAGE_UNAVAILABLE'); }
     const pityAfter = batchPityAgedPayload(plan, pityBefore);
     const attemptAfter = batchAttemptPayload(plan, attemptBefore, now);
-    if (pityAfter === null || attemptAfter === null) return false;
+    if (pityAfter === null) {
+        // Both failures already rejected before this diagnostic existed. Preserve
+        // their state rather than clearing fairness or drawing another plan.
+        let invalidState = false;
+        try { JSON.parse(pityBefore || '{}'); } catch { invalidState = true; }
+        return reject(invalidState ? 'BATCH_FAIRNESS_STATE_INVALID' : 'BATCH_FAIRNESS_PLAN_MISMATCH');
+    }
+    if (attemptAfter === null) return reject('BATCH_ATTEMPT_ALREADY_RECORDED');
     const changes = [{ key: ACTIVE_BATCH_REGISTRY_KEY, before: registry.raw, after: registryAfter }];
     if (pityAfter !== (pityBefore || '{}')) changes.push({ key: FORMAT_ELIGIBLE_MISS_STORAGE_KEY, before: pityBefore, after: pityAfter });
     if (attemptAfter !== (attemptBefore || '{}')) changes.push({ key: ATTEMPT_STORAGE_KEY, before: attemptBefore, after: attemptAfter });
-    return writeOwnedTransaction(changes);
+    return writeOwnedTransaction(changes, options);
 }
 
 function normalizeFaceScan(value, faceIndex) {

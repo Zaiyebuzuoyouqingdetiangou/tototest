@@ -1,6 +1,6 @@
-import { getSettings } from './settings.js?rmv=1.5.20-runtimefix1';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.20-runtimefix1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.20-runtimefix1';
+import { getSettings } from './settings.js?rmv=1.5.22-batchfix1';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.22-batchfix1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.22-batchfix1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -10,14 +10,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.20-runtimefix1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.20-runtimefix1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.20-runtimefix1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.20-runtimefix1';
+} from './feedbackCat.js?rmv=1.5.22-batchfix1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.22-batchfix1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.22-batchfix1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.22-batchfix1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
 
 
-const RUNTIME_VERSION = '1.5.20';
+const RUNTIME_VERSION = '1.5.22';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -2648,7 +2648,8 @@ function refreshExclusiveStackedStateRescue(root) {
                     restorePseudoStyleState(panel, panelState.originalStyles);
                     panel.style.setProperty('visibility', 'visible', 'important');
                     panel.style.setProperty('pointer-events', 'none', 'important');
-                    panel.style.setProperty('animation-play-state', 'running', 'important');
+                    // Restoring the authored state already releases our inactive-group pause.
+                    // Forcing running!important here would defeat collapsed-scene CSS and authored pauses.
                 } else {
                     panel.style.setProperty('opacity', '0', 'important');
                     panel.style.setProperty('visibility', 'hidden', 'important');
@@ -11945,6 +11946,7 @@ function scopeRabbitMirrorInteractionIds(toto, { installRescue = true } = {}) {
         // Structural Grid result panels are safe to normalize once the scoped ids/labels
         // have been synchronized. This does not depend on viewport size or panel visibility.
         repairRabbitMirrorSelectorPanelGridSpan(toto);
+        firstUseInteractionActivatedRoots.add(toto);
     }
     toto.dataset.rabbitMirrorInteractionScoped = 'true';
     return { scopedIdCount: state.idMap.size, radioGroupCount: restoredRadioGroupCount };
@@ -12015,8 +12017,65 @@ export function rearmRabbitMirrorSerializedInteractionRoot(root) {
     return cleared;
 }
 
+const firstUseInteractionActivatedRoots = new WeakSet();
+const firstUseInteractionBindings = new WeakMap();
+
 export function activateRabbitMirrorInteractionRescue(root) {
     return scopeRabbitMirrorInteractionIds(root, { installRescue: true });
+}
+
+// Parsing/scoping alone cannot restore safe event programs removed by host sanitization.
+// Bind this one live face only when opened; do not scan collapsed history or run the
+// manual diagnostic/repair/persistence workflow. A fast first tap can beat the paint
+// callback, so capture it before the control's native default action instead of losing it.
+export function armRabbitMirrorFirstUseInteraction(root) {
+    if (!root?.querySelector || firstUseInteractionActivatedRoots.has(root)) return;
+    if (firstUseInteractionBindings.has(root)) return;
+    const details = root.matches?.('details') ? root : root.querySelector(':scope > details');
+    if (!details) return;
+    const state = { scheduled: false, finished: false };
+    firstUseInteractionBindings.set(root, state);
+    const cleanup = () => {
+        details.removeEventListener('toggle', schedule, false);
+        root.removeEventListener('pointerdown', firstTap, true);
+        root.removeEventListener('click', firstTap, true);
+        root.removeEventListener('keydown', firstKey, true);
+    };
+    const initialize = () => {
+        state.scheduled = false;
+        if (state.finished || !root.isConnected || !details.open) return;
+        state.finished = true;
+        cleanup();
+        if (firstUseInteractionActivatedRoots.has(root)) return;
+        // Existing per-face safety budget is also the first-use ceiling. Oversized
+        // or rejected work is not repeatedly scanned by later toggle/click events.
+        if (!maintenanceRepairRootBudget(root).ok) return;
+        try {
+            activateRabbitMirrorInteractionRescue(root);
+            rehydrateRabbitMirrorMaintenanceRepairs(root);
+        } catch (error) {
+            console.debug('[RabbitMirror] first-use interaction initialization skipped:', error);
+        }
+    };
+    function schedule() {
+        if (state.finished || state.scheduled || !details.open || !root.isConnected) return;
+        state.scheduled = true;
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => setTimeout(initialize, 0));
+        else setTimeout(initialize, 0);
+    }
+    function firstTap(event) {
+        const target = event.target?.nodeType === 1 ? event.target : event.target?.parentElement;
+        if (!target || details.querySelector(':scope > summary')?.contains(target)) return;
+        initialize();
+    }
+    function firstKey(event) {
+        if (['Enter', ' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) firstTap(event);
+    }
+    details.addEventListener('toggle', schedule, false);
+    root.addEventListener('pointerdown', firstTap, true);
+    root.addEventListener('click', firstTap, true);
+    root.addEventListener('keydown', firstKey, true);
+    schedule();
 }
 
 function getRenderedRabbitMirrorInteractionRoots(root) {
@@ -22714,6 +22773,7 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, a
 
     getRenderedRabbitMirrorInteractionRoots(scope).forEach(root => {
         if (!isInsideChatMessage(root)) return;
+        armRabbitMirrorFirstUseInteraction(root);
         // Migrate cached/serialized mirrors created by the short-lived inline reset
         // control. Recovery snapshots stay intact and remain reachable from Maintenance Rabbit.
         removeRabbitMirrorInteractionHomeControls(root);
