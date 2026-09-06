@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5.18-audit1c2",
-  "css": "style.css?rmv=1.5.18",
+  "js": "index.js?rmv=1.5.19-usability1",
+  "css": "style.css?rmv=1.5.19",
   "author": "Toto",
-  "version": "1.5.18",
+  "version": "1.5.19",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.5.18 Audit1C2｜修复多面重复封装、跟随净化/禁词/质量次序、交互恢复过滤、SSE delta及精确错误保留；完善全局Regex能力降级。外部母本默认关闭，仅按本轮选中ID读取并接入Prompt；保留单次请求和安全净化。自动化验证候选，真实酒馆/模型/iPhone待验收。"
+  "description": "兔子镜测试版 1.5.19 Usability1｜外部文件导入与分类、明确索引重建、本地文字替换、保留成功面并手动补失败面；修复外置转换和重复快照遍历。保留单次请求与安全净化。自动化验证候选，真实酒馆/模型/iPhone、温升与复杂裁字待验收。"
 }
