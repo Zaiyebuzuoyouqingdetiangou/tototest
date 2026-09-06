@@ -96,7 +96,7 @@ function createHarness(faceCount, responseOk) {
         compactRemoteError: () => '',
         profileUsesStreaming: () => false,
         assertIndependentMarkupComplexityWithDiagnostic() {},
-        prepareIndependentMultifaceResult: value => ({ html: value, faceScans: [] }),
+        prepareIndependentMultifaceResult: value => ({ html: value, faceScans: [], failedFaces:[] }),
         republishIndependentSemanticFailure() {},
         clearIndependentQualityFailure() {},
         rememberApiProfile() {},

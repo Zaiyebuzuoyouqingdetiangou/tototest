@@ -12,7 +12,7 @@ import {
     saveExternalLibrarySnapshot,
     setExternalLibraryEnabled,
 } from '../src/externalWorldBook/store.js';
-import * as pool from '../src/externalWorldBook/externalPool.js?rmv=1.5.18-audit1c2';
+import * as pool from '../src/externalWorldBook/externalPool.js?rmv=1.5.19-usability1';
 
 test('blocked database opens cannot leak a late connection or perform a delayed upgrade', async () => {
     let closed = 0, aborted = 0;

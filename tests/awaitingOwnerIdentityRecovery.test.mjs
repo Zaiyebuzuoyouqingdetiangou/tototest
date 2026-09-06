@@ -464,6 +464,9 @@ function createGenerationFixture({ currentSwipe, currentHash, hostSwipe, hostHas
         wrappedIndependentMirrorHtml: html => html,
         scrubIndependentInteractionState: html => html,
         independentRecordWithinBudget: () => true,
+        // This owner-only VM has no text rules; production sealing is a no-op
+        // for that configuration. Persistence/provenance has separate DOM tests.
+        sealIndependentTextReplacementRecord: record => record,
         byteLength: value => String(value || '').length,
         recordRabbitMirrorRecipe() {},
     };

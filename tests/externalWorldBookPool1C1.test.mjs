@@ -29,7 +29,7 @@ Object.defineProperty(globalThis, 'crypto', {
 });
 Math.random = rng;
 
-const COHORT = '?rmv=1.5.18-audit1c2';
+const COHORT = '?rmv=1.5.19-usability1';
 const { defaultSettings } = await import('../src/settings.js');
 const picker = await import('../src/picker.js');
 const pool = await import(`../src/externalWorldBook/externalPool.js${COHORT}`);
@@ -435,7 +435,7 @@ test('all production imports of externalPool use one cohort-qualified specifier'
     walk(srcRoot);
     assert.ok(imports.length >= 2, 'picker和store都应复用同一个externalPool模块');
     const resolved = imports.map(entry => {
-        assert.match(entry.specifier, /externalPool\.js\?rmv=1\.5\.18-audit1c2$/, `${entry.file} 必须使用相同cohort`);
+        assert.match(entry.specifier, /externalPool\.js\?rmv=1\.5\.19-usability1$/, `${entry.file} 必须使用相同cohort`);
         return new URL(entry.specifier, pathToFileURL(path.join(root, entry.file))).href;
     });
     assert.equal(new Set(resolved).size, 1, '所有生产引用解析后必须落到同一个cohort-qualified模块实例');

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 import { evaluateIndependentPostSanitizeQuality } from '../src/independentQualityGate.js';
+import { matchesRabbitMirrorTextReplacementReceipt } from '../src/replacementReceipt.js';
 
 const tarotBase = 'https://gfx.tarot.com/images/site/decks/rider/full_size/';
 
@@ -200,6 +201,7 @@ try {
     const prepareSandbox = {
         RUNTIME_VERSION: 'quality-gate-test',
         preparedReadyHtmlCache: new Map(),
+        matchesRabbitMirrorTextReplacementReceipt,
         assertIndependentMarkupComplexity: () => true,
         hashText: value => `hash:${String(value || '')}`,
         getSettings: () => ({ rabbitMirrorBannedWords: [] }),
@@ -221,9 +223,12 @@ try {
     vm.runInContext(`${apiSource.slice(prepareStart, prepareEnd)}\nglobalThis.prepare=prepareIndependentReadyHtml;`, prepareSandbox);
     const firstPrepared = prepareSandbox.globalThis.prepare('<details>RAW-MIRROR</details>');
     assert.equal(firstPrepared, '<details>SANITIZED-MIRROR</details>');
-    const mountedPrepared = prepareSandbox.globalThis.prepare(firstPrepared);
+    const mountedPrepared = prepareSandbox.globalThis.prepare(firstPrepared, null, '', true);
     assert.equal(mountedPrepared, firstPrepared);
-    assert.equal(sanitizeCalls, 1, 'the first prepared result must seed its own cache key so mounting cannot sanitize it again');
+    assert.equal(sanitizeCalls, 1, 'an explicitly local prepared result reuses only the processed cache namespace');
+    const rawSameBytes = prepareSandbox.globalThis.prepare(firstPrepared);
+    assert.equal(rawSameBytes, firstPrepared, 'this structural fixture preserves already-clean markup');
+    assert.equal(sanitizeCalls, 2, 'fresh untrusted bytes equal to a prior output still pass raw sanitization');
 } catch (error) {
     pendingRegressionFailures.push(`prepared-self-cache: ${error?.message || error}`);
 }

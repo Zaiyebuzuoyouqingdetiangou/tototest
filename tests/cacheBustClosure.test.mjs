@@ -11,8 +11,8 @@ import { fileURLToPath } from 'node:url';
 // 且任何模块都不会被两种不同的 ?rmv 键引用。
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const RELEASE_COHORT = '1.5.18-audit1c2';
-const RELEASE_RUNTIME = '1.5.18';
+const RELEASE_COHORT = '1.5.19-usability1';
+const RELEASE_RUNTIME = '1.5.19';
 const RETIRED_RELEASE_COHORTS = new Set(['1.5-qualityfix1', '1.5-qualityfix2', '1.5-qualityfix3', '1.5-qualityfix4', '1.5-qualityfix5', '1.5-varietyfix1', '1.5.6-abc1', '1.5.7-multiface5', '1.5.8-visualstream8', '1.5.8-visualstream8-boundary1', '1.5.9-terminalerror1', '1.5.10-librarysync1', '1.5.11-librarybuilder1', '1.5.12-extworldbook1a', '1.5.13-extworldbook1a-whole1', '1.5.14-wholeguard1-mfquality1', '1.5.16-extworldbook1c1']);
 const REQUIRED_RELEASE_MODULES = [
     'src/externalWorldBook/externalPool.js',

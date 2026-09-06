@@ -114,7 +114,7 @@ assert.ok(visual.indexOf('sanitizeRabbitMirrorUntrustedTemplate(template)') < vi
 assert.match(visual, /isolateRabbitMirrorInteractionIds\(item\.newRoot\)/);
 assert.match(visual, /refreshRabbitMirrorToolsInScope\(item\.newRoot\)/);
 assert.match(visual, /markSanitizedRabbitMirrorFace\(item\.newRoot/);
-assert.match(visual, /commitRabbitMirrorFollowBatch\(set\.batchId, chat, scans, set\.owner\)/);
+assert.match(visual, /commitRabbitMirrorFollowBatch\(set\.batchId, chat, scans, \{\.\.\.set\.owner,partial:scans\.some\(scan=>scan===null\)\}\)/);
 assert.match(visual, /export const FOLLOW_MULTIFACE_COMMITTED_EVENT/);
 assert.match(visual, /detail:\{messageIndex:Number\(set\.owner\.messageIndex\),sourceHash:String\(set\.owner\.sourceHash\|\|''\),batchId:String\(set\.batchId\|\|''\)\}/);
 assert.doesNotMatch(visual, /setInterval\s*\(/);

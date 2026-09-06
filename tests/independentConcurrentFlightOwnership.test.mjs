@@ -248,6 +248,9 @@ function createFixture(initialMessages, { ownerChat = 'chat:test' } = {}) {
         wrappedIndependentMirrorHtml: html => html,
         scrubIndependentInteractionState: html => html,
         independentRecordWithinBudget: () => true,
+        // No replacement rules are enabled in this owner/flight-only fixture.
+        // Model-processing receipts are exercised by the actual DOM cold reload suite.
+        sealIndependentTextReplacementRecord: record => record,
         byteLength: value => String(value || '').length,
         recordRabbitMirrorRecipe() {},
 

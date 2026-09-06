@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js';
 import { evaluateIndependentPostSanitizeQuality } from '../src/independentQualityGate.js';
-import { parseMultifaceOutput } from '../src/multifaceProtocol.js';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from '../src/multifaceProtocol.js';
 
 const apiSource = fs.readFileSync(new URL('../src/independentApi.js', import.meta.url), 'utf8');
 
@@ -42,6 +42,7 @@ function harness() {
     const sandbox = {
         independentPresentationFormatById: formatMap,
         parseMultifaceOutput,
+        recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText,
         republishIndependentSemanticFailure(...args) { semanticFailures.push(args); return args[0] || {}; },
         independentMirrorBodyEvidence: () => true,
         independentVisualProgramIntegrity: () => ({ ok: true, reason: '' }),
@@ -120,25 +121,31 @@ test('generic tabs remain rejected when the selected format does not natively ca
             { formatIds: ['8.7'], formatLabels: ['8.7 人生出场顺序论'] },
         ],
     };
-    assert.throws(
-        () => sandbox.globalThis.run(raw, metadata, { requestCount: 1 }, { slot: 'slot-generic' }),
-        error => error?.code === 'generic-tabbed-flat-layout'
-            && error?.rabbitMirrorMultifaceDiagnostic?.terminalFace === 2
-            && error?.rabbitMirrorMultifaceDiagnostic?.qualityCode === 'generic-tabbed-flat-layout',
-    );
+    const result = sandbox.globalThis.run(raw, metadata, { requestCount: 1 }, { slot: 'slot-generic' });
+    assert.equal(result.completedFaces, 1);
+    assert.equal(result.failedFaces[0].faceIndex, 1);
+    assert.equal(result.failedFaces[0].code, 'generic-tabbed-flat-layout');
+    assert.equal(result.faceScans[1], null);
     assert.equal(remembered.at(-1)?.code, 'generic-tabbed-flat-layout');
 });
 
-test('an incomplete five-face batch keeps the precise multiface-incomplete semantic instead of being mislabeled as quality', () => {
+test('an incomplete five-face batch retains four accepted faces and an explicit failure slot', () => {
     const { sandbox } = harness();
-    const raw = [1, 2, 3, 4].map(index => face(index, 'PLAIN')).join('\n');
+    const raw = [1, 2, 3, 4].map(index => simpleFace(index)).join('\n');
     const metadata = { faceCount: 5, faces: Array.from({ length: 5 }, () => ({ formatIds: ['8.7'], formatLabels: ['8.7 人生出场顺序论'] })) };
-    assert.throws(
-        () => sandbox.globalThis.run(raw, metadata, { requestCount: 1 }, {}),
-        error => error?.code === 'multiface-incomplete'
-            && error?.rabbitMirrorMultifaceDiagnostic?.completedFaces === 4
-            && error?.rabbitMirrorMultifaceDiagnostic?.expectedFaces === 5,
-    );
+    const result = sandbox.globalThis.run(raw, metadata, { requestCount: 1 }, {});
+    assert.equal(result.completedFaces, 4);
+    assert.equal(result.failedFaces[0].faceIndex, 4);
+    assert.equal(result.failedFaces[0].code, 'face-count-mismatch');
+    assert.equal(result.faceScans[4], null);
+    assert.equal(parseMultifaceOutput(result.html, {expectedCount:5}).ok, true);
+});
+
+test('all-failed and whole-response budget failures do not become successful partial results', () => {
+    const {sandbox} = harness();
+    assert.throws(() => sandbox.globalThis.run('', {faceCount:5,faces:[]}, {requestCount:1}, {}), error => error.code === 'multiface-incomplete');
+    const huge = simpleFace(1) + 'x'.repeat(800000);
+    assert.throws(() => sandbox.globalThis.run(huge, {faceCount:2,faces:[]}, {requestCount:1}, {}), error => error.code === 'multiface-incomplete');
 });
 
 

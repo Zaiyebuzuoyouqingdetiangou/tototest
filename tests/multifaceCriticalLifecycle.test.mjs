@@ -88,7 +88,7 @@ function independentCallHarness(raw) {
         prepareIndependentMultifaceResult(value, valueMetadata) {
             const parsed = parseMultifaceOutput(value, { expectedCount: Number(valueMetadata.faceCount) });
             if (!parsed.ok) throw new Error(`incomplete ${parsed.count}/${valueMetadata.faceCount}`);
-            return { html: value, faceScans: parsed.faces.map(item => ({ faceIndex: item.index })) };
+            return { html: value, faceScans: parsed.faces.map(item => ({ faceIndex: item.index })), failedFaces:[], completedFaces:parsed.faces.length };
         },
         republishIndependentSemanticFailure() { semanticFailures += 1; },
         independentMultifaceFailureSemantic(error) { const code = String(error?.code || ''); return code.startsWith('multiface-') ? code : 'multiface-quality'; },

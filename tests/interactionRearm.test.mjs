@@ -70,7 +70,7 @@ const captureStart = source.indexOf('function captureMaintenancePreRepairSnapsho
 const restoreStart = source.indexOf('function restoreMaintenancePreRepairSnapshot', captureStart);
 const captureBlock = source.slice(captureStart, restoreStart);
 const followBranch = captureBlock.slice(captureBlock.indexOf('// The follow-main-API mirror'));
-assert.ok(followBranch.includes('const snapshotNode = originalNode.cloneNode(true)'));
+assert.ok(followBranch.includes('const snapshotNode = cloneRabbitMirrorFilteredNode(originalNode)'));
 assert.ok(!followBranch.includes('originalNode.replaceWith'));
 assert.ok(!followBranch.includes('details.replaceWith'));
 
