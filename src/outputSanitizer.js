@@ -1,6 +1,6 @@
-import { getSettings } from './settings.js?rmv=1.5.18-audit1c2';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue } from './bannedWords.js?rmv=1.5.18-audit1c2';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.18-audit1c2';
+import { getSettings } from './settings.js?rmv=1.5.19-usability1';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.19-usability1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.19-usability1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -10,14 +10,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.18-audit1c2';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.18-audit1c2';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.18-audit1c2';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.18-audit1c2';
+} from './feedbackCat.js?rmv=1.5.19-usability1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.19-usability1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.19-usability1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.19-usability1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
 
 
-const RUNTIME_VERSION = '1.5.18';
+const RUNTIME_VERSION = '1.5.19';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -6067,7 +6067,9 @@ function parseNamedTextAssignments(scriptText, targetMap, targetCollections = ne
     const source = String(scriptText || '');
     const rememberText = (target, mode, rawValue) => {
         if (!target) return;
-        const value = filterRabbitMirrorRuntimeText(decodeSafeInlineString(rawValue));
+        // Keep the inert instruction raw. The live assignment boundary performs
+        // the current replacement once; replacement output need not be idempotent.
+        const value = decodeSafeInlineString(rawValue);
         // innerHTML 只接受纯文本；任何标签形态都放弃该条文字赋值。
         if (mode === 'innerHTML' && /<[^>]*>/.test(value)) return;
         textByTarget.set(target, value);
@@ -6195,8 +6197,8 @@ function parseCheckedTernaryStyleProgramFromSource(input, root, scriptText) {
         const target = resolveCheckedRelativeElementExpression(input, directMatch[1], root);
         const state = ensureTargetState(target);
         if (!state) continue;
-        state.activeText = filterRabbitMirrorRuntimeText(decodeSafeInlineString(directMatch[4]));
-        state.inactiveText = filterRabbitMirrorRuntimeText(decodeSafeInlineString(directMatch[6]));
+        state.activeText = decodeSafeInlineString(directMatch[4]);
+        state.inactiveText = decodeSafeInlineString(directMatch[6]);
     }
 
     const queryExpressionPattern = String.raw`(this(?:(?:\s*\.\s*(?:parentNode|parentElement))*)\s*\.\s*querySelector\(\s*(['"])([.#]?[a-zA-Z_][\w:.-]*)\2\s*\))`;
@@ -7145,14 +7147,14 @@ const rawSelfMutationDomBaselines = new WeakMap();
 
 function parseSafeSelfMutationText(mode, rawValue) {
     const decoded = decodeSafeInlineString(rawValue);
-    if (mode !== 'innerHTML') return filterRabbitMirrorRuntimeText(decoded);
+    if (mode !== 'innerHTML') return decoded;
     if (typeof document === 'undefined') return decoded.replace(/<[^>]*>/g, '');
     try {
         if (!validateRabbitMirrorMarkupLexicalBudget(decoded)) return null;
         const template = document.createElement('template');
         template.innerHTML = decoded;
         if (template.content.querySelector('script, style, iframe, object, embed, form, input, button, a')) return null;
-        return filterRabbitMirrorRuntimeText(String(template.content.textContent || '').replace(/\s+/g, ' ').trim());
+        return String(template.content.textContent || '').replace(/\s+/g, ' ').trim();
     } catch {
         return null;
     }
@@ -18123,7 +18125,7 @@ function rabbitMirrorInteractionResetSnapshotKey(root, createInstance = false) {
 
 function cleanRabbitMirrorInteractionResetClone(details) {
     if (!details?.cloneNode) return null;
-    const clone = details.cloneNode(true);
+    const clone = cloneRabbitMirrorFilteredNode(details);
     clone.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}]`)?.forEach(node => node.remove());
     clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
     clone.querySelectorAll?.('[data-rabbit-mirror-maintenance-checked-sandbox]')?.forEach(node => node.remove());
@@ -18144,20 +18146,34 @@ function removeRabbitMirrorInteractionHomeControls(root) {
     return removed;
 }
 
+const rabbitMirrorInteractionResetBudgetSkips = new WeakMap();
+
 function invalidateRabbitMirrorInteractionResetSnapshot(root) {
+    rabbitMirrorInteractionResetBudgetSkips.delete(root);
     const key = rabbitMirrorInteractionResetSnapshotKey(root, false);
     if (key) rabbitMirrorInteractionResetSnapshots.delete(key);
 }
 
 function captureRabbitMirrorInteractionResetSnapshot(root) {
     if (!root?.isConnected) return false;
+    // Pointerdown and click both reach this boundary. Once this exact owner,
+    // source and DOM instance has a baseline, do not walk its entire subtree
+    // again for every control activation. Owner/source checks still run first.
+    const key = rabbitMirrorInteractionResetSnapshotKey(root, true);
+    if (!key || rabbitMirrorInteractionResetSnapshots.has(key)
+        || rabbitMirrorInteractionResetBudgetSkips.get(root) === key) return false;
     // This capture runs on pointerdown before the browser can deliver the native
     // label/radio/details interaction. Never deep-clone a large generated mirror on
     // that critical path; the optional “restore initial state” feature is skipped.
     const budget = maintenanceRepairRootBudget(root);
-    if (!budget.ok || budget.nodes > 1200 || budget.attributes > 4000) return false;
-    const key = rabbitMirrorInteractionResetSnapshotKey(root, true);
-    if (!key || rabbitMirrorInteractionResetSnapshots.has(key)) return false;
+    if (!budget.ok || budget.nodes > 1200 || budget.attributes > 4000) {
+        // Oversized scenes must not repeat the same bounded walk on every tap.
+        // This negative receipt holds no DOM clone and applies only to this
+        // exact source/instance; explicit repair invalidation permits a retry.
+        rabbitMirrorInteractionResetBudgetSkips.set(root, key);
+        return false;
+    }
+    rabbitMirrorInteractionResetBudgetSkips.delete(root);
     const details = root.matches?.('details') ? root : root.querySelector?.(':scope > details') || root.querySelector?.('details');
     if (!details?.parentNode) return false;
     const node = cleanRabbitMirrorInteractionResetClone(details);
@@ -18218,7 +18234,7 @@ function restoreRabbitMirrorInteractionResetSnapshot(root, button) {
     const details = root.matches?.('details') ? root : root.querySelector?.(':scope > details') || root.querySelector?.('details');
     if (!details?.parentNode) return false;
     const keepOpen = details.hasAttribute('open');
-    const restoredDetails = snapshot.node.cloneNode(true);
+    const restoredDetails = cloneRabbitMirrorFilteredNode(snapshot.node);
     filterRabbitMirrorRuntimeDom(restoredDetails);
     if (keepOpen) restoredDetails.setAttribute('open', ''); else restoredDetails.removeAttribute('open');
     rearmRabbitMirrorSerializedInteractionRoot(restoredDetails);
@@ -18250,8 +18266,8 @@ function captureMaintenancePreRepairSnapshot(root) {
     // Runtime-only tool buttons are rebuilt instead of cloned so their listeners cannot
     // turn into static/dead controls after the replacement.
     if (isIndependentMaintenanceRoot(root)) {
-        const snapshotNode = originalNode.cloneNode(true);
-        const workingNode = originalNode.cloneNode(true);
+        const snapshotNode = cloneRabbitMirrorFilteredNode(originalNode);
+        const workingNode = cloneRabbitMirrorFilteredNode(originalNode);
         snapshotNode.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)?.forEach(node => node.remove());
         snapshotNode.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
         workingNode.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)?.forEach(node => node.remove());
@@ -18274,7 +18290,7 @@ function captureMaintenancePreRepairSnapshot(root) {
     // The follow-main-API mirror is already live. Keep its listener-bearing DOM in
     // place and store only a detached rollback clone. Replacing the working node
     // would drop handlers while preserving data-* "already bound" markers.
-    const snapshotNode = originalNode.cloneNode(true);
+    const snapshotNode = cloneRabbitMirrorFilteredNode(originalNode);
     snapshotNode.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)?.forEach(node => node.remove());
     snapshotNode.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
     maintenancePreRepairSnapshots.set(key, {

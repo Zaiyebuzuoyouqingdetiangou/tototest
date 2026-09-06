@@ -1,20 +1,23 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.18-audit1c2';
-import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.18-audit1c2';
-import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.18-audit1c2';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.18-audit1c2';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.18-audit1c2';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.18-audit1c2';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.18-audit1c2';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.18-audit1c2';
-import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.18-audit1c2';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.18-audit1c2';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.18-audit1c2';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.18-audit1c2';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.18-audit1c2';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.18-audit1c2';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.19-usability1';
+import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.19-usability1';
+import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.19-usability1';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.19-usability1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.19-usability1';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.19-usability1';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.19-usability1';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.19-usability1';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.19-usability1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.19-usability1';
+import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.19-usability1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.19-usability1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.19-usability1';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.19-usability1';
+import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.19-usability1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.19-usability1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.19-usability1';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
-const RUNTIME_VERSION = '1.5.18';
+const RUNTIME_VERSION = '1.5.19';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -437,6 +440,9 @@ function normalizeHistoryEntry(value){
   apiRequest:value.apiRequest&&typeof value.apiRequest==='object'?{...value.apiRequest}:null,
   executionLockChars:Number(value.executionLockChars||0),
   paletteFingerprint:value.paletteFingerprint&&typeof value.paletteFingerprint==='object'?{...value.paletteFingerprint}:null,
+  textReplacementReceipt:copyIndependentReplacementReceipt(value.textReplacementReceipt),
+  textReplacementReceipts:Array.isArray(value.textReplacementReceipts)?value.textReplacementReceipts.slice(0,5).map(copyIndependentReplacementReceipt):null,
+  initialTextReplacementReceipt:copyIndependentReplacementReceipt(value.initialTextReplacementReceipt),
  };
 }
 function appendHistoryEntry(slot,value){
@@ -477,7 +483,14 @@ function compactChatPersistedRecord(value){
   model:String(record.model||''), runtime:String(record.runtime||RUNTIME_VERSION), executionLockChars:Number(record.executionLockChars||0),
   paletteFingerprint:record.paletteFingerprint&&typeof record.paletteFingerprint==='object'?{...record.paletteFingerprint}:null,
   repairedByMaintenance:!!value?.repairedByMaintenance,
-  ...(faces?{apiRequest:{faceCount:faces.length,faces}}:{}),
+  textReplacementReceipt:record.textReplacementReceipt,
+  textReplacementReceipts:record.textReplacementReceipts,
+  initialTextReplacementReceipt:record.initialTextReplacementReceipt,
+  ...(faces?{apiRequest:{faceCount:faces.length,faces,
+   ...(diagnostic.partial===true?{partial:true,failedFaces:(Array.isArray(diagnostic.failedFaces)?diagnostic.failedFaces:[])
+    .filter(face=>Number.isInteger(face?.faceIndex)&&face.faceIndex>=0&&face.faceIndex<faces.length)
+    .slice(0,5).map(face=>({faceIndex:face.faceIndex,status:'failed',code:String(face.code||'incomplete-face').replace(/[^a-z0-9-]/gi,'').slice(0,80)}))}:{}),
+  }}:{}),
  };
 }
 function normalizeChatOutputMetadata(value){
@@ -3469,7 +3482,8 @@ function independentMultifaceFailureSemantic(error){
 }
 function prepareIndependentMultifaceResult(raw,metadata,requestDiagnostic,requestOptions={}){
  const parsed=parseMultifaceOutput(raw,{expectedCount:Number(metadata.faceCount)});
- if(!parsed.ok){
+ const sourceFaces=recoverableMultifaceFrames(parsed);
+ if(!sourceFaces.length){
   const first=parsed.errors?.[0]||{};
   const detail={completedFaces:parsed.faces?.length||0,expectedFaces:metadata.faceCount,
    protocolErrorCode:String(first.code||'face-count-mismatch').slice(0,120),
@@ -3478,14 +3492,21 @@ function prepareIndependentMultifaceResult(raw,metadata,requestDiagnostic,reques
   republishIndependentSemanticFailure(requestDiagnostic,'multiface-incomplete','',{responseChars:raw.length,...detail});
   throw independentMultifacePostprocessError(`⚠️ 多面结果未完整生成（完整 ${parsed.faces?.length||0}/${metadata.faceCount} 面${detail.terminalFace?`，第 ${detail.terminalFace} 面`:''}；${detail.protocolErrorCode}）。本轮只发送了 1 次请求，不会自动补发；请检查最大输出设置后手动重试。`,'multiface-incomplete',-1,detail);
  }
- const prepared=[]; const scans=[]; const seenBodies=new Set();
- for(const face of parsed.faces){
+ const count=Number(metadata.faceCount);
+ const prepared=Array(count).fill(null); const scans=Array(count).fill(null); const failures=Array(count).fill(null); const seenBodies=new Set(); const seenTitles=new Set();
+ for(let index=0;index<count;index+=1){
+  if(!sourceFaces.some(face=>face.index===index)) failures[index]={faceIndex:index,status:'failed',code:String(parsed.errors?.[0]?.code||'incomplete-face')};
+ }
+ for(const face of sourceFaces){
+  try{
   const faceMetadata=metadata.faces?.[face.index]||{};
   const prefix=`⚠️ 第 ${face.index+1} 面：`;
   // Only fresh model output reaches this path. Runtime scope belongs to the
   // sanitizer, never the model; trusting it permits sibling CSS collisions.
   if(typeof document!=='undefined'){
    const sourceTemplate=document.createElement('template'); sourceTemplate.innerHTML=face.html;
+   if(sourceTemplate.content.querySelector(`[${MULTIFACE_FAILURE_ATTR}]`))
+    throw independentMultifacePostprocessError(`${prefix}返回了保留的本地失败标记。`,'multiface-untrusted-failure-marker',face.index);
    if(sourceTemplate.content.querySelector('[data-rabbit-mirror-css-scope]'))
     throw independentMultifacePostprocessError(`${prefix}返回了保留的运行时样式标记，未挂载；不会自动补发。`,'multiface-untrusted-css-scope',face.index);
   }
@@ -3510,8 +3531,21 @@ function prepareIndependentMultifaceResult(raw,metadata,requestDiagnostic,reques
    rememberIndependentQualityFailure(requestOptions.slot,quality);
    throw independentMultifacePostprocessError(`${prefix}${quality.message||'未达到成品质量门槛。'} 本轮只发送了 1 次请求，不会自动补发。`,quality.code||'multiface-quality',face.index,{qualityCode:String(quality.code||''),qualityFlags:Array.isArray(quality.flags)?quality.flags.slice(0,12):[]});
   }
-  prepared.push(wrapPreparedIndependentFace(html,face.index)); scans.push(scan);
+  const candidate=wrapPreparedIndependentFace(html,face.index);
+  // Titles may collide only after filtering. Reject the new conflicting face,
+  // not the already accepted neighbor; never count a failure card as quality.
+  const title=normalizedSummaryText(parseMultifaceOutput(candidate).faces[0]?.summaryHtml||'');
+  if(!title || seenTitles.has(title)) throw independentMultifacePostprocessError(`${prefix}过滤后的标题为空或与其他面重复。`,'multiface-sanitized-duplicate-summary',face.index);
+  seenTitles.add(title);
+  prepared[face.index]=candidate; scans[face.index]={...scan,faceIndex:face.index};
+  }catch(error){
+   if(!error?.rabbitMirrorMultifaceDiagnostic) throw error;
+   failures[face.index]={faceIndex:face.index,status:'failed',code:String(error.code||'multiface-quality').slice(0,80)};
+  }
  }
+ const succeeded=scans.filter(Boolean).length;
+ if(!succeeded) throw independentMultifacePostprocessError('所有面均未通过检查；本轮不会自动补发请求。','multiface-all-failed',-1,{completedFaces:0,expectedFaces:count,failedFaces:failures.filter(Boolean)});
+ for(let index=0;index<count;index+=1) if(!prepared[index]) prepared[index]=createMultifaceFailureSlot(index,failures[index]?.code);
  const html=prepared.join('\n');
  const finalProtocol=parseMultifaceOutput(html,{expectedCount:Number(metadata.faceCount)});
  if(!finalProtocol.ok){
@@ -3523,7 +3557,7 @@ function prepareIndependentMultifaceResult(raw,metadata,requestDiagnostic,reques
   });
  }
  assertIndependentMarkupComplexityWithDiagnostic(html,'multiface-sanitized',requestDiagnostic);
- return {html,faceScans:scans};
+ return {html,faceScans:scans,failedFaces:failures.filter(Boolean),completedFaces:succeeded};
 }
 function independentPromptOwnerPreflightError(){
  const error=new Error('读取外部母本期间，当前聊天、正文或本次生成身份已变化；本轮未发送请求，不会重抽或自动重试。');
@@ -3812,7 +3846,9 @@ ${independentUserTail}`;
   }
   clearIndependentQualityFailure(requestOptions.slot);
   rememberApiProfile(st,profile);
-  return {...prepared,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length,batchPlan:details.batchPlan};
+  const batchDiagnostic=prepared.failedFaces.length?{...requestDiagnostic,partial:true,completedFaces:prepared.completedFaces,failedFaces:prepared.failedFaces}:requestDiagnostic;
+  if(prepared.failedFaces.length) publishIndependentApiRequestDiagnostic(batchDiagnostic);
+  return {...prepared,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic:batchDiagnostic,executionLockChars:executionLock.length,batchPlan:details.batchPlan};
  }
  const inner=extractMirrorInner(raw);
  if(!inner){
@@ -5202,33 +5238,81 @@ function migratePersistedInteractionStateRecords(){
  scheduleSlice(true);
  return false;
 }
-function sanitizeIndependentReadyFragment(html=''){
+function copyIndependentReplacementReceipt(receipt){
+ if(receipt?.version!==1 || typeof receipt.ownerKey!=='string' || receipt.ownerKey.length>4096
+  || !/^[a-f0-9]{64}$/.test(receipt.htmlHash||'') || !/^[a-f0-9]{64}$/.test(receipt.rulesHash||'')) return null;
+ return {version:1,ownerKey:receipt.ownerKey,htmlHash:receipt.htmlHash,rulesHash:receipt.rulesHash};
+}
+// Only local successful processing calls this; never copy response fields or
+// generated attributes into a receipt. The slot is external owner authority.
+function sealIndependentTextReplacementRecord(record,slot,previousRecord=null,replacedFaceIndex=null){
+ if(!independentRecordWithinBudget(record) || !slot) return record;
+ const rules=getSettings()?.rabbitMirrorBannedWords||[];
+ if(!rules.length) return record;
+ if(hasMultifaceMarkup(record.html)){
+  const parsed=parseMultifaceOutput(record.html);
+  const previous=previousRecord?.html?parseMultifaceOutput(previousRecord.html):null;
+  if(parsed.ok){
+   record.textReplacementReceipts=parsed.faces.map(face=>{
+    if(Number.isInteger(replacedFaceIndex) && face.index!==replacedFaceIndex){
+     return previous?.faces?.[face.index]?.inner===face.inner
+      ? copyIndependentReplacementReceipt(previousRecord?.textReplacementReceipts?.[face.index]) : null;
+    }
+    return createRabbitMirrorTextReplacementReceipt(face.inner,rules,`${slot}#face:${face.index}`);
+   });
+   record.textReplacementReceipt=null;
+   return record;
+  }
+ }
+ record.textReplacementReceipt=createRabbitMirrorTextReplacementReceipt(record.html,rules,slot);
+ record.initialTextReplacementReceipt=record.initialHtml
+  ? createRabbitMirrorTextReplacementReceipt(record.initialHtml,rules,slot) : null;
+ return record;
+}
+function prepareStoredIndependentRecordHtml(record,slot){
+ if(!independentRecordWithinBudget(record) || !slot) return '';
+ // This seam is reached only after the caller has selected and validated the
+// owning saved result. No startup readStore scan parses or hashes all records.
+ if(hasMultifaceMarkup(record.html) && Array.isArray(record.textReplacementReceipts)){
+  const parsed=parseMultifaceOutput(record.html);
+  if(!parsed.ok) return '';
+  const faces=parsed.faces.map(face=>({index:face.index,inner:prepareIndependentReadyHtml(face.inner,
+   record.textReplacementReceipts[face.index],`${slot}#face:${face.index}`)}));
+  if(faces.some(face=>!face.inner)) return '';
+  return faces.map(face=>wrapPreparedIndependentFace(face.inner,face.index)).join('\n');
+ }
+ return prepareIndependentReadyHtml(record.html,record.textReplacementReceipt,slot);
+}
+function sanitizeIndependentReadyFragment(html='',textAlreadyFiltered=false){
  try{ assertIndependentMarkupComplexity(html); }catch{return '';}
  const template=document.createElement('template');
  template.innerHTML=String(html||'');
+ if(textAlreadyFiltered) rememberRabbitMirrorFilteredDom(template.content,getSettings()?.rabbitMirrorBannedWords);
  // 独立 API 结果绕过 SillyTavern 的消息净化链；真正挂载前与维修兔共用同一未信任 HTML 边界。
  template.content.querySelectorAll('script').forEach(node=>node.remove());
  if(!sanitizeRabbitMirrorUntrustedTemplate(template)) return '';
  return template.innerHTML;
 }
 
-function prepareIndependentReadyHtml(html=''){
+function prepareIndependentReadyHtml(html='',savedReceipt=null,ownerSlot='',locallyPrepared=false){
  const source=String(html||'').trim();
  try{ assertIndependentMarkupComplexity(source); }catch{return '';}
  const bannedWords=getSettings()?.rabbitMirrorBannedWords;
- const bannedFingerprint=hashText(Array.isArray(bannedWords)?bannedWords.join('\u001f'):'');
- const cacheKey=`${RUNTIME_VERSION}:${bannedFingerprint}:${source.length}:${hashText(source)}`;
+ const bannedFingerprint=hashText(Array.isArray(bannedWords)?JSON.stringify(bannedWords):'');
+ const provenance=locallyPrepared?'prepared':savedReceipt?`record:${ownerSlot}:${JSON.stringify(copyIndependentReplacementReceipt(savedReceipt))}`:'raw';
+ const cacheKey=`${RUNTIME_VERSION}:${bannedFingerprint}:${provenance}:${source.length}:${hashText(source)}`;
  if(preparedReadyHtmlCache.has(cacheKey)) return preparedReadyHtmlCache.get(cacheKey);
+ const textAlreadyFiltered=locallyPrepared || matchesRabbitMirrorTextReplacementReceipt(savedReceipt,String(html||''),bannedWords||[],ownerSlot);
  if(hasMultifaceMarkup(source)){
   const parsed=parseMultifaceOutput(source);
   if(!parsed.ok) return '';
-  const preparedFaces=parsed.faces.map(face=>({index:face.index,inner:prepareIndependentReadyHtml(face.inner)}));
+  const preparedFaces=parsed.faces.map(face=>({index:face.index,inner:prepareIndependentReadyHtml(face.inner,null,'',textAlreadyFiltered)}));
   if(preparedFaces.some(face=>!face.inner)) return '';
   const prepared=preparedFaces.map(face=>wrapPreparedIndependentFace(face.inner,face.index)).join('\n');
   if(!parseMultifaceOutput(prepared,{expectedCount:parsed.faces.length}).ok) return '';
   try{ assertIndependentMarkupComplexity(prepared); }catch{return '';}
   cachePreparedReadyHtml(cacheKey,prepared);
-  cachePreparedReadyHtml(`${RUNTIME_VERSION}:${bannedFingerprint}:${prepared.length}:${hashText(prepared)}`,prepared);
+  cachePreparedReadyHtml(`${RUNTIME_VERSION}:${bannedFingerprint}:prepared:${prepared.length}:${hashText(prepared)}`,prepared);
   return prepared;
  }
  const repaired=repairMalformedLabelMarkup(source);
@@ -5239,13 +5323,13 @@ function prepareIndependentReadyHtml(html=''){
  const prepared=/<details\b/i.test(cleaned)
   ? compactTotoBlock(cleaned)
   : cleaned;
- const sanitized=sanitizeIndependentReadyFragment(prepared);
+ const sanitized=sanitizeIndependentReadyFragment(prepared,textAlreadyFiltered);
  cachePreparedReadyHtml(cacheKey,sanitized);
  // callIndependentApi() stores this already-prepared value and the first DOM
  // mount receives those exact bytes. Seed that value's own key as well so the
  // mount is a cache hit instead of parsing/sanitizing a large mirror twice.
  if(sanitized){
-  const sanitizedKey=`${RUNTIME_VERSION}:${bannedFingerprint}:${sanitized.length}:${hashText(sanitized)}`;
+  const sanitizedKey=`${RUNTIME_VERSION}:${bannedFingerprint}:prepared:${sanitized.length}:${hashText(sanitized)}`;
   if(sanitizedKey!==cacheKey) cachePreparedReadyHtml(sanitizedKey,sanitized);
  }
  return sanitized;
@@ -5265,9 +5349,12 @@ function repairLabelTargets(root){
  }
  return changed;
 }
-function extractReadyDetails(html=''){
+function extractReadyDetails(html='',locallyPrepared=false){
  const template=document.createElement('template');
- template.innerHTML=prepareIndependentReadyHtml(html);
+ template.innerHTML=prepareIndependentReadyHtml(html,null,'',locallyPrepared);
+ // The producer above has applied current local text rules. Reparse creates
+ // new Text nodes; carry that local provenance for later snapshot restoration.
+ rememberRabbitMirrorFilteredDom(template.content,getSettings()?.rabbitMirrorBannedWords);
  const details=template.content.querySelector('details') || null;
  if(details){
   // Layout repairs are runtime-only. 1.3.3 could persist mobile rescue marks/styles
@@ -5309,19 +5396,19 @@ function extractReadyDetails(html=''){
  }
  return details;
 }
-function extractReadyFaceDetails(html=''){
+function extractReadyFaceDetails(html='',locallyPrepared=false){
  if(!hasMultifaceMarkup(html)){
-  const details=extractReadyDetails(html);
+  const details=extractReadyDetails(html,locallyPrepared);
   return details?[details]:[];
  }
  const parsed=parseMultifaceOutput(html);
  if(!parsed.ok) return [];
- const faces=parsed.faces.map(face=>extractReadyDetails(face.inner));
+ const faces=parsed.faces.map(face=>extractReadyDetails(face.inner,locallyPrepared));
  if(faces.some(details=>!usableReadyDetails(details))) return [];
  return faces;
 }
-function mountExternalFaceDetails(host,key,source,html,{wasOpen=false}={}){
- const faces=extractReadyFaceDetails(html);
+function mountExternalFaceDetails(host,key,source,html,{wasOpen=false,locallyPrepared=false}={}){
+ const faces=extractReadyFaceDetails(html,locallyPrepared);
  if(!faces.length) return false;
  const previous=externalFaceDetails(host);
  for(const [index,details] of faces.entries()){
@@ -5337,14 +5424,14 @@ function mountExternalFaceDetails(host,key,source,html,{wasOpen=false}={}){
  for(const [index,details] of faces.entries()) markSanitizedRabbitMirrorFace(details,{faceIndex:index,faceCount:faces.length,sourceHash:String(host.dataset?.rmSourceHash||''),origin:String(source||'independent')});
  return true;
 }
-function replaceExternalMultifaceFace(host,key,source,html,faceIndex){
+function replaceExternalMultifaceFace(host,key,source,html,faceIndex,locallyPrepared=false){
  const currentFaces=externalFaceDetails(host);
  const parsed=parseMultifaceOutput(String(html||''));
  const index=Number(faceIndex);
  if(!host?.isConnected || !parsed.ok || !Number.isInteger(index) || index<0
   || index>=parsed.faces.length || currentFaces.length!==parsed.faces.length
   || currentFaces.some(details=>!usableReadyDetails(details))) return false;
- const replacement=extractReadyDetails(parsed.faces[index].inner);
+ const replacement=extractReadyDetails(parsed.faces[index].inner,locallyPrepared);
  const current=currentFaces[index];
  if(!replacement || !usableReadyDetails(replacement) || !current?.isConnected) return false;
  const wasOpen=!!current.hasAttribute?.('open');
@@ -5381,15 +5468,14 @@ function refreshExistingExternalDetails(host,key,source='independent'){
  if(externalFaceDetails(host).length>1){
   const faces=externalFaceDetails(host);
   if(faces.some(details=>details.getAttribute(INDEPENDENT_SANITIZER_ATTR)!==RUNTIME_VERSION)){
-   mountExternalFaceDetails(host,key,source,serializeExternalFaceDetails(host));
+   const prepared=faces.map((face,index)=>wrapPreparedIndependentFace(prepareLocalDetailsClone(face),index)).join('\n');
+   mountExternalFaceDetails(host,key,source,prepared,{locallyPrepared:true});
   }
   return externalFaceDetails(host)[0]||null;
  }
  const current=host.querySelector(':scope > details');
  if(!current || current.getAttribute(INDEPENDENT_SANITIZER_ATTR)===RUNTIME_VERSION) return current;
- const clone=current.cloneNode(true);
- clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
- const next=extractReadyDetails(clone.outerHTML);
+ const next=extractReadyDetails(prepareLocalDetailsClone(current),true);
  if(!next) return current;
  const wasOpen=current.hasAttribute('open');
  markExternalDetails(next,key,source);
@@ -5397,6 +5483,13 @@ function refreshExistingExternalDetails(host,key,source='independent'){
  current.replaceWith(next);
  if(wasOpen) next.setAttribute('open','');
  return next;
+}
+function prepareLocalDetailsClone(details){
+ const template=document.createElement('template');
+ const clone=cloneRabbitMirrorFilteredNode(details);
+ clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
+ template.content.append(clone);
+ return sanitizeRabbitMirrorUntrustedTemplate(template)?template.innerHTML:'';
 }
 function externalToolHost(details){
  return details?.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]') || null;
@@ -5792,7 +5885,7 @@ function fallbackExternalDetails(state,text=''){
  return details;
 }
 
-function buildExternalHost(key,html,state,source){
+function buildExternalHost(key,html,state,source,locallyPrepared=false){
  const host=document.createElement('div');
  host.setAttribute(SOURCE_ATTR,'true');
  host.setAttribute(EXTERNAL_SHELL_ATTR,'true');
@@ -5801,11 +5894,11 @@ function buildExternalHost(key,html,state,source){
  host.dataset.rmSource=source;
  host.dataset.rmState=state;
  if(state==='ready' && hasMultifaceMarkup(html)){
-  if(mountExternalFaceDetails(host,key,source,html)) return host;
+  if(mountExternalFaceDetails(host,key,source,html,{locallyPrepared})) return host;
   return buildExternalHost(key,'多面结果未通过完整性检查；本轮不会自动补发请求。','error',source);
  }
  const details=state==='ready'
-  ? extractReadyDetails(html)
+  ? extractReadyDetails(html,locallyPrepared)
   : fallbackExternalDetails(state,html);
  if(!details) return buildExternalHost(key,'独立 API 已返回内容，但没有找到完整的兔子镜 <details>。','error',source);
  details.removeAttribute('open');
@@ -5943,15 +6036,15 @@ function readyDetailsVisuallyCollapsed(details){
   return rect.height>0 && rect.height<8;
  }catch{return false;}
 }
-function replaceReadyDetailsFromSaved(host,key,source,html,sourceHash='',wasOpen=false){
+function replaceReadyDetailsFromSaved(host,key,source,html,sourceHash='',wasOpen=false,locallyPrepared=false){
  if(hasMultifaceMarkup(html)){
-  if(!mountExternalFaceDetails(host,key,source,html,{wasOpen})) return false;
+  if(!mountExternalFaceDetails(host,key,source,html,{wasOpen,locallyPrepared})) return false;
   host.dataset.rmState='ready';
   if(sourceHash) host.dataset.rmSourceHash=String(sourceHash);
   ensureExternalTools(host);
   return true;
  }
- const next=extractReadyDetails(html);
+ const next=extractReadyDetails(html,locallyPrepared);
  if(!usableReadyDetails(next)) return false;
  markExternalDetails(next,key,source);
  if(wasOpen) next.setAttribute('open',''); else next.removeAttribute('open');
@@ -5962,12 +6055,14 @@ function replaceReadyDetailsFromSaved(host,key,source,html,sourceHash='',wasOpen
  ensureExternalTools(host);
  return true;
 }
-function rebuildCollapsedReadyHost(el,host,key,source,html,sourceHash=''){
+function rebuildCollapsedReadyHost(el,host,key,source,html,sourceHash='',savedRecord=null){
  if(!host || !html) return host;
+ const locallyPrepared=source==='independent' && savedRecord?.html===html;
+ if(locallyPrepared){html=prepareStoredIndependentRecordHtml(savedRecord,key);if(!html)return host;}
  const currentFaces=externalFaceDetails(host);
  const readyFaces=completeReadyFaceDetails(host,html);
  if(!readyFaces.length){
-  replaceReadyDetailsFromSaved(host,key,source,html,sourceHash,!!currentFaces[0]?.hasAttribute?.('open'));
+  replaceReadyDetailsFromSaved(host,key,source,html,sourceHash,!!currentFaces[0]?.hasAttribute?.('open'),locallyPrepared);
   return host;
  }
  // This is a one-time mount-health probe. Re-reading computed style + layout for
@@ -5992,7 +6087,7 @@ function rebuildCollapsedReadyHost(el,host,key,source,html,sourceHash=''){
    for(const details of liveUnverified) verifiedReadyDetailsVisualHealth.add(details);
    return;
   }
-  replaceReadyDetailsFromSaved(host,key,source,html,sourceHash,!!live[0]?.hasAttribute?.('open'));
+  replaceReadyDetailsFromSaved(host,key,source,html,sourceHash,!!live[0]?.hasAttribute?.('open'),locallyPrepared);
  },120);
  return host;
 }
@@ -6924,8 +7019,14 @@ function scheduleIndependentReadyPostprocess(host,key='',html=''){
  return true;
 }
 
-function ensureExternalUi(el,key,html,state='ready',source='independent',sourceHash=''){
+function ensureExternalUi(el,key,html,state='ready',source='independent',sourceHash='',savedRecord=null){
  const body=externalInsertTarget(el); if(!body) return null;
+ let locallyPrepared=false;
+ if(state==='ready' && source==='independent' && savedRecord?.html===html){
+  html=prepareStoredIndependentRecordHtml(savedRecord,key);
+  if(!html) return null;
+  locallyPrepared=true;
+ }
  const reconciled=collapseDuplicateIdentityHosts(el,key,source,sourceHash);
  const same=matchingExternalHosts(el,key,source);
  // Reuse the existing host across pure-external <-> external-then-inline mode
@@ -6947,7 +7048,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
    if(state!=='loading') delete host.dataset.rmReplyGenerationPlaceholder;
    if(sourceHash) host.dataset.rmSourceHash=String(sourceHash);
    if(escaped && !hasMultifaceMarkup(html)){ markExternalDetails(escaped,key,source); host.append(escaped); }
-   else host=buildExternalHost(key,html,state,source);
+   else host=buildExternalHost(key,html,state,source,locallyPrepared);
    host.__rabbitMirrorIndependentSource = state==='ready' ? String(html||'') : '';
    if(sourceHash) host.dataset.rmSourceHash=String(sourceHash);
    stampExternalDetailsOwnership(host);
@@ -6999,7 +7100,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
      return host;
    }
     if(expectedFaces){
-      if(!mountExternalFaceDetails(host,key,source,html,{wasOpen})){
+      if(!mountExternalFaceDetails(host,key,source,html,{wasOpen,locallyPrepared})){
        host.dataset.rmState='error';
        globalThis.toastr?.error?.('多面结构不完整，未挂载；不会自动补发请求。');
        return host;
@@ -7014,7 +7115,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
       delete host.dataset.rmFaceCount;
       host.classList.remove('rabbit-mirror-multiface-host');
     }
-    const nextDetails=extractReadyDetails(html);
+    const nextDetails=extractReadyDetails(html,locallyPrepared);
    if(!nextDetails){
      host.dataset.rmState='error';
      placeExternalHost(el,host,key,source);
@@ -7129,9 +7230,9 @@ function restoreExactIndependentReadyForIdentity(index,live,result){
   return result.host;
  }
  if(!el || !result.record?.html) return null;
- const host=ensureExternalUi(el,live.key,result.record.html,'ready','independent',live.sourceHash);
+ const host=ensureExternalUi(el,live.key,result.record.html,'ready','independent',live.sourceHash,result.record);
  if(host){
-  rebuildCollapsedReadyHost(el,host,live.key,'independent',result.record.html,live.sourceHash);
+  rebuildCollapsedReadyHost(el,host,live.key,'independent',result.record.html,live.sourceHash,result.record);
   host.hidden=false;
   clearExternalHostFreshSourceState(host);
  }
@@ -7388,7 +7489,7 @@ function settleCancelledIndependentFlightUi(flight,reason='cancelled'){
  const identity=currentGenerationIdentity(Number(flight.index));
  const sameOwner=identity && identity.key===flight.key && identity.sourceHash===flight.sourceHash;
  if(flight.manual && flight.previousReadyRecord?.html && liveEl && sameOwner){
-  ensureExternalUi(liveEl,flight.key,flight.previousReadyRecord.html,'ready','independent',flight.sourceHash);
+  ensureExternalUi(liveEl,flight.key,flight.previousReadyRecord.html,'ready','independent',flight.sourceHash,flight.previousReadyRecord);
   flight.uiSettled=true;
   return true;
  }
@@ -7528,12 +7629,12 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
   const persistedSlot=chatPersistenceSlot(ctx,index,swipeId(msg),persistedReady)||slot;
   if(!store?.[persistedSlot]?.html){ saveRecordForSlot(store,persistedSlot,persistedReady,{dropLegacy:false}); writeStore(store); }
   setOwnerLockForBase(baseSlot,persistedSlot,String(persistedReady.sourceHash||persistedReady.bodyHash||sourceHash));
-  if(el) ensureExternalUi(el,key,persistedReady.html,'ready','independent',sourceHash);
+  if(el) ensureExternalUi(el,key,persistedReady.html,'ready','independent',sourceHash,persistedReady);
   return persistedReady;
  } else if(!persistedSuppressed){
   const locked=lockedIndependentRecordForBase(baseSlot,store);
   if(locked?.record?.html && savedRecordMatchesObserved(locked.record,observed)){
-   if(el) ensureExternalUi(el,key,locked.record.html,'ready','independent',sourceHash);
+   if(el) ensureExternalUi(el,key,locked.record.html,'ready','independent',sourceHash,locked.record);
    return locked.record;
   }
  }
@@ -7565,7 +7666,7 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
   if(savedRecordMatchesObserved(saved,observed) || (!savedSourceHash && !sourceAware)){
    setOwnerLockForBase(baseSlot,slot,sourceHash);
    writePersistedOwner(ctx,index,msg,saved,{overwrite:false});
-   if(el){ const restored=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash); rebuildCollapsedReadyHost(el,restored,key,'independent',saved.html,sourceHash); }
+   if(el){ const restored=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash,saved); rebuildCollapsedReadyHost(el,restored,key,'independent',saved.html,sourceHash,saved); }
    return saved;
   }
  }
@@ -7664,17 +7765,18 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
      const serverSlot=chatPersistenceSlot(settledCtx,index,swipeId(settledMsg),serverRecord)||settledSlot;
      const liveStore=readStore(); if(!liveStore?.[serverSlot]?.html){ saveRecordForSlot(liveStore,serverSlot,serverRecord,{dropLegacy:false}); writeStore(liveStore); }
      setOwnerLockForBase(baseSlot,serverSlot,String(serverRecord.sourceHash||serverRecord.bodyHash||settledSourceHash));
-     const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,settledKey,serverRecord.html,'ready','independent',settledSourceHash);
+     const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,settledKey,serverRecord.html,'ready','independent',settledSourceHash,serverRecord);
      return serverRecord;
     }
     const locked=lockedIndependentRecordForBase(baseSlot,readStore());
     if(locked?.record?.html && savedRecordMatchesObserved(locked.record,settledIdentity)){
-     const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,settledKey,locked.record.html,'ready','independent',settledSourceHash);
+     const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,settledKey,locked.record.html,'ready','independent',settledSourceHash,locked.record);
      return locked.record;
     }
    }
    let html=String(result?.html||'');
    let replacementVisualHtml='';
+   let replacementPreviousRecord=null;
    if(multifaceResay){
     const liveEl=messageElement(index);
     const liveHost=liveEl?collapseDuplicateIdentityHosts(liveEl,settledKey,'independent',settledSourceHash):null;
@@ -7682,6 +7784,7 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
      ? readyRecordFromHost(liveHost,settledIdentity,st.independentApiModel):null;
     const persistedNow=persistedOwnerForMessage(settledCtx,index,settledMsg);
     const mergeRecord=liveRecord?.html?{...previousReadyRecord,...liveRecord,apiRequest:previousReadyRecord?.apiRequest}:persistedNow?.html?persistedNow:previousReadyRecord;
+    replacementPreviousRecord=mergeRecord;
     const previousBatch=parseMultifaceOutput(String(mergeRecord?.html||''));
     const faceIndex=Number(multifaceResay.faceIndex);
     const replacementTemplate=document.createElement('template');
@@ -7696,7 +7799,9 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
     if(!merged.ok || !independentStoredHtmlRestorable(html)) throw new Error('这面兔子镜已生成，但无法在不改动其他面的前提下安全合并；旧成品已保留，不会自动重发。');
     const oldDiagnostic=mergeRecord?.apiRequest&&typeof mergeRecord.apiRequest==='object'?mergeRecord.apiRequest:{};
     const oldFaces=Array.isArray(oldDiagnostic.faces)?oldDiagnostic.faces:[];
-    result.requestDiagnostic={...oldDiagnostic,faces:oldFaces.length===previousBatch.faces.length?oldFaces.map((face,i)=>i===faceIndex?{...face,...result.requestDiagnostic}:face):oldFaces,faceCount:previousBatch.faces.length,multifaceResayFace:faceIndex+1};
+    const remainingFailures=Array.isArray(oldDiagnostic.failedFaces)?oldDiagnostic.failedFaces.filter(face=>face.faceIndex!==faceIndex):[];
+    result.requestDiagnostic={...oldDiagnostic,faces:oldFaces.length===previousBatch.faces.length?oldFaces.map((face,i)=>i===faceIndex?{...face,...result.requestDiagnostic}:face):oldFaces,faceCount:previousBatch.faces.length,multifaceResayFace:faceIndex+1,
+     partial:remainingFailures.length>0,failedFaces:remainingFailures,completedFaces:previousBatch.faces.length-remainingFailures.length};
    }
    clearAutomaticFailureStop(slot,sourceHash);
    if(settledSlot!==slot || settledSourceHash!==sourceHash) clearAutomaticFailureStop(settledSlot,settledSourceHash);
@@ -7710,6 +7815,7 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
   }
   const initialHtml=scrubIndependentInteractionState(html,html);
    const completed={html:initialHtml||html,initialHtml:'',sourceHash:settledSourceHash,bodyHash:settledBodyHash,displayHash:settledDisplayHash,reasoningHash:settledReasoningHash,paletteFingerprint,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION,apiRequest:result?.requestDiagnostic||null,executionLockChars:Number(result?.executionLockChars||0)};
+   sealIndependentTextReplacementRecord(completed,settledSlot,replacementPreviousRecord,multifaceResay?Number(multifaceResay.faceIndex):null);
    if(!independentRecordWithinBudget(completed)) throw independentMarkupLimitError('record-bytes',byteLength(completed.html),INDEPENDENT_RECORD_BUDGET_BYTES);
    recordRabbitMirrorRecipe({ chat:settledCtx.chat, chatKey:chatKey(settledCtx), messageIndex:index, swipeId:swipeId(settledMsg), message:settledMsg, metadata:result?.requestDiagnostic||null, source:'independent' });
    appendHistoryEntry(settledSlot,completed);
@@ -7721,7 +7827,7 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
    if(liveEl){
     liveHost=collapseDuplicateIdentityHosts(liveEl,settledKey,'independent',settledSourceHash);
     const replacedOne=multifaceResay && liveHost
-     ? replaceExternalMultifaceFace(liveHost,settledKey,'independent',html,Number(multifaceResay.faceIndex)) : false;
+     ? replaceExternalMultifaceFace(liveHost,settledKey,'independent',html,Number(multifaceResay.faceIndex),true) : false;
     if(replacedOne){
      liveHost.dataset.rmSourceHash=settledSourceHash;
      stampExternalDetailsOwnership(liveHost);
@@ -7730,7 +7836,7 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
      ensureExternalTools(liveHost);
      scheduleIndependentReadyPostprocess(liveHost,settledKey,html);
     }else{
-     ensureExternalUi(liveEl,settledKey,html,'ready','independent',settledSourceHash);
+     ensureExternalUi(liveEl,settledKey,completed.html,'ready','independent',settledSourceHash,completed);
      liveHost=collapseDuplicateIdentityHosts(liveEl,settledKey,'independent',settledSourceHash);
     }
    }
@@ -7756,7 +7862,7 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
      console.warn('[RabbitMirror] multiface result accepted; deferred persistence/DOM reconciliation',{persistenceComplete,mountComplete,slot:settledSlot});
      globalThis.toastr?.warning?.('多面兔子镜已经生成；界面或缓存复核尚未完成，将从本轮成品被动恢复，不会自动补发请求。');
     }
-    if(persistenceComplete && !commitPendingComboBatch(result.faceScans||[],{batchId:result.batchPlan.batchId,identity:result.batchPlan.identity})){
+    if(persistenceComplete && !commitPendingComboBatch(result.faceScans||[],{batchId:result.batchPlan.batchId,identity:result.batchPlan.identity,partial:!!result.failedFaces?.length})){
      globalThis.toastr?.warning?.('多面兔子镜已安全显示，但本轮随机冷却记录保存失败；不会自动补发请求。');
     }
    }
@@ -7794,7 +7900,7 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
      // profile remains staged in diagnostics.
      const currentHost=collapseDuplicateIdentityHosts(liveEl,key,'independent',sourceHash);
      if(!multifaceResay || !completeReadyFaceDetails(currentHost,currentHost?.__rabbitMirrorIndependentSource||'').length){
-      ensureExternalUi(liveEl,key,previousReadyRecord.html,'ready','independent',sourceHash);
+      ensureExternalUi(liveEl,key,previousReadyRecord.html,'ready','independent',sourceHash,previousReadyRecord);
      }
      flight.uiSettled=true;
      toastr?.error?.(failureMessage);
@@ -7925,13 +8031,13 @@ function historyDateLabel(value){
  const date=new Date(Number(value||0));
  return Number.isFinite(date.getTime()) ? date.toLocaleString([], {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
 }
-function historyPreviewDetails(entry,faceIndex=-1){
- let source=String(entry?.html||'');
+function historyPreviewDetails(entry,faceIndex=-1,ownerSlot=''){
+ let source=ownerSlot?prepareStoredIndependentRecordHtml(entry,ownerSlot):String(entry?.html||'');
  if(faceIndex>=0 && hasMultifaceMarkup(source)){
   const parsed=parseMultifaceOutput(source);
   source=parsed.ok&&parsed.faces[faceIndex]?parsed.faces[faceIndex].inner:'';
  }
- const details=extractReadyDetails(source); if(!details) return null;
+ const details=extractReadyDetails(source,!!ownerSlot); if(!details) return null;
  details.removeAttribute('data-rabbit-mirror-external-details');
  details.removeAttribute('data-rabbit-mirror-external-owner');
  details.removeAttribute('data-rabbit-mirror-external-source');
@@ -7961,7 +8067,7 @@ function showIndependentHistory(root,owner={}){
  const preview=overlay.querySelector('.rabbit-mirror-history-preview');
  const render=(entry,button)=>{
   list.querySelectorAll('button').forEach(item=>item.classList.toggle('is-active',item===button));
-  preview.replaceChildren(); const details=historyPreviewDetails(entry,identity.faceIndex);
+  preview.replaceChildren(); const details=historyPreviewDetails(entry,identity.faceIndex,identity.slot);
   if(details) preview.append(details); else preview.textContent='这版兔子镜无法预览。';
  };
  entries.forEach((entry,index)=>{
@@ -7977,6 +8083,18 @@ function showIndependentHistory(root,owner={}){
  document.body.append(overlay); return true;
 }
 function resayIndependentMirror(root,owner={}){
+ if(getSettings().generationSource==='follow'){
+  void import('./followFaceRetry.js?rmv=1.5.19-usability1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+   getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
+   resolveOwner:target=>{
+    const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
+    return followRecoveryOwner(host?messageElementForExternalHost(host):target?.closest?.('.mes[mesid]'));
+   },
+   context:(ctx,index)=>{const snapshot=globalWorldInfoSnapshotFor(ctx,index,ctx.chat[index]);return contextBundle(ctx,index,snapshot,globalWorldInfoContextView(snapshot),CONTEXT_TOTAL_BUDGET,createIndependentVisibleTextReader(index));},
+   extractReadyDetails,formatDescriptors:independentSelectedFormatDescriptors,replaceExternalFace:replaceExternalMultifaceFace,
+  })).catch(()=>globalThis.toastr?.error?.('主 API 单面重试模块未加载，未发送请求。'));
+  return true;
+ }
  const identity=resolveIndependentActionIdentity(root,owner);
  if(!identity) return false;
  const saved=findSavedRecord(readStore(),identity.slot,identity.legacySlots||[]); if(saved?.html) appendHistoryEntry(identity.slot,saved);
@@ -8048,6 +8166,7 @@ function persistIndependentRepairFromEvent(event) {
   runtime:RUNTIME_VERSION,
   repairedByMaintenance:true,
  };
+ sealIndependentTextReplacementRecord(repaired,identity.slot);
  saveRecordForSlot(store,identity.slot,repaired);
  if(!writeStore(store)) return abort('local repaired mirror store write failed');
  const stored=findSavedRecord(readStore(),identity.slot,identity.legacySlots||[]);
@@ -8147,6 +8266,25 @@ function handleFollowMultifaceRejected(event){
  queueMessageSync([index]);
  return true;
 }
+function cloneFollowFaceForExternal(root){
+ const clone=root.cloneNode(true);
+ // DOM properties (unlike checked/selected markup) change during native
+ // interaction. Preserve them in the detached serialization used by the safe
+ // external mount, so a display-mode change does not reset an opened scene.
+ const controls=[...root.querySelectorAll('input, textarea, select')];
+ const copies=[...clone.querySelectorAll('input, textarea, select')];
+ for(let index=0;index<controls.length;index++){
+  const original=controls[index],copy=copies[index];
+  if(!copy||copy.tagName!==original.tagName) continue;
+  if(original.matches('input[type="checkbox"], input[type="radio"]')){
+   copy.toggleAttribute('checked',!!original.checked);
+  }else if(original.tagName==='SELECT'){
+   for(let option=0;option<original.options.length;option++) copy.options[option]?.toggleAttribute('selected',!!original.options[option].selected);
+  }else if(original.tagName==='TEXTAREA') copy.textContent=original.value;
+  else if(original.type!=='file'&&original.type!=='password') copy.setAttribute('value',original.value);
+ }
+ return clone;
+}
 function externalizeFollowMirror(index,msg){
  const st=getSettings(); if(st.generationSource!=='follow'||st.followDisplayMode!=='external') return;
  const el=messageElement(index); const body=messageBody(el); if(!body) return;
@@ -8162,7 +8300,7 @@ function externalizeFollowMirror(index,msg){
  if(multiSource){
   const parsed=parseMultifaceOutput(multiSource,{allowProse:true});
   if(!parsed.ok || mirrors.length!==parsed.faces.length) return;
-   const verifiedRoots=[];
+   let verifiedRoots=[];
    const proven=mirrors.every((details,faceIndex)=>{
    const root=details.closest?.('toto[data-rabbit-mirror="true"]')||details;
    const proof=getSanitizedRabbitMirrorFaceProof(root);
@@ -8173,11 +8311,24 @@ function externalizeFollowMirror(index,msg){
     if(valid) verifiedRoots.push(root);
     return valid;
   });
-  if(!proven) return;
+  if(!proven){
+   // A host render/regex pass may replace the already-sanitized inline DOM
+   // with clones, which cannot retain WeakMap proofs. Rebuild proof through
+   // the existing exact-owner, sanitizer and quality boundary; never trust a
+   // serialized marker or silently leave the selected external mode inline.
+   let recoveryFailure=null;
+   const recovered=recoveredFollowFaces(multiSource,{ctx,messageIndex:index,message:msg,
+    onFailure:failure=>{ recoveryFailure=failure; }});
+   if(recovered.length!==parsed.faces.length){
+    if(recoveryFailure) showFollowRecoveryNotice(el,recoveryFailure);
+    return;
+   }
+   verifiedRoots=recovered;
+  }
    // Serialize the DOM that actually passed sanitation and quality, not the raw
    // model source whose hash was used only to establish each face's identity.
    const preparedFaces=verifiedRoots.map((root,faceIndex)=>{
-    const clone=root.cloneNode(true);
+    const clone=cloneFollowFaceForExternal(root);
     normalizeRecoveredFollowRoot(clone);
     stripIndependentTransientLayoutArtifacts(clone);
     return wrapPreparedIndependentFace(clone.outerHTML,faceIndex);
@@ -8191,7 +8342,7 @@ function externalizeFollowMirror(index,msg){
   for(const original of mirrors) removeInlineMirrorDuplicate(original);
   return;
  }
- const sourceClone=mirror.cloneNode(true);
+ const sourceClone=cloneFollowFaceForExternal(mirror);
  sourceClone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  const sourceHtml=String(sourceClone.outerHTML||'');
  const semanticFingerprint=mirrorSemanticFingerprint(mirror);
@@ -8378,16 +8529,26 @@ function recoveredFollowFaces(html='',options={}){
  const rejected=getRabbitMirrorFollowBatchFailure(ctx.chat,index);
  if(rejected){ options.onFailure?.(rejected); return []; }
  const recipeSource=followRecipeSource(message);
- const exactSource=html===recipeSource || (options.snapshotOwnerVerified===true && options.recipeSourceHash===rabbitMirrorMultifaceSourceHash(recipeSource));
+ const partialRecord=readFollowPartialResult(ctx.chat,index);
+ const exactPartial=!!partialRecord && (partialRecord.html===html || (options.snapshotOwnerVerified===true && options.recipeSourceHash===rabbitMirrorMultifaceSourceHash(recipeSource)));
+ const exactSource=exactPartial || html===recipeSource || (options.snapshotOwnerVerified===true && options.recipeSourceHash===rabbitMirrorMultifaceSourceHash(recipeSource));
  const roots=[];
  for(const face of parsed.faces){
-   const details=extractReadyDetails(face.inner);
+   const localFailure=exactPartial?partialRecord.failedFaces.find(item=>item.faceIndex===face.index):null;
+   const failureInner=localFailure?parseMultifaceOutput(createMultifaceFailureSlot(face.index,localFailure.code)).faces[0]?.inner:null;
+   const rules=getSettings()?.rabbitMirrorBannedWords||[];
+   const storedFace=exactPartial && partialRecord.html===html && !localFailure;
+   const alreadyFiltered=storedFace && matchesRabbitMirrorTextReplacementReceipt(
+    partialRecord.textReplacementReceipts?.[face.index],face.html,rules,followPartialResultFaceOwnerKey(partialRecord,face.index));
+   const details=extractReadyDetails(failureInner||face.inner,!!alreadyFiltered);
    if(!usableReadyDetails(details)) return fail('multiface-sanitized-invalid','净化后缺少可用的标题或内容；未自动恢复。',face.index+1);
    normalizeRecoveredFollowRoot(details);
   const toto=document.createElement('toto');
   toto.setAttribute('data-rabbit-mirror','true');
   toto.setAttribute('data-rm-face',String(face.index+1));
    toto.append(details);
+   if(localFailure){roots.push(toto);continue;}
+   if(details.hasAttribute(MULTIFACE_FAILURE_ATTR)) return fail('untrusted-failure-slot','失败位置缺少同一消息的本地保存记录，未将它当作成功面恢复。',face.index+1);
    const recipe=exactSource?getRabbitMirrorRecipe({chatKey:chatKey(ctx),messageIndex:index,
     swipeId:Number.isInteger(message.swipe_id)?message.swipe_id:0,message,faceIndex:face.index}):null;
    const exactRecipe=recipe?.faceIndex===face.index && Array.isArray(recipe.faces) && recipe.faces.length===parsed.faces.length ? recipe : null;
@@ -8428,6 +8589,10 @@ function normalizeRecoveredFollowRoot(root){
 function followMessageSourceCandidates(msg){
  const candidates=[]; const seen=new Set();
  const push=value=>{ const text=String(value||''); if(!text||seen.has(text)) return; seen.add(text); candidates.push(text); };
+ const live=getContext();
+ const index=Array.isArray(live?.chat)?live.chat.indexOf(msg):-1;
+ const partial=index>=0?readFollowPartialResult(live.chat,index):null;
+ if(partial){push(partial.html);return candidates;}
  // Prefer the actual visible source, then the current Swipe, then mes. Older
  // SillyTavern/plugin combinations can temporarily leave these three fields
  // out of sync during a hot update or message DOM rebuild.
@@ -9087,9 +9252,9 @@ function restoreIndependentMirrorPassively(ctx,store,el,index,msg){
   setOwnerLockForBase(messageBaseSlotKey(ctx,index,msg),persistedSlot,String(persistedReady.sourceHash||persistedReady.bodyHash||observed.sourceHash));
  }
  if(saved?.html){
-  const host=ensureExternalUi(el,key,saved.html,'ready','independent',observed.sourceHash);
+  const host=ensureExternalUi(el,key,saved.html,'ready','independent',observed.sourceHash,saved);
   if(host){
-   rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,observed.sourceHash);
+   rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,observed.sourceHash,saved);
    host.hidden=false;
    clearExternalHostFreshSourceState(host);
   }
@@ -9258,9 +9423,9 @@ function syncMessages(indices=null){
         && Number(activePending.revision)===Number(observed.revision));
        if(saved?.html && (ownerLocked?.record || savedRecordMatchesObserved(saved,observed))){
          if(!ownerLocked?.record){ setOwnerLockForBase(baseSlot,slot,sourceHash); writePersistedOwner(ctx,i,m,saved,{overwrite:false}); ownerLocked={record:saved,lock:{slot}}; }
-         const host=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash);
+         const host=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash,saved);
          if(host){
-          rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,sourceHash);
+          rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,sourceHash,saved);
           host.hidden=false;
           if(manualResayPending){
            // Pointer/focus history sync may remount the persisted old owner while a

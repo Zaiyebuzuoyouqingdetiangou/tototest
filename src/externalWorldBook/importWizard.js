@@ -1,7 +1,7 @@
-import { readLocalWorldBookFile } from './fileReader.js?rmv=1.5.18-audit1c2';
-import { getSettings, updateSettings } from '../settings.js?rmv=1.5.18-audit1c2';
-import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.18-audit1c2';
-import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.18-audit1c2';
+import { readLocalWorldBookFile } from './fileReader.js?rmv=1.5.19-usability1';
+import { getSettings, updateSettings } from '../settings.js?rmv=1.5.19-usability1';
+import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.19-usability1';
+import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.19-usability1';
 import {
     EXTERNAL_WORLD_BOOK_SELECTION_MODE,
     createEmptySelection,
@@ -9,13 +9,14 @@ import {
     createWholeBookSelection,
     entryIdentity,
     toggleEntrySelection,
-} from './selectionState.js?rmv=1.5.18-audit1c2';
+} from './selectionState.js?rmv=1.5.19-usability1';
 import {
     EXTERNAL_WORLD_BOOK_CLASSIFICATION,
+    applyExternalWorldBookBulkClassification,
     createExternalWorldBookClassificationDraft,
     externalWorldBookClassificationCounts,
     updateExternalWorldBookDraftItem,
-} from './classifier.js?rmv=1.5.18-audit1c2';
+} from './classifier.js?rmv=1.5.19-usability1';
 import {
     deleteExternalLibrary,
     listExternalLibraries,
@@ -25,7 +26,7 @@ import {
     hydrateExternalPoolMetadata,
     getExternalPoolHydrationStatus,
     rebuildExternalPoolMetadata,
-} from './store.js?rmv=1.5.18-audit1c2';
+} from './store.js?rmv=1.5.19-usability1';
 
 const MODAL_ID = 'rh_external_worldbook_import_modal';
 const PAGE_SIZE = 50;
@@ -45,7 +46,7 @@ const CONFIDENCE_LABELS = Object.freeze({ high: '高', medium: '中', low: '低'
 
 function el(tag, options = {}) {
     const node = document.createElement(tag);
-    if (options.className) node.className = options.className;
+    if (options.className) node.className = options.className.replace(/\bmenu_button\b/g, 'rh-external-button').replace(/\btext_pole\b/g, 'rh-external-input');
     if (options.text !== undefined) node.textContent = String(options.text);
     if (options.type) node.type = options.type;
     if (options.placeholder) node.placeholder = options.placeholder;
@@ -53,6 +54,7 @@ function el(tag, options = {}) {
     if (options.id) node.id = options.id;
     if (options.attrs) for (const [key, value] of Object.entries(options.attrs)) node.setAttribute(key, String(value));
     if (options.style) Object.assign(node.style, options.style);
+    if (options.style?.width && /^(button|input|select|textarea)$/.test(tag)) node.style.setProperty('--rh-external-control-width', options.style.width);
     return node;
 }
 
@@ -105,12 +107,15 @@ function renderBookList() {
         row.append(el('div', { text: item.displayName, style: { fontWeight: '700', overflowWrap: 'anywhere' } }));
         if (item.fileId !== item.displayName) row.append(el('div', { text: item.fileId, style: { opacity: '.55', fontSize: '10px', overflowWrap: 'anywhere' } }));
         row.addEventListener('click', async () => {
+            const owner = state;
             setStatus(`正在读取「${item.displayName}」…`);
             try {
                 const book = await readHostWorldBook(item);
+                if (state !== owner || !owner.overlay.isConnected) return;
                 showNormalizedBook(book);
                 setStatus(`已读取 ${book.entryCount} 条；源世界书未被修改。`, 'success');
             } catch (error) {
+                if (state !== owner || !owner.overlay.isConnected) return;
                 resetBookView();
                 setStatus(String(error?.message || error), 'error');
             }
@@ -235,20 +240,25 @@ function showNormalizedBook(book) {
 }
 
 async function loadHostBooks() {
+    const owner = state;
     setStatus('正在读取酒馆世界书列表…');
     state.hostBooks = [];
     state.bookList.replaceChildren();
     try {
-        state.hostBooks = await listHostWorldBooks();
+        const books = await listHostWorldBooks();
+        if (state !== owner || !owner.overlay.isConnected) return;
+        state.hostBooks = books;
         renderBookList();
         setStatus(`已找到 ${state.hostBooks.length} 本酒馆世界书。`, 'success');
     } catch (error) {
+        if (state !== owner || !owner.overlay.isConnected) return;
         setStatus(String(error?.message || error), 'error');
         state.bookList.append(el('div', { text: '酒馆来源不可用时，仍可使用本地 JSON 导入。', style: { opacity: '.68', fontSize: '12px', padding: '8px 2px' } }));
     }
 }
 
 async function loadLocalFiles(files) {
+    const owner = state;
     const list = Array.from(files || []);
     if (!list.length) return;
     setStatus(`正在读取 ${list.length} 个本地 JSON…`);
@@ -257,6 +267,7 @@ async function loadLocalFiles(files) {
     for (const file of list) {
         try { books.push(await readLocalWorldBookFile(file)); }
         catch (error) { failures.push(`${file?.name || '未命名文件'}：${String(error?.message || error)}`); }
+        if (state !== owner || !owner.overlay.isConnected) return;
     }
     state.localBooks = books;
     state.localBookList.replaceChildren();
@@ -268,6 +279,7 @@ async function loadLocalFiles(files) {
         state.localBookList.append(row);
     }
     if (!books.length) state.localBookList.append(el('div', { text: '没有成功读取的本地世界书。', style: { opacity: '.65', fontSize: '12px', padding: '8px 2px' } }));
+    if (books.length === 1) showNormalizedBook(books[0]);
     setStatus(failures.length ? `成功 ${books.length} 个；失败 ${failures.length} 个。${failures[0] ? ` ${failures[0]}` : ''}` : `已读取 ${books.length} 个本地世界书。`, failures.length ? 'error' : 'success');
 }
 
@@ -405,14 +417,20 @@ async function renderSavedLibraries() {
             text: `主题 ${library.themeCount || 0}｜展现 ${library.formatCount || 0}｜辅助 ${library.auxiliaryCount || 0}｜待确认 ${library.pendingCount || 0}｜${library.enabled ? '已启用' : '已停用'}`,
             style: { opacity: '.65', fontSize: '10px', marginTop: '3px', overflowWrap: 'anywhere' },
         }));
+        row.append(el('div', { text: `抽签索引：${needsRebuild.has(library.libraryId) ? '需重建（已保存内容仍在）' : '可用'}`, style: { fontSize: '12px', lineHeight: '1.5', marginTop: '6px' } }));
         const actions = el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '7px' } });
         actions.append(
-            button(library.enabled ? '停用' : '启用', async () => {
+            button(library.enabled ? '停用' : needsRebuild.has(library.libraryId) ? '重建索引并启用' : '启用', async event => {
+                const control = event.currentTarget;
+                control.disabled = true;
                 try {
+                    if (!library.enabled && needsRebuild.has(library.libraryId)) await rebuildExternalPoolMetadata(library.libraryId);
                     await setExternalLibraryEnabled(library.libraryId, !library.enabled);
+                    if (state !== owner || !owner.overlay.isConnected) return;
                     await renderSavedLibraries();
                     setStatus(`已${library.enabled ? '停用' : '启用'}「${library.displayName}」。只有同时打开“外部母本参与抽签”才会用于生成。`);
                 } catch (error) { setStatus(String(error?.message || error), 'error'); }
+                finally { control.disabled = false; }
             }, { minHeight: '34px' }),
             button('删除本地库', async () => {
                 if (typeof globalThis.confirm === 'function' && !globalThis.confirm(`删除兔子镜本地保存的「${library.displayName}」？`)) return;
@@ -486,13 +504,32 @@ function createModal() {
         attrs: { role: 'dialog', 'aria-modal': 'true', 'aria-label': '外部世界书母本导入' },
         style: { position: 'fixed', inset: '0', zIndex: '2147483010', background: 'rgba(8,10,14,.68)', padding: 'max(12px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center' },
     });
+    // Host themes may style .menu_button as a narrow icon, even with !important.
+    // Own names and scoped control geometry keep this wizard usable in cloud ST.
+    overlay.append(el('style', { text: `
+#${MODAL_ID}, #${MODAL_ID} * { box-sizing: border-box; writing-mode: horizontal-tb; }
+#${MODAL_ID} .rh-external-button, #${MODAL_ID} .rh-external-input {
+ position: static !important; float: none !important; transform: none !important;
+ width: var(--rh-external-control-width,100%) !important; min-width: 0 !important; max-width: 100% !important;
+ height: auto !important; min-height: 44px !important; font: inherit; font-size: 14px !important;
+ line-height: 1.5 !important; letter-spacing: normal !important; writing-mode: horizontal-tb !important;
+ color: inherit; background: var(--SmartThemeBlurTintColor,#202226); border: 1px solid currentColor;
+ border-radius: 8px; padding: 8px; margin: 0; opacity: 1; text-shadow: none;
+}
+#${MODAL_ID} .rh-external-button { display: block !important; white-space: normal !important; word-break: normal !important; overflow-wrap: break-word !important; cursor: pointer; touch-action: manipulation; }
+#${MODAL_ID} .rh-external-button:disabled, #${MODAL_ID} .rh-external-input:disabled { opacity: .55; cursor: default; }
+#${MODAL_ID} .rh-external-button:focus-visible, #${MODAL_ID} .rh-external-input:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+#${MODAL_ID} .rh-external-button:active:not(:disabled) { filter: brightness(.92); }
+` }));
     const card = el('div', { style: { width: 'min(820px,100%)', maxHeight: 'min(860px,calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--SmartThemeBlurTintColor,#202226)', color: 'var(--SmartThemeBodyColor,#ddd)', border: '1px solid color-mix(in srgb,currentColor 18%,transparent)', borderRadius: '18px', boxShadow: '0 22px 70px rgba(0,0,0,.42)' } });
-    const header = el('div', { style: { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 42px', gap: '8px', alignItems: 'center', padding: '11px 12px', borderBottom: '1px solid color-mix(in srgb,currentColor 12%,transparent)' } });
+    const header = el('div', { style: { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 44px', gap: '8px', alignItems: 'center', padding: '11px 12px', borderBottom: '1px solid color-mix(in srgb,currentColor 12%,transparent)' } });
     const title = el('div');
     title.append(el('div', { text: '外部世界书母本', style: { fontWeight: '700', fontSize: '15px' } }));
     title.append(el('div', { text: '本地导入、确认分类后按需参与抽签；不修改源世界书。', style: { opacity: '.8', fontSize: '12px', marginTop: '2px' } }));
-    header.append(title, button('×', () => overlay.remove(), { width: '38px', minWidth: '38px', height: '38px', padding: '0', fontSize: '20px' }));
-    const scroll = el('div', { style: { padding: '12px', overflowY: 'auto', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' } });
+    const closeButton = button('×', () => overlay.remove(), { width: '44px', minWidth: '44px', height: '44px', padding: '0', fontSize: '20px' });
+    closeButton.setAttribute('aria-label', '关闭外部世界书母本');
+    header.append(title, closeButton);
+    const scroll = el('div', { style: { padding: '12px', minHeight: '0', minWidth: '0', overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' } });
     scroll.append(createExternalRandomControls());
 
     const sourceButtons = el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '8px' } });
@@ -501,7 +538,7 @@ function createModal() {
     const showPane = which => { hostPane.style.display = which === 'host' ? '' : 'none'; filePane.style.display = which === 'file' ? '' : 'none'; };
     sourceButtons.append(
         button('从酒馆已有世界书导入', () => { showPane('host'); loadHostBooks(); }, { minHeight: '44px', fontWeight: '700' }),
-        button('从本地世界书文件导入', () => showPane('file'), { minHeight: '44px' }),
+        button('从本地文件导入', () => { showPane('file'); fileInput.click(); }, { minHeight: '44px' }),
     );
     scroll.append(sourceButtons);
 
@@ -543,7 +580,19 @@ function createModal() {
 
     const classificationPanel = el('div', { style: { display: 'none', borderTop: '1px solid color-mix(in srgb,currentColor 12%,transparent)', marginTop: '14px', paddingTop: '10px' } });
     classificationPanel.append(el('div', { text: '分类确认', style: { fontWeight: '700', fontSize: '13px' } }));
-    classificationPanel.append(el('div', { text: '本地分类仅作建议；混合型和不确定项需确认。新库保存后默认停用，不会自动参与抽签。', style: { opacity: '.8', fontSize: '12px', lineHeight: '1.5', marginTop: '3px' } }));
+    classificationPanel.append(el('div', { text: '明确分类标记已自动识别。可一键采用其余建议，或将待确认项批量归类；不覆盖你手动选择的分类。新库保存后默认停用，不会自动参与抽签。', style: { opacity: '.8', fontSize: '12px', lineHeight: '1.5', marginTop: '3px' } }));
+    const bulkActions = el('div', { style: { display: 'grid', gap: '8px', margin: '8px 0' } });
+    const applyBulk = mode => {
+        state.classificationDraft = applyExternalWorldBookBulkClassification(state.classificationDraft, mode);
+        state.classificationPage = 0;
+        renderClassification();
+        const remaining = externalWorldBookClassificationCounts(state.classificationDraft).pending;
+        setStatus(`已应用分类，剩余 ${remaining} 条待确认；手动选择未更改。`);
+    };
+    const bulkCategory = el('select', { id: 'rh_external_bulk_category', className: 'text_pole', attrs: { 'aria-label': '待确认项批量分类' } });
+    for (const value of ['format', 'theme', 'auxiliary', 'ignore']) bulkCategory.append(el('option', { value, text: `待确认项全部归为：${CLASSIFICATION_LABELS[value]}` }));
+    bulkActions.append(button('全部一键分类（按线索建议）', () => applyBulk('suggested')),
+        bulkCategory, button('应用待确认项批量分类', () => applyBulk(bulkCategory.value)));
     const classificationMeta = el('div', { style: { fontSize: '11px', opacity: '.72', margin: '7px 0' } });
     const classificationFilter = el('select', { className: 'text_pole', style: { width: '100%', minHeight: '36px', boxSizing: 'border-box' } });
     for (const [value, label] of [['review', '只看需确认'], ['all', '显示全部'], ['theme', '主题元素'], ['format', '展现形式'], ['auxiliary', '辅助片段'], ['ignore', '忽略'], ['pending', '待确认']]) {
@@ -554,7 +603,7 @@ function createModal() {
     const classificationList = el('div', { style: { maxHeight: '400px', overflowY: 'auto', WebkitOverflowScrolling: 'touch', marginTop: '6px' } });
     const classificationPager = el('div', { style: { display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '8px' } });
     const saveButton = button('确认分类并保存到本地', saveClassificationReview, { width: '100%', minHeight: '42px', marginTop: '8px', fontWeight: '700' });
-    classificationPanel.append(classificationMeta, classificationFilter, classificationList, classificationPager, saveButton);
+    classificationPanel.append(classificationMeta, bulkActions, classificationFilter, classificationList, classificationPager, saveButton);
     scroll.append(classificationPanel);
 
     const savedLibrariesPanel = el('div', { style: { display: 'none', borderTop: '1px solid color-mix(in srgb,currentColor 12%,transparent)', marginTop: '14px', paddingTop: '10px' } });

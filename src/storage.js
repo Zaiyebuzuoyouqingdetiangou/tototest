@@ -969,10 +969,11 @@ function batchHistoryPayload(plan, scans, beforeRaw) {
         history = Array.isArray(parsed) ? parsed : parsed && typeof parsed === 'object' ? [parsed] : null;
     } catch { return null; }
     if (!history) return null;
-    const existing = plan.faces.filter(face => historyHasBatchFace(history, plan.batchId, face.faceIndex));
-    if (existing.length) return existing.length === plan.faces.length ? beforeRaw : null;
+    const acceptedFaces = plan.faces.filter(face => scans[face.faceIndex]);
+    const existing = acceptedFaces.filter(face => historyHasBatchFace(history, plan.batchId, face.faceIndex));
+    if (existing.length) return existing.length === acceptedFaces.length ? beforeRaw : null;
     const now = Date.now();
-    for (const face of plan.faces) {
+    for (const face of acceptedFaces) {
         const scan = scans[face.faceIndex];
         const combo = face.combo;
         history.push({ ...combo, signature: signatureOf(combo), ts: now, batchId: plan.batchId, faceIndex: face.faceIndex,
@@ -984,13 +985,13 @@ function batchHistoryPayload(plan, scans, beforeRaw) {
     return JSON.stringify(history.slice(-MAX_STORED));
 }
 
-function batchPityCommittedPayload(plan, beforeRaw) {
+function batchPityCommittedPayload(plan, beforeRaw, scans) {
     let state;
     try {
         const parsed = JSON.parse(beforeRaw || '{}');
         state = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
     } catch { return null; }
-    const selected = new Set(plan.faces.flatMap(face => face.combo.formatIds || []));
+    const selected = new Set(plan.faces.filter(face => scans[face.faceIndex]).flatMap(face => face.combo.formatIds || []));
     const normalized = normalizeFormatEligibleMisses(state, plan.fairness.validFormatIds);
     for (const id of selected) delete normalized[id];
     return JSON.stringify(normalized);
@@ -1003,8 +1004,10 @@ export function commitPendingComboBatch(faceScans = [], expected = null) {
     if (index < 0) return false;
     const plan = registry.records[index].plan;
     if (!Array.isArray(faceScans) || faceScans.length !== plan.requestedFaceCount) return false;
-    const scans = faceScans.map(normalizeFaceScan);
-    if (scans.some(scan => !scan)) return false;
+    for (let index = 0; index < faceScans.length; index += 1) if (!Object.hasOwn(faceScans, index)) return false;
+    const allowPartial = expected.partial === true;
+    const scans = faceScans.map((value, index) => value === null && allowPartial ? null : normalizeFaceScan(value, index));
+    if (!scans.some(Boolean) || scans.some((scan, index) => !scan && !(allowPartial && faceScans[index] === null))) return false;
     let historyBefore;
     let pityBefore;
     try {
@@ -1012,7 +1015,7 @@ export function commitPendingComboBatch(faceScans = [], expected = null) {
         pityBefore = localStorage.getItem(FORMAT_ELIGIBLE_MISS_STORAGE_KEY);
     } catch { return false; }
     const historyAfter = batchHistoryPayload(plan, scans, historyBefore);
-    const pityAfter = batchPityCommittedPayload(plan, pityBefore);
+    const pityAfter = batchPityCommittedPayload(plan, pityBefore, scans);
     if (historyAfter === null || pityAfter === null) return false;
     const registryAfter = JSON.stringify(registry.records.filter((_, recordIndex) => recordIndex !== index));
     const changes = [];

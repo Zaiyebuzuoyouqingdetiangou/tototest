@@ -1,12 +1,12 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.17';
 import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.17';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.30.17';
-import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.18-audit1c2';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.18-audit1c2';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.18-audit1c2';
+import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.19-usability1';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.19-usability1';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.19-usability1';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.17';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.18-audit1c2';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.18-audit1c2';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.19-usability1';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.19-usability1';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -432,13 +432,13 @@ function visualScenerySceneFirstCore() {
     return String.raw`
 Visual Scenery 场景优先级【覆盖通用交互骨架的执行顺序】:
   - 本轮第一优先级是先让一幅完整动态场景本体成立，再把交互自然寄生在场景对象上；不得为了满足“复杂交互”先搭建按钮组、标签页、仪表盘、信息卡、播放器或说明面板。
-  - 施工顺序必须是：①建立一个自适应手机宽度的完整舞台；②明确背景层、中景主体层、前景遮挡／叙事层；③让占据主要视觉权重的主体或环境关系持续运动；④再选择场景内真实存在的一个对象作为可触摸入口，使画面产生可保持的第二状态。
+  - 施工顺序：①建立手机宽度自适应舞台；②明确前中后景；③让主体或环境关系持续运动；④由场景决定触摸对象和探索阶段，操作改变空间、时间或人物关系，而非只追加文字。
   - 首个主要场景根节点必须标记 data-rm-visual-scenery="true"，方便插件只读验收；该属性不产生可见文字，也不得被当作标题或说明。
   - 每面最多 1 条主连续动画 + 1 条辅助连续动画。主动画须有真实 @keyframes、可见元素 animation 与 infinite，打开 1 秒内产生肉眼可见的位移／缩放／旋转／形变／遮罩／流体／光影变化；只写 transition、动画名、SVG、微尘或低对比呼吸不算。
   - 辅助连续动画须是环境光／帘幕／影子／液面／雾雨／丝线／纸片／轨迹／前景遮挡之一，与主动画共同服务构图；禁止粒子群、批量重复动画节点及大面积 blur、filter、backdrop-filter。
   - 场景未操作时就必须完整、清晰、持续活动；交互只能推进、揭示或改变场景，不能作为显示核心画面的前置条件。
   - 允许场景画布中的纯装饰与短标签使用定位和裁切；主要正文与交互反馈仍须进入正常文档流并完整撑高，不能被固定高度或 overflow:hidden 截断。
-  - 交互要求收敛为一条与场景本体一致的完整链即可：场景对象→触摸操作→可保持的画面／关系／时间状态变化→明确反馈；每个非终止第二状态都由场景内对象自然返回。不得额外堆叠无关控件。`;
+  - 交互由媒介决定，不固定为一个热点或一条显隐链；不同对象须改变不同的场景关系，反馈文字辅助画面而非替代画面。每个非终止状态都由场景内对象自然返回；同批各面不得重复“点画面→展开说明”的操作骨架，也不堆叠无关控件。`;
 }
 
 

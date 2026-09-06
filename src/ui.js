@@ -1,16 +1,17 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.18-audit1c2';
-import { clearLastCombo } from './storage.js?rmv=1.5.18-audit1c2';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.18-audit1c2';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.18-audit1c2';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.18-audit1c2';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.19-usability1';
+import { clearLastCombo } from './storage.js?rmv=1.5.19-usability1';
+import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.19-usability1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.19-usability1';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.19-usability1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.19-usability1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.18-audit1c2';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.18-audit1c2';
-import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.18-audit1c2';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.18-audit1c2';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.19-usability1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.19-usability1';
+import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.19-usability1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.19-usability1';
 
 const SETTINGS_UI_VERSION = '1.6';
-const RUNTIME_VERSION = '1.5.18';
+const RUNTIME_VERSION = '1.5.19';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -335,7 +336,7 @@ function renderTokenMeter(record = getLastRabbitMirrorTokenRecordForSource(getSe
         const parts = [
             `基础约 ${formatMeterNumber(tokens.baseEstimated)}`,
             chars.feedback ? `反馈约 ${formatMeterNumber(tokens.feedbackEstimated)}` : '反馈 0',
-            chars.executionLock ? `输出保护约 ${formatMeterNumber(tokens.executionLockEstimated)}` : '',
+            chars.executionLock ? `格式与边界约束约 ${formatMeterNumber(tokens.executionLockEstimated)} Token（非禁词）` : '',
             `参考内容 ${formatMeterNumber(chars.motherLibrary)} 字符`,
             chars.sharedMemory ? `回忆资料 ${formatMeterNumber(chars.sharedMemory)} 字符` : '',
             chars.editableVisual ? `自定义视觉 ${formatMeterNumber(chars.editableVisual)} 字符` : '',
@@ -523,7 +524,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.18</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.19</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -614,7 +615,7 @@ export function initRabbitMirrorUI() {
             </details>
             <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;padding:9px 10px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:9px;">
               <label>温度 <input id="rh_independent_temperature" class="text_pole" type="number" min="0" max="2" step="0.1" style="width:82px;"></label>
-              <label>最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
+              <label>整批最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
             </div>
             <div class="rabbit-mirror-independent-advanced-row">
               <div class="rabbit-mirror-independent-advanced-copy"><b>读取内容与隐私</b><span>聊天层数、角色卡 / Persona、世界书与正文标签过滤</span></div>
@@ -640,8 +641,14 @@ export function initRabbitMirrorUI() {
           </div>
           <div class="rabbit-mirror-regex-helper" style="margin-top:10px;">
             <div style="font-weight:600;margin-bottom:6px;">禁词表（本地过滤）</div>
-            <div style="opacity:.76;font-size:11px;line-height:1.45;margin-bottom:7px;">一行一个词；从下一面开始只删除兔子镜可见文字中的匹配词，不修改正文、HTML 属性、CSS 或 SVG 结构，也不进入 Prompt / Token。</div>
-            <textarea id="rh_banned_words" class="text_pole" spellcheck="false" style="width:100%;min-height:92px;resize:vertical;box-sizing:border-box;" placeholder="例如：\n某个称呼\n某个不想出现的词"></textarea>
+            <div style="opacity:.76;font-size:12px;line-height:1.5;margin-bottom:7px;">一行一条：原词 =&gt; 替换词。只填原词或右边留空就是删除。使用本地字面匹配，不执行输入的正则表达式；只改兔子镜文字，不改正文或代码，不占 Prompt / Token。</div>
+            <label for="rh_banned_words">替换规则</label>
+            <textarea id="rh_banned_words" class="text_pole" spellcheck="false" style="width:100%;min-height:180px;resize:vertical;box-sizing:border-box;" placeholder="旧称呼 => 新称呼\n要删除的词"></textarea>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">
+              <label style="min-width:0;">查找原文<input id="rh_replacement_find" class="text_pole" type="text" maxlength="80" style="width:100%;min-width:0;max-width:100%;box-sizing:border-box;" /></label>
+              <label style="min-width:0;">替换为（留空删除）<input id="rh_replacement_value" class="text_pole" type="text" maxlength="240" style="width:100%;min-width:0;max-width:100%;box-sizing:border-box;" /></label>
+            </div>
+            <button id="rh_replacement_add" class="menu_button" type="button">添加到规则列表</button>
             <div class="flex-container" style="gap:7px;align-items:center;flex-wrap:wrap;margin-top:7px;">
               <button id="rh_banned_words_save" class="menu_button" type="button">保存禁词表</button>
               <span id="rh_banned_words_status" style="font-size:11px;opacity:.72;"></span>
@@ -699,6 +706,8 @@ export function initRabbitMirrorUI() {
           </div>
           <div id="rh_advanced_scroll" style="flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;padding:14px 14px max(18px,env(safe-area-inset-bottom));box-sizing:border-box;">
           <div id="rh_advanced_menu" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:9px;">
+            <button class="menu_button rh-advanced-choice" type="button" data-page="external" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;">📚 外部世界书母本</button>
+            <button class="menu_button rh-advanced-choice" type="button" data-page="replacement" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;">禁词与文字替换</button>
             <button class="menu_button rh-advanced-choice" type="button" data-page="generation" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🎛️ 生成与抽取</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">抽取模式、参考内容、世界观锁与冷却</span></button>
             <button class="menu_button rh-advanced-choice" type="button" data-page="visual" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🎨 个性化视觉提示词</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">额外视觉偏好、避雷与通用视觉规则</span></button>
             <button class="menu_button rh-advanced-choice" type="button" data-page="memory" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🧠 共同回忆资料来源</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">扫描并选择可读取的记忆资料接口</span></button>
@@ -706,6 +715,8 @@ export function initRabbitMirrorUI() {
             <button class="menu_button rh-advanced-choice" type="button" data-page="repair" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🐈‍⬛🐇 挨打猫与维修兔</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">美化反馈、维修兔与自动巡逻</span></button>
           </div>
 
+          <div id="rh_advanced_page_external" class="rh-advanced-page" data-title="外部世界书母本" style="display:none;"></div>
+          <div id="rh_advanced_page_replacement" class="rh-advanced-page" data-title="禁词与文字替换" style="display:none;"></div>
           <div id="rh_advanced_page_generation" class="rh-advanced-page" data-title="生成与抽取" style="display:none;">
             <label for="rh_multiface_enabled" class="checkbox_label"><input id="rh_multiface_enabled" type="checkbox" aria-describedby="rh_multiface_help" aria-controls="rh_multiface_count_row"> 多面兔子镜</label>
             <div id="rh_multiface_count_row" hidden style="margin:6px 0 6px 26px;">
@@ -715,7 +726,7 @@ export function initRabbitMirrorUI() {
                 </select>
               </label>
             </div>
-            <div id="rh_multiface_help" class="rabbit-mirror-subnote" style="margin:0 0 10px 26px;">一次请求，多面各自抽取、独立展示。面数越多，输出越长；任一面不完整或未通过质量检查时整批不会保存，也不会自动补发。</div>
+            <div id="rh_multiface_help" class="rabbit-mirror-subnote" style="margin:0 0 10px 26px;">一次请求，各面独立展示。所有面共用整批输出上限，面数更多时每面可用篇幅更少；上下文字符不是绘制额度。</div>
             <label for="rh_sampling_mode" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
               <span>抽取模式</span>
               <select id="rh_sampling_mode" class="text_pole" style="max-width:300px;">
@@ -896,7 +907,9 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_max_tokens').val(settings.independentApiMaxTokens ?? 30000);
     $('#rh_independent_context_layers').val(settings.independentContextMaxLayers ?? 20);
     checked('#rh_follow_tag_isolation', settings.followTagIsolationEnabled === true);
-    $('#rh_banned_words').val((settings.rabbitMirrorBannedWords || []).join('\n'));
+    $('#rh_banned_words_save').parent().parent().appendTo('#rh_advanced_page_replacement');
+    $('#rh_external_worldbook_open').parent().appendTo('#rh_advanced_page_external');
+    $('#rh_banned_words').val(formatRabbitMirrorReplacementLines(settings.rabbitMirrorBannedWords || []));
     $('#rh_banned_words_status').text(`已保存 ${(settings.rabbitMirrorBannedWords || []).length} / ${RABBIT_MIRROR_BANNED_WORD_MAX_COUNT} 个词`);
     $('#rh_independent_model').val(settings.independentApiModel || '');
     const tagFilterPresetLabels = new Map([
@@ -1688,7 +1701,7 @@ export function initRabbitMirrorUI() {
         const button = $('#rh_external_worldbook_open');
         button.prop('disabled', true).text('正在加载…');
         try {
-            const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.18-audit1c2');
+            const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.19-usability1');
             if (!isCurrentRuntime()) return;
             module.openExternalWorldBookImportWizard?.();
         } catch (error) {
@@ -1763,11 +1776,23 @@ export function initRabbitMirrorUI() {
         else toastr?.info?.('已打开酒馆 Regex 区域；若列表未显示最新配置，请刷新页面后查看。');
     });
     $('#rh_banned_words_save').on('click', () => {
-        const words = normalizeRabbitMirrorBannedWords($('#rh_banned_words').val());
+        const words = normalizeRabbitMirrorBannedWords(parseRabbitMirrorReplacementLines($('#rh_banned_words').val()));
         updateSettings({ rabbitMirrorBannedWords: words });
-        $('#rh_banned_words').val(words.join('\n'));
+        $('#rh_banned_words').val(formatRabbitMirrorReplacementLines(words));
         $('#rh_banned_words_status').text(`已保存 ${words.length} / ${RABBIT_MIRROR_BANNED_WORD_MAX_COUNT} 个词；从下一面生效`);
         toastr?.success?.(words.length ? `禁词表已保存 ${words.length} 个词，从下一面兔子镜生效。` : '禁词表已清空。');
+    });
+    $('#rh_replacement_add').on('click', () => {
+        const find = String($('#rh_replacement_find').val() || '').trim();
+        const replace = String($('#rh_replacement_value').val() || '').trim();
+        if (!find) { toastr?.warning?.('先填写要查找的原文。'); return; }
+        const rules = normalizeRabbitMirrorBannedWords([
+            ...parseRabbitMirrorReplacementLines($('#rh_banned_words').val()), { find, replace },
+        ]);
+        $('#rh_banned_words').val(formatRabbitMirrorReplacementLines(rules));
+        $('#rh_banned_words_status').text('已添加到列表，请点击“保存禁词表”保存。');
+        $('#rh_replacement_find').val('');
+        $('#rh_replacement_value').val('');
     });
     void refreshNoSendRegexStatus();
 

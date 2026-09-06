@@ -24,7 +24,7 @@ export function normalizeRabbitMirrorBannedWords(value) {
     const result = [];
     const seen = new Set();
     for (const raw of source) {
-        const term = String(raw ?? '')
+        const term = String((raw && typeof raw === 'object' ? raw.find : raw) ?? '')
             .replace(/[\u0000-\u001F\u007F]/g, ' ')
             .replace(/\s+/g, ' ')
             .trim()
@@ -33,7 +33,9 @@ export function normalizeRabbitMirrorBannedWords(value) {
         const key = term.toLocaleLowerCase();
         if (seen.has(key)) continue;
         seen.add(key);
-        result.push(term);
+        const replacement = raw && typeof raw === 'object'
+            ? String(raw.replace ?? '').replace(/[\u0000-\u001F\u007F]/g, ' ').slice(0, 240) : '';
+        result.push(replacement ? { find: term, replace: replacement } : term);
         if (result.length >= RABBIT_MIRROR_BANNED_WORD_MAX_COUNT) break;
     }
     return result;

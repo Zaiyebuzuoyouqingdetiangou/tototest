@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.18-audit1c2';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.18-audit1c2';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.19-usability1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.19-usability1';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -16,8 +16,8 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.5.18-audit1c2';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.18-audit1c2';
+} from './storage.js?rmv=1.5.19-usability1';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.19-usability1';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -26,7 +26,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.5.18-audit1c2';
+} from './externalWorldBook/externalPool.js?rmv=1.5.19-usability1';
 
 function randomUnit() {
     try {

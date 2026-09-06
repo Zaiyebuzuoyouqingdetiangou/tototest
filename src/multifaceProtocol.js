@@ -19,11 +19,63 @@ const SPACE = /[\t\n\f\r ]/;
 const NAME_START = /[a-z]/i;
 const NAME_PART = /[a-z0-9._:-]/i;
 
+// This marker describes a locally created failure slot, not successful model
+// output or a sanitization/ownership proof. Fresh model output may not use it.
+export const MULTIFACE_FAILURE_ATTR = 'data-rabbit-mirror-face-failure';
+
+export function createMultifaceFailureSlot(faceIndex, code = 'incomplete-face') {
+    if (!Number.isInteger(faceIndex) || faceIndex < 0 || faceIndex > 4) throw new RangeError('Invalid face index');
+    const safeCode = String(code || '').replace(/[^a-z0-9-]/gi, '').slice(0, 80) || 'incomplete-face';
+    const ordinal = faceIndex + 1;
+    return `<toto data-rabbit-mirror="true" data-rm-face="${ordinal}"><details ${MULTIFACE_FAILURE_ATTR}="${safeCode}"><summary>【兔子镜：第 ${ordinal} 面未完成】</summary><p>这一面未通过检查，其他成功面已保留。原因：${safeCode}。</p><p>不会自动补发请求。如需重试，请使用这一面的挨打猫「重说」，只重新生成这一面。</p></details></toto>`;
+}
+
+/** Retain only frames already proved by the strict parser; never repair or
+ * re-split an ambiguous suffix. Whole-response budget failures retain nothing. */
+export function recoverableMultifaceFrames(parsed) {
+    if (!parsed || !Array.isArray(parsed.faces) || (parsed.errors || []).some(error =>
+        /budget|depth/.test(String(error?.code || '')) || error?.code === 'invalid-input' || error?.code === 'invalid-expected-count')) return [];
+    return parsed.faces;
+}
+
+/** Recovery discards the malformed suffix, but it must still charge that suffix
+ * against the unchanged whole-response budgets. This deliberately conservative
+ * scan counts tag-like tokens even in comments/strings. It authorizes no HTML:
+ * only the strict parser's already-proved frames can subsequently be retained. */
+export function multifaceRecoveryWithinRawBudgets(raw) {
+    if (typeof raw !== 'string') return false;
+    const stats={bytes:0,dataUriChars:0};
+    if(preflight(raw,stats)) return false;
+    let tags=0,attributes=0,depth=0,cssChars=0,cssRules=0;
+    for(const match of raw.matchAll(/<\s*(\/?)\s*([a-z][a-z0-9._:-]*)\b/gi)){
+        tags+=1;
+        if(tags>MULTIFACE_PROTOCOL_LIMITS.tags) return false;
+        const start=match.index;
+        const end=raw.indexOf('>',start+1);
+        const fragment=raw.slice(start,end<0?raw.length:end+1);
+        if(fragment.length>MULTIFACE_PROTOCOL_LIMITS.tagChars) return false;
+        const name=match[2].toLowerCase();
+        if(match[1]) depth=Math.max(0,depth-1);
+        else if(!VOID_TAGS.has(name)&&!/\/\s*>$/.test(fragment)) depth+=1;
+        if(depth>MULTIFACE_PROTOCOL_LIMITS.depth) return false;
+        if(!match[1]) for(const attribute of fragment.matchAll(/\s+[a-z_:][a-z0-9_:.-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?/gi)){
+            attributes+=1;
+            if(attributes>MULTIFACE_PROTOCOL_LIMITS.attributes) return false;
+        }
+    }
+    for(const match of raw.matchAll(/<style\b[^>]*>([\s\S]*?)(?:<\/style\s*>|$)/gi)){
+        cssChars+=match[1].length;
+        for(const char of match[1]) if(char==='{') cssRules+=1;
+        if(cssChars>MULTIFACE_PROTOCOL_LIMITS.cssChars||cssRules>MULTIFACE_PROTOCOL_LIMITS.cssRules) return false;
+    }
+    return true;
+}
+
 function protocolError(code, offset, message) {
     return { code, offset, message };
 }
 
-function normalizedSummaryText(source = '') {
+export function normalizedSummaryText(source = '') {
     const input = String(source || '');
     let text = '';
     let cursor = 0;

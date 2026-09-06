@@ -2,9 +2,9 @@ import {
     commitPendingComboBatch,
     getCurrentChatKey,
     releasePendingComboBatch,
-} from './storage.js?rmv=1.5.18-audit1c2';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.18-audit1c2';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.18-audit1c2';
+} from './storage.js?rmv=1.5.19-usability1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.19-usability1';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.5.19-usability1';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';
@@ -429,24 +429,35 @@ function faceMetadata(record, faceIndex) {
     });
 }
 
-export function getRabbitMirrorFollowBatchSources(chat) {
+export function getRabbitMirrorFollowBatchSources(chat, { terminalMessageIndexes = [] } = {}) {
     const list = Array.isArray(chat) ? chat : [];
     const sets = [];
     for (const record of activeFollowBatches.values()) {
         const owner = followOwner(record, list);
-        if (!owner?.parsed?.ok) continue;
+        const partial = !owner?.parsed?.ok && terminalMessageIndexes.includes(owner?.messageIndex)
+            && recoverableMultifaceFrames(owner?.parsed).length > 0 && multifaceRecoveryWithinRawBudgets(owner.message.mes);
+        if (!owner?.parsed?.ok && !partial) continue;
+        const sourceFaces = owner.parsed.faces;
         sets.push({
             batchId: record.batchId,
             plan: record.plan,
             identity: record.plan.identity,
+            partial,
             owner: {
+                chat: list,
                 chatKey: record.chatKey,
                 message: owner.message,
                 messageIndex: owner.messageIndex,
                 swipeId: owner.swipeId,
                 sourceHash: owner.sourceHash,
             },
-            faces: owner.parsed.faces.map(face => ({ ...face, metadata: faceMetadata(record, face.index) })),
+            faces: Array.from({length:record.plan.requestedFaceCount}, (_, index) => {
+                const face = sourceFaces.find(item => item.index === index);
+                if (face) return {...face, metadata:faceMetadata(record,index)};
+                const code = String(owner.parsed.errors?.[0]?.code || 'incomplete-face');
+                const html = createMultifaceFailureSlot(index, code);
+                return {index, html, summaryHtml:`【兔子镜：第 ${index+1} 面未完成】`, failure:{faceIndex:index,status:'failed',code}, metadata:faceMetadata(record,index)};
+            }),
         });
     }
     return sets;
@@ -465,7 +476,9 @@ export function getRabbitMirrorFollowBatchTargetIndexes(chat) {
 export function commitRabbitMirrorFollowBatch(batchId, chat, faceScans = [], expectedOwner = null) {
     const record = activeFollowBatches.get(String(batchId || '')) || null;
     const owner = followOwner(record, chat);
-    if (!record || !owner?.parsed?.ok || !expectedOwner || !Array.isArray(faceScans)
+    const partial = expectedOwner?.partial === true && recoverableMultifaceFrames(owner?.parsed).length > 0
+        && multifaceRecoveryWithinRawBudgets(owner.message.mes);
+    if (!record || (!owner?.parsed?.ok && !partial) || !expectedOwner || !Array.isArray(faceScans)
         || faceScans.length !== record.plan.requestedFaceCount) return false;
     if (expectedOwner.chatKey !== record.chatKey
         || expectedOwner.message !== owner.message
@@ -473,7 +486,7 @@ export function commitRabbitMirrorFollowBatch(batchId, chat, faceScans = [], exp
         || expectedOwner.swipeId !== owner.swipeId
         || expectedOwner.sourceHash !== owner.sourceHash) return false;
     if (hashText(owner.message.mes || '') !== owner.sourceHash || currentSwipeId(owner.message) !== owner.swipeId) return false;
-    const committed = commitPendingComboBatch(faceScans, { batchId: record.plan.batchId, identity: record.plan.identity });
+    const committed = commitPendingComboBatch(faceScans, { batchId: record.plan.batchId, identity: record.plan.identity, partial });
     if (!committed) return false;
     recordRabbitMirrorRecipe({
         chat,

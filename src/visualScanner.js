@@ -1,7 +1,7 @@
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.18-audit1c2';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.18-audit1c2';
-import { getSettings } from './settings.js?rmv=1.5.18-audit1c2';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.5.18-audit1c2';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.19-usability1';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.19-usability1';
+import { getSettings } from './settings.js?rmv=1.5.19-usability1';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.5.19-usability1';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -11,16 +11,18 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.5.18-audit1c2';
+} from './generationGuard.js?rmv=1.5.19-usability1';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.5.18-audit1c2';
+} from './multifaceProof.js?rmv=1.5.19-usability1';
 import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.4.30.23';
-import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.18-audit1c2';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.18-audit1c2';
+import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.19-usability1';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.19-usability1';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.5.19-usability1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.19-usability1';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -36,6 +38,7 @@ const terminalFollowMessageIndexes = new Set();
 const followBatchScansInFlight = new Set();
 // Runtime-only exact-owner tombstones; never persist source text in diagnostics.
 const rejectedFollowBatches = new Map();
+const followPartialStorageWarnings = new Set();
 let followBatchSanitizerModulePromise = null;
 let visualScannerLifecycle = 0;
 
@@ -1283,7 +1286,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.18-audit1c2').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.19-usability1').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
@@ -1314,6 +1317,7 @@ function rollbackMountedFollowFaces(prepared) {
         if (item.newRoot?.parentNode === item.parent) {
             try { item.parent.replaceChild(item.oldRoot, item.newRoot); } catch {}
         }
+        if(item.createdRoot&&item.oldRoot?.parentNode===item.parent) item.oldRoot.remove();
     }
 }
 
@@ -1325,11 +1329,13 @@ function prepareFollowFaces(set, sanitizer) {
     const prepared = [];
     for (let faceIndex = 0; faceIndex < set.faces.length; faceIndex += 1) {
         const sourceFace = set.faces[faceIndex];
+        try {
+        if (sourceFace.failure) throw followMultifaceRejection(sourceFace.failure.code, faceIndex + 1, '这一面不完整。');
         const template = document.createElement('template');
         template.innerHTML = String(sourceFace?.html || '');
         // This entry point handles newly generated source only, never trusted
         // prepared history. A model cannot declare its own runtime CSS scope.
-        if (template.content.querySelector('[data-rabbit-mirror-css-scope]')) {
+        if (template.content.querySelector(`[data-rabbit-mirror-css-scope], [${MULTIFACE_FAILURE_ATTR}]`)) {
             throw followMultifaceRejection('multiface-untrusted-css-scope', faceIndex + 1,
                 '生成内容携带了保留的样式隔离标记；本批结果不会保存。');
         }
@@ -1371,20 +1377,54 @@ function prepareFollowFaces(set, sanitizer) {
             error.preparedFaces = prepared;
             throw error;
         }
+        } catch (error) {
+            if (!error?.rabbitMirrorFollowRejection) throw error;
+            if (prepared.at(-1)?.faceIndex === faceIndex) prepared.pop();
+            const code=String(error.code || 'multiface-quality');
+            const html=createMultifaceFailureSlot(faceIndex,code);
+            const template=document.createElement('template'); template.innerHTML=html;
+            const newRoot=templateSingleFollowRoot(template),newDetails=directDetailsChild(newRoot);
+            prepared.push({sourceFace,faceIndex,newRoot,newDetails,expectedTitle:renderedSummaryText(newDetails),
+                sourceHash:rabbitMirrorMultifaceSourceHash(sourceFace.html),failure:{faceIndex,status:'failed',code}});
+        }
     }
+    if(prepared.every(item=>item.failure)) throw followMultifaceRejection('multiface-all-failed',null,'所有面均未通过检查；不会自动补发请求。');
     return prepared;
 }
 
 function sanitizeAndMountFollowFaces(scope, set, sanitizer, preparedFaces = null) {
     const detached = preparedFaces || prepareFollowFaces(set, sanitizer);
     if (!detached) return null;
-    const matched = matchRenderedFollowFaces(scope, set, detached);
+    let matched = matchRenderedFollowFaces(scope, set, detached);
+    // A terminal truncated suffix may have no usable details or no root at all.
+    // Match only this exact owner's top-level ordinal roots; never DOM-repair
+    // the malformed suffix or consume another message's/sibling's content.
+    if(!matched && set.partial && set.owner){
+        const candidates=topLevelFollowTotos(scope);
+        const parent=candidates[0]?.parentNode;
+        const ordinals=candidates.map(root=>Number(root.getAttribute('data-rm-face'))-1);
+        if(parent&&candidates.length<=detached.length&&new Set(ordinals).size===ordinals.length
+            && candidates.every((root,index)=>root.parentNode===parent&&Number.isInteger(ordinals[index])&&ordinals[index]>=0&&ordinals[index]<detached.length)){
+            const trusted=detached.every(item=>{
+                const root=candidates[ordinals.indexOf(item.faceIndex)];
+                return item.sourceFace.failure || (root&&[sourceFaceTitle(item.sourceFace),item.expectedTitle].includes(renderedSummaryText(directDetailsChild(root))));
+            });
+            if(trusted){
+                matched=detached.map(item=>{
+                    let root=candidates[ordinals.indexOf(item.faceIndex)];
+                    const createdRoot=!root;
+                    if(createdRoot){root=document.createElement('toto');parent.append(root);}
+                    return {root,createdRoot,details:directDetailsChild(root),sourceFace:item.sourceFace,faceIndex:item.faceIndex};
+                });
+            }
+        }
+    }
     if (!matched) return null;
     const prepared = matched.map((item, index) => {
         const safe = detached[index];
-        if (item.details.open) safe.newDetails.open = true;
+        if (item.details?.open) safe.newDetails.open = true;
         else safe.newDetails.removeAttribute('open');
-        return { ...item, ...safe, parent: item.root.parentNode, oldRoot: item.root };
+        return { ...item, ...safe, persistedHtml:safe.newRoot.outerHTML, parent: item.root.parentNode, oldRoot: item.root };
     });
 
     if (prepared.length !== set.faces.length || prepared.some(item => !item.parent || !item.oldRoot.isConnected)) return null;
@@ -1400,6 +1440,20 @@ function sanitizeAndMountFollowFaces(scope, set, sanitizer, preparedFaces = null
             sanitizer.refreshRabbitMirrorToolsInScope(item.newRoot);
         }
         if (!verifyMountedFollowFaces(scope, prepared)) throw new Error('follow multiface mounted structure mismatch');
+        const failedFaces=prepared.filter(item=>item.failure).map(item=>item.failure);
+        if(failedFaces.length&&set.owner){
+            const persistedFaces=prepared.map(item=>item.failure?createMultifaceFailureSlot(item.faceIndex,item.failure.code):item.persistedHtml);
+            const html=persistedFaces.join('\n');
+            if(!saveFollowPartialResult(set.owner.chat,set.owner.messageIndex,set.owner,html,failedFaces,getSettings()?.rabbitMirrorBannedWords||[])){
+                const error=new Error('follow partial result persistence failed');
+                error.code='follow-partial-storage-failed';
+                throw error;
+            }
+            for(const item of prepared){
+                item.sourceHash=rabbitMirrorMultifaceSourceHash(persistedFaces[item.faceIndex]);
+                item.sourceFace={...item.sourceFace,html:persistedFaces[item.faceIndex]};
+            }
+        }
         for (const item of prepared) {
             if (!markSanitizedRabbitMirrorFace(item.newRoot, {
                 faceIndex: item.faceIndex,
@@ -1420,9 +1474,19 @@ function sanitizeAndMountFollowFaces(scope, set, sanitizer, preparedFaces = null
             details: item.newDetails,
             proof: getSanitizedRabbitMirrorFaceProof(item.newRoot),
             sourceFace: item.sourceFace,
+            failure: item.failure || null,
         }));
     } catch (error) {
         rollbackMountedFollowFaces(prepared.slice(0, mounted));
+        if(error?.code==='follow-partial-storage-failed'&&followOwnerStillCurrent(set,set.owner?.chat)){
+            const owner=set.owner;
+            const key=JSON.stringify([owner.chatKey,owner.messageIndex,owner.swipeId,owner.sourceHash]);
+            if(!followPartialStorageWarnings.has(key)&&typeof globalThis.toastr?.warning==='function'){
+                if(followPartialStorageWarnings.size>=32) followPartialStorageWarnings.delete(followPartialStorageWarnings.values().next().value);
+                followPartialStorageWarnings.add(key);
+                try{globalThis.toastr.warning('兔子镜本地保存失败，未覆盖原消息或原结果，也不会自动补发请求。请检查浏览器存储空间或访问权限，不要清除站点数据。');}catch{}
+            }
+        }
         console.debug('[RabbitMirror] follow multiface transactional mount skipped:', error);
         return null;
     }
@@ -1435,14 +1499,15 @@ function provenRenderedFollowFaces(set, chat, sanitizer) {
     const prepared = prepareFollowFaces(set, sanitizer);
     if (!prepared) return null;
     const scopes = exactMessageScopes(chat, messageIndex)
-        .filter(scope => !!matchRenderedFollowFaces(scope, set, prepared));
+        .filter(scope => set.partial || !!matchRenderedFollowFaces(scope, set, prepared));
     if (scopes.length !== 1) return null;
     return sanitizeAndMountFollowFaces(scopes[0], set, sanitizer, prepared);
 }
 
 async function scanFollowBatches(chat, lifecycle = visualScannerLifecycle) {
     let committed = 0;
-    const sets = getRabbitMirrorFollowBatchSources(chat);
+    const terminalMessageIndexes=getRabbitMirrorFollowBatchTargetIndexes(chat).filter(index=>terminalFollowMessageIndexes.has(terminalFollowOwnerKey(chat,index)));
+    const sets = getRabbitMirrorFollowBatchSources(chat,{terminalMessageIndexes});
     const sanitizer = sets.length ? await loadFollowBatchSanitizer() : null;
     if (lifecycle !== visualScannerLifecycle) return committed;
     for (const set of sets) {
@@ -1465,12 +1530,12 @@ async function scanFollowBatches(chat, lifecycle = visualScannerLifecycle) {
             // in one task; do not yield after mounting before owner validation.
             const rendered = provenRenderedFollowFaces(set, chat, sanitizer);
             if (!rendered || lifecycle !== visualScannerLifecycle || !followOwnerStillCurrent(set, chat)) continue;
-            const scans = rendered.map(({ sourceFace, root }, faceIndex) => ({
+            const scans = rendered.map(({ sourceFace, root, failure }, faceIndex) => failure?null:({
                 faceIndex,
                 ...scanRabbitMirrorHtml(root.outerHTML, root),
             }));
             if (scans.length !== set.faces.length) continue;
-            if (commitRabbitMirrorFollowBatch(set.batchId, chat, scans, set.owner)) {
+            if (commitRabbitMirrorFollowBatch(set.batchId, chat, scans, {...set.owner,partial:scans.some(scan=>scan===null)})) {
                 committed += 1;
                 followBatchScanAttempts.delete(attemptKey);
                 terminalFollowMessageIndexes.delete(terminalFollowOwnerKey(chat, set.owner.messageIndex));

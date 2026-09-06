@@ -1,15 +1,16 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.18-audit1c2';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.19-usability1';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.5.18-audit1c2';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5.18-audit1c2';
-import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.5.18-audit1c2';
+} from './feedbackCat.js?rmv=1.5.19-usability1';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5.19-usability1';
+import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.5.19-usability1';
+import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.5.19-usability1';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -17,6 +18,9 @@ let generationInvocationSequence = 0;
 let independentGenerationIntentSequence = 0;
 let promptBuilderPromise = null;
 let generationGuardPromise = null;
+let lastFollowExternalPreflightFailure = null;
+
+export function getLastFollowExternalPreflightFailure() { return lastFollowExternalPreflightFailure; }
 
 const INDEPENDENT_GENERATION_INTENTS_KEY = '__rabbitMirrorIndependentGenerationIntents';
 const INDEPENDENT_GENERATION_STOPS_KEY = '__rabbitMirrorIndependentStoppedHostOperations';
@@ -346,7 +350,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.18-audit1c2').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.19-usability1').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -356,7 +360,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.5.18-audit1c2').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.5.19-usability1').catch(error => {
             generationGuardPromise = null;
             throw error;
         });
@@ -397,20 +401,29 @@ function captureFollowPrefetchOwner(chat, sequence) {
     return { sequence, chatKey: getCurrentChatKey(chat), input: capture(chat), host: capture(hostChat) };
 }
 
+function followPrefetchOwnerMismatch(owner, chat) {
+    if (!owner || owner.sequence !== generationInvocationSequence) return 'generation-replaced';
+    if (owner.chatKey !== getCurrentChatKey(chat)) return 'chat-changed';
+    if (owner.host && currentIndependentIntentContext().chat !== owner.host.messages) return 'host-chat-replaced';
+    for (const [name, snapshot] of [['input', owner.input], ['host', owner.host]]) {
+        if (!snapshot) continue;
+        if (snapshot.messages.length - 1 !== snapshot.index) return `${name}-length-changed`;
+        if (snapshot.messages[snapshot.index] !== snapshot.message) return `${name}-tail-replaced`;
+        if (String(snapshot.message?.mes || '') !== snapshot.body) return `${name}-body-changed`;
+        if ((Number(snapshot.message?.swipe_id ?? snapshot.message?.swipeId ?? 0) || 0) !== snapshot.swipe) return `${name}-swipe-changed`;
+    }
+    return '';
+}
+
 function followPrefetchOwnerIsCurrent(owner, chat) {
-    if (!owner || owner.sequence !== generationInvocationSequence || owner.chatKey !== getCurrentChatKey(chat)) return false;
-    const matches = snapshot => !snapshot || (snapshot.messages.length - 1 === snapshot.index
-        && snapshot.messages[snapshot.index] === snapshot.message
-        && String(snapshot.message?.mes || '') === snapshot.body
-        && (Number(snapshot.message?.swipe_id ?? snapshot.message?.swipeId ?? 0) || 0) === snapshot.swipe);
-    return (!owner.host || currentIndependentIntentContext().chat === owner.host.messages)
-        && matches(owner.input) && matches(owner.host);
+    return !followPrefetchOwnerMismatch(owner, chat);
 }
 
 function assertFollowPrefetchOwner(owner, chat) {
     if (followPrefetchOwnerIsCurrent(owner, chat)) return;
     const error = new Error('本轮外部参考读取期间正文或聊天已变化，未注入兔子镜请求。');
     error.code = 'RABBIT_MIRROR_EXTERNAL_PREFETCH_STALE';
+    error.ownerMismatch = followPrefetchOwnerMismatch(owner, chat);
     error.requestCount = 0;
     throw error;
 }
@@ -473,11 +486,13 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     let promptDetails;
     let frozenPlan;
     let externalRawMap;
+    let externalStage = 'runtime';
     try {
         if (externalEnabled) {
             assertFollowPrefetchOwner(prefetchOwner, _chat);
-            const repository = await import('./externalWorldBook/store.js?rmv=1.5.18-audit1c2');
+            const repository = await import('./externalWorldBook/store.js?rmv=1.5.19-usability1');
             assertFollowPrefetchOwner(prefetchOwner, _chat);
+            externalStage = 'index';
             await repository.hydrateExternalPoolMetadata();
             assertFollowPrefetchOwner(prefetchOwner, _chat);
             if (repository.getExternalPoolHydrationStatus().enabledMetadataRebuildRequired.length) {
@@ -487,11 +502,14 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
                 throw error;
             }
             beginRabbitMirrorGenerationAttempt(_chat, generationScopeKey);
+            externalStage = 'selection';
             frozenPlan = planRabbitMirrorPromptDetails(settings, type, null, generationScopeKey, generationContext);
             if (frozenPlan.selectedExternalIds.length) {
+                externalStage = 'selected-read';
                 externalRawMap = await repository.getSelectedExternalEntries(frozenPlan.selectedExternalIds);
                 assertFollowPrefetchOwner(prefetchOwner, _chat);
             }
+            externalStage = 'render';
             promptDetails = renderRabbitMirrorPromptPlan(frozenPlan, externalRawMap);
             assertFollowPrefetchOwner(prefetchOwner, _chat);
         } else {
@@ -503,14 +521,19 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         if (frozenPlan?.batchPlan) releasePendingComboBatch({ batchId: frozenPlan.batchPlan.batchId, identity: frozenPlan.batchPlan.identity });
         // A stale completion must not erase a newer interceptor's installed prompt.
         if (!prefetchOwner || prefetchOwner.sequence === generationInvocationSequence) {
+            const failure = describeExternalWorldBookPreflightFailure(error);
+            const mismatch = error?.code === 'RABBIT_MIRROR_EXTERNAL_PREFETCH_STALE' ? followPrefetchOwnerMismatch(prefetchOwner, _chat) : '';
+            lastFollowExternalPreflightFailure = Object.freeze({ code: failure.code, stage: externalStage, ownerMismatch: mismatch, requestCount: 0, time: Date.now() });
             clearRabbitMirrorPrompt('external-material-preflight-rejected', type);
-            globalThis.toastr?.warning?.('外部参考读取未完成或已失效，本轮未注入兔子镜；请检查外部库后手动重试。');
+            globalThis.toastr?.warning?.(`${failure.message} 本轮未注入兔子镜。[${failure.code} / ${externalStage}${mismatch ? ` / ${mismatch}` : ''}]`);
+            console.warn('[RabbitMirror] Follow external preflight:', lastFollowExternalPreflightFailure);
         }
         console.warn('[RabbitMirror] Follow external material preflight rejected; no RabbitMirror injection.');
         return;
     } finally {
         externalRawMap?.clear?.();
     }
+    if (externalEnabled) lastFollowExternalPreflightFailure = null;
     attachRabbitMirrorGenerationSelection(promptDetails.metadata);
     const basePrompt = promptDetails.prompt;
     if (!basePrompt) {

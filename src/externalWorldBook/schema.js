@@ -1,4 +1,4 @@
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.5.18-audit1c2';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.5.19-usability1';
 
 export const EXTERNAL_WORLD_BOOK_SCHEMA_VERSION = 1;
 export const EXTERNAL_WORLD_BOOK_MAX_FILE_BYTES = 8 * 1024 * 1024;

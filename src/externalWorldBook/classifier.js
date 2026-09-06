@@ -1,4 +1,4 @@
-import { entryIdentity } from './selectionState.js?rmv=1.5.18-audit1c2';
+import { entryIdentity } from './selectionState.js?rmv=1.5.19-usability1';
 
 export const EXTERNAL_WORLD_BOOK_CLASSIFICATION = Object.freeze({
     THEME: 'theme',
@@ -98,6 +98,19 @@ function confidenceFor(score, runnerUp = 0) {
     return EXTERNAL_WORLD_BOOK_CONFIDENCE.LOW;
 }
 
+// Category labels/numbering are stronger evidence than incidental words in a
+// story. Body prose is not scanned as a label: only an explicit category line.
+function explicitCategories(sources) {
+    const labels = `${sources.title}\n${sources.keywords}`;
+    const kinds = [];
+    for (const [kind, label] of [['format', '展现(?:形式)?'], ['theme', '主题(?:元素)?'], ['auxiliary', '辅助(?:片段|规则)?']]) {
+        const labelled = new RegExp(`(?:^|[\\s【\\[（(｜|/])${label}(?:\\s*[:：]?\\s*(?:[0-9一二三四五六七八九十]+)|\\s*(?=$|[\\n】\\]）)]))`, 'm');
+        const declaration = new RegExp(`^\\s*(?:分类|类别|类型)\\s*[:：]\\s*${label}(?:\\s|$|[】\\]）)])`, 'm');
+        if (labelled.test(labels) || declaration.test(`${labels}\n${sources.content}`)) kinds.push(kind);
+    }
+    return kinds;
+}
+
 function plainSummary(entry, maxChars = 240) {
     const title = String(entry?.title || '').trim();
     const keywords = [...new Set([...(entry?.primaryKeywords || []), ...(entry?.secondaryKeywords || [])])].slice(0, 5);
@@ -123,6 +136,7 @@ export function classifyExternalWorldBookEntry(entry) {
     const theme = scoreSignals(sources, NORMALIZED_THEME_SIGNALS);
     const auxiliary = scoreSignals(sources, NORMALIZED_AUXILIARY_SIGNALS);
     const risk = scoreSignals(sources, NORMALIZED_RISK_SIGNALS);
+    const explicit = explicitCategories(sources);
     const reasons = [];
 
     let suggestion = EXTERNAL_WORLD_BOOK_CLASSIFICATION.PENDING;
@@ -132,6 +146,13 @@ export function classifyExternalWorldBookEntry(entry) {
         suggestion = EXTERNAL_WORLD_BOOK_CLASSIFICATION.IGNORE;
         confidence = EXTERNAL_WORLD_BOOK_CONFIDENCE.HIGH;
         reasons.push(...reasonFor('高风险协议', risk));
+    } else if (explicit.length === 1) {
+        suggestion = explicit[0];
+        confidence = EXTERNAL_WORLD_BOOK_CONFIDENCE.HIGH;
+        reasons.push(`明确分类标记：${suggestion === 'format' ? '展现形式' : suggestion === 'theme' ? '主题元素' : '辅助片段'}`);
+    } else if (explicit.length > 1) {
+        suggestion = EXTERNAL_WORLD_BOOK_CLASSIFICATION.MIXED;
+        reasons.push('存在多个不同分类标记，请选择最终用途');
     } else if (format.score >= 5 && theme.score >= 5) {
         suggestion = EXTERNAL_WORLD_BOOK_CLASSIFICATION.MIXED;
         confidence = (format.score >= 8 && theme.score >= 8)
@@ -154,6 +175,10 @@ export function classifyExternalWorldBookEntry(entry) {
         const top = Math.max(format.score, theme.score, auxiliary.score);
         if (top > 0) {
             reasons.push(`线索不足：展现 ${format.score} / 主题 ${theme.score} / 辅助 ${auxiliary.score}`);
+            // A unique positive clue can be offered for one-click confirmation,
+            // but is never silently promoted to an auto-accepted category.
+            const ranked = [['format', format.score], ['theme', theme.score], ['auxiliary', auxiliary.score]].sort((a, b) => b[1] - a[1]);
+            if (ranked[0][1] > ranked[1][1]) suggestion = ranked[0][0];
         } else {
             reasons.push('没有足够的本地分类线索');
         }
@@ -172,6 +197,18 @@ export function classifyExternalWorldBookEntry(entry) {
         reasons: Object.freeze(reasons.slice(0, 6)),
         autoAccepted,
         suggestedFinalClassification: autoAccepted ? suggestion : EXTERNAL_WORLD_BOOK_CLASSIFICATION.PENDING,
+    });
+}
+
+export function applyExternalWorldBookBulkClassification(draft, mode = 'suggested') {
+    const allowed = ['theme', 'format', 'auxiliary', 'ignore'];
+    if (mode !== 'suggested' && !allowed.includes(mode)) return Array.isArray(draft) ? draft : [];
+    return (Array.isArray(draft) ? draft : []).map(item => {
+        if (item.userConfirmed === true || item.classification !== 'pending') return item;
+        const classification = mode === 'suggested' ? item.suggestion : mode;
+        // Risk/ambiguous suggestions still need an explicit category decision.
+        if (!allowed.includes(classification) || (mode === 'suggested' && classification === 'ignore')) return item;
+        return { ...item, classification, userConfirmed: true, requiresReview: false };
     });
 }
 
