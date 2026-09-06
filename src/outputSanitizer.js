@@ -1,6 +1,6 @@
-import { getSettings } from './settings.js?rmv=1.5.19-usability1';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.19-usability1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.19-usability1';
+import { getSettings } from './settings.js?rmv=1.5.20-runtimefix1';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.20-runtimefix1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.20-runtimefix1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -10,14 +10,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.19-usability1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.19-usability1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.19-usability1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.19-usability1';
+} from './feedbackCat.js?rmv=1.5.20-runtimefix1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.20-runtimefix1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.20-runtimefix1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.20-runtimefix1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
 
 
-const RUNTIME_VERSION = '1.5.19';
+const RUNTIME_VERSION = '1.5.20';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -12670,12 +12670,18 @@ function maintenanceSafeTextClippingAncestorEvidence(element, root, textRects) {
 
 function maintenanceHasReachableTextRevealPath(element, root) {
     if (!element || !root) return false;
+    const outerDetails = root.matches?.('details') ? root : root.querySelector?.(':scope > details');
     let cursor = element;
     let depth = 0;
     while (cursor && cursor !== root && depth < 4) {
+        // The outer title only folds the whole work. It cannot reveal text cut
+        // off inside the already-open work, so it is not an internal reveal path.
+        if (cursor === outerDetails) break;
         if (cursor.matches?.('details:not([open]), label, summary, input, button, select, textarea, a[href], [role="button"], [tabindex], [aria-expanded]')) return true;
         const previous = cursor.previousElementSibling;
-        if (previous?.matches?.('input[type="checkbox"], input[type="radio"], button, label[for], summary, a[href], [role="button"], [tabindex], [aria-controls], [aria-expanded]')) return true;
+        if (previous?.parentElement !== outerDetails || !previous?.matches?.('summary')) {
+            if (previous?.matches?.('input[type="checkbox"], input[type="radio"], button, label[for], summary, a[href], [role="button"], [tabindex], [aria-controls], [aria-expanded]')) return true;
+        }
         cursor = cursor.parentElement;
         depth += 1;
     }
@@ -12771,15 +12777,48 @@ function maintenanceTextClippingEvidence(element, root) {
     };
 }
 
-function findMaintenanceTextClippingCandidates(root, limit = 24) {
+function maintenanceHasPotentialAutomaticTextClip(element, root, ancestorStyles) {
+    // Automatic opening checks are not a full diagnostic. Only direct readable
+    // text can be repaired, and high confidence requires a separate simple
+    // clipping ancestor. Reject impossible cases before walking descendants or
+    // allocating text Ranges. Cache ancestor styles only for this read-only pass.
+    if (maintenanceDirectTextLength(element) < 2 || diagnosticIsInternalUiNode(element)) return false;
+    if (/^(?:style|script|template|input|select|textarea|option|svg|path)$/.test(String(element.tagName || '').toLowerCase())) return false;
+    let ancestor = element.parentElement;
+    for (let depth = 0; ancestor && ancestor !== root && depth < 5; depth += 1, ancestor = ancestor.parentElement) {
+        if (root.contains?.(ancestor) === false) break;
+        let potential = ancestorStyles.get(ancestor);
+        if (potential === undefined) {
+            const style = maintenanceSafeComputedStyle(ancestor);
+            const position = String(style?.position || '').toLowerCase();
+            const overflow = String(style?.overflow || '').toLowerCase();
+            potential = !!style
+                && position !== 'absolute' && position !== 'fixed'
+                && (/^(?:hidden|clip)$/.test(String(style.overflowX || overflow).toLowerCase())
+                    || /^(?:hidden|clip)$/.test(String(style.overflowY || overflow).toLowerCase()));
+            if (potential) {
+                const unsafeSelector = 'input,button,select,textarea,a[href],[role="button"],[tabindex],[aria-expanded],details,summary,svg,canvas,img,picture,video,audio,iframe,table,ul,ol,form';
+                potential = !ancestor.matches?.(unsafeSelector) && !ancestor.querySelector?.(unsafeSelector);
+            }
+            ancestorStyles.set(ancestor, potential);
+        }
+        if (potential) return true;
+    }
+    return false;
+}
+
+function findMaintenanceTextClippingCandidates(root, limit = 24, { highConfidenceOnly = false } = {}) {
     if (!root?.querySelectorAll) return [];
     const candidates = [];
     const seen = new Set();
+    const ancestorStyles = highConfidenceOnly ? new Map() : null;
     const elements = [root, ...root.querySelectorAll('*')];
     for (const element of elements) {
         if (seen.has(element)) continue;
+        if (highConfidenceOnly && !maintenanceHasPotentialAutomaticTextClip(element, root, ancestorStyles)) continue;
         const evidence = maintenanceTextClippingEvidence(element, root);
         if (!evidence) continue;
+        if (highConfidenceOnly && !evidence.highConfidence) continue;
         seen.add(element);
         candidates.push(evidence);
         if (candidates.length >= Math.max(1, Number(limit) || 24)) break;
@@ -12807,7 +12846,7 @@ function encodeTextClippingBaseline(element, properties) {
 function repairMaintenanceTextClipping(root, { highConfidenceOnly = false, maxCandidates = 24 } = {}) {
     if (!root?.querySelectorAll) return 0;
     let repaired = 0;
-    const candidates = findMaintenanceTextClippingCandidates(root, maxCandidates);
+    const candidates = findMaintenanceTextClippingCandidates(root, maxCandidates, { highConfidenceOnly });
     for (const evidence of candidates) {
         if (highConfidenceOnly && !evidence.highConfidence) continue;
         const element = evidence.element;
@@ -18090,6 +18129,8 @@ function rabbitMirrorInteractionResetInstanceId(root, create = false) {
     return id;
 }
 
+const rabbitMirrorInteractionResetSourceSignatures = new WeakMap();
+
 function rabbitMirrorInteractionResetSourceSignature(root) {
     const externalHost = root?.matches?.('[data-rabbit-mirror-external-source="true"]')
         ? root
@@ -18110,8 +18151,20 @@ function rabbitMirrorInteractionResetSourceSignature(root) {
     const message = index >= 0 ? chat[index] : null;
     if (message && !message?.is_user) {
         const swipe = Number.isInteger(message?.swipe_id) ? message.swipe_id : 0;
+        // Exact immutable source strings are the revision evidence. Do not parse
+        // HTML entities and hash the entire multi-face reply again on pointerdown,
+        // click, and every maintenance-menu open. A changed source (including an
+        // equal-length edit), selected swipe, display source or index is a miss.
+        const mes = message.mes;
+        const swipeSource = message.swipes?.[message.swipe_id];
+        const display = message.extra?.display_text;
+        const previous = rabbitMirrorInteractionResetSourceSignatures.get(message);
+        if (previous && previous.index === index && previous.swipeId === message.swipe_id
+            && previous.mes === mes && previous.swipeSource === swipeSource && previous.display === display) return previous.signature;
         const source = getSelectedMessageSource(message, { preferDisplay: messageUsesDistinctDisplaySource(message) });
-        if (source) return hashInteractionSignature(`${index}|${swipe}|${source}`);
+        const signature = source ? hashInteractionSignature(`${index}|${swipe}|${source}`) : 'fallback';
+        rabbitMirrorInteractionResetSourceSignatures.set(message, { index, swipeId: message.swipe_id, mes, swipeSource, display, signature });
+        return signature;
     }
     return 'fallback';
 }

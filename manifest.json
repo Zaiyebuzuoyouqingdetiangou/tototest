@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5.19-usability1",
-  "css": "style.css?rmv=1.5.19",
+  "js": "index.js?rmv=1.5.20-runtimefix1",
+  "css": "style.css?rmv=1.5.20",
   "author": "Toto",
-  "version": "1.5.19",
+  "version": "1.5.20",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.5.19 Usability1｜外部文件导入与分类、明确索引重建、本地文字替换、保留成功面并手动补失败面；修复外置转换和重复快照遍历。保留单次请求与安全净化。自动化验证候选，真实酒馆/模型/iPhone、温升与复杂裁字待验收。"
+  "description": "兔子镜测试版 1.5.20 RuntimeFix1｜修复长中文外部条目 ID、失败后的刷新占位、嵌套导入弹窗；减少交互重复正文解码与裁字测量，扩大标题触控和间距，修正动态视觉提示冲突。保持单次请求和成功面留存。手机温升及真实模型美学待验收。"
 }

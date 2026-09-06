@@ -1,4 +1,4 @@
-import { entryIdentity } from './selectionState.js?rmv=1.5.19-usability1';
+import { entryIdentity } from './selectionState.js?rmv=1.5.20-runtimefix1';
 
 export const EXTERNAL_WORLD_BOOK_CLASSIFICATION = Object.freeze({
     THEME: 'theme',

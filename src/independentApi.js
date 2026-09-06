@@ -1,23 +1,24 @@
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.19-usability1';
-import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.19-usability1';
-import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.19-usability1';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.19-usability1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.19-usability1';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.19-usability1';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.19-usability1';
-import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.19-usability1';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.19-usability1';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.19-usability1';
-import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.19-usability1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.19-usability1';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.19-usability1';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.19-usability1';
-import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.19-usability1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.19-usability1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.19-usability1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.20-runtimefix1';
+import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.20-runtimefix1';
+import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.20-runtimefix1';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.20-runtimefix1';
+import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.5.20-runtimefix1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, rehydrateRabbitMirrorMaintenanceRepairs, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.20-runtimefix1';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.20-runtimefix1';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.20-runtimefix1';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.20-runtimefix1';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.20-runtimefix1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.20-runtimefix1';
+import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.20-runtimefix1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.20-runtimefix1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.20-runtimefix1';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.20-runtimefix1';
+import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.20-runtimefix1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.20-runtimefix1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.20-runtimefix1';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
-const RUNTIME_VERSION = '1.5.19';
+const RUNTIME_VERSION = '1.5.20';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -2700,7 +2701,8 @@ function independentTerminalFailureDetails(error,diagnostic={}){
  const detail=error?.rabbitMirrorMultifaceDiagnostic||{};
  const locatedFace=[detail.terminalFace,diagnostic.terminalFace,faceMatch?Number(faceMatch[1]):0].find(face=>Number.isInteger(face)&&face>=1&&face<=5)||0;
  const protocolOffset=[detail.protocolOffset,diagnostic.protocolOffset].find(offset=>Number.isSafeInteger(offset)&&offset>=0);
- const semanticFailure=String(diagnostic?.semanticFailure||'');
+ const localPreflight=independentLocalPreflightFailure(error);
+ const semanticFailure=String(diagnostic?.semanticFailure||(localPreflight?'local-preflight':''));
  const code=String(error?.code||semanticFailure||(faceMatch?'multiface-face-rejected':'independent-generation-failed')).slice(0,120);
  let terminalStage='postprocess';
  if(/local-preflight|context-boundary|batch-plan|connection-profile/i.test(`${semanticFailure} ${code}`)) terminalStage='preflight';
@@ -3480,6 +3482,11 @@ function independentMultifaceFailureSemantic(error){
  const code=String(error?.code||'');
  return code.startsWith('multiface-')?code:'multiface-quality';
 }
+function independentMultifaceIncompleteHint(protocolErrorCode='',finishReason=''){
+ if(/^(length|max_tokens|max_output_tokens)$/i.test(String(finishReason||''))) return '服务商报告输出达到长度上限；请检查整批最大输出设置后手动重试。';
+ if(protocolErrorCode==='unclosed-raw-text') return '响应缺少完整的样式或文本结束标签，可能是输出截断或模型漏写闭合；仅凭这个错误不能确定是额度不足。';
+ return '响应的面结构未完整闭合或不符合多面格式；请保留诊断后手动重试，不必仅凭此错误调高输出上限。';
+}
 function prepareIndependentMultifaceResult(raw,metadata,requestDiagnostic,requestOptions={}){
  const parsed=parseMultifaceOutput(raw,{expectedCount:Number(metadata.faceCount)});
  const sourceFaces=recoverableMultifaceFrames(parsed);
@@ -3490,7 +3497,7 @@ function prepareIndependentMultifaceResult(raw,metadata,requestDiagnostic,reques
    protocolOffset:Number.isSafeInteger(first.offset)&&first.offset>=0?first.offset:undefined,
    terminalFace:first.terminalFace};
   republishIndependentSemanticFailure(requestDiagnostic,'multiface-incomplete','',{responseChars:raw.length,...detail});
-  throw independentMultifacePostprocessError(`⚠️ 多面结果未完整生成（完整 ${parsed.faces?.length||0}/${metadata.faceCount} 面${detail.terminalFace?`，第 ${detail.terminalFace} 面`:''}；${detail.protocolErrorCode}）。本轮只发送了 1 次请求，不会自动补发；请检查最大输出设置后手动重试。`,'multiface-incomplete',-1,detail);
+  throw independentMultifacePostprocessError(`⚠️ 多面结果未完整生成（完整 ${parsed.faces?.length||0}/${metadata.faceCount} 面${detail.terminalFace?`，第 ${detail.terminalFace} 面`:''}；${detail.protocolErrorCode}）。本轮只发送了 1 次请求，不会自动补发。${independentMultifaceIncompleteHint(detail.protocolErrorCode,requestDiagnostic?.finishReason)}`,'multiface-incomplete',-1,detail);
  }
  const count=Number(metadata.faceCount);
  const prepared=Array(count).fill(null); const scans=Array(count).fill(null); const failures=Array(count).fill(null); const seenBodies=new Set(); const seenTitles=new Set();
@@ -3569,9 +3576,10 @@ function independentPromptOwnerPreflightError(){
 function independentExternalPromptPreflightError(cause,owner){
  const known=independentLocalPreflightFailure(cause);
  const needsRebuild=cause?.code==='WORLD_BOOK_ENTRY_STATE_CONFLICT'&&cause?.details?.reason==='metadata-rebuild-required';
+ const explanation=describeExternalWorldBookPreflightFailure(known||cause);
  const error=new Error(needsRebuild
   ? '已启用的旧外部库尚无轻量抽取索引，请在外部库管理中重建索引或重新导入；本轮未发送请求，不会扫描整库或改抽内置条目。'
-  : '外部母本在发送前读取或校验失败；本轮未发送请求，不会自动重抽、切换 nostream 或重复请求。');
+  : `${explanation.message} 诊断码：${explanation.code}。本轮未发送请求，不会自动重抽、切换 nostream 或重复请求。`);
  error.name='RabbitMirrorExternalPromptPreflightError';
  error.code=known?.code||'RABBIT_MIRROR_EXTERNAL_PREFLIGHT_REJECTED';
  error.requestCount=0;
@@ -7877,8 +7885,16 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
    return;
   }
   const failureMessage=String(err?.message||err||'generation-failed');
-  const terminalDiagnostic=republishIndependentTerminalFailure(ctx,index,msg,sourceHash,baseSlot,operationEpoch,err,dispatchLease);
-  markAutomaticFailureStop(slot,sourceHash,'generation-failed',{
+  // The automatic flight may still own this host operation after a final
+  // formatting postwrite. Preflight correctly rejects its old body snapshot;
+  // settle that failure on the current exact identity, or the next passive sync
+  // mistakes the old-hash error shell for an unfinished body. The existing
+  // flight guard still rejects another chat, Swipe, epoch or explicit replace.
+  const failedIdentity=currentIdentityForFlight();
+  if(!failedIdentity){ stale=true; settleCancelledIndependentFlightUi(flight,'stale-owner'); return; }
+  const failedKey=failedIdentity.key, failedHash=failedIdentity.sourceHash;
+  const terminalDiagnostic=republishIndependentTerminalFailure(failedIdentity.ctx,index,failedIdentity.msg,failedHash,baseSlot,operationEpoch,err,dispatchLease);
+  markAutomaticFailureStop(failedIdentity.slot,failedHash,'generation-failed',{
    baseSlot,operationEpoch,
    message:failureMessage,
    code:String(terminalDiagnostic?.terminalErrorCode||err?.code||'independent-generation-failed'),
@@ -7898,14 +7914,14 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
      // keeps the last known-good mirror mounted and persisted. The precise
      // error is still surfaced through the toast/log and the next manual retry
      // profile remains staged in diagnostics.
-     const currentHost=collapseDuplicateIdentityHosts(liveEl,key,'independent',sourceHash);
+     const currentHost=collapseDuplicateIdentityHosts(liveEl,failedKey,'independent',failedHash);
      if(!multifaceResay || !completeReadyFaceDetails(currentHost,currentHost?.__rabbitMirrorIndependentSource||'').length){
-      ensureExternalUi(liveEl,key,previousReadyRecord.html,'ready','independent',sourceHash,previousReadyRecord);
+      ensureExternalUi(liveEl,failedKey,previousReadyRecord.html,'ready','independent',failedHash,previousReadyRecord);
      }
      flight.uiSettled=true;
      toastr?.error?.(failureMessage);
     } else {
-     const liveHost=collapseDuplicateIdentityHosts(liveEl,key,'independent',sourceHash);
+     const liveHost=collapseDuplicateIdentityHosts(liveEl,failedKey,'independent',failedHash);
      if(readyDetailsFromHost(liveHost)){
       // The old ready mirror belongs to the previous正文 version. Do not reveal
       // it beside the new正文, but also do not leave a non-interactive CSS-only
@@ -7913,9 +7929,9 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
       // placeholder that carries the exact owner identity, feedback cat and a
       // direct retry action. The previous ready HTML remains in cache/history.
       clearExternalHostFreshSourceState(liveHost);
-     ensureExternalUi(liveEl,key,failureMessage,'error','independent',sourceHash);
+     ensureExternalUi(liveEl,failedKey,failureMessage,'error','independent',failedHash);
      flight.uiSettled=true;
-     } else ensureExternalUi(liveEl,key,failureMessage,'error','independent',sourceHash);
+     } else ensureExternalUi(liveEl,failedKey,failureMessage,'error','independent',failedHash);
      flight.uiSettled=true;
     }
    }
@@ -8084,7 +8100,7 @@ function showIndependentHistory(root,owner={}){
 }
 function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('./followFaceRetry.js?rmv=1.5.19-usability1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('./followFaceRetry.js?rmv=1.5.20-runtimefix1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');

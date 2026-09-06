@@ -720,7 +720,14 @@ function validBatchCombo(combo) {
         for (let index = 0; index < combo[key].length; index += 1) {
             if (!Object.prototype.hasOwnProperty.call(combo[key], index)) return false;
             const id = combo[key][index];
-            if (typeof id !== 'string' || !id.trim() || id.length > 128) return false;
+            if (typeof id !== 'string' || !id.trim()) return false;
+            // Imported IDs include the URI-encoded source filename and stable
+            // entry identity. Keep their original IDs (including saved recipes)
+            // and match the bounded prompt-material contract; builtin IDs retain
+            // their old limit. Truncating or hashing here would change ownership.
+            if (id.trimStart().startsWith('ext:')) {
+                if (id !== id.trim() || id.length > 2048 || !/^ext:[A-Za-z0-9:._!~*'()-]+$/.test(id)) return false;
+            } else if (id.length > 128) return false;
         }
         if (new Set(combo[key]).size !== combo[key].length) return false;
     }
@@ -765,7 +772,12 @@ function validStringList(values, maxItems = 512) {
     if (!Array.isArray(values) || values.length > maxItems) return false;
     for (let index = 0; index < values.length; index += 1) {
         const value = values[index];
-        if (!Object.prototype.hasOwnProperty.call(values, index) || typeof value !== 'string' || !value.trim() || value.length > 128) return false;
+        if (!Object.prototype.hasOwnProperty.call(values, index) || typeof value !== 'string' || !value.trim()) return false;
+        // selectedFormatIds can contain external IDs even though external
+        // entries do not receive builtin eligible-miss / soft-pity accounting.
+        if (value.trimStart().startsWith('ext:')) {
+            if (value !== value.trim() || value.length > 2048 || !/^ext:[A-Za-z0-9:._!~*'()-]+$/.test(value)) return false;
+        } else if (value.length > 128) return false;
     }
     return true;
 }

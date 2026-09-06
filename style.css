@@ -783,6 +783,24 @@ toto[data-rabbit-mirror="true"] summary {
 #chat .rabbit-mirror-external-shell.rabbit-mirror-multiface-host > details[data-rabbit-mirror-external-details="true"] + details[data-rabbit-mirror-external-details="true"]{
   margin-top:18px !important;
 }
+/* Reserve space between independent face envelopes, never inside their scenes.
+   Inline follow results are sibling toto roots; independent inline results use
+   the existing multiface shell. Do not restyle nested details or model palettes. */
+#chat toto[data-rabbit-mirror="true"][data-rm-face]{
+  display:block !important;
+  margin-block:24px !important;
+}
+#chat .rabbit-mirror-external-shell.rabbit-mirror-multiface-host[data-rm-placement="inline"] > details[data-rabbit-mirror-external-details="true"] + details[data-rabbit-mirror-external-details="true"]{
+  margin-top:24px !important;
+}
+#chat toto[data-rabbit-mirror="true"][data-rm-face] > details > summary,
+#chat .rabbit-mirror-external-shell.rabbit-mirror-multiface-host[data-rm-placement="inline"] > details[data-rabbit-mirror-external-details="true"] > summary{
+  box-sizing:border-box !important;
+  min-height:48px !important;
+  padding-block:10px !important;
+  touch-action:manipulation;
+  cursor:pointer;
+}
 
 /* Collapsed mirrors keep their scene in the DOM but stop consuming animation frames.
    The summary/tool row is excluded and stays immediately usable. */

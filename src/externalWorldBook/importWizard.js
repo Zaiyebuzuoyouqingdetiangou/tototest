@@ -1,7 +1,7 @@
-import { readLocalWorldBookFile } from './fileReader.js?rmv=1.5.19-usability1';
-import { getSettings, updateSettings } from '../settings.js?rmv=1.5.19-usability1';
-import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.19-usability1';
-import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.19-usability1';
+import { readLocalWorldBookFile } from './fileReader.js?rmv=1.5.20-runtimefix1';
+import { getSettings, updateSettings } from '../settings.js?rmv=1.5.20-runtimefix1';
+import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.20-runtimefix1';
+import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.20-runtimefix1';
 import {
     EXTERNAL_WORLD_BOOK_SELECTION_MODE,
     createEmptySelection,
@@ -9,14 +9,14 @@ import {
     createWholeBookSelection,
     entryIdentity,
     toggleEntrySelection,
-} from './selectionState.js?rmv=1.5.19-usability1';
+} from './selectionState.js?rmv=1.5.20-runtimefix1';
 import {
     EXTERNAL_WORLD_BOOK_CLASSIFICATION,
     applyExternalWorldBookBulkClassification,
     createExternalWorldBookClassificationDraft,
     externalWorldBookClassificationCounts,
     updateExternalWorldBookDraftItem,
-} from './classifier.js?rmv=1.5.19-usability1';
+} from './classifier.js?rmv=1.5.20-runtimefix1';
 import {
     deleteExternalLibrary,
     listExternalLibraries,
@@ -26,7 +26,7 @@ import {
     hydrateExternalPoolMetadata,
     getExternalPoolHydrationStatus,
     rebuildExternalPoolMetadata,
-} from './store.js?rmv=1.5.19-usability1';
+} from './store.js?rmv=1.5.20-runtimefix1';
 
 const MODAL_ID = 'rh_external_worldbook_import_modal';
 const PAGE_SIZE = 50;
@@ -372,17 +372,19 @@ function startClassificationReview() {
 }
 
 async function saveClassificationReview() {
+    const owner = state;
     const book = state?.currentBook;
     if (!book || !state.classificationDraft?.length) { setStatus('请先进入分类确认。', 'error'); return; }
     try {
         const snapshot = prepareExternalLibrarySnapshot(book, state.classificationDraft, { enabled: false });
         const saved = await saveExternalLibrarySnapshot(snapshot);
+        if (state !== owner || !owner.overlay.isConnected) return saved;
         const counts = externalWorldBookClassificationCounts(state.classificationDraft);
         setStatus(`已保存到兔子镜本地库：主题 ${counts.theme}、展现形式 ${counts.format}、辅助 ${counts.auxiliary}、待确认 ${counts.pending}。新库默认停用，请按需启用。`, 'success');
         await renderSavedLibraries();
         return saved;
     } catch (error) {
-        setStatus(String(error?.message || error), 'error');
+        if (state === owner) setStatus(String(error?.message || error), 'error');
         return null;
     }
 }
@@ -498,8 +500,13 @@ function createExternalRandomControls() {
 }
 
 function createModal() {
+    state?.dismiss?.(false);
     document.getElementById(MODAL_ID)?.remove();
-    const overlay = el('div', {
+    const returnFocus = document.activeElement;
+    // The settings dialog is already in the browser top layer. A body-level div
+    // remains inert behind it regardless of z-index; transformed host bodies also
+    // turn fixed divs into document-positioned content. Own a real nested dialog.
+    const overlay = el('dialog', {
         id: MODAL_ID,
         attrs: { role: 'dialog', 'aria-modal': 'true', 'aria-label': '外部世界书母本导入' },
         style: { position: 'fixed', inset: '0', zIndex: '2147483010', background: 'rgba(8,10,14,.68)', padding: 'max(12px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center' },
@@ -508,6 +515,23 @@ function createModal() {
     // Own names and scoped control geometry keep this wizard usable in cloud ST.
     overlay.append(el('style', { text: `
 #${MODAL_ID}, #${MODAL_ID} * { box-sizing: border-box; writing-mode: horizontal-tb; }
+#${MODAL_ID} {
+ position: fixed !important; inset: 0 !important; margin: 0 !important;
+ width: 100% !important; max-width: none !important; min-width: 0 !important;
+ height: 100vh !important; height: 100dvh !important; max-height: none !important; min-height: 0 !important;
+ transform: none !important; translate: none !important; scale: none !important;
+ border: 0 !important; overflow: hidden !important; contain: none !important;
+ display: flex !important; align-items: center !important; justify-content: center !important;
+ padding: max(12px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)) !important;
+}
+#${MODAL_ID}::backdrop { background: transparent; }
+#${MODAL_ID} > .rh-external-card {
+ position: relative !important; inset: auto !important; transform: none !important; margin: 0 !important;
+ min-width: 0 !important; min-height: 0 !important; max-width: 100% !important;
+ max-height: min(860px,100%) !important; display: flex !important; flex-direction: column !important;
+}
+#${MODAL_ID} .rh-external-header, #${MODAL_ID} .rh-external-status { flex: 0 0 auto; }
+#${MODAL_ID} .rh-external-scroll { flex: 1 1 auto; min-height: 0; overflow-x: hidden; }
 #${MODAL_ID} .rh-external-button, #${MODAL_ID} .rh-external-input {
  position: static !important; float: none !important; transform: none !important;
  width: var(--rh-external-control-width,100%) !important; min-width: 0 !important; max-width: 100% !important;
@@ -520,16 +544,26 @@ function createModal() {
 #${MODAL_ID} .rh-external-button:disabled, #${MODAL_ID} .rh-external-input:disabled { opacity: .55; cursor: default; }
 #${MODAL_ID} .rh-external-button:focus-visible, #${MODAL_ID} .rh-external-input:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 #${MODAL_ID} .rh-external-button:active:not(:disabled) { filter: brightness(.92); }
+@media (pointer: coarse) { #${MODAL_ID} .rh-external-input { font-size: 16px !important; } }
 ` }));
-    const card = el('div', { style: { width: 'min(820px,100%)', maxHeight: 'min(860px,calc(100dvh - 24px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--SmartThemeBlurTintColor,#202226)', color: 'var(--SmartThemeBodyColor,#ddd)', border: '1px solid color-mix(in srgb,currentColor 18%,transparent)', borderRadius: '18px', boxShadow: '0 22px 70px rgba(0,0,0,.42)' } });
-    const header = el('div', { style: { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 44px', gap: '8px', alignItems: 'center', padding: '11px 12px', borderBottom: '1px solid color-mix(in srgb,currentColor 12%,transparent)' } });
+    const card = el('div', { className: 'rh-external-card', style: { width: 'min(820px,100%)', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--SmartThemeBlurTintColor,#202226)', color: 'var(--SmartThemeBodyColor,#ddd)', border: '1px solid color-mix(in srgb,currentColor 18%,transparent)', borderRadius: '18px', boxShadow: '0 22px 70px rgba(0,0,0,.42)' } });
+    const header = el('div', { className: 'rh-external-header', style: { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 44px', gap: '8px', alignItems: 'center', padding: '11px 12px', borderBottom: '1px solid color-mix(in srgb,currentColor 12%,transparent)' } });
     const title = el('div');
     title.append(el('div', { text: '外部世界书母本', style: { fontWeight: '700', fontSize: '15px' } }));
     title.append(el('div', { text: '本地导入、确认分类后按需参与抽签；不修改源世界书。', style: { opacity: '.8', fontSize: '12px', marginTop: '2px' } }));
-    const closeButton = button('×', () => overlay.remove(), { width: '44px', minWidth: '44px', height: '44px', padding: '0', fontSize: '20px' });
+    const dismiss = (restoreFocus = true) => {
+        clearTimeout(debounceId);
+        if (overlay.open && typeof overlay.close === 'function') overlay.close();
+        overlay.remove();
+        if (state?.overlay === overlay) state = null;
+        if (restoreFocus && returnFocus?.isConnected) {
+            try { returnFocus.focus({ preventScroll: true }); } catch {}
+        }
+    };
+    const closeButton = button('×', () => dismiss(), { width: '44px', minWidth: '44px', height: '44px', padding: '0', fontSize: '20px' });
     closeButton.setAttribute('aria-label', '关闭外部世界书母本');
     header.append(title, closeButton);
-    const scroll = el('div', { style: { padding: '12px', minHeight: '0', minWidth: '0', overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' } });
+    const scroll = el('div', { className: 'rh-external-scroll', style: { padding: '12px', minHeight: '0', minWidth: '0', overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' } });
     scroll.append(createExternalRandomControls());
 
     const sourceButtons = el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '8px' } });
@@ -615,20 +649,34 @@ function createModal() {
 
     scroll.append(el('div', { text: '跟随与独立 API 均可使用；不会发送整本世界书，也不会按面额外请求。', style: { marginTop: '10px', opacity: '.8', fontSize: '12px', lineHeight: '1.5' } }));
 
-    const status = el('div', { text: '请选择来源。', style: { padding: '8px 12px', borderTop: '1px solid color-mix(in srgb,currentColor 12%,transparent)', fontSize: '11px', lineHeight: '1.45', minHeight: '34px', boxSizing: 'border-box' } });
+    const status = el('div', { className: 'rh-external-status', text: '请选择来源。', style: { padding: '8px 12px', borderTop: '1px solid color-mix(in srgb,currentColor 12%,transparent)', fontSize: '11px', lineHeight: '1.45', minHeight: '34px', boxSizing: 'border-box' } });
     card.append(header, scroll, status);
     overlay.append(card);
-    overlay.addEventListener('click', event => { if (event.target === overlay) overlay.remove(); });
+    overlay.addEventListener('click', event => { if (event.target === overlay) dismiss(); });
+    overlay.addEventListener('cancel', event => { event.preventDefault(); event.stopPropagation(); dismiss(); });
+    overlay.addEventListener('keydown', event => {
+        // Do not let the outer settings Escape handler close both layers.
+        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); dismiss(); }
+    });
     document.body.append(overlay);
 
     state = {
-        overlay, status, hostBooks: [], localBooks: [], currentBook: null,
+        overlay, dismiss, status, hostBooks: [], localBooks: [], currentBook: null,
         filteredEntries: [], page: 0, selectedIds: new Set(), selectionMode: EXTERNAL_WORLD_BOOK_SELECTION_MODE.WHOLE,
         classificationDraft: [], classificationPage: 0,
         bookSearch, bookList, localBookList, entrySearch, fullText, entryMeta, entryList, pager,
         classificationPanel, classificationMeta, classificationFilter, classificationList, classificationPager,
         savedLibrariesPanel, savedLibrariesList,
     };
+    if (typeof overlay.showModal === 'function') overlay.showModal();
+    else {
+        // Old hosts without dialog support: stay inside the active modal instead
+        // of becoming an inert sibling. Modern supported hosts use showModal.
+        const parent = document.querySelector('dialog[open]');
+        (parent || document.documentElement).append(overlay);
+        overlay.setAttribute('open', '');
+    }
+    try { closeButton.focus({ preventScroll: true }); } catch {}
     showPane('host');
     loadHostBooks();
 }

@@ -1,12 +1,12 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.17';
 import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.17';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.30.17';
-import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.19-usability1';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.19-usability1';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.19-usability1';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.20-runtimefix1';
+import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.20-runtimefix1';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.20-runtimefix1';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.20-runtimefix1';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.17';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.19-usability1';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.19-usability1';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.20-runtimefix1';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.20-runtimefix1';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -360,7 +360,7 @@ function multiFaceOutputProtocol(faceCount) {
 兔子镜多面输出顺序与强制输出【每轮必需】:
   - 先完成本轮主回复正文与其他固定模块；随后连续输出 ${faceCount} 个互相平级、各自完整闭合的 <toto>，data-rm-face 顺序固定为 ${order}。
   - 各面的实际开标签依次为：${openingTags}。每个开标签后紧接 <details><summary>【兔子镜：中文短标题】</summary>该面的独立 HTML</details></toto>。
-  - ${faceCount} 个 summary 的中文短标题必须互不相同；不得复制同一个标题或只靠空格、大小写、装饰标签伪装成不同标题。
+  - ${faceCount} 个 summary 的中文短标题必须互不相同；标题句式与语气由各自媒介决定，不能机械照抄分类名或统一套句；空格和装饰不算不同标题。
   - 禁止把多面塞进同一个 <toto>，禁止让某面嵌套、包裹或控制另一面；每面须是可单独净化、维修和替换的完整作品。
   - 每面只执行下方同编号计划；不得交换编号、合并主题、复制另一面正文或用一套 HTML 只换标题／颜色。
   - 若输出长度紧张，先收束主回复和每面的次要文字／装饰，但仍须输出恰好 ${faceCount} 面并全部闭合；不得少面、留占位或截断。
@@ -942,7 +942,9 @@ ${selectedFormats}`);
         chunks.push(enhancedVisualDrawingRule());
     }
     if (multiface) {
-        chunks.push(complexInteractiveCore());
+        const nonVisualFaces = faceContexts.map((face, index) => !face.visualSceneryMode ? index : -1).filter(index => index >= 0);
+        if (nonVisualFaces.length === faceContexts.length) chunks.push(complexInteractiveCore());
+        else if (nonVisualFaces.length) chunks.push(`通用交互规则仅作用于第 ${nonVisualFaces.map(index => index + 1).join('、')} 面：\n${complexInteractiveCore()}`);
         const visualFaces = faceContexts.map((face, index) => face.visualSceneryMode ? index : -1).filter(index => index >= 0);
         if (visualFaces.length) chunks.push(`Visual Scenery 局部覆盖：以下完整规则只作用于第 ${visualFaces.map(index => index + 1).join('、')} 面，其他面继续执行通用复杂交互核心。\n${visualScenerySceneFirstCore()}`);
     } else chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
