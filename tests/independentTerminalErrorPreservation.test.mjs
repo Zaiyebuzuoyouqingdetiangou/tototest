@@ -465,6 +465,7 @@ test('terminal diagnostics bind a postprocess failure to the current mesid, Swip
     };
     vm.createContext(sandbox);
     vm.runInContext([
+        functionBlock('independentLocalPreflightFailure'),
         functionBlock('independentRequestDiagnosticMatchesOwner'),
         functionBlock('independentTerminalFailureDetails'),
         functionBlock('republishIndependentTerminalFailure'),
@@ -548,6 +549,7 @@ test('a stale request diagnostic from the same body but an older operation is no
     };
     vm.createContext(sandbox);
     vm.runInContext([
+        functionBlock('independentLocalPreflightFailure'),
         functionBlock('independentRequestDiagnosticMatchesOwner'),
         functionBlock('independentTerminalFailureDetails'),
         functionBlock('republishIndependentTerminalFailure'),
@@ -572,7 +574,7 @@ test('the production generateFor catch stores the exact terminal message before 
     const catchStart = block.indexOf('}).catch(err=>{');
     const republish = block.indexOf('republishIndependentTerminalFailure(', catchStart);
     const mark = block.indexOf('markAutomaticFailureStop(', republish);
-    const render = block.indexOf("ensureExternalUi(liveEl,key,failureMessage,'error'", mark);
+    const render = block.indexOf("ensureExternalUi(liveEl,failedKey,failureMessage,'error'", mark);
     assert.ok(catchStart >= 0 && republish > catchStart && mark > republish && render > mark,
         'generateFor must bind diagnostics, store the precise message, then render that same terminal error');
     assert.match(block.slice(mark, render), /message:failureMessage/,

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { describeExternalWorldBookPreflightFailure } from '../src/externalWorldBook/errors.js';
 
 // Exact production owner guards + callIndependentApi, with only prompt/store,
 // host and transport seams substituted. This exercises the dispatch boundary,
@@ -112,7 +113,7 @@ function harness(options = {}) {
         unregister() { registered = false; },
     };
     const sandbox = {
-        Date, Map, AbortController,
+        Date, Map, AbortController, describeExternalWorldBookPreflightFailure,
         INDEPENDENT_BEHAVIOR_PATCH: '', MAX_INDEPENDENT_REQUEST_CHARS: 200000,
         independentPresentationFormatById: new Map([['builtin-form', options.builtinDescriptor || { title: 'Builtin title', summary: 'Builtin summary', tags: ['builtin'] }]]),
         getSettings: () => st,

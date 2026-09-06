@@ -7,12 +7,16 @@ import { createHash } from 'node:crypto';
 // The generated presentation/theme indexes and their mother-library data are explicit build inputs and are
 // guarded by libraryDataIntegrity instead of current-source self hashes.
 const baseline = JSON.parse(fs.readFileSync(new URL('./protected-baseline-hashes.json', import.meta.url), 'utf8'));
-const normalize = text => text.replace(/\?rmv=[a-z\d._-]+/gi, '').replace(/(const (?:RABBIT_MIRROR_RUNTIME_VERSION|GOLDEN_MERGE_VERSION|RUNTIME_VERSION|RELEASE_VERSION|VERSION)\s*=\s*')1\.5\.(?:[5-9]|1[0-9])'/g, "$1<release>'");
+const normalize = text => text.replace(/\?rmv=[a-z\d._-]+/gi, '').replace(/(const (?:RABBIT_MIRROR_RUNTIME_VERSION|GOLDEN_MERGE_VERSION|RUNTIME_VERSION|RELEASE_VERSION|VERSION)\s*=\s*')1\.5\.(?:[5-9]|1[0-9]|20)'/g, "$1<release>'");
 assert.equal(baseline.allowedFunctional.length, 20);
 assert.equal(baseline.entries.length, 33, 'cover every unchanged production module and mother-library source after the explicitly authorized security and token accounting fixes joined this release');
 assert.equal(baseline.entries.some(item => baseline.allowedFunctional.includes(item.file)), false, 'authorized functional files must be explicit exclusions, never self-hashed current-source approvals');
 for (const item of baseline.entries) {
     let source = fs.readFileSync(new URL(`../${item.file}`, import.meta.url), 'utf8');
+    // 1.5.20 removes exactly the conflicting outside-scene interaction permission.
+    if (item.file === 'data/raw/visualSceneryRules.js') source = source.replace(
+        '操作后先改变画面中对象的关系或状态，文字只作辅助反馈。不得让画面停留原状，只在下方展开大段文字来代替交互。',
+        '文字只作题签、坐标或极短画内标注，后续正文与交互可在画面外承载。');
     // 1.5.19 user explicitly requested a coherent human figure. Reverse only
     // this exact authorized wording before comparing the untouched baseline hash.
     if (item.file === 'data/raw/touchTheaterRules.js') source = source.replace(

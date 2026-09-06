@@ -95,7 +95,7 @@ assert.equal(ancestorEvidence?.clippingAncestor?.element, clippingParent, 'a saf
 assert.equal(ancestorEvidence?.vertical, true);
 assert.equal(ancestorEvidence?.highConfidence, true);
 
-clippingParent.previousElementSibling = { matches: () => true };
+clippingParent.previousElementSibling = { tagName: 'BUTTON', parentElement: {}, matches: selector => selector.split(',').map(value => value.trim()).includes('button') };
 const expandableEvidence = sandbox.probe(clippedLeaf, { contains: () => true, querySelectorAll: () => [] });
 assert.equal(expandableEvidence?.highConfidence, false, 'a reachable adjacent reveal control must keep the clip in manual diagnosis');
 clippingParent.previousElementSibling = null;

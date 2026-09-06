@@ -104,6 +104,6 @@ assert.ok(generateBlock.length > 0);
 assert.doesNotMatch(generateBlock, /suppressPersistedOwnerForResay\(ctx,index,msg\)/, 'manual resay must not delete the previous persisted owner before success');
 assert.doesNotMatch(generateBlock, /if\(!\(force && previousReadyRecord\?\.html\)\)/, 'manual resay must not bypass the shared loading renderer');
 assert.match(generateBlock, /collapseDuplicateIdentityHosts[\s\S]*ensureExternalUi\(el,key,'正在读取当前上下文并生成兔子镜……','loading'/, 'manual resay must enter the shared loading renderer that retains ready details and shows status');
-assert.match(generateBlock, /if\(force && previousReadyRecord\?\.html\)[\s\S]*ensureExternalUi\(liveEl,key,previousReadyRecord\.html,'ready'/, 'failed resay must restore the known-good mirror');
+assert.match(generateBlock, /if\(force && previousReadyRecord\?\.html\)[\s\S]*ensureExternalUi\(liveEl,failedKey,previousReadyRecord\.html,'ready'/, 'failed resay must restore the known-good mirror at the settled identity');
 
 console.log('independentRetryRecovery: 524 single-shot fallback, incomplete-200 recovery, outer-wrapper rescue and transactional resay passed');
