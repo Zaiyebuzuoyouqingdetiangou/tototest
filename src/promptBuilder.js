@@ -1,12 +1,12 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.17';
 import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.17';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.22-batchfix1';
-import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.22-batchfix1';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.22-batchfix1';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.22-batchfix1';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.28-guide1';
+import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.28-guide1';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.28-guide1';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.28-guide1';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.17';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.22-batchfix1';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.22-batchfix1';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.28-guide1';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.28-guide1';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -84,6 +84,7 @@ function externalDescriptor(item, kind, externalRawMap) {
         tags: (Array.isArray(record.sourceKeywords) ? record.sourceKeywords : [])
             .slice(0, 4).map(tag => externalReferenceText(tag, 64)).filter(Boolean),
         externalKind: kind === 'presentation' ? 'format' : 'theme',
+        sourceWorldBookName: String(record.sourceWorldBookName || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 200),
     };
 }
 
@@ -324,7 +325,11 @@ function visualFamilyCooldownRule() {
   - 本轮从展现形式与内容重新推导，并${changeCount}；只换颜色、标题、边框或图标不算改变。未重复的维度保持自由，不机械轮换固定模板。`;
 }
 
-function hardStartupReserve() {
+function hardStartupReserve(independent = false) {
+    if (independent) return String.raw`
+兔子镜输出预留:
+  - 只观察已完成的助手正文，不续写正文、状态栏或其他固定模块；整份响应仅输出本轮兔子镜。
+  - 为全部镜面的外壳与内部画面预留输出长度；必要时减少次要文字和装饰，不得省略镜面、用纯文字占位或留下未闭合结构。`;
     return String.raw`
 兔子镜输出预留:
   - 本轮必须完成“主回复正文 + 完整兔子镜”；兔子镜是本轮输出的必需组成，不是可省略的附加项。
@@ -339,31 +344,29 @@ function rabbitMirrorConstructionScopeRule() {
   - 抽取结果的名称、编号、说明与写法不得进入主回复的变量引入、剧情规划、人物行动、角色语言或文风，也不得反向新增或改写主回复剧情。`;
 }
 
-function coreOutputProtocol() {
+function coreOutputProtocol(independent = false) {
     return String.raw`
 兔子镜输出顺序与强制输出【每轮必需】:
-  - 先完成本轮主回复正文，以及其他规则要求输出的状态栏、变量栏、附加记录或固定模块。
-  - 上述内容全部结束后，立即继续输出完整兔子镜；兔子镜必须位于整条回复最底部，并作为最后一个可见模块。
-  - 若其他规则要求状态栏位于正文末尾，状态栏仍须放在兔子镜之前。
+  - ${independent ? '助手正文已经完成；直接输出唯一完整兔子镜，不续写正文、状态栏或其他固定模块。' : '先完成本轮主回复正文，以及其他规则要求输出的状态栏、变量栏、附加记录或固定模块。\n  - 上述内容全部结束后，立即继续输出完整兔子镜；兔子镜必须位于整条回复最底部，并作为最后一个可见模块。\n  - 若其他规则要求状态栏位于正文末尾，状态栏仍须放在兔子镜之前。'}
   - 固定外壳：<toto data-rabbit-mirror="true" style="display:block;"><details><summary>【兔子镜：中文短标题】</summary>内部 HTML</details></toto>
-  - 外层 <details>/<summary> 只负责折叠整段兔子镜，summary 必须使用「【兔子镜：6到14字简体中文标题】」格式。
-  - 若剩余输出长度不足，应立即收束正文并精简内部次要文字与装饰，但仍须完整输出并闭合。
+  - 外层 <details>/<summary> 只负责整面折叠；标题据本面实际内容命名，不用母本名、分类名或形式名代替，格式为「【兔子镜：6到14字简体中文标题】」。
+  - ${independent ? '若输出长度紧张，精简镜面内部次要文字与装饰，但仍须完整输出并闭合。' : '若剩余输出长度不足，应立即收束正文并精简内部次要文字与装饰，但仍须完整输出并闭合。'}
   - 禁止解释规则、Markdown 代码块、<pre>/<code> 与 HTML 注释；禁止 script、iframe、object、embed、form、事件属性。
   - 完整输出 </toto> 后立即结束本轮回复，不得再追加状态栏、文字、标签或其他可见内容。`;
 }
 
-function multiFaceOutputProtocol(faceCount) {
+function multiFaceOutputProtocol(faceCount, independent = false) {
     const order = Array.from({ length: faceCount }, (_, index) => String(index + 1)).join(' → ');
     const openingTags = Array.from({ length: faceCount }, (_, index) =>
         `<toto data-rabbit-mirror="true" data-rm-face="${index + 1}" style="display:block;">`).join('、');
     return String.raw`
 兔子镜多面输出顺序与强制输出【每轮必需】:
-  - 先完成本轮主回复正文与其他固定模块；随后连续输出 ${faceCount} 个互相平级、各自完整闭合的 <toto>，data-rm-face 顺序固定为 ${order}。
+  - ${independent ? '助手正文已经完成，不续写正文或其他固定模块；直接连续输出' : '先完成本轮主回复正文与其他固定模块；随后连续输出'} ${faceCount} 个互相平级、各自完整闭合的 <toto>，data-rm-face 顺序固定为 ${order}。
   - 各面的实际开标签依次为：${openingTags}。每个开标签后紧接 <details><summary>【兔子镜：中文短标题】</summary>该面的独立 HTML</details></toto>。
-  - ${faceCount} 个 summary 的中文短标题必须互不相同；标题句式与语气由各自媒介决定，不能机械照抄分类名或统一套句；空格和装饰不算不同标题。
+  - ${faceCount} 个 summary 的中文短标题必须互不相同；标题据本面实际内容命名，不用母本名、分类名或形式名代替，不统一套句；空格和装饰不算不同标题。
   - 禁止把多面塞进同一个 <toto>，禁止让某面嵌套、包裹或控制另一面；每面须是可单独净化、维修和替换的完整作品。
   - 每面只执行下方同编号计划；不得交换编号、合并主题、复制另一面正文或用一套 HTML 只换标题／颜色。
-  - 若输出长度紧张，先收束主回复和每面的次要文字／装饰，但仍须输出恰好 ${faceCount} 面并全部闭合；不得少面、留占位或截断。
+  - 若输出长度紧张，${independent ? '精简每面的次要文字／装饰' : '先收束主回复和每面的次要文字／装饰'}，但仍须输出恰好 ${faceCount} 面并全部闭合；不得少面、留占位或截断。
   - 禁止解释规则、Markdown代码块、HTML注释、script、iframe、object、embed、form与事件属性。
   - 只有第 ${faceCount} 面的 </toto> 完整闭合后才结束回复；中间各面闭合后立即继续下一面，不得追加面外说明。`;
 }
@@ -405,7 +408,7 @@ function compactCreativeRule(enabled, formatOnly = false) {
     if (enabled) {
         return String.raw`
 发散孵化:
-  抽取结果是灵感种子，不是封闭模板；可扩展材质、空间、交互痕迹与兔子镜内部叙事细节，但不得另起库外题材或用相近套路替换本轮主题和主展现形式。标题、首个主体与关键交互都须可追溯到本轮抽取，且不得反向改写主回复。`;
+  抽取结果是灵感种子，不是封闭模板；可扩展材质、空间、交互痕迹与兔子镜内部叙事细节，但不得另起库外题材或用相近套路替换本轮主题和主展现形式。首个主体与关键交互都须可追溯到本轮抽取，且不得反向改写主回复。`;
     }
     return String.raw`
 经典收敛:
@@ -866,6 +869,11 @@ function faceMetadata(face, settings, generationType, rawPolicy, directive, memo
         formatIds: Array.isArray(combo?.formatIds) ? [...combo.formatIds] : [],
         themeLabels: Array.isArray(combo?.themes) ? combo.themes.map(item => `${item?.id || '?'} ${item?.title || '未命名'}`) : [],
         formatLabels: Array.isArray(combo?.formats) ? combo.formats.map(item => `${item?.id || '?'} ${item?.title || '未命名'}`) : [],
+        // Display metadata only. The source name is not a new prompt instruction.
+        ...([...combo.themes, ...combo.formats].some(isExternalItem) ? {
+            hasExternalReferences: true,
+            externalSources: [...new Set([...combo.themes, ...combo.formats].filter(isExternalItem).map(item => item.sourceWorldBookName).filter(Boolean))].slice(0, 24),
+        } : {}),
         ...(combo?.formats?.some(isExternalItem) ? { formatDescriptors: combo.formats.slice(0, 8).map(item => ({
             id: String(item.id || '').slice(0, 2048),
             title: asText(item.title).slice(0, 160),
@@ -898,10 +906,11 @@ function faceMetadata(face, settings, generationType, rawPolicy, directive, memo
 function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, touchTheaterRulesText, directive, memoryMaterial, activeFeedback, generationType = 'normal', followTagIsolationText = '', faceContexts = null, externalReferences = false }) {
     const chunks = [];
     const multiface = Array.isArray(faceContexts) && faceContexts.length > 1;
+    const independent = generationType === 'independent';
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
     chunks.push(rabbitMirrorConstructionScopeRule());
-    if (settings.hardStartup !== false) chunks.push(hardStartupReserve());
+    if (settings.hardStartup !== false) chunks.push(hardStartupReserve(independent));
     chunks.push(visibleChineseHardLock());
     if (externalReferences) chunks.push(EXTERNAL_REFERENCE_RULE);
     if (multiface) {
@@ -1014,7 +1023,7 @@ ${multiface ? faceContexts.map((face, index) => `第 ${index + 1} 面:\n${shortV
     // remove or rewrite the host context and therefore cannot affect the main reply.
     if (followTagIsolationText) chunks.push(followTagIsolationText);
     // 强制输出契约放在注入末尾，利用指令近因保证每轮正文后继续生成完整兔子镜。
-    chunks.push(multiface ? multiFaceOutputProtocol(faceContexts.length) : coreOutputProtocol());
+    chunks.push(multiface ? multiFaceOutputProtocol(faceContexts.length, independent) : coreOutputProtocol(independent));
     chunks.push('</兔子镜自动注入>');
     return chunks.filter(Boolean).join('\n\n').trim();
 }

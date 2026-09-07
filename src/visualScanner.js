@@ -1,7 +1,7 @@
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.22-batchfix1';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.22-batchfix1';
-import { getSettings } from './settings.js?rmv=1.5.22-batchfix1';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.5.22-batchfix1';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.28-guide1';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.28-guide1';
+import { getSettings } from './settings.js?rmv=1.5.28-guide1';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.5.28-guide1';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -11,18 +11,18 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.5.22-batchfix1';
+} from './generationGuard.js?rmv=1.5.28-guide1';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.5.22-batchfix1';
+} from './multifaceProof.js?rmv=1.5.28-guide1';
 import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.4.30.23';
-import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.22-batchfix1';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.22-batchfix1';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.5.22-batchfix1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.22-batchfix1';
+import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.28-guide1';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.28-guide1';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.5.28-guide1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.28-guide1';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -1286,7 +1286,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.22-batchfix1').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.28-guide1').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;

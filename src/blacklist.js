@@ -1,7 +1,7 @@
-import { getSettings, updateSettings } from './settings.js?rmv=1.5.22-batchfix1';
-import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.5.22-batchfix1';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.22-batchfix1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.22-batchfix1';
+import { getSettings, updateSettings } from './settings.js?rmv=1.5.28-guide1';
+import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.5.28-guide1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.28-guide1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.28-guide1';
 
 export const BLACKLIST_CHANGED_EVENT = 'rabbitmirror:blacklist-changed';
 export const RECIPE_RECORDED_EVENT = 'rabbitmirror:recipe-recorded';
@@ -401,10 +401,15 @@ export function filterRandomFormatPool(pool, settings = getSettings()) {
 function compactSelectionMetadata(metadata = {}, allowFaces = true) {
     const themeIds = compactIds(metadata?.themeIds).filter(id => THEME_BY_ID.has(id));
     const formatIds = compactIds(metadata?.formatIds).filter(id => FORMAT_BY_ID.has(id));
-    if (!themeIds.length && !formatIds.length) return null;
+    const externalSources = [...new Set((Array.isArray(metadata?.externalSources) ? metadata.externalSources : [])
+        .filter(name => typeof name === 'string').slice(0, 24)
+        .map(name => name.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 200)).filter(Boolean))];
+    const hasExternalReferences = metadata?.hasExternalReferences === true || externalSources.length > 0;
+    if (!themeIds.length && !formatIds.length && !hasExternalReferences) return null;
     return {
         themeIds,
         formatIds,
+        ...(hasExternalReferences ? { hasExternalReferences: true, externalSources } : {}),
         samplingMode: String(metadata?.samplingMode || 'classic'),
         userDirectiveApplied: !!metadata?.userDirectiveApplied,
         forcedVisualScenery: !!metadata?.forcedVisualScenery || !!metadata?.visualSceneryMode,
@@ -467,6 +472,8 @@ export function recordRabbitMirrorRecipe({ chat = null, chatKey = '', messageInd
     const unchanged = existing
         && JSON.stringify(existing.themeIds || []) === JSON.stringify(compact.themeIds)
         && JSON.stringify(existing.formatIds || []) === JSON.stringify(compact.formatIds)
+        && JSON.stringify(existing.externalSources || []) === JSON.stringify(compact.externalSources || [])
+        && !!existing.hasExternalReferences === !!compact.hasExternalReferences
         && String(existing.samplingMode || '') === compact.samplingMode
         && !!existing.userDirectiveApplied === compact.userDirectiveApplied
         && !!existing.forcedVisualScenery === compact.forcedVisualScenery
@@ -492,12 +499,12 @@ export function recordRabbitMirrorRecipe({ chat = null, chatKey = '', messageInd
     return written;
 }
 
-export function getRabbitMirrorRecipe({ chatKey = '', messageIndex = -1, swipeId = -1, message = null, faceIndex = null } = {}) {
+export function getRabbitMirrorRecipe({ chatKey = '', messageIndex = -1, swipeId = -1, message = null, faceIndex = null, includeExternalOnly = false } = {}) {
     const faceRecipe = record => {
-        if (!Array.isArray(record?.faces)) return decorateRecipe(record);
+        if (!Array.isArray(record?.faces)) return decorateRecipe(record, includeExternalOnly);
         if (!Number.isInteger(faceIndex) || faceIndex < 0 || faceIndex >= record.faces.length) return null;
         const face = compactSelectionMetadata(record.faces[faceIndex], false);
-        return face ? decorateRecipe({ ...record, ...face, faceIndex }) : null;
+        return face ? decorateRecipe({ ...record, hasExternalReferences: false, externalSources: [], ...face, faceIndex }, includeExternalOnly) : null;
     };
     const resolvedChatKey = String(chatKey || '').trim();
     const index = Number(messageIndex);
@@ -525,7 +532,7 @@ export function getRabbitMirrorRecipe({ chatKey = '', messageIndex = -1, swipeId
     return faceRecipe(fallback);
 }
 
-function decorateRecipe(record) {
+function decorateRecipe(record, includeExternalOnly = false) {
     const themes = compactIds(record?.themeIds).map(id => {
         const item = THEME_BY_ID.get(id);
         return item ? { id, title: String(item.title || id), group: String(item.group || ''), kind: 'theme' } : null;
@@ -536,7 +543,7 @@ function decorateRecipe(record) {
         if (id === LEGACY_AMBIGUOUS_FORMAT_ID) return { ...LEGACY_AMBIGUOUS_FORMAT_RECIPE_ITEM };
         return null;
     }).filter(Boolean);
-    if (!themes.length && !formats.length) return null;
+    if (!themes.length && !formats.length && !(includeExternalOnly && record.hasExternalReferences)) return null;
     return {
         ...record,
         themes,

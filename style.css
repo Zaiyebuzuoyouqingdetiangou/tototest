@@ -691,9 +691,8 @@ toto[data-rabbit-mirror="true"] summary {
   overflow-wrap:anywhere;
   line-height:1.55;
 }
-/* 1.3.14: light pure-external shell.
- * The external host owns only placement and the title bar. Generated content is
- * intentionally unframed and receives no extension width/height/aspect-ratio rewrite. */
+/* The batch host owns placement, not the visible face boundary. The common
+ * per-face rules below frame both API routes without recoloring generated art. */
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
   display:block !important;
   position:relative !important;
@@ -844,9 +843,6 @@ toto[data-rabbit-mirror="true"] summary {
   min-width:0 !important;
   box-sizing:border-box !important;
   margin:0 !important;
-  border:0 !important;
-  border-radius:0 !important;
-  background:transparent !important;
   overflow:visible !important;
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
@@ -856,13 +852,10 @@ toto[data-rabbit-mirror="true"] summary {
   min-width:0 !important;
   box-sizing:border-box !important;
   margin:0 !important;
-  border:0 !important;
-  border-radius:13px !important;
-  background:transparent !important;
   overflow:visible !important;
 }
-/* Follow-current external keeps its legacy inner safety constraint. Pure independent
- * external deliberately does not touch generated children. */
+/* Legacy follow-current root sizing; the common per-face rules below give the
+ * same overflow safety to independent and inline presentation. */
 #chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > :not(summary):not(style):not(script){
   max-width:100% !important;
   box-sizing:border-box !important;
@@ -1071,6 +1064,74 @@ toto[data-rabbit-mirror="true"] summary {
   border-top-right-radius:0 !important;
 }
 
+/* Layout containment is not decoration. Leave authored colors, borders and
+ * radii alone; do not wrap each colored title in another padded frame. */
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"],
+#chat toto[data-rabbit-mirror="true"] > details{
+  box-sizing:border-box !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  height:auto !important;
+  max-height:none !important;
+  overflow:visible !important;
+}
+/* Keep the generated body in the available lane, including browsers that use
+ * an intrinsic-size ::details-content wrapper. Explicit inner card widths and
+ * scene coordinates remain authored; wide material scrolls in the body. */
+#chat :is(details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details)::details-content{
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+}
+/* Flow-root contains the floating tool strip. Long titles may wrap and grow
+ * their own background; no truncation, new title, JS scan or outer box. */
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"] > summary,
+#chat toto[data-rabbit-mirror="true"] > details > summary{
+  display:flow-root list-item !important;
+  box-sizing:border-box !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  min-height:44px !important;
+  height:auto !important;
+  max-height:none !important;
+  white-space:normal !important;
+  overflow-wrap:anywhere;
+}
+#chat :is(details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details) > :is(div,section,article,main,aside,header,footer,nav,figure){
+  overflow:auto;
+  overscroll-behavior-inline:contain;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"] > :is(div,section,article,main,aside,header,footer,nav,figure),
+#chat toto[data-rabbit-mirror="true"] > details > :is(div,section,article,main,aside,header,footer,nav,figure){
+  box-sizing:border-box !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  overflow-wrap:anywhere;
+}
+/* Constrain intrinsic media, not arbitrary scene descendants or the coordinates
+ * of an intentionally fixed canvas. Very wide tabular/preformatted material
+ * remains scrollable inside its own surface. */
+#chat :is(details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details) :is(img,video,svg,canvas){
+  max-width:100%;
+}
+#chat :is(details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details) :is(table,pre){
+  box-sizing:border-box;
+  max-width:100%;
+  overflow:auto;
+}
+@media (max-width:899px){
+  /* Only the first two layout levels of a face body receive intrinsic shrink
+   * safety. This fixes centered card rows without flattening nested scenes,
+   * changing authored palettes, or shrinking all text to fit a phone. */
+  #chat :is(details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details) > :is(div,section,article,main,aside,figure) > :is(div,section,article,main,aside,nav,figure),
+  #chat :is(details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details) > :is(div,section,article,main,aside,figure) > :is(div,section,article,main,aside,nav,figure) > :is(div,section,article,main,aside,figure){
+    box-sizing:border-box;
+    min-width:0;
+    max-width:100%;
+  }
+}
+
 /* RabbitMirror 大接近：临界反应由运行时解锁。生成 HTML 即使漏写 hidden，
    或普通作者样式覆盖 [hidden]，也不能在 approach threshold 前提前显示。 */
 [data-rm-dai-sekkin-mode="true"] [data-rm-touch-threshold-reaction="true"],
@@ -1081,3 +1142,72 @@ toto[data-rabbit-mirror="true"] summary {
 [data-rm-touch-theater="true"] [data-rm-touch-threshold-reaction="true"][data-rm-touch-threshold-runtime-visible="true"] {
   display: block !important;
 }
+[data-rabbit-mirror-reference-note="true"] {
+    display: block !important;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin: 8px 0 0 !important;
+    padding: 6px 4px !important;
+    font: inherit;
+    font-size: 12px !important;
+    line-height: 1.5 !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    color: inherit;
+    opacity: .72;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+html[data-rabbit-mirror-external-sampling-enabled="false"] [data-rabbit-mirror-reference-note="true"] {
+    display: none !important;
+}
+@media (prefers-contrast: more) {
+    [data-rabbit-mirror-reference-note="true"] { opacity: 1; }
+}
+/* Only scroll clearance: keep each mirror's original palette and border. */
+#chat > .rabbit-mirror-composer-clearance {
+  display:block !important; flex:0 0 var(--rm-composer-clearance,0px) !important;
+  height:var(--rm-composer-clearance,0px) !important; min-height:var(--rm-composer-clearance,0px) !important;
+  width:1px !important; padding:0 !important; margin:0 !important; border:0 !important;
+  background:none !important; box-shadow:none !important; pointer-events:none !important;
+  animation:none !important; transition:none !important;
+}
+.rabbit-mirror-help-update-row { display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px; margin:8px 0; }
+.rabbit-mirror-quick-start { flex:1 1 180px; min-width:0; }
+.rabbit-mirror-quick-start[open] { flex-basis:100%; }
+.rabbit-mirror-quick-start > summary { min-height:44px; padding:10px 8px; cursor:pointer; box-sizing:border-box; }
+.rabbit-mirror-quick-start-body { font-size:14px; line-height:1.65; padding:0 8px 8px; overflow-wrap:anywhere; }
+.rabbit-mirror-quick-start-body button { min-height:44px; }
+.rabbit-mirror-quick-start-body ol { padding-left:20px; margin:4px 0; }
+.rabbit-mirror-quick-start-body li { margin-bottom:7px; }
+.rabbit-mirror-update-button { min-height:44px; flex:0 0 auto; }
+.rabbit-mirror-update-status { font-size:13px; line-height:1.6; overflow-wrap:anywhere; margin:6px 0; }
+#rh_update_reload[hidden], #rh_update_status[hidden] { display:none !important; }
+/* Guide-only layout. No chat, mirror or generated-content selectors. */
+#rh_quick_start { --rh-guide-accent:var(--SmartThemeQuoteColor,currentColor); --rh-guide-soft:color-mix(in srgb,currentColor 7%,transparent); }
+#rh_quick_start > summary { color:var(--rh-guide-accent); }
+#rh_quick_start [hidden] { display:none !important; }
+#rh_quick_start .rabbit-mirror-guide-tabs { display:flex; gap:6px; padding:4px; margin:8px 0 12px; border-radius:12px; background:var(--rh-guide-soft); }
+#rh_quick_start .rabbit-mirror-guide-tab { flex:1; min-width:0; min-height:44px; padding:8px 4px; border:0; border-radius:9px; color:inherit; background:transparent; font:inherit; cursor:pointer; }
+#rh_quick_start .rabbit-mirror-guide-tab[aria-selected="true"] { color:var(--rh-guide-accent); background:var(--SmartThemeBlurTintColor,#202226); box-shadow:0 0 0 1px color-mix(in srgb,currentColor 14%,transparent); }
+#rh_quick_start .rabbit-mirror-guide-lead { font-size:14px; line-height:1.6; margin:4px 0 10px; }
+#rh_quick_start .rabbit-mirror-guide-steps { list-style:none; padding:0; margin:8px 0 12px; display:grid; gap:4px; }
+#rh_quick_start .rabbit-mirror-guide-steps li { margin:0; min-width:0; }
+#rh_quick_start .rabbit-mirror-guide-link, .rabbit-mirror-guide-return .rabbit-mirror-guide-link { min-height:44px; padding:8px 4px; border:0; border-radius:7px; color:inherit; background:transparent; font:inherit; text-align:left; cursor:pointer; touch-action:manipulation; }
+#rh_quick_start .rabbit-mirror-guide-link:hover, .rabbit-mirror-guide-return .rabbit-mirror-guide-link:hover { background:color-mix(in srgb,currentColor 7%,transparent); }
+#rh_quick_start .rabbit-mirror-guide-item { width:100%; display:flex; align-items:flex-start; gap:8px; margin:0; box-sizing:border-box; white-space:normal; overflow-wrap:anywhere; }
+#rh_quick_start .rabbit-mirror-guide-number { flex:0 0 24px; height:24px; line-height:24px; border-radius:50%; text-align:center; font-size:13px; color:var(--rh-guide-accent); background:var(--rh-guide-soft); }
+#rh_quick_start .rabbit-mirror-guide-copy { flex:1; min-width:0; }
+#rh_quick_start .rabbit-mirror-guide-name { display:block; font-weight:500; color:var(--rh-guide-accent); }
+#rh_quick_start .rabbit-mirror-guide-caption { display:block; font-size:13px; line-height:1.6; margin:2px 0; }
+#rh_quick_start .rabbit-mirror-guide-arrow { flex:0 0 12px; color:var(--rh-guide-accent); }
+#rh_quick_start .rabbit-mirror-guide-catalogue { margin-top:14px; border:0; border-top:1px solid color-mix(in srgb,currentColor 18%,transparent); border-radius:0; padding:4px 0 0; background:transparent; }
+#rh_quick_start .rabbit-mirror-guide-group { margin:0 0 0 8px; padding:0; border:0; border-radius:0; background:transparent; }
+#rh_quick_start .rabbit-mirror-guide-catalogue summary { min-height:44px; padding:10px 4px; box-sizing:border-box; cursor:pointer; white-space:normal; }
+.rabbit-mirror-guide-return { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; grid-column:1/-1; flex:1 0 100%; width:100%; min-width:0; font-size:13px; color:var(--SmartThemeBodyColor,inherit); box-sizing:border-box; }
+.rabbit-mirror-guide-return .rabbit-mirror-guide-caption { font-size:12px; overflow-wrap:anywhere; }
+.rabbit-mirror-guide-highlight { outline:2px solid var(--SmartThemeQuoteColor,currentColor); outline-offset:3px; border-radius:4px; }
+@media (max-width:380px) { #rh_quick_start .rabbit-mirror-quick-start-body { padding-right:2px; padding-left:2px; } }

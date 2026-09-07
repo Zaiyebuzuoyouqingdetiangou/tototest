@@ -297,6 +297,16 @@ export function getSettings() {
     return settings;
 }
 
+// One root attribute hides existing notes immediately without scanning chat DOM.
+export function syncExternalReferenceVisibility(settings) {
+    const root = globalThis.document?.documentElement;
+    if (!root?.setAttribute) return;
+    const value = settings?.externalWorldBookRandomEnabled === true ? 'true' : 'false';
+    if (root.getAttribute('data-rabbit-mirror-external-sampling-enabled') !== value) {
+        root.setAttribute('data-rabbit-mirror-external-sampling-enabled', value);
+    }
+}
+
 export function updateSettings(patch) {
     const settings = getSettings();
     const safePatch = patch && typeof patch === 'object' ? { ...patch } : {};
@@ -337,6 +347,7 @@ export function updateSettings(patch) {
         changedCount: changedKeys.length,
     });
     Object.assign(settings, safePatch);
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'externalWorldBookRandomEnabled')) syncExternalReferenceVisibility(settings);
     if (String(settings.independentConnectionProfileId || '').trim()) settings.independentApiKey = '';
     globalThis.__rabbitMirrorPerfDiag?.mark?.('settings.saveScheduled', { source: 'updateSettings', keys: keys.join(',') });
     saveSettingsDebounced();
@@ -344,5 +355,6 @@ export function updateSettings(patch) {
 
 export function resetSettings() {
     extension_settings[MODULE_NAME] = cloneDefaultSettings();
+    syncExternalReferenceVisibility(extension_settings[MODULE_NAME]);
     saveSettingsDebounced();
 }

@@ -1,6 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.5.22-batchfix1';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.22-batchfix1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.22-batchfix1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.28-guide1';
+import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.28-guide1';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.28-guide1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.28-guide1';
+import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.28-guide1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -10,18 +12,23 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.22-batchfix1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.22-batchfix1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.22-batchfix1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.22-batchfix1';
+} from './feedbackCat.js?rmv=1.5.28-guide1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.28-guide1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.28-guide1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.28-guide1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
 
 
-const RUNTIME_VERSION = '1.5.22';
+const RUNTIME_VERSION = '1.5.28';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
 const TOOL_ENTRY_HOST_ATTR = 'data-rabbit-mirror-tool-entry-host';
+const EXTERNAL_REFERENCE_NOTE_ATTR = 'data-rabbit-mirror-reference-note';
+const MIRROR_TITLE_PREFIX_ATTR = 'data-rabbit-mirror-title-prefix';
+const MIRROR_TITLE_PART_ATTR = 'data-rabbit-mirror-title-part';
+const MIRROR_TITLE_DISPLAY_ATTR = 'data-rabbit-mirror-title-display';
+const MIRROR_TITLE_SOURCE_ATTR = 'data-rabbit-mirror-title-source';
 
 function ensureFeedbackCatRuntimeStyle() {
     if (typeof document === 'undefined') return;
@@ -32,6 +39,20 @@ function ensureFeedbackCatRuntimeStyle() {
         (document.head || document.documentElement)?.appendChild(style);
     }
     const css = `
+summary span[${MIRROR_TITLE_PART_ATTR}][${MIRROR_TITLE_PART_ATTR}],
+summary span[${MIRROR_TITLE_PART_ATTR}][${MIRROR_TITLE_PART_ATTR}]::before {
+    all: unset !important;
+    display: inline !important;
+}
+summary span[${MIRROR_TITLE_PART_ATTR}][${MIRROR_TITLE_PART_ATTR}]::before {
+    content: attr(${MIRROR_TITLE_DISPLAY_ATTR}) !important;
+}
+summary span[${MIRROR_TITLE_PART_ATTR}]::after {
+    content: none !important;
+}
+summary span[${MIRROR_TITLE_PART_ATTR}] > span[${MIRROR_TITLE_SOURCE_ATTR}][${MIRROR_TITLE_SOURCE_ATTR}] {
+    display: none !important;
+}
 [${TOOL_ENTRY_HOST_ATTR}][${TOOL_ENTRY_HOST_ATTR}] {
     all: initial !important;
     display: inline-flex !important;
@@ -7087,6 +7108,7 @@ function filterRabbitMirrorRuntimeText(value) {
 function filterRabbitMirrorRuntimeDom(root) {
     const words = getSettings()?.rabbitMirrorBannedWords;
     if (!Array.isArray(words) || !words.length) return 0;
+    clearMirrorTitleDisplayArtifacts(root);
     return applyRabbitMirrorBannedWordsToDom(root, words);
 }
 
@@ -11027,6 +11049,14 @@ function scheduleLabeledCheckedTransitionVerification(root, input, verification,
                 // to the older click and must never reclaim the group or re-apply its old panel.
                 if (newerSelectionExists) return;
             }
+            // A healthy native/CSS state needs verification, not another restore +
+            // rewrite of all matched rules. Keep every delayed check for late WebView
+            // rollbacks, but only apply the fallback when the state actually failed.
+            if (!!input.checked === !!intended
+                && recordLabeledCheckedVerification(root, input, verification, intended, `${phase}+${delay}ms`)) {
+                state.verifiedCount += 1;
+                return;
+            }
             if (!!input.checked !== !!intended) {
                 setRescuedCheckedState(root, input, intended);
                 corrected = true;
@@ -12573,6 +12603,7 @@ function diagnosticMessageBody(root) {
 
 function diagnosticIsInternalUiNode(node) {
     if (!node) return false;
+    if (node.closest?.(`[${EXTERNAL_REFERENCE_NOTE_ATTR}]`)) return true;
     if (node.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return true;
     return !!node.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`);
 }
@@ -12589,7 +12620,7 @@ function diagnosticContentSnapshot(root) {
     };
     const clone = root?.cloneNode?.(true);
     if (!clone?.querySelectorAll) return fallback;
-    clone.querySelectorAll(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`)
+    clone.querySelectorAll(`[${EXTERNAL_REFERENCE_NOTE_ATTR}], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`)
         .forEach(node => node.remove());
     return {
         html: String(clone.innerHTML || ''),
@@ -16863,6 +16894,7 @@ function maintenanceMirrorBodyEvidence(candidate) {
         `[${FEEDBACK_CAT_MENU_ATTR}]`,
         `[${RECIPE_MENU_ATTR}]`,
         `[${SOURCE_TRUNCATION_NOTICE_ATTR}]`,
+        `[${EXTERNAL_REFERENCE_NOTE_ATTR}]`,
     ].join(','))?.forEach(node => node.remove());
 
     const contentStyles = [...(clone.querySelectorAll?.('style') || [])]
@@ -17553,8 +17585,11 @@ export function sanitizeRabbitMirrorUntrustedTemplate(template) {
     // Fail closed before any broad selector walk. This prevents model-produced tag,
     // attribute, CSS-rule and deep-nesting bombs from turning sanitization into a long task.
     if (!validateRabbitMirrorTemplateStructuralBudget(template)) return false;
+    clearMirrorTitleDisplayArtifacts(template.content);
 
     template.content.querySelectorAll(RABBIT_MIRROR_BLOCKED_RENDER_SELECTOR).forEach(node => node.remove());
+    // Local attribution is rebuilt from exact-owner metadata, never model HTML.
+    template.content.querySelectorAll(`[${EXTERNAL_REFERENCE_NOTE_ATTR}]`).forEach(node => node.remove());
     unwrapGeneratedForms(template);
 
     let droppedLocalStyleCount = 0;
@@ -18238,6 +18273,7 @@ function rabbitMirrorInteractionResetSnapshotKey(root, createInstance = false) {
 function cleanRabbitMirrorInteractionResetClone(details) {
     if (!details?.cloneNode) return null;
     const clone = cloneRabbitMirrorFilteredNode(details);
+    clone.querySelectorAll?.(`[${EXTERNAL_REFERENCE_NOTE_ATTR}]`)?.forEach(node => node.remove());
     clone.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}]`)?.forEach(node => node.remove());
     clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
     clone.querySelectorAll?.('[data-rabbit-mirror-maintenance-checked-sandbox]')?.forEach(node => node.remove());
@@ -18913,13 +18949,17 @@ function rabbitMirrorRecipeIdentity(root) {
             ? message.swipe_id
             : 0;
     const chatKey = ownerChat || getCurrentChatKey(chat);
-    const faceIndex = getRabbitMirrorFacePosition(root)?.faceIndex;
+    // Follow-mode external recovery may mount direct details instead of toto.
+    // Its sanitizer-owned WeakMap proof is authoritative, not a model data-* ID.
+    const proof = getSanitizedRabbitMirrorFaceProof(details);
+    const faceIndex = getRabbitMirrorFacePosition(root)?.faceIndex
+        ?? (proof?.origin === 'follow' ? proof.faceIndex : null);
     return { chatKey, messageIndex, swipeId, message, ...(Number.isInteger(faceIndex) ? { faceIndex } : {}) };
 }
 
-function rabbitMirrorRecipeForRoot(root) {
+function rabbitMirrorRecipeForRoot(root, includeExternalOnly = false) {
     const identity = rabbitMirrorRecipeIdentity(root);
-    return getRabbitMirrorRecipe(identity);
+    return getRabbitMirrorRecipe({ ...identity, includeExternalOnly });
 }
 
 function recipeButtonTitle(recipe) {
@@ -22671,7 +22711,119 @@ function ensureFeedbackCatButton(root, summary, host) {
 
 
 function recipeButtonShouldBeVisible(recipe, blacklistState = getBlacklistState()) {
-    return blacklistState?.enabled === true && !!recipe;
+    return blacklistState?.enabled === true && !!recipe
+        && (!recipe.hasExternalReferences || !!((recipe.themes?.length || 0) + (recipe.formats?.length || 0)));
+}
+
+function clearMirrorTitleDisplayArtifacts(root) {
+    // Rebuild display text from filtered source, never from model/persisted attributes.
+    root?.querySelectorAll?.(`span[${MIRROR_TITLE_SOURCE_ATTR}], span[${MIRROR_TITLE_PART_ATTR}]`)
+        .forEach(node => node.replaceWith(...node.childNodes));
+    root?.querySelectorAll?.(`span[${MIRROR_TITLE_PREFIX_ATTR}]`).forEach(node => {
+        if (!node.textContent) node.remove();
+    });
+}
+
+function mirrorTitleDisplayParts(texts) {
+    const chars = texts.flatMap((node, part) => Array.from(node.data, char => ({ char, part })));
+    const trim = () => {
+        while (chars.length && /\s/u.test(chars[0].char)) chars.shift();
+        while (chars.length && /\s/u.test(chars[chars.length - 1].char)) chars.pop();
+    };
+    const pairs = { '【': '】', '[': ']', '［': '］' };
+    for (let pass = 0; pass < 8 && chars.length; pass += 1) {
+        trim();
+        if (!chars.length) break;
+        if (pairs[chars[0].char] === chars[chars.length - 1].char) {
+            chars.shift(); chars.pop();
+            continue;
+        }
+        const text = chars.map(item => item.char).join('');
+        const brand = text.match(/^([\p{P}\p{S}\u200d\ufe0f\s]*?)(?:兔子[镜鏡]|Rabbit\s*Mirror)\s*[:：]\s*/iu);
+        if (!brand) break;
+        const decorationLength = Array.from(brand[1]).length;
+        chars.splice(decorationLength, Array.from(brand[0]).length - decorationLength);
+    }
+    trim();
+    if (!chars.length) return null;
+    const display = texts.map(() => '');
+    for (const { char, part } of chars) display[part] += char === '•' ? '·' : char;
+    display[chars[0].part] = `【兔子镜：${display[chars[0].part]}`;
+    display[chars[chars.length - 1].part] += '】';
+    return display;
+}
+
+function ensureMirrorTitleDisplay(summary) {
+    if (!summary?.childNodes || summary.childNodes.length > 256) return;
+    const skip = `[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${MIRROR_TITLE_PREFIX_ATTR}], button, input, select, textarea, a, label, svg, style, script, template, noscript, [contenteditable], [role="button"], [role="link"]`;
+    const texts = [];
+    const stack = [...summary.childNodes].reverse();
+    let visited = 0, length = 0;
+    while (stack.length) {
+        const node = stack.pop();
+        if (++visited > 256) return;
+        if (node.nodeType === 3) {
+            length += node.data.length;
+            if (length > 2048 || texts.length >= 64) return;
+            texts.push(node);
+        } else if (node.nodeType === 1 && !node.matches(skip)) {
+            if (node.hidden || node.getAttribute('aria-hidden') === 'true') continue;
+            if (visited + stack.length + node.childNodes.length > 256) return;
+            stack.push(...[...node.childNodes].reverse());
+        }
+    }
+    const display = mirrorTitleDisplayParts(texts);
+    if (!display) return;
+    const raw = texts.map(node => node.data).join('');
+    const alreadyFormatted = display.join('') === raw;
+    summary.querySelectorAll(`:scope > span[${MIRROR_TITLE_PREFIX_ATTR}]`).forEach(node => {
+        if (!node.textContent) node.remove();
+    });
+    let styleReady = false;
+    texts.forEach((node, index) => {
+        const source = node.parentElement;
+        let part = source?.hasAttribute(MIRROR_TITLE_SOURCE_ATTR)
+            && source.parentElement?.hasAttribute(MIRROR_TITLE_PART_ATTR) ? source.parentElement : null;
+        if (alreadyFormatted || display[index] === node.data) {
+            if (part) part.replaceWith(node);
+            return;
+        }
+        // Keep original Text nodes/receipts and rich-title parents; repair/retry reads raw textContent.
+        if (!part) {
+            if (!styleReady) { ensureFeedbackCatRuntimeStyle(); styleReady = true; }
+            part = summary.ownerDocument.createElement('span');
+            part.setAttribute(MIRROR_TITLE_PART_ATTR, 'true');
+            const original = summary.ownerDocument.createElement('span');
+            original.setAttribute(MIRROR_TITLE_SOURCE_ATTR, 'true');
+            node.replaceWith(part);
+            original.appendChild(node);
+            part.appendChild(original);
+        }
+        if (part.getAttribute(MIRROR_TITLE_DISPLAY_ATTR) !== display[index]) {
+            part.setAttribute(MIRROR_TITLE_DISPLAY_ATTR, display[index]);
+        }
+    });
+}
+
+function installExternalReferenceNote(details, recipe) {
+    const settings = getSettings();
+    syncExternalReferenceVisibility(settings);
+    const existing = [...details.querySelectorAll(`:scope > [${EXTERNAL_REFERENCE_NOTE_ATTR}]`)];
+    if (settings.externalWorldBookRandomEnabled !== true || !recipe?.hasExternalReferences) {
+        existing.forEach(node => node.remove());
+        return;
+    }
+    const sources = (Array.isArray(recipe.externalSources) ? recipe.externalSources : [])
+        .filter(name => typeof name === 'string').slice(0, 24)
+        .map(name => name.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 200)).filter(Boolean);
+    const text = sources.length ? `本轮抽取来源：${[...new Set(sources)].join('、')}` : '本轮抽取来源：旧记录未保存世界书名称';
+    const note = existing[0] || document.createElement('small');
+    existing.slice(1).forEach(node => node.remove());
+    if (note.getAttribute(EXTERNAL_REFERENCE_NOTE_ATTR) !== 'true') note.setAttribute(EXTERNAL_REFERENCE_NOTE_ATTR, 'true');
+    // Names are plain text, not links, markup, attribution inferred from the title,
+    // or content to send to the model. This runs on the existing scoped mount event.
+    if (note.textContent !== text) note.textContent = text;
+    if (note.parentElement !== details || note !== details.lastElementChild) details.appendChild(note);
 }
 
 function removeRecipeButtonsFromSummary(summary) {
@@ -22708,7 +22860,9 @@ function installRecipeButtonForRoot(root) {
     const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
     const summary = details?.querySelector?.(':scope > summary') || details?.querySelector?.('summary');
     if (!summary) return false;
-    const recipe = rabbitMirrorRecipeForRoot(root);
+    ensureMirrorTitleDisplay(summary);
+    const recipe = rabbitMirrorRecipeForRoot(root, true);
+    installExternalReferenceNote(details, recipe);
     if (!recipeButtonShouldBeVisible(recipe, getBlacklistState())) {
         removeRecipeButtonsFromSummary(summary);
         return true;
@@ -25334,7 +25488,7 @@ function maintenanceAutoSafeLiveFingerprint(root, { budgetChecked = false } = {}
     let structural = '';
     try {
         const clone = root.cloneNode(true);
-        clone.querySelectorAll?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}]`).forEach(node => node.remove());
+        clone.querySelectorAll?.(`[${EXTERNAL_REFERENCE_NOTE_ATTR}], [${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}]`).forEach(node => node.remove());
         const volatile = new Set([
             RUNTIME_VERSION_ATTR,
             MAINTENANCE_AUTO_SAFE_ATTR,
@@ -25692,7 +25846,7 @@ function installChatMutationObserver() {
             const targetElement = mutation.target?.nodeType === 1 ? mutation.target : mutation.target?.parentElement;
             // External mirrors install their tools synchronously. Never observe their internal
             // replacement, animation or tool DOM, otherwise the two observers can ping-pong.
-            if (targetElement?.closest?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) continue;
+            if (targetElement?.closest?.(`toto, [${EXTERNAL_REFERENCE_NOTE_ATTR}], [${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) continue;
 
             const targetMessage = targetElement?.closest?.('.mes, [mesid]') || null;
             const added = [...(mutation.addedNodes || [])].filter(node => node?.nodeType === 1);
@@ -25704,7 +25858,7 @@ function installChatMutationObserver() {
             // real message scope *before* any descendant scan.
             if (targetMessage) {
                 const relevant = added.some(node => {
-                    if (node.matches?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) return false;
+                    if (node.matches?.(`[${EXTERNAL_REFERENCE_NOTE_ATTR}], [${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) return false;
                     return node.matches?.('toto, details, .mes_text') || !!node.querySelector?.('toto, details');
                 });
                 if (relevant) messageRoots.add(targetMessage);
@@ -25715,7 +25869,7 @@ function installChatMutationObserver() {
             // newly-added chat wrapper). Only search for message roots here; never scan a
             // non-message UI subtree for arbitrary details elements.
             for (const node of added) {
-                if (node.matches?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) continue;
+                if (node.matches?.(`[${EXTERNAL_REFERENCE_NOTE_ATTR}], [${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) continue;
                 if (node.matches?.('.mes, [mesid]')) {
                     messageRoots.add(node);
                     continue;
@@ -25725,7 +25879,10 @@ function installChatMutationObserver() {
                 }
             }
         }
-        if (messageRoots.size) scheduleObservedChatInstall(messageRoots);
+        if (messageRoots.size) {
+            scheduleObservedChatInstall(messageRoots);
+            scheduleRabbitMirrorComposerClearance();
+        }
         perfEnd?.({ affectedMessages: messageRoots.size });
     });
     // Tool installation only needs structural insertions. Watching class/style/hidden and

@@ -1,7 +1,7 @@
-import { readLocalWorldBookFile } from './fileReader.js?rmv=1.5.22-batchfix1';
-import { getSettings, updateSettings } from '../settings.js?rmv=1.5.22-batchfix1';
-import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.22-batchfix1';
-import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.22-batchfix1';
+import { readLocalWorldBookFile } from './fileReader.js?rmv=1.5.28-guide1';
+import { getSettings, updateSettings } from '../settings.js?rmv=1.5.28-guide1';
+import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.28-guide1';
+import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.28-guide1';
 import {
     EXTERNAL_WORLD_BOOK_SELECTION_MODE,
     createEmptySelection,
@@ -9,14 +9,14 @@ import {
     createWholeBookSelection,
     entryIdentity,
     toggleEntrySelection,
-} from './selectionState.js?rmv=1.5.22-batchfix1';
+} from './selectionState.js?rmv=1.5.28-guide1';
 import {
     EXTERNAL_WORLD_BOOK_CLASSIFICATION,
     applyExternalWorldBookBulkClassification,
     createExternalWorldBookClassificationDraft,
     externalWorldBookClassificationCounts,
     updateExternalWorldBookDraftItem,
-} from './classifier.js?rmv=1.5.22-batchfix1';
+} from './classifier.js?rmv=1.5.28-guide1';
 import {
     deleteExternalLibrary,
     listExternalLibraries,
@@ -26,7 +26,7 @@ import {
     hydrateExternalPoolMetadata,
     getExternalPoolHydrationStatus,
     rebuildExternalPoolMetadata,
-} from './store.js?rmv=1.5.22-batchfix1';
+} from './store.js?rmv=1.5.28-guide1';
 
 const MODAL_ID = 'rh_external_worldbook_import_modal';
 const PAGE_SIZE = 50;
@@ -499,6 +499,38 @@ function createExternalRandomControls() {
     return box;
 }
 
+function bindImportViewport(overlay) {
+    // The visual viewport can pan/shrink independently of vh/dvh on mobile.
+    // Only this open wizard subscribes; no observers, chat scans or polling.
+    const viewport = globalThis.visualViewport;
+    let frame = 0;
+    let disposed = false;
+    const sync = () => {
+        frame = 0;
+        if (disposed || !overlay.isConnected) return;
+        const width = Math.max(1, Number(viewport?.width) || window.innerWidth);
+        const height = Math.max(1, Number(viewport?.height) || window.innerHeight);
+        const values = { vw: width, vh: height, top: Math.max(0, Number(viewport?.offsetTop) || 0), left: Math.max(0, Number(viewport?.offsetLeft) || 0) };
+        for (const [name, number] of Object.entries(values)) {
+            const property = `--rh-external-${name}`;
+            const value = `${Math.round(number * 100) / 100}px`;
+            if (overlay.style.getPropertyValue(property) !== value) overlay.style.setProperty(property, value);
+        }
+    };
+    const schedule = () => { if (!disposed && !frame) frame = requestAnimationFrame(sync); };
+    viewport?.addEventListener('resize', schedule, { passive: true });
+    viewport?.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule, { passive: true });
+    sync();
+    return () => {
+        disposed = true;
+        if (frame) cancelAnimationFrame(frame);
+        viewport?.removeEventListener('resize', schedule);
+        viewport?.removeEventListener('scroll', schedule);
+        window.removeEventListener('resize', schedule);
+    };
+}
+
 function createModal() {
     state?.dismiss?.(false);
     document.getElementById(MODAL_ID)?.remove();
@@ -516,22 +548,25 @@ function createModal() {
     overlay.append(el('style', { text: `
 #${MODAL_ID}, #${MODAL_ID} * { box-sizing: border-box; writing-mode: horizontal-tb; }
 #${MODAL_ID} {
- position: fixed !important; inset: 0 !important; margin: 0 !important;
- width: 100% !important; max-width: none !important; min-width: 0 !important;
- height: 100vh !important; height: 100dvh !important; max-height: none !important; min-height: 0 !important;
+ position: fixed !important; inset: var(--rh-external-top,0px) auto auto var(--rh-external-left,0px) !important; margin: 0 !important;
+ width: var(--rh-external-vw,100%) !important; max-width: none !important; min-width: 0 !important;
+ height: var(--rh-external-vh,100vh) !important; max-height: none !important; min-height: 0 !important;
  transform: none !important; translate: none !important; scale: none !important;
  border: 0 !important; overflow: hidden !important; contain: none !important;
- display: flex !important; align-items: center !important; justify-content: center !important;
+ display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; align-items: center !important; justify-content: center !important;
  padding: max(12px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)) !important;
 }
 #${MODAL_ID}::backdrop { background: transparent; }
 #${MODAL_ID} > .rh-external-card {
  position: relative !important; inset: auto !important; transform: none !important; margin: 0 !important;
  min-width: 0 !important; min-height: 0 !important; max-width: 100% !important;
- max-height: min(860px,100%) !important; display: flex !important; flex-direction: column !important;
+ max-height: calc(var(--rh-external-vh,100vh) - max(12px,env(safe-area-inset-top)) - max(12px,env(safe-area-inset-bottom))) !important;
+ max-height: min(860px,calc(var(--rh-external-vh,100vh) - max(12px,env(safe-area-inset-top)) - max(12px,env(safe-area-inset-bottom)))) !important;
+ display: flex !important; flex-direction: column !important;
 }
 #${MODAL_ID} .rh-external-header, #${MODAL_ID} .rh-external-status { flex: 0 0 auto; }
-#${MODAL_ID} .rh-external-scroll { flex: 1 1 auto; min-height: 0; overflow-x: hidden; }
+#${MODAL_ID} .rh-external-status { max-height: 4.5em; overflow-y: auto; overflow-wrap: anywhere; }
+#${MODAL_ID} .rh-external-scroll { flex: 1 1 auto !important; min-height: 0 !important; overflow-y: auto !important; overflow-x: hidden; }
 #${MODAL_ID} .rh-external-button, #${MODAL_ID} .rh-external-input {
  position: static !important; float: none !important; transform: none !important;
  width: var(--rh-external-control-width,100%) !important; min-width: 0 !important; max-width: 100% !important;
@@ -550,9 +585,11 @@ function createModal() {
     const header = el('div', { className: 'rh-external-header', style: { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 44px', gap: '8px', alignItems: 'center', padding: '11px 12px', borderBottom: '1px solid color-mix(in srgb,currentColor 12%,transparent)' } });
     const title = el('div');
     title.append(el('div', { text: '外部世界书母本', style: { fontWeight: '700', fontSize: '15px' } }));
-    title.append(el('div', { text: '本地导入、确认分类后按需参与抽签；不修改源世界书。', style: { opacity: '.8', fontSize: '12px', marginTop: '2px' } }));
+    title.append(el('div', { text: '导入小剧场世界书，确认分类后按需参与抽签；不修改源世界书。', style: { opacity: '.8', fontSize: '12px', marginTop: '2px' } }));
+    let disposeViewport = () => {};
     const dismiss = (restoreFocus = true) => {
         clearTimeout(debounceId);
+        disposeViewport();
         if (overlay.open && typeof overlay.close === 'function') overlay.close();
         overlay.remove();
         if (state?.overlay === overlay) state = null;
@@ -564,6 +601,7 @@ function createModal() {
     closeButton.setAttribute('aria-label', '关闭外部世界书母本');
     header.append(title, closeButton);
     const scroll = el('div', { className: 'rh-external-scroll', style: { padding: '12px', minHeight: '0', minWidth: '0', overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' } });
+    scroll.append(el('p', { className: 'rh-external-import-notice', text: '不会进入兔子镜内置，感谢各位制作小剧场的老师，请征求作者同意后使用。', style: { margin: '0 0 12px', fontSize: '12px', lineHeight: '1.6', overflowWrap: 'anywhere' } }));
     scroll.append(createExternalRandomControls());
 
     const sourceButtons = el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '8px' } });
@@ -659,6 +697,7 @@ function createModal() {
         if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); dismiss(); }
     });
     document.body.append(overlay);
+    disposeViewport = bindImportViewport(overlay);
 
     state = {
         overlay, dismiss, status, hostBooks: [], localBooks: [], currentBook: null,

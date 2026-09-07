@@ -1,7 +1,7 @@
-import { EXTERNAL_WORLD_BOOK_CLASSIFICATION } from './classifier.js?rmv=1.5.22-batchfix1';
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.5.22-batchfix1';
-import { entryIdentity } from './selectionState.js?rmv=1.5.22-batchfix1';
-import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, getExternalPoolRevision, getExternalPoolSnapshot, removeExternalPoolLibrary, setExternalPoolMetadataSnapshot, upsertExternalPoolLibrary, validExternalPoolMetadata } from './externalPool.js?rmv=1.5.22-batchfix1';
+import { EXTERNAL_WORLD_BOOK_CLASSIFICATION } from './classifier.js?rmv=1.5.28-guide1';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.5.28-guide1';
+import { entryIdentity } from './selectionState.js?rmv=1.5.28-guide1';
+import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, getExternalPoolRevision, getExternalPoolSnapshot, removeExternalPoolLibrary, setExternalPoolMetadataSnapshot, upsertExternalPoolLibrary, validExternalPoolMetadata } from './externalPool.js?rmv=1.5.28-guide1';
 
 export const EXTERNAL_WORLD_BOOK_DB_NAME = 'rabbitmirror_external_worldbooks';
 export const EXTERNAL_WORLD_BOOK_DB_VERSION = 2;
@@ -399,7 +399,9 @@ export async function getSelectedExternalEntries(ids = [], options = {}) {
             if (typeof row.rawContent !== 'string' || !row.rawContent.trim()) {
                 throw new ExternalWorldBookError(EXTERNAL_WORLD_BOOK_ERROR_CODES.ENTRY_CONTENT_INVALID, '本轮抽中的外部条目缺少正文；不会自动重抽。', { reason: 'selected-entry-raw-missing', externalId: id });
             }
-            materials.set(id, row);
+            // The selected library is already read in this same transaction. Carry only
+            // its name for local attribution; no extra library scan or persistent raw copy.
+            materials.set(id, { ...row, sourceWorldBookName: String(library.sourceWorldBookName || library.displayName || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 200) });
         }
         return materials;
     } catch (error) {

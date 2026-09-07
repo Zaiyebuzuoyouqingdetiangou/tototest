@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5.22-batchfix1",
-  "css": "style.css?rmv=1.5.22",
+  "js": "index.js?rmv=1.5.28-guide1",
+  "css": "style.css?rmv=1.5.28",
   "author": "Toto",
-  "version": "1.5.22",
+  "version": "1.5.28",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜测试版 1.5.22 BatchFix1｜基于 1.5.21，修复外部母本历史抽取被当作硬排除、连续多面计划无法建立的问题；保留同批去重及单次请求。跨设备云端保存尚未完成，手机实际生成、温升及长延迟仍待验收。"
+  "description": "兔子镜小剧场 1.5.28｜输入框遮挡适配、减少内部交互引起的重复恢复；新增检查更新与折叠新手指引。不改美化提示、不自动补请求；安卓闪烁与手机发热仍需实机确认。"
 }
