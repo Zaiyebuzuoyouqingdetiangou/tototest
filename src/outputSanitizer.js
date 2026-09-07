@@ -1,8 +1,8 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.28-guide1';
-import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.28-guide1';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.28-guide1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.28-guide1';
-import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.28-guide1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.29-state1';
+import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.29-state1';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.29-state1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.29-state1';
+import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.29-state1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -12,14 +12,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.28-guide1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.28-guide1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.28-guide1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.28-guide1';
+} from './feedbackCat.js?rmv=1.5.29-state1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.29-state1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.29-state1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.29-state1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
 
 
-const RUNTIME_VERSION = '1.5.28';
+const RUNTIME_VERSION = '1.5.29';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';

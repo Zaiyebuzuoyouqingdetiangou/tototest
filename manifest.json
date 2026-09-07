@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5.28-guide1",
-  "css": "style.css?rmv=1.5.28",
+  "js": "index.js?rmv=1.5.29-state1",
+  "css": "style.css?rmv=1.5.29",
   "author": "Toto",
-  "version": "1.5.28",
+  "version": "1.5.29",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场 1.5.28｜输入框遮挡适配、减少内部交互引起的重复恢复；新增检查更新与折叠新手指引。不改美化提示、不自动补请求；安卓闪烁与手机发热仍需实机确认。"
+  "description": "兔子镜小剧场 1.5.29｜修正维修保存时内容错配、外置镜面多余底部间隔和指引定位。不改美化提示、不自动补请求；手机联动、发热、启动/生成耗时与跨设备恢复仍待验收。"
 }

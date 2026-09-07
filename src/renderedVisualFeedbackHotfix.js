@@ -1,7 +1,7 @@
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.28-guide1';
-import { updateLatestVisualSignature } from './storage.js?rmv=1.5.28-guide1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.29-state1';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.5.29-state1';
 
-const VERSION = '1.5.28';
+const VERSION = '1.5.29';
 const HOST = '[data-rabbit-mirror-external-source]';
 const READY_INDEPENDENT = `${HOST}[data-rm-source="independent"][data-rm-state="ready"]`;
 const TOOL = '[data-rabbit-mirror-tool-entry-host]';

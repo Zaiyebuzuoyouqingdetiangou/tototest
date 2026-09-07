@@ -180,11 +180,18 @@ export function mountRabbitMirrorQuickStart({ root, openAdvanced, closeAdvanced 
         back.focus({ preventScroll: true });
         if (frame) win.cancelAnimationFrame(frame);
         frame = win.requestAnimationFrame(() => {
-            frame = 0; if (disposed || !target.isConnected) return;
-            const destination = item.page ? anchor : backBar;
-            destination.scrollIntoView({ block: 'nearest', behavior: 'instant' });
-            anchor.classList.add('rabbit-mirror-guide-highlight'); highlights = [anchor];
-            timer = win.setTimeout(clearHighlight, 1600);
+            // Native details toggle handlers may populate lazy settings after opening.
+            // Wait one paint for that layout before positioning, without observers/polling.
+            frame = win.requestAnimationFrame(() => {
+                frame = 0; if (disposed || !target.isConnected) return;
+                // Reveal the actual setting, not the return bar preceding it. A nearest-edge
+                // scroll can leave the control under the host's fixed composer/header.
+                const destination = !hiddenMode && target.matches('select,textarea,button,input:not([type="checkbox"]):not([type="radio"])')
+                    ? target : anchor.tagName === 'DETAILS' ? anchor.querySelector('summary') || anchor : anchor;
+                destination.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+                destination.classList.add('rabbit-mirror-guide-highlight'); highlights = [destination];
+                timer = win.setTimeout(clearHighlight, 1600);
+            });
         });
     }
     function restore() {

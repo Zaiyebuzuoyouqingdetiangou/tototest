@@ -1,25 +1,25 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.28-guide1';
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.28-guide1';
-import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.28-guide1';
-import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.28-guide1';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.28-guide1';
-import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.28-guide1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.28-guide1';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.28-guide1';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.28-guide1';
-import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.28-guide1';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.28-guide1';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.28-guide1';
-import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.28-guide1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.28-guide1';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.28-guide1';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.28-guide1';
-import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.28-guide1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.28-guide1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.28-guide1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.29-state1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.29-state1';
+import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.29-state1';
+import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.29-state1';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.29-state1';
+import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.29-state1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.29-state1';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.29-state1';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.29-state1';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.29-state1';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.29-state1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.29-state1';
+import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.29-state1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.29-state1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.29-state1';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.29-state1';
+import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.29-state1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.29-state1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.29-state1';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
-const RUNTIME_VERSION = '1.5.28';
+const RUNTIME_VERSION = '1.5.29';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -5079,6 +5079,7 @@ const MAINTENANCE_STRUCTURAL_STYLE_ATTRS = [
 ];
 const PERSISTED_STATE_STYLE_ATTRS = [...RUNTIME_STATE_STYLE_ATTRS, ...MAINTENANCE_STRUCTURAL_STYLE_ATTRS];
 const PERSISTED_STATE_ARIA_ATTRS = ['aria-pressed','aria-selected','aria-expanded','aria-current','aria-checked'];
+const PERSISTED_RUNTIME_UI_SELECTOR = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-interaction-home], [data-rabbit-mirror-interaction-diagnostic], [data-rabbit-mirror-reference-note]';
 const PERSISTED_STATE_ATTR_RE = /^(?:data-rm-(?:.*(?:active|selected|open|used|filled|touch-hover|pseudo-active|target-active)|checked-pseudo-rule-target|labeled-checked-verify-target|reversible-style-baseline|reversible-text-baseline|click-to-restore)|data-rabbit-mirror-(?:labeled-checked(?:-last|-verify|-verify-count)?|checked-text-rule-rescue|expanded-opacity-rescue|inert-action-active|radio-reset-last|stale-checked-inline-cleanup|deferred-interaction-rescue))$/i;
 function parseIndependentDetailsRaw(html=''){
  try{
@@ -5114,7 +5115,7 @@ function restoreEncodedInteractionBaselines(root){
 function persistedStateElements(root){
  if(!root?.querySelectorAll) return [];
  return [root,...root.querySelectorAll('*')].filter(element=>{
-  if(element.matches?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')) return false;
+  if(element.closest?.(PERSISTED_RUNTIME_UI_SELECTOR)) return false;
   if(element.tagName==='STYLE' && PERSISTED_STATE_STYLE_ATTRS.some(name=>element.hasAttribute(name))) return false;
   return true;
  });
@@ -5124,29 +5125,94 @@ function elementHasPersistedRuntimeState(element){
  if(PERSISTED_STATE_ARIA_ATTRS.some(name=>element.hasAttribute(name))) return true;
  return [...element.attributes].some(attribute=>PERSISTED_STATE_ATTR_RE.test(attribute.name));
 }
-function baselineElementForCurrent(current,baselines,used,cursorRef){
- const tag=String(current?.tagName||'');
- const id=String(current?.id||'');
- if(id){
-  const exact=baselines.find((item,index)=>!used.has(index) && item.tagName===tag && (item.id===id || (item.id && id.endsWith(`-${item.id}`))));
-  if(exact){ const index=baselines.indexOf(exact); used.add(index); cursorRef.value=Math.max(cursorRef.value,index+1); return exact; }
+function persistedClassPrefix(element){
+ const scope=element.closest?.('[data-rabbit-mirror-css-scope]')?.getAttribute('data-rabbit-mirror-css-scope')||'';
+ return scope?`rmc-${scope.replace(/^rmcss-/i,'')}-`:'';
+}
+function persistedStateBaselineMap(currentRoot,baselineRoot){
+ const current=persistedStateElements(currentRoot),baseline=persistedStateElements(baselineRoot);
+ const matches=new Map(),used=new Set();
+ const group=(elements,keyOf)=>{
+  const groups=new Map();
+  for(const element of elements){const key=keyOf(element);if(!key)continue;const list=groups.get(key)||[];list.push(element);groups.set(key,list);}
+  return groups;
+ };
+ const pair=(element,original)=>{
+  if(!element||!original||matches.has(element)||used.has(original)||element.tagName!==original.tagName)return;
+  matches.set(element,original);used.add(original);
+ };
+ pair(currentRoot,baselineRoot);
+ const ids=group(baseline,node=>node.id);
+ // Mounting adds an interaction namespace. Accept only a unique exact/suffix ID;
+ // never consume another input merely because it occupies the same list position.
+ for(const element of current){
+  if(!element.id)continue;
+  const candidates=new Set();
+  const parts=element.id.split('-');
+  for(let i=0;i<parts.length;i++)for(const item of ids.get(parts.slice(i).join('-'))||[])if(item.tagName===element.tagName)candidates.add(item);
+  if(candidates.size===1)pair(element,[...candidates][0]);
  }
- for(let i=cursorRef.value;i<Math.min(baselines.length,cursorRef.value+12);i++){
-  if(used.has(i) || baselines[i].tagName!==tag) continue;
-  used.add(i); cursorRef.value=i+1; return baselines[i];
+ // A tag-order cursor shifts whenever a repair inserts/removes a wrapper. Build
+ // collision-free, interned subtree keys instead: original text + element shape,
+ // excluding mutable class/style/checked state. A key must be unique on BOTH sides.
+ // Ambiguous nodes remain untouched rather than borrowing another branch's CSS.
+ const interned=new Map();
+ const keysFor=elements=>{
+  const keys=new Map(),included=new Set(elements);
+  for(const element of [...elements].reverse()){
+   const childKeys=[...element.childNodes].flatMap(node=>node.nodeType===1
+    ? (included.has(node)?[['element',keys.get(node)]]:[])
+    : node.nodeType===3&&node.nodeValue.trim()?[['text',node.nodeValue]]:[]);
+   const key=JSON.stringify([element.tagName,element.getAttribute('type')||'',element.getAttribute('value')||'',childKeys]);
+   if(!interned.has(key))interned.set(key,interned.size+1);
+   keys.set(element,interned.get(key));
+  }
+  return keys;
+ };
+ const currentKeys=keysFor(current),baselineKeys=keysFor(baseline);
+ const pairUnique=(left,right)=>{
+  const leftGroups=group(left,node=>currentKeys.get(node)),rightGroups=group(right,node=>baselineKeys.get(node));
+  for(const [key,items] of leftGroups){
+   const originals=rightGroups.get(key);
+   if(items.length!==1||originals?.length!==1)continue;
+   const element=items[0],original=originals[0];
+   if(element.id||original.id)continue; // IDs are handled above, without shape guessing.
+   pair(element,original);
+  }
+ };
+ pairUnique(current,baseline);
+ // Text-changing controls (for example a fill-in blank) retain their authored
+ // class identity. Use the whole unique class set, not a shared "panel" token.
+ const classKey=element=>{
+  const prefix=persistedClassPrefix(element);
+  const names=[...element.classList].map(name=>prefix&&name.startsWith(prefix)?name.slice(prefix.length):name).sort();
+  return names.length?JSON.stringify([element.tagName,names]):'';
+ };
+ const currentClasses=group(current,classKey),baselineClasses=group(baseline,classKey);
+ for(const [key,items] of currentClasses){
+  const originals=baselineClasses.get(key);
+  if(items.length===1&&originals?.length===1&&!items[0].id&&!originals[0].id)pair(items[0],originals[0]);
  }
- for(let i=0;i<baselines.length;i++){
-  if(used.has(i) || baselines[i].tagName!==tag) continue;
-  used.add(i); return baselines[i];
- }
- return null;
+ // Identical small controls in different, already identified panels can be paired
+ // inside their own parent, but not across panels or faces.
+ for(const [element,original] of matches)pairUnique([...element.children].filter(n=>currentKeys.has(n)),[...original.children].filter(n=>baselineKeys.has(n)));
+ return matches;
 }
 function restoreStateAttributesFromBaseline(current,baseline){
  if(!current || !baseline) return;
  const stateful=elementHasPersistedRuntimeState(current);
  if(stateful){
   for(const name of ['class','style','hidden']){
-   if(baseline.hasAttribute(name)) current.setAttribute(name,baseline.getAttribute(name));
+   if(baseline.hasAttribute(name)){
+    let value=baseline.getAttribute(name);
+    if(name==='class'){
+     const previousPrefix=persistedClassPrefix(baseline),currentPrefix=persistedClassPrefix(current);
+     // The mounted stylesheet owns its namespace. Restoring state must not attach
+     // class names from an older mount to a different, still-current stylesheet.
+     if(previousPrefix&&previousPrefix!==currentPrefix)value=value.split(/\s+/).map(token=>token.startsWith(previousPrefix)?currentPrefix+token.slice(previousPrefix.length):token).join(' ');
+    }
+    current.setAttribute(name,value);
+   }
    else current.removeAttribute(name);
   }
  }
@@ -5183,13 +5249,11 @@ function scrubIndependentInteractionState(html='',baselineHtml=''){
  const details=parseIndependentDetailsRaw(html);
  if(!details) return String(html||'').trim();
  const baseline=parseIndependentDetailsRaw(baselineHtml)||parseIndependentDetailsRaw(html);
- details.querySelectorAll('[data-rabbit-mirror-reference-note]').forEach(node=>node.remove());
- baseline?.querySelectorAll?.('[data-rabbit-mirror-reference-note]')?.forEach?.(node=>node.remove());
  // Diagnostic panels are runtime-only UI. Persisting them serializes their DOM but
  // not their addEventListener handlers, producing visible but dead buttons after a
  // maintenance save/remount. Never allow them into an independent mirror record.
- details.querySelectorAll('[data-rabbit-mirror-interaction-diagnostic]').forEach(node=>node.remove());
- baseline?.querySelectorAll?.('[data-rabbit-mirror-interaction-diagnostic]')?.forEach?.(node=>node.remove());
+ details.querySelectorAll(PERSISTED_RUNTIME_UI_SELECTOR).forEach(node=>node.remove());
+ baseline?.querySelectorAll?.(PERSISTED_RUNTIME_UI_SELECTOR)?.forEach?.(node=>node.remove());
  restoreEncodedInteractionBaselines(details);
  // 1.3.77: 手动维修触发持久化时，横向裁切急救的 runtime CSS/属性同样无条件剔除，
  // 不受维修标志保护，避免它被序列化进缓存。
@@ -5204,17 +5268,12 @@ function scrubIndependentInteractionState(html='',baselineHtml=''){
  const preserveMaintenance=details.getAttribute?.(MAINTENANCE_PERSISTED_LAYOUT_ATTR)==='true';
  const removableStyleAttrs=preserveMaintenance ? RUNTIME_STATE_STYLE_ATTRS : PERSISTED_STATE_STYLE_ATTRS;
  details.querySelectorAll(removableStyleAttrs.map(name=>`style[${name}]`).join(',')).forEach(node=>node.remove());
- const currentElements=persistedStateElements(details);
- const baselineElements=persistedStateElements(baseline);
- const used=new Set(); const cursorRef={value:0};
- for(const current of currentElements){
-  const original=baselineElementForCurrent(current,baselineElements,used,cursorRef);
-  if(original) restoreStateAttributesFromBaseline(current,original);
- }
+ const baselineMap=persistedStateBaselineMap(details,baseline);
+ for(const [current,original] of baselineMap)restoreStateAttributesFromBaseline(current,original);
  const currentInputs=[...details.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
- const baselineInputs=[...baseline.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
- currentInputs.forEach((input,index)=>{
-  const original=baselineInputs[index];
+ currentInputs.forEach(input=>{
+  const original=baselineMap.get(input);
+  if(!original)return;
   const checked=!!original?.hasAttribute?.('checked');
   input.checked=checked;
   input.defaultChecked=checked;
@@ -5223,17 +5282,19 @@ function scrubIndependentInteractionState(html='',baselineHtml=''){
   else input.removeAttribute('aria-pressed');
  });
  const currentOptions=[...details.querySelectorAll('option')];
- const baselineOptions=[...baseline.querySelectorAll('option')];
- currentOptions.forEach((option,index)=>{
-  const selected=!!baselineOptions[index]?.hasAttribute?.('selected');
+ currentOptions.forEach(option=>{
+  const original=baselineMap.get(option);
+  if(!original)return;
+  const selected=!!original.hasAttribute('selected');
   option.selected=selected;
   option.defaultSelected=selected;
   if(selected) option.setAttribute('selected',''); else option.removeAttribute('selected');
  });
  const currentDetails=[details,...details.querySelectorAll('details')];
- const baselineDetails=[baseline,...baseline.querySelectorAll('details')];
- currentDetails.forEach((item,index)=>{
-  const open=!!baselineDetails[index]?.hasAttribute?.('open');
+ currentDetails.forEach(item=>{
+  const original=baselineMap.get(item);
+  if(!original)return;
+  const open=!!original.hasAttribute('open');
   if(open) item.setAttribute('open',''); else item.removeAttribute('open');
  });
  for(const element of [details,...details.querySelectorAll('*')]){
@@ -8188,7 +8249,7 @@ function showIndependentHistory(root,owner={}){
 }
 function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('./followFaceRetry.js?rmv=1.5.28-guide1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('./followFaceRetry.js?rmv=1.5.29-state1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
