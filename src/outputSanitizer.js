@@ -1,8 +1,8 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.29-state1';
-import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.29-state1';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.29-state1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.29-state1';
-import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.29-state1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.30-layout1';
+import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.30-layout1';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.30-layout1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.30-layout1';
+import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.30-layout1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -12,14 +12,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.29-state1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.29-state1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.29-state1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.29-state1';
+} from './feedbackCat.js?rmv=1.5.30-layout1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.30-layout1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.30-layout1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.30-layout1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
 
 
-const RUNTIME_VERSION = '1.5.29';
+const RUNTIME_VERSION = '1.5.30';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -10546,7 +10546,75 @@ function installDecorativeOverlayPassThrough(root) {
     return patched;
 }
 
+let localPanelLayoutSequence = 0;
+const localPanelLayoutScopes = new WeakMap();
+
+function localPanelLayoutRule(root, element, kind, declarations) {
+    let scope = localPanelLayoutScopes.get(root);
+    if (!scope) {
+        scope = `rmlocal-${Date.now().toString(36)}-${++localPanelLayoutSequence}`;
+        localPanelLayoutScopes.set(root, scope);
+    }
+    const attr = `data-rm-local-${kind}`;
+    element.setAttribute(attr, scope);
+    let sheet = root.querySelector(`style[data-rabbit-mirror-local-panel-layout="${scope}"]`);
+    if (!sheet) {
+        sheet = root.ownerDocument.createElement('style');
+        sheet.setAttribute('data-rabbit-mirror-local-panel-layout', scope);
+        root.appendChild(sheet);
+    }
+    const rule = `[${attr}="${scope}"]{${declarations}}`;
+    if (!sheet.textContent.includes(rule)) sheet.textContent += rule;
+}
+
+// The untrusted-CSS guard intentionally rejects full-size absolute geometry.
+// A legitimate second screen can consequently become a static sibling *below*
+// the full-height first screen. Restore only a proven, clipped, face-local canvas;
+// never relax the generated CSS guard or restore fixed/viewport overlays.
+function restoreContainedCheckedPanels(root) {
+    if (!root?.isConnected || typeof getComputedStyle !== 'function') return 0;
+    const bounds = root.getBoundingClientRect();
+    let count = 0;
+    for (const input of [...root.querySelectorAll('input[type="checkbox"],input[type="radio"]')].slice(0, 32)) {
+        if (input.disabled) continue;
+        const labels = getAssociatedCheckableLabels(root, input);
+        for (const rule of parseCheckedRulesFromText(root, input)) {
+            if (rule.pseudoElement || !(rule.styleMap || []).some(([name,value]) => name === 'display' && value !== 'none')) continue;
+            for (const target of resolveTargetsForCheckedRule(root, input, rule)) {
+                const parent = target?.parentElement;
+                if (!parent || parent === root || !root.contains(parent) || target.contains(input)) continue;
+                // Both the existing opener and return route must belong to this control.
+                if (!labels.some(label => target.contains(label)) || !labels.some(label => !target.contains(label))) continue;
+                const style = getComputedStyle(target), hostStyle = getComputedStyle(parent), rect = parent.getBoundingClientRect();
+                if (style.position !== 'static' || hostStyle.position !== 'relative') continue;
+                if (!['hidden','clip','auto','scroll'].includes(hostStyle.overflowX) || !['hidden','clip','auto','scroll'].includes(hostStyle.overflowY)) continue;
+                if (rect.width < 120 || rect.height < 80 || rect.width > bounds.width + 2
+                    || rect.left < bounds.left - 2 || rect.right > bounds.right + 2
+                    || rect.top < bounds.top - 2 || rect.bottom > bounds.bottom + 2) continue;
+                if (style.top !== '0px' || style.left !== '0px') continue;
+                const fills = (value, expected) => value === '100%' || Math.abs(parseFloat(value) - expected) <= 2;
+                if (!fills(style.width, parent.clientWidth) || !fills(style.height, parent.clientHeight)) continue;
+                // A real preceding canvas establishes the broken stacked-screen pattern.
+                // Several alternate panels may follow the same canvas; a hidden
+                // earlier panel is not the canvas and must not block later controls.
+                let previous = target.previousElementSibling, canvas = null;
+                for (let depth = 0; previous && depth < 16; depth += 1, previous = previous.previousElementSibling) {
+                    const previousStyle = getComputedStyle(previous);
+                    if (previousStyle.display === 'none' || ['absolute','fixed'].includes(previousStyle.position)) continue;
+                    if (previous.getBoundingClientRect().height >= rect.height * .85) canvas = previous;
+                    break;
+                }
+                if (!canvas) continue;
+                localPanelLayoutRule(root, target, 'checked-panel', 'position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;box-sizing:border-box!important;overflow:auto!important;');
+                count += 1;
+            }
+        }
+    }
+    return count;
+}
+
 function installIntelligentInteractionRescue(root) {
+    restoreContainedCheckedPanels(root);
     // Generated HTML occasionally forgets to close one repeated card label before the next
     // card starts. Safari then treats later controls as descendants of the first label, and
     // class-local checked fallback can expand several branches at once. Repair this invalid
@@ -22598,6 +22666,29 @@ function normalizeRabbitMirrorToolButton(button) {
     return changed;
 }
 
+// A list-item/block summary may not establish a formatting context in a host
+// theme or older WebKit. Its floated tools then narrow the following overflow:auto
+// body. Contain our own float, rather than mistaking that right margin for authored
+// card width. Use an owned empty span so authored ::before/::after stay untouched.
+function containRabbitMirrorTitleToolFloat(summary) {
+    if (!summary?.isConnected || typeof getComputedStyle !== 'function') return;
+    const attr = 'data-rabbit-mirror-title-flow-end';
+    let end = summary.querySelector(`:scope > [${attr}]`);
+    const display = getComputedStyle(summary).display;
+    const flow = ['block','list-item','flow-root','flow-root list-item','inline','inline-block'].includes(display);
+    if (!flow && !end) return;
+    if (!end) {
+        end = summary.ownerDocument.createElement('span');
+        end.setAttribute(attr, 'true');
+        end.setAttribute('aria-hidden', 'true');
+    }
+    if (summary.lastElementChild !== end) summary.appendChild(end);
+    const styles = { display:flow?'block':'none', position:'static', float:'none', clear:'both', width:'0', height:'0',
+        'min-width':'0', 'max-width':'0', 'min-height':'0', 'max-height':'0', margin:'0', padding:'0',
+        border:'0', 'line-height':'0', 'font-size':'0', 'pointer-events':'none', visibility:'hidden' };
+    for (const [property,value] of Object.entries(styles)) setImportantStyle(end, property, value);
+}
+
 function ensureRabbitMirrorToolHost(summary) {
     if (!summary?.querySelectorAll) return null;
     ensureFeedbackCatRuntimeStyle();
@@ -22609,6 +22700,7 @@ function ensureRabbitMirrorToolHost(summary) {
         summary.appendChild(host);
     }
     normalizeRabbitMirrorToolHost(host);
+    containRabbitMirrorTitleToolFloat(summary);
     return host;
 }
 
