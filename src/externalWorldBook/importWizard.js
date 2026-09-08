@@ -1,7 +1,7 @@
-import { readLocalWorldBookFile } from './fileReader.js?rmv=1.5.30-layout1';
-import { getSettings, updateSettings } from '../settings.js?rmv=1.5.30-layout1';
-import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.30-layout1';
-import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.30-layout1';
+import { readLocalWorldBookFile } from './fileReader.js?rmv=1.5.31-compat1';
+import { getSettings, updateSettings } from '../settings.js?rmv=1.5.31-compat1';
+import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.31-compat1';
+import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.31-compat1';
 import {
     EXTERNAL_WORLD_BOOK_SELECTION_MODE,
     createEmptySelection,
@@ -9,14 +9,14 @@ import {
     createWholeBookSelection,
     entryIdentity,
     toggleEntrySelection,
-} from './selectionState.js?rmv=1.5.30-layout1';
+} from './selectionState.js?rmv=1.5.31-compat1';
 import {
     EXTERNAL_WORLD_BOOK_CLASSIFICATION,
     applyExternalWorldBookBulkClassification,
     createExternalWorldBookClassificationDraft,
     externalWorldBookClassificationCounts,
     updateExternalWorldBookDraftItem,
-} from './classifier.js?rmv=1.5.30-layout1';
+} from './classifier.js?rmv=1.5.31-compat1';
 import {
     deleteExternalLibrary,
     listExternalLibraries,
@@ -26,7 +26,7 @@ import {
     hydrateExternalPoolMetadata,
     getExternalPoolHydrationStatus,
     rebuildExternalPoolMetadata,
-} from './store.js?rmv=1.5.30-layout1';
+} from './store.js?rmv=1.5.31-compat1';
 
 const MODAL_ID = 'rh_external_worldbook_import_modal';
 const PAGE_SIZE = 50;

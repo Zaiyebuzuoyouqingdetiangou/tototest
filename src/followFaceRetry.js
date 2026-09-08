@@ -1,14 +1,14 @@
-import { getSettings } from './settings.js?rmv=1.5.30-layout1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.30-layout1';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.30-layout1';
-import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.5.30-layout1';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.30-layout1';
-import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.5.30-layout1';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.30-layout1';
-import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.5.30-layout1';
-import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.30-layout1';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.5.30-layout1';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.5.30-layout1';
+import { getSettings } from './settings.js?rmv=1.5.31-compat1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.31-compat1';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.31-compat1';
+import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.5.31-compat1';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.31-compat1';
+import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.5.31-compat1';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.31-compat1';
+import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.5.31-compat1';
+import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.31-compat1';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.5.31-compat1';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.5.31-compat1';
 
 const active = new WeakSet();
 const fail = message => { const error=new Error(message);error.rabbitMirrorFollowRetry=true;throw error; };

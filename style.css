@@ -1175,10 +1175,10 @@ html[data-rabbit-mirror-external-sampling-enabled="false"] [data-rabbit-mirror-r
   background:none !important; box-shadow:none !important; pointer-events:none !important;
   animation:none !important; transition:none !important;
 }
-/* The last message's theme spacer belongs below its external mirror, not between
-   the reply and mirror. Composer clearance below the batch still protects input. */
+/* Compact the last message's large spacer, but reserve the measured part of its
+   footer/swipe controls that really extends outside. No theme artwork is copied. */
 #chat > .mes.last_mes:has(+ .rabbit-mirror-external-host[data-rm-source="independent"][data-rm-placement="external"]:not([hidden])) {
-  margin-bottom:0 !important;
+  margin-bottom:var(--rm-external-footer-clearance,0px) !important;
 }
 .rabbit-mirror-help-update-row { display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px; margin:8px 0; }
 .rabbit-mirror-quick-start { flex:1 1 180px; min-width:0; }

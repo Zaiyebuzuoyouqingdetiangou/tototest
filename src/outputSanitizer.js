@@ -1,8 +1,8 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.30-layout1';
-import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.30-layout1';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.30-layout1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.30-layout1';
-import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.30-layout1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.31-compat1';
+import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.31-compat1';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.31-compat1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.31-compat1';
+import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.31-compat1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -12,14 +12,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.30-layout1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.30-layout1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.30-layout1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.30-layout1';
+} from './feedbackCat.js?rmv=1.5.31-compat1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.31-compat1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.31-compat1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.31-compat1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
 
 
-const RUNTIME_VERSION = '1.5.30';
+const RUNTIME_VERSION = '1.5.31';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -17653,6 +17653,7 @@ export function sanitizeRabbitMirrorUntrustedTemplate(template) {
     // Fail closed before any broad selector walk. This prevents model-produced tag,
     // attribute, CSS-rule and deep-nesting bombs from turning sanitization into a long task.
     if (!validateRabbitMirrorTemplateStructuralBudget(template)) return false;
+    if (restoreStandaloneKeyframesInTemplate(template) && !validateRabbitMirrorTemplateStructuralBudget(template)) return false;
     clearMirrorTitleDisplayArtifacts(template.content);
 
     template.content.querySelectorAll(RABBIT_MIRROR_BLOCKED_RENDER_SELECTOR).forEach(node => node.remove());
@@ -24932,8 +24933,76 @@ function rewriteRabbitMirrorClassAttributes(htmlText, classMap) {
     });
 }
 
+// Some responses/host Markdown passes leave a complete keyframes rule as text
+// with <br> separators. Recover only a whole standalone run, never prose, code
+// examples, incomplete rules or general selectors. The normal sanitizer and
+// per-mirror animation-name scoping still own the resulting stylesheet.
+function completeStandaloneKeyframes(source) {
+    if (!source || source.length > 8192) return false;
+    let rest = source.trim(), rules = 0, frames = 0;
+    while (rest && rules++ < 16) {
+        const head = /^@(?:-webkit-)?keyframes\s+[a-zA-Z_][\w-]*\s*\{\s*/.exec(rest);
+        if (!head) return false;
+        rest = rest.slice(head[0].length);
+        let count = 0;
+        while (rest && rest[0] !== '}' && frames++ < 64) {
+            const frame = /^(?:from|to|\d+(?:\.\d+)?%)(?:\s*,\s*(?:from|to|\d+(?:\.\d+)?%))*\s*\{[^{}<>]*\}\s*/.exec(rest);
+            if (!frame) return false;
+            rest = rest.slice(frame[0].length); count++;
+        }
+        if (!count || rest[0] !== '}') return false;
+        rest = rest.slice(1).trim();
+    }
+    return !rest && rules > 0;
+}
+
+function restoreStandaloneKeyframesInTemplate(template) {
+    const content = template?.content;
+    if (!content || typeof document === 'undefined' || typeof document.createTreeWalker !== 'function'
+        || !/@(?:-webkit-)?keyframes\b/.test(content.textContent || '')) return false;
+    const walker = document.createTreeWalker(content, 4); // text nodes only
+    const starts = [];
+    while (walker.nextNode()) {
+        const node = walker.currentNode;
+        if (!/^\s*@(?:-webkit-)?keyframes\b/.test(node.nodeValue || '')
+            || !node.parentElement?.closest('toto, details')
+            || node.parentElement.closest('pre, code, textarea, script, style, svg, math, summary')) continue;
+        let previous = node.previousSibling, precedingText = false;
+        while (previous && (previous.nodeType === 3 || previous.nodeName === 'BR')) {
+            if (previous.nodeType === 3 && previous.nodeValue.trim()) { precedingText = true; break; }
+            previous = previous.previousSibling;
+        }
+        if (precedingText) continue;
+        starts.push(node);
+    }
+    let changed = false;
+    for (const start of starts) {
+        if (!content.contains(start)) continue;
+        const nodes = []; let text = '';
+        for (let node = start; node && (node.nodeType === 3 || node.nodeName === 'BR'); node = node.nextSibling) {
+            nodes.push(node); text += node.nodeType === 3 ? node.nodeValue : '\n';
+            if (text.length > 8192) break;
+        }
+        if (!completeStandaloneKeyframes(text)) continue;
+        const css = sanitizeGeneratedStyleSheet(text);
+        if (!css.trim()) continue;
+        const style = document.createElement('style'); style.textContent = css;
+        start.before(style); for (const node of nodes) node.remove(); changed = true;
+    }
+    return changed;
+}
+
+function restoreStandaloneKeyframesInHtml(html) {
+    if (typeof document === 'undefined' || !/(?:^|>)\s*@(?:-webkit-)?keyframes\b/.test(
+        html.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ''))) return html;
+    const template = document.createElement('template'); template.innerHTML = html;
+    if (!validateRabbitMirrorTemplateStructuralBudget(template) || !restoreStandaloneKeyframesInTemplate(template)
+        || !validateRabbitMirrorTemplateStructuralBudget(template)) return html;
+    return template.innerHTML;
+}
+
 export function compactTotoBlock(block) {
-    const preparedScope = prepareRabbitMirrorCssScope(repairMalformedRabbitMirrorMarkup(normalizeMirrorAttribute(stripCodeBlockTriggers(block))));
+    const preparedScope = prepareRabbitMirrorCssScope(restoreStandaloneKeyframesInHtml(repairMalformedRabbitMirrorMarkup(normalizeMirrorAttribute(stripCodeBlockTriggers(block)))));
     let html = preparedScope.html;
     const rawStyleTexts = [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)]
         .map(match => stripCssComments(String(match[1] || '').replace(/<br\s*\/?>/gi, '')));

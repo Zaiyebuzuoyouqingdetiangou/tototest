@@ -1,6 +1,6 @@
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.5.30-layout1';
-import { EXTERNAL_WORLD_BOOK_MAX_FILE_BYTES } from './schema.js?rmv=1.5.30-layout1';
-import { normalizeFileWorldBook } from './normalize.js?rmv=1.5.30-layout1';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.5.31-compat1';
+import { EXTERNAL_WORLD_BOOK_MAX_FILE_BYTES } from './schema.js?rmv=1.5.31-compat1';
+import { normalizeFileWorldBook } from './normalize.js?rmv=1.5.31-compat1';
 
 async function readFileText(file) {
     if (typeof file?.text === 'function') return file.text();

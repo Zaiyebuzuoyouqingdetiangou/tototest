@@ -877,7 +877,80 @@ export function findPendingComboBatchPlan(identity) {
     return record ? cloneSerializable(record.plan) : null;
 }
 
-function writeOwnedTransaction(changes = [], options = {}) {
+// Quota recovery has a fixed allowlist, not a prefix scan. These slots contain
+// temporary draw reservations/accounting, never rendered or repaired results.
+function expiredTransactionTime(at, now) {
+    return Number.isFinite(at) && at > 0 && now - at > PENDING_MAX_AGE_MS;
+}
+
+function compactExpiredTransactionRaw(key, raw, now) {
+    if (raw === null || raw.length > ACTIVE_BATCH_REGISTRY_MAX_CHARS) return raw;
+    try {
+        const data = JSON.parse(raw);
+        let next = data;
+        if (key === PENDING_KEY) {
+            if (validBatchCombo(data) && typeof data.pendingSession === 'string' && data.pendingSession
+                && data.signature === signatureOf(data) && expiredTransactionTime(data.pendingTs, now)) return null;
+        } else if (key === PENDING_BATCH_KEY) {
+            if (data && typeof data.batchId === 'string' && data.batchId && typeof data.pendingSession === 'string' && data.pendingSession
+                && expiredTransactionTime(data.pendingTs, now) && (data.identity == null || normalizeBatchIdentity(data.identity))
+                && Array.isArray(data.faces) && data.faces.length >= 2 && data.faces.length <= 5
+                && data.faces.every((face, index) => validBatchCombo(face) && face.batchId === data.batchId
+                    && face.faceIndex === index && face.signature === signatureOf(face)
+                    && (face.committed === undefined || typeof face.committed === 'boolean'))) return null;
+        } else if (key === ACTIVE_BATCH_REGISTRY_KEY) {
+            if (!Array.isArray(data) || data.length > ACTIVE_BATCH_REGISTRY_MAX || data.some(row => !normalizeActiveBatchRecord(row))) return raw;
+            // Keep original surviving objects, including fields owned by other tabs.
+            next = data.filter(row => !expiredTransactionTime(row.createdAt, now));
+        } else if (key === ATTEMPT_STORAGE_KEY) {
+            if (!data || typeof data !== 'object' || Array.isArray(data)) return raw;
+            next = { ...data };
+            for (const [bucket, rows] of Object.entries(data)) {
+                if (!Array.isArray(rows)) continue;
+                const kept = rows.filter(row => !(row && typeof row.attemptId === 'string' && row.attemptId
+                    && validBatchCombo(row) && expiredTransactionTime(row.ts, now)));
+                if (kept.length === rows.length) continue;
+                if (kept.length) next[bucket] = kept;
+                else delete next[bucket];
+            }
+        } else return raw;
+        const result = JSON.stringify(next);
+        return result.length < raw.length ? result : raw;
+    } catch { return raw; } // Unknown/corrupt schemas are not permission to delete.
+}
+
+function reclaimExpiredTransactionsForQuota(changes) {
+    const now = Date.now();
+    const rebased = changes.map(change => ({ ...change }));
+    try {
+        // A failed/foreign rollback must never authorize cleanup or overwrite.
+        if (rebased.some(change => localStorage.getItem(change.key) !== change.before)) return null;
+        for (const key of [PENDING_KEY, PENDING_BATCH_KEY, ACTIVE_BATCH_REGISTRY_KEY, ATTEMPT_STORAGE_KEY]) {
+            const before = localStorage.getItem(key);
+            const after = compactExpiredTransactionRaw(key, before, now);
+            if (after === before) continue;
+            const change = rebased.find(item => item.key === key);
+            if ((change && change.before !== before) || localStorage.getItem(key) !== before) return null;
+            try {
+                if (after === null) localStorage.removeItem(key);
+                else localStorage.setItem(key, after);
+            } catch (error) {
+                // Shrinking writes can also be refused. Only an unchanged slot is
+                // safe to skip; do not attempt to repair arbitrary foreign data.
+                if (!isStorageQuotaError(error) || localStorage.getItem(key) !== before) return null;
+                continue;
+            }
+            if (localStorage.getItem(key) !== after) return null;
+            if (change) {
+                change.before = after;
+                change.after = compactExpiredTransactionRaw(key, change.after, now);
+            }
+        }
+        return rebased;
+    } catch { return null; }
+}
+
+function writeOwnedTransaction(changes = [], options = {}, allowQuotaRecovery = false) {
     const completed = [];
     let rejection = 'BATCH_STORAGE_WRITE_FAILED';
     try {
@@ -899,6 +972,11 @@ function writeOwnedTransaction(changes = [], options = {}) {
             try {
                 restoreOwnedStorageWrite(change.key, change.after, change.before);
             } catch { /* Fail closed; caller receives false and never dispatches/commits. */ }
+        }
+        if (allowQuotaRecovery && isStorageQuotaError(error)) {
+            const retry = reclaimExpiredTransactionsForQuota(changes);
+            // Same plan and payload, one local retry only. No picker/provider call.
+            if (retry) return writeOwnedTransaction(retry, options, false);
         }
         reportBatchRejection(options, isStorageQuotaError(error) ? 'BATCH_STORAGE_QUOTA_EXCEEDED' : rejection);
         return false;
@@ -963,7 +1041,7 @@ export function markPendingBatchAttempt(planInput = null, options = {}) {
     // reclaim only records older than the established 12-hour pending TTL. This
     // avoids both permanent capacity loss after crashes and cross-tab eviction of
     // a live paid request; cleanup happens only inside this explicit dispatch CAS.
-    const liveRecords = registry.records.filter(record => activeBatchRecordIsFresh(record, now));
+    const liveRecords = registry.records.filter(record => !expiredTransactionTime(record.createdAt, now));
     const existing = liveRecords.find(record => record.plan.batchId === plan.batchId);
     if (existing) return JSON.stringify(existing.plan) === JSON.stringify(plan) || reject('BATCH_ID_CONFLICT');
     if (liveRecords.length >= ACTIVE_BATCH_REGISTRY_MAX) return reject('BATCH_REGISTRY_CAPACITY');
@@ -989,7 +1067,7 @@ export function markPendingBatchAttempt(planInput = null, options = {}) {
     const changes = [{ key: ACTIVE_BATCH_REGISTRY_KEY, before: registry.raw, after: registryAfter }];
     if (pityAfter !== (pityBefore || '{}')) changes.push({ key: FORMAT_ELIGIBLE_MISS_STORAGE_KEY, before: pityBefore, after: pityAfter });
     if (attemptAfter !== (attemptBefore || '{}')) changes.push({ key: ATTEMPT_STORAGE_KEY, before: attemptBefore, after: attemptAfter });
-    return writeOwnedTransaction(changes, options);
+    return writeOwnedTransaction(changes, options, true);
 }
 
 function normalizeFaceScan(value, faceIndex) {
