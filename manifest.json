@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5.31-compat1",
-  "css": "style.css?rmv=1.5.31",
+  "js": "index.js?rmv=1.5.32-return1",
+  "css": "style.css?rmv=1.5.32",
   "author": "Toto",
-  "version": "1.5.31",
+  "version": "1.5.32",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场 1.5.31｜基于 1.5.29，修正标题工具挤窄正文与特定局部交互面板被裁切。不改美化提示或抽取规则；跨设备同步未补齐，真实手机效果与发热仍待验收。"
+  "description": "兔子镜小剧场 1.5.32｜基于 1.5.31，仅合并交互返回规则：可重复交互能自然切回，不要求每个状态另造返回入口。保留既有视觉与兼容修复；实际提速、手机表现和双向同步未验收。"
 }
