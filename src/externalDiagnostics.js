@@ -1,4 +1,6 @@
-const DIAG_VERSION = '1.5.36-externaldiag-transport1';
+import { sanitizeExternalTransportSummary as sanitizeTransportSummary, getRecentIndependentTransportDiagnostics, clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.37-update1';
+
+const DIAG_VERSION = '1.5.37-externaldiag-transport1';
 const MAX_ENTRIES = 1800;
 const STALL_INTERVAL_MS = 1000;
 const STALL_THRESHOLD_MS = 250;
@@ -35,25 +37,7 @@ let transportRows = [];
 // event at this boundary; arbitrary detail fields and provider strings must
 // never enter external reports, even through a forged public event.
 export function sanitizeExternalTransportSummary(value) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    const integer = value => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
-    const tri = value => typeof value === 'boolean' ? value : null;
-    const status = integer(value.status);
-    const mime = String(value.contentType || '').split(';', 1)[0].trim().toLowerCase();
-    const finish = String(value.finishReason || 'unknown');
-    const format = String(value.parserFormat || 'unknown');
-    const termination = String(value.termination || 'unknown');
-    return {
-        status: status >= 100 && status <= 599 ? status : null,
-        contentType: /^(?:text\/(?:event-stream|plain|html)|application\/(?:json|x-ndjson|ndjson|octet-stream|problem\+json))$/.test(mime) ? mime : (mime ? 'other' : null),
-        parserFormat: /^(?:sse|ndjson|json|text|host-adapter|unknown)$/.test(format) ? format : 'unknown',
-        receivedBytes: integer(value.receivedBytes), receivedBytesExact: value.receivedBytesExact === true,
-        contentChars: integer(value.contentChars),
-        finishReason: /^(?:stop|length|max_tokens|max_output_tokens|end_turn|stop_sequence|tool_calls|function_call|content_filter|safety|recitation|other|unknown)$/.test(finish) ? finish : 'other',
-        terminalObserved: tri(value.terminalObserved), readerReachedEof: tri(value.readerReachedEof),
-        termination: /^(?:protocol-done|provider-finish|json-complete|eof-unconfirmed|local-abort|response-limit|stream-error|host-complete|fetch-error|not-dispatched)$/.test(termination) ? termination : 'unknown',
-        endedNormally: tri(value.endedNormally), prematureClose: tri(value.prematureClose),
-    };
+    return sanitizeTransportSummary(value);
 }
 
 function installTransportMetadataListener() {
@@ -62,7 +46,7 @@ function installTransportMetadataListener() {
         if (!initialized) return;
         const summary = sanitizeExternalTransportSummary(event?.detail?.transport);
         if (!summary) return;
-        const stamp = Number(event?.detail?.ts);
+        const stamp = Number(event?.detail?.transportRequestStamp ?? event?.detail?.ts);
         const ts = Number.isFinite(stamp) && stamp > 0 ? stamp : Date.now();
         // Internal postprocessing republishes the same request timestamp. Update
         // its summary rather than pretend it was a new paid request.
@@ -673,11 +657,12 @@ function report() {
     lines.push('');
     lines.push('【独立 API 响应传输（仅元数据）】');
     const yesNo = value => value === true ? '是' : value === false ? '否' : '未确认';
-    if (!transportRows.length) lines.push('开启本诊断后尚未收到独立 API 传输记录；不会为诊断额外发送请求。');
+    if (!transportRows.length) lines.push('本页面会话尚无独立 API 传输记录，或已手动清空；不会为诊断额外发送请求。');
+    else lines.push('包含本页面会话最近最多 12 次请求的标量记录（可以在失败后再打开诊断；刷新页面不保留）。');
     for (const row of transportRows) {
         const item = sanitizeExternalTransportSummary(row.summary);
         if (!item) continue;
-        lines.push(`- HTTP=${item.status ?? '不可用'}; Content-Type=${item.contentType ?? '不可用'}; 实际解析=${item.parserFormat}; 应用接收字节=${item.receivedBytes ?? '不可用'}${item.receivedBytes == null ? '' : item.receivedBytesExact ? '（精确）' : '（估算）'}; 最终 content 字符=${item.contentChars ?? '不可用'}; finish_reason=${item.finishReason}; 正常结束=${yesNo(item.endedNormally)}; 提前断流=${yesNo(item.prematureClose)}; 结束方式=${item.termination}`);
+        lines.push(`- HTTP=${item.status ?? '不可用'}; Content-Type=${item.contentType ?? '不可用'}; 实际解析=${item.parserFormat}; 应用接收字节=${item.receivedBytes ?? '不可用'}${item.receivedBytes == null ? '' : item.receivedBytesExact ? '（精确）' : '（估算）'}; 最终 content 字符=${item.contentChars ?? '不可用'}; finish_reason=${item.finishReason}; 正常结束=${yesNo(item.endedNormally)}; 提前断流=${yesNo(item.prematureClose)}; 结束方式=${item.termination}; 失败类别=${item.failureCategory}`);
     }
     lines.push('字节数指应用收到的解压后响应体，不是压缩网络流量。宿主适配器未公开的 HTTP/格式/字节数据标为不可用；仅 EOF 且无结束标记不能断言提前断流。');
 
@@ -709,7 +694,10 @@ function status() {
 }
 function reset(reason = 'manual') {
     entries = [];
-    transportRows = [];
+    // Starting the performance recorder after an error must not throw away its
+    // already captured transport receipt. Only explicit clear resets the ring.
+    if (reason !== 'user-start') clearRecentIndependentTransportDiagnostics();
+    transportRows = getRecentIndependentTransportDiagnostics();
     sequence = 0;
     startedAt = now();
     activeSend = null;
@@ -732,7 +720,7 @@ export function initRabbitMirrorExternalDiagnostics() {
     initialized = true;
     startedAt = now();
     entries = [];
-    transportRows = [];
+    transportRows = getRecentIndependentTransportDiagnostics();
     cleanup = [];
     maintenanceWindows = [];
     const api = {

@@ -1,7 +1,7 @@
-import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
+import { INDEPENDENT_BEHAVIOR_EDITOR_DEFAULT } from '../data/independentBehaviorPatch.js?rmv=1.5.37-update1';
 
 export const BEHAVIOR_RULE_MAX_CHARS = 5000;
-export const DEFAULT_BEHAVIOR_RULE_TEXT = String(INDEPENDENT_BEHAVIOR_PATCH || '').trim();
+export const DEFAULT_BEHAVIOR_RULE_TEXT = String(INDEPENDENT_BEHAVIOR_EDITOR_DEFAULT || '').trim();
 
 export function normalizeBehaviorRuleMode(value) {
     return ['always', 'off', 'adult-only'].includes(value) ? value : 'always';

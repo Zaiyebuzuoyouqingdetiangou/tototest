@@ -1,25 +1,26 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.36-update1';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, getRabbitMirrorExternalPlacementParent, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.36-update1';
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.36-update1';
-import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.36-update1';
-import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.36-update1';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.36-update1';
-import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.36-update1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.36-update1';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.36-update1';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.36-update1';
-import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.36-update1';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.36-update1';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.36-update1';
-import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.36-update1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.36-update1';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.36-update1';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.36-update1';
-import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.36-update1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.36-update1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.36-update1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.37-update1';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, getRabbitMirrorExternalPlacementParent, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.37-update1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.37-update1';
+import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.37-update1';
+import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.37-update1';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.37-update1';
+import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.37-update1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.37-update1';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.37-update1';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.37-update1';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.37-update1';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.37-update1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.37-update1';
+import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.37-update1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.37-update1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.37-update1';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.37-update1';
+import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.37-update1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.37-update1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.37-update1';
+import { rememberIndependentTransportDiagnostic } from './transportDiagnostics.js?rmv=1.5.37-update1';
 
-const RUNTIME_VERSION = '1.5.36';
+const RUNTIME_VERSION = '1.5.37';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -783,6 +784,9 @@ function readLastIndependentApiRequestDiagnostic(){
 }
 function publishIndependentApiRequestDiagnostic(value){
  const diagnostic={...value,runtime:RUNTIME_VERSION,ts:Number(value?.ts||Date.now())};
+ if(diagnostic.transport){
+  diagnostic.transportRequestStamp=rememberIndependentTransportDiagnostic(diagnostic);
+ }
  try{ localStorage.setItem(API_REQUEST_DIAGNOSTIC_STORE_KEY,JSON.stringify(diagnostic)); }catch{}
  try{ globalThis.dispatchEvent?.(new CustomEvent(API_REQUEST_DIAGNOSTIC_EVENT,{detail:diagnostic})); }catch{}
  return diagnostic;
@@ -2901,6 +2905,25 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
  const profileId=normalizeIndependentConnectionText(runtime?.id,160);
  if(!profileId || typeof service?.sendRequest!=='function') throw independentConnectionProfilePreflightError('当前 SillyTavern 无法按兔子镜选定的 Connection Profile 发送请求；这不影响手动 OpenAI 兼容独立 API。若要使用 Connection Profile，请升级到 SillyTavern 1.18.0 或更高版本。','request-service-unavailable');
  const rawBody=profile?.body && typeof profile.body==='object' ? profile.body : {};
+ // The host falls back to its currently active secret when a Profile omits
+ // secret-id. During early overlap this can silently use the main connection's
+ // key for a different Profile. Check only saved identity metadata, never keys.
+ const activeProfileId=normalizeIndependentConnectionText(runtime?.ctx?.extensionSettings?.connectionManager?.selectedProfile,160);
+ const savedSecretId=normalizeIndependentConnectionText(runtime?.profile?.['secret-id'],240);
+ const proxyName=normalizeIndependentConnectionText(runtime?.profile?.proxy,240);
+ if(options.earlyBodyOwner && activeProfileId && activeProfileId!==profileId && !savedSecretId){
+  // A stale proxy name is not a credential boundary. Match the host's saved
+  // preset by name and URL only; do not inspect/copy its password or active key.
+  // CUSTOM / OpenRouter and other sources ignore this proxy credential field.
+  // Only the verified host routes that actually use proxy_password qualify.
+  const proxySource=['openai','claude','makersuite','mistralai','deepseek','xai','moonshot','zai'].includes(String(runtime?.apiMap?.source||''));
+  const proxyCandidate=proxySource&&!!proxyName&&!/^(?:none|<none>)$/i.test(proxyName);
+  const ownProxy=proxyCandidate&&(await independentConnectionProxyPresets()).some(item=>{
+   if(String(item?.name||'')!==proxyName)return false;
+   try{return /^https?:$/.test(new URL(normalizeIndependentConnectionText(item?.url,2000)).protocol);}catch{return false;}
+  });
+  if(!ownProxy) throw independentConnectionProfilePreflightError('提前生成未发送：兔子镜所选 Profile 与当前正文连接不同，且没有保存独立 Secret 引用或有效代理。宿主会回退到当前正文的密钥，无法确认凭据归属。请先在 Connection Manager 为兔子镜 Profile 绑定并保存自己的 Secret，再切回正文连接；兔子镜不会读取或复制密钥。','profile-secret-unbound');
+ }
  const body=authorizeRabbitMirrorIndependentServiceRequest(rawBody,options.dispatchLease);
  const messages=Array.isArray(body?.messages)?body.messages:[];
  if(!messages.length) throw new Error('兔子镜独立 API 请求缺少有效的 system/user 消息。');
@@ -3139,6 +3162,7 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
    finishReason:/^(?:stop|length|max_tokens|max_output_tokens|end_turn|stop_sequence|tool_calls|function_call|content_filter|safety|recitation|other|unknown)$/.test(reason)?reason:'other',
    terminalObserved:tri(input.terminalObserved),readerReachedEof:tri(input.readerReachedEof),
    termination:/^(?:protocol-done|provider-finish|json-complete|eof-unconfirmed|local-abort|response-limit|stream-error|host-complete|fetch-error|not-dispatched)$/.test(String(input.termination||''))?input.termination:(fallback.termination||'fetch-error'),
+   failureCategory:/^(?:none|unknown|authentication|rate-limit|concurrency|network|response-boundary|local-preflight)$/.test(String(input.failureCategory||fallback.failureCategory||''))?(input.failureCategory||fallback.failureCategory):'none',
    endedNormally:tri(input.endedNormally),prematureClose:tri(input.prematureClose)};
  };
  const transportFailure=(error,kind='transport')=>{
@@ -3146,12 +3170,17 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
   // bounded cause chain so an inner 401/403 is not mistaken for a stream
   // compatibility issue, while keeping the user-visible detail to the safe
   // outer message (provider errors can echo credential fragments).
-  const evidence=[]; const seenErrors=new Set(); let cursor=error;
+  const evidence=[]; const seenErrors=new Set(); let cursor=error; let reportedHttpStatus=null;
   for(let depth=0;cursor && depth<4 && !seenErrors.has(cursor);depth+=1){
    seenErrors.add(cursor);
    for(const value of [cursor?.name,cursor?.message,cursor?.code,cursor?.status,cursor?.statusCode,cursor?.statusText]){
-    const part=String(value??'').trim(); if(part) evidence.push(part);
+    const part=String(value??'').trim().slice(0,2000); if(part) evidence.push(part);
    }
+   for(const status of [cursor?.status,cursor?.statusCode]){
+    const code=Number(status);if(Number.isInteger(code)&&code>=400&&code<=599)reportedHttpStatus=code;
+   }
+   const hostStatus=String(cursor?.message||'').match(/\b(?:Got response status|HTTP(?:\s+status)?(?:\s+code)?)\s*[:=]?\s*([45]\d\d)\b/i);
+   if(hostStatus&&!reportedHttpStatus)reportedHttpStatus=Number(hostStatus[1]);
    cursor=cursor?.cause;
   }
  const classification=evidence.join(' · ');
@@ -3172,30 +3201,39 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
    .replace(/\b(?:sk-[A-Za-z0-9_-]{10,}|AIza[A-Za-z0-9_-]{16,})\b/g,'[已隐藏凭据]')
    .slice(0,280);
   const detail=connectionInterrupted?'连接在响应完成前中断（未收到完整响应）':rawDetail;
-  const profileAuthFailure=!!connectionId && /(?:\b401\b|\b403\b|unauthori[sz]ed|forbidden|access[ _-]?token|api[ _-]?key|secret)/i.test(classification);
+  // Merely mentioning "secret" / "API key" is not authentication evidence.
+  const profileAuthFailure=!!connectionId && ([401,403].includes(reportedHttpStatus)||/(?:\bunauthori[sz]ed\b|\bforbidden\b|\b(?:invalid|missing|incorrect|expired|revoked)[ _-]+(?:api[ _-]?key|access[ _-]?token|secret)\b|\b(?:api[ _-]?key|access[ _-]?token|secret)\b[^\n\r]{0,32}\b(?:invalid|missing|incorrect|expired|revoked|not\s+(?:set|found))\b)/i.test(classification));
+  const rateLimited=reportedHttpStatus===429||/\brate[_ -]?limit(?:ed|ing)?\b|too many requests/i.test(classification);
+  const concurrencyFailure=/\b(?:concurrent|concurrency|parallel)\b[^\n\r]{0,60}\b(?:limit|exceeded|not allowed|not supported)\b|already (?:generating|processing a request)|generation (?:already )?in progress/i.test(classification);
   const responseBoundaryFailure=/RABBIT_MIRROR_RESPONSE_TOO_(?:LARGE|COMPLEX)/.test(classification);
   // Never retry automatically: the upstream may already have started billing.
   // A streamed transport failure only stages an exact same-parameter non-stream
   // profile for the player's explicit retry.
-  const next=!localPreflight && profileUsesStreaming(profile.name) && !profileAuthFailure && !responseBoundaryFailure
+  const next=!localPreflight && profileUsesStreaming(profile.name) && !profileAuthFailure && !rateLimited && !concurrencyFailure && !responseBoundaryFailure
    ? stageCompatibility(`${kind}-stream-failure`,true)
    : '';
   const failureKind=localPreflight?'local-preflight':(responseBoundaryFailure?'response-boundary':kind);
   attempts.push({profile:profile.name,status:0,detail,kind:failureKind});
+  const failureCategory=localPreflight?'local-preflight':responseBoundaryFailure?'response-boundary':profileAuthFailure?'authentication':rateLimited?'rate-limit':concurrencyFailure?'concurrency':connectionInterrupted?'network':'unknown';
+  const failureTransport=transportSummary(error?.partialResult?.transport,{status:r?.status??reportedHttpStatus,contentType:connectionId?null:r?.headers?.get?.('content-type'),termination:localPreflight?'not-dispatched':(r?'stream-error':'fetch-error'),failureCategory});
+  if(failureTransport.status===null&&!localPreflight&&reportedHttpStatus)failureTransport.status=reportedHttpStatus;
+  failureTransport.failureCategory=failureCategory;
   const requestDiagnostic=publishIndependentApiRequestDiagnostic({
-   ok:false,status:connectionId?null:Number(r?.status||0),model:String(st.independentApiModel||''),baseUrl:independentDiagnosticBase(st),
+   ok:false,status:failureTransport.status,model:String(st.independentApiModel||''),baseUrl:independentDiagnosticBase(st),
    configuredTemperature:normalizedConfiguredTemperature(st),profile:profile.name,temperatureSent:Object.prototype.hasOwnProperty.call(profile.body||{},'temperature'),
    systemMessageSent:profileUsesSystemMessage(profile.name),streamSent:profile.body?.stream!==false,tokenField:profileTokenField(profile.name),
    rememberedProfile,stagedProfile,attempts:[{profile:profile.name,status:0,kind:failureKind}],requestCount:localPreflight?0:1,automaticProfileFallback:false,automaticRetry:false,
    semanticFailure:failureKind,transportCause:localPreflight?'local-preflight':(responseBoundaryFailure?'response-boundary':(connectionInterrupted?'connection-interrupted':'transport-failure')),nextProfile:next,...diagnosticContext,
-   transport:transportSummary(error?.partialResult?.transport,{status:connectionId?null:r?.status,contentType:connectionId?null:r?.headers?.get?.('content-type'),termination:localPreflight?'not-dispatched':(r?'stream-error':'fetch-error')}),
+   transport:failureTransport,
   });
   const retryHint=next
    ? `；本轮只发送了 1 次生成请求，不会自动重发。点击“重新生成兔子镜”时可做一次诊断性尝试：只把 stream 改为 false，尝试：${next}`
    : '；本轮只发送了 1 次生成请求，不会自动重发，请手动重试。';
   const profileHint=profileAuthFailure
-   ? '；请在 Connection Manager 中激活并重新保存兔子镜所选 Profile，确认它绑定了自己的 Secret，再切回正文连接。兔子镜不会读取或复制密钥'
-   : '';
+   ? '；宿主报告认证／访问被拒绝，请检查所选 Profile 的凭据引用和服务端权限；这不能仅凭错误认定 Secret 未保存。兔子镜不会读取或复制密钥'
+   : rateLimited?'；上游报告频率／额度限制，可能包含并发限制；不会用关闭流式重试来规避限制'
+    : concurrencyFailure?'；宿主或上游明确报告并发限制；提前生成会与正文同时请求，可关闭提前生成后在正文结束时使用'
+     : connectionId?'；宿主未公开可确认的失败原因，不能据此判断为 Secret 问题；请查看外部诊断的最近传输记录':'';
   const wrapped=localPreflight
    ? new Error(`副 API 请求在发送前被安全检查拒绝：${rawDetail}；本轮未发送生成请求，也不会切换 nostream。`)
    : responseBoundaryFailure
@@ -3881,7 +3919,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('./appearanceReference.js?rmv=1.5.36-update1');}
+  try{module=await import('./appearanceReference.js?rmv=1.5.37-update1');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;
@@ -4086,7 +4124,7 @@ ${independentUserTail}`;
    return accepted;
   },
  } : originalLease;
- const {response:r,result,profile,attempts,requestDiagnostic,semanticError}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,manualRetry:requestOptions.manualRetry===true,diagnosticContext:requestSelectionDiagnostic,dispatchLease,onProgress:requestOptions.onProgress});
+ const {response:r,result,profile,attempts,requestDiagnostic,semanticError}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,manualRetry:requestOptions.manualRetry===true,diagnosticContext:requestSelectionDiagnostic,dispatchLease,onProgress:requestOptions.onProgress,earlyBodyOwner:requestOptions.earlyBodyOwner});
  if(semanticError){
   const error=new Error(semanticError);
   error.rabbitMirrorRequestDiagnostic=requestDiagnostic;
@@ -8446,7 +8484,7 @@ function showIndependentHistory(root,owner={}){
 }
 function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('./followFaceRetry.js?rmv=1.5.36-update1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('./followFaceRetry.js?rmv=1.5.37-update1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -9309,7 +9347,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 }
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('./earlyBodyTags.js?rmv=1.5.36-update1')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('./earlyBodyTags.js?rmv=1.5.37-update1')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;

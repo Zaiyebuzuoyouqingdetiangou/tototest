@@ -1,7 +1,7 @@
-import { readLocalWorldBookFile, readPlainTextWorldBook } from './fileReader.js?rmv=1.5.36-update1';
-import { getSettings, updateSettings } from '../settings.js?rmv=1.5.36-update1';
-import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.36-update1';
-import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.36-update1';
+import { readLocalExternalImportFile, readPlainTextWorldBook } from './fileReader.js?rmv=1.5.37-update1';
+import { getSettings, updateSettings } from '../settings.js?rmv=1.5.37-update1';
+import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.37-update1';
+import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.37-update1';
 import {
     EXTERNAL_WORLD_BOOK_SELECTION_MODE,
     createEmptySelection,
@@ -9,14 +9,14 @@ import {
     createWholeBookSelection,
     entryIdentity,
     toggleEntrySelection,
-} from './selectionState.js?rmv=1.5.36-update1';
+} from './selectionState.js?rmv=1.5.37-update1';
 import {
     EXTERNAL_WORLD_BOOK_CLASSIFICATION,
     applyExternalWorldBookBulkClassification,
     createExternalWorldBookClassificationDraft,
     externalWorldBookClassificationCounts,
     updateExternalWorldBookDraftItem,
-} from './classifier.js?rmv=1.5.36-update1';
+} from './classifier.js?rmv=1.5.37-update1';
 import {
     deleteExternalLibrary,
     listExternalLibraries,
@@ -26,7 +26,7 @@ import {
     hydrateExternalPoolMetadata,
     getExternalPoolHydrationStatus,
     rebuildExternalPoolMetadata,
-} from './store.js?rmv=1.5.36-update1';
+} from './store.js?rmv=1.5.37-update1';
 
 const MODAL_ID = 'rh_external_worldbook_import_modal';
 const PAGE_SIZE = 50;
@@ -261,16 +261,24 @@ async function loadLocalFiles(files) {
     const owner = state;
     const list = Array.from(files || []);
     if (!list.length) return;
+    if (owner.transferControls.isBusy()) { setStatus('迁移操作正在进行，请完成后再选择本地文件。', 'error'); return; }
+    const ownSequence = ++owner.localFileSequence;
+    owner.transferControls.clearPending();
     if (list.length > 20 || list.reduce((sum, file) => sum + Number(file?.size || 0), 0) > 32 * 1024 * 1024) {
         setStatus('一次最多读取 20 个文件、合计 32 MiB；请选择较少文件分批确认。', 'error'); return;
     }
     setStatus(`正在读取 ${list.length} 个本地文件…`);
     const books = [];
+    const backups = [];
     const failures = [];
     for (const file of list) {
-        try { books.push(await readLocalWorldBookFile(file)); }
+        try {
+            const result = await readLocalExternalImportFile(file);
+            if (result.kind === 'backup') backups.push({ name: file.name || '迁移文件', backup: result.backup });
+            else books.push(result.book);
+        }
         catch (error) { failures.push(`${file?.name || '未命名文件'}：${String(error?.message || error)}`); }
-        if (state !== owner || !owner.overlay.isConnected) return;
+        if (state !== owner || !owner.overlay.isConnected || owner.localFileSequence !== ownSequence) return;
     }
     state.localBooks = books;
     state.localBookList.replaceChildren();
@@ -281,9 +289,17 @@ async function loadLocalFiles(files) {
         }, { width: '100%', textAlign: 'left', minHeight: '40px', margin: '3px 0' });
         state.localBookList.append(row);
     }
-    if (!books.length) state.localBookList.append(el('div', { text: '没有成功读取的本地世界书。', style: { opacity: '.65', fontSize: '12px', padding: '8px 2px' } }));
+    for (const item of backups) {
+        state.localBookList.append(button(`${item.name}（整库迁移：${item.backup.libraries.length} 本，点击确认）`, () => {
+            if (!owner.transferControls.prepareBackup(item.backup)) setStatus('迁移操作正在进行，请完成后再选择下一份文件。', 'error');
+        }, { width: '100%', textAlign: 'left', minHeight: '44px', margin: '3px 0' }));
+    }
+    if (!books.length && !backups.length) state.localBookList.append(el('div', { text: '没有成功读取的本地世界书或迁移文件。', style: { opacity: '.65', fontSize: '12px', padding: '8px 2px' } }));
     if (books.length === 1) showNormalizedBook(books[0]);
-    setStatus(failures.length ? `成功 ${books.length} 个；失败 ${failures.length} 个。${failures[0] ? ` ${failures[0]}` : ''}` : `已读取 ${books.length} 个本地世界书。`, failures.length ? 'error' : 'success');
+    else if (!books.length) resetBookView();
+    if (backups.length === 1) owner.transferControls.prepareBackup(backups[0].backup);
+    const resultText = `已读取 ${books.length} 个本地世界书${backups.length ? `、${backups.length} 个整库迁移文件；迁移文件须在上方确认后才保存` : ''}。`;
+    setStatus(failures.length ? `成功 ${books.length + backups.length} 个；失败 ${failures.length} 个。${failures[0] ? ` ${failures[0]}` : ''}` : resultText, failures.length ? 'error' : 'success');
 }
 
 function classificationRowsForView() {
@@ -513,11 +529,21 @@ function createLibraryTransferControls() {
     const current = owner => state === owner && owner?.overlay.isConnected && panel.isConnected;
     const feedback = (text, error = false) => { message.textContent = text; if (error) { try { message.focus({ preventScroll: true }); } catch {} } };
     const lock = value => { busy = value; exportButton.disabled = value; file.disabled = value; importButton.disabled = value || !pending; };
+    const clearPending = () => { sequence++; pending = null; file.value = ''; importButton.disabled = true; message.textContent = ''; };
+    const prepareBackup = backup => {
+        if (busy) return false;
+        clearPending(); pending = backup;
+        panel.open = true;
+        feedback(`校验通过：${backup.libraries.length} 本库、${backup.libraries.reduce((sum, item) => sum + item.entries.length, 0)} 条。尚未保存，请点击“确认导入迁移文件”。`);
+        lock(false);
+        try { message.scrollIntoView({ block: 'center' }); } catch {}
+        return true;
+    };
     const exportButton = button('一键导出全部外部库', async () => {
         if (busy) return;
         const owner = state; lock(true); feedback('正在读取本设备已导入的库并生成迁移文件……');
         try {
-            const module = await import('./backup.js?rmv=1.5.36-update1');
+            const module = await import('./backup.js?rmv=1.5.37-update1');
             if (!current(owner)) return;
             const result = await module.exportExternalLibraryBackup();
             if (!current(owner)) return;
@@ -534,7 +560,7 @@ function createLibraryTransferControls() {
         if (!globalThis.confirm('导入这份备份里的外部库？目标已有同编号库会保留并跳过，其余库保留备份的分类和启用状态。不删除或覆盖旧库，不改变抽签总开关。')) return;
         const owner = state, backup = pending; lock(true); feedback('正在原子保存迁移数据；请暂时保留此页面……');
         try {
-            const module = await import('./backup.js?rmv=1.5.36-update1');
+            const module = await import('./backup.js?rmv=1.5.37-update1');
             if (!current(owner)) return;
             const result = await module.importExternalLibraryBackup(backup);
             if (!current(owner)) return;
@@ -547,11 +573,12 @@ function createLibraryTransferControls() {
     importButton.disabled = true;
     file.addEventListener('change', async () => {
         if (busy) return;
+        if (state) state.localFileSequence++;
         pending = null; importButton.disabled = true;
         const selected = file.files?.[0]; if (!selected) return;
         const owner = state, ownSequence = ++sequence; lock(true); feedback('正在校验迁移文件，尚未写入……');
         try {
-            const module = await import('./backup.js?rmv=1.5.36-update1');
+            const module = await import('./backup.js?rmv=1.5.37-update1');
             if (!current(owner)) return;
             const backup = await module.readExternalLibraryBackupFile(selected);
             if (!current(owner) || sequence !== ownSequence) return;
@@ -561,7 +588,7 @@ function createLibraryTransferControls() {
         finally { if (current(owner) && sequence === ownSequence) lock(false); }
     });
     panel.append(exportButton, el('label', { text: '选择另一设备导出的迁移 JSON', attrs: { for: file.id }, style: { display: 'block', margin: '8px 0' } }), file, importButton, message);
-    return { panel, dispose: () => { sequence++; pending = null; file.value = ''; } };
+    return { panel, prepareBackup, clearPending, isBusy: () => busy, dispose: () => { sequence++; pending = null; file.value = ''; } };
 }
 
 function bindImportViewport(overlay) {
@@ -690,10 +717,10 @@ function createModal() {
     bookSearch.addEventListener('input', renderBookList);
     hostPane.append(bookSearch, bookList);
 
-    const fileInput = el('input', { type: 'file', attrs: { accept: '.json,.txt,.md,application/json,text/json,text/plain,text/markdown,application/octet-stream', multiple: 'multiple' }, style: { width: '100%', marginTop: '8px' } });
+    const fileInput = el('input', { id: 'rh_external_local_file', type: 'file', attrs: { accept: '.json,.txt,.md,application/json,text/json,text/plain,text/markdown,application/octet-stream', multiple: 'multiple' }, style: { width: '100%', marginTop: '8px' } });
     const localBookList = el('div', { style: { maxHeight: '210px', overflowY: 'auto', marginTop: '6px', padding: '4px 2px', WebkitOverflowScrolling: 'touch' } });
     fileInput.addEventListener('change', () => loadLocalFiles(fileInput.files));
-    filePane.append(el('div', { text: '支持 JSON 世界书、TXT / MD 文字。每份文字先作为一个条目，进入分类确认后才保存。每个文件最多 8 MiB；一份文字最多 100 万字符。迁移 JSON 请用上方迁移区。', style: { opacity: '.8', fontSize: '12px', lineHeight: '1.5' } }), fileInput, localBookList);
+    filePane.append(el('div', { text: '支持 JSON 世界书、TXT / MD 文字，以及兔子镜导出的整库迁移 JSON（自动识别并打开确认）。普通文件最多 8 MiB；一份文字最多 100 万字符；整库迁移最多 32 MiB。读取文件不会直接保存。', style: { opacity: '.8', fontSize: '12px', lineHeight: '1.5' } }), fileInput, localBookList);
     const plainTitle = el('input', { id: 'rh_external_plain_title', type: 'text', className: 'text_pole', attrs: { maxlength: '1000' }, value: '我的小剧场文字', style: { width: '100%' } });
     // Reject oversized input as a whole in the reader; native maxlength would
     // silently truncate a paste before validation could detect the missing tail.
@@ -788,7 +815,7 @@ function createModal() {
     disposeViewport = bindImportViewport(overlay);
 
     state = {
-        overlay, dismiss, status, hostBooks: [], localBooks: [], currentBook: null,
+        overlay, dismiss, status, hostBooks: [], localBooks: [], currentBook: null, transferControls, localFileSequence: 0,
         filteredEntries: [], page: 0, selectedIds: new Set(), selectionMode: EXTERNAL_WORLD_BOOK_SELECTION_MODE.WHOLE,
         classificationDraft: [], classificationPage: 0,
         bookSearch, bookList, localBookList, entrySearch, fullText, entryMeta, entryList, pager,
