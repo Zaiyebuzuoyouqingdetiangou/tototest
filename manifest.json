@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场（稳定性候选）",
+  "display_name": "兔子镜小剧场测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5.35-stability1",
-  "css": "style.css?rmv=1.5.35",
+  "js": "index.js?rmv=1.5.36-update1",
+  "css": "style.css?rmv=1.5.36",
   "author": "Toto",
-  "version": "1.5.35",
+  "version": "1.5.36",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场 1.5.35 稳定性候选｜基于 1.5.34，增强传输诊断、挂载生命周期与本地事务写入，新增可选外观交互参考。保留成品展示、安全检查和单次请求保护；手机及 TT 实机待验收。"
+  "description": "兔子镜小剧场：跟随或独立生成可交互小剧场。"
 }

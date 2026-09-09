@@ -1,18 +1,20 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.35-stability1';
-import { clearLastCombo } from './storage.js?rmv=1.5.35-stability1';
-import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.5.35-stability1';
-import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.35-stability1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.35-stability1';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.35-stability1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.35-stability1';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.36-update1';
+import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.36-update1';
+import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.36-update1';
+import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.5.36-update1';
+import { BEHAVIOR_RULE_MAX_CHARS, DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=1.5.36-update1';
+import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.36-update1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.36-update1';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.36-update1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.36-update1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.35-stability1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.35-stability1';
-import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.35-stability1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.35-stability1';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.36-update1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.36-update1';
+import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.36-update1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.36-update1';
 
-const SETTINGS_UI_VERSION = '1.7';
-const RUNTIME_VERSION = '1.5.35';
+const SETTINGS_UI_VERSION = '1.8';
+const RUNTIME_VERSION = '1.5.36';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -555,7 +557,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.35</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.36</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -819,6 +821,22 @@ export function initRabbitMirrorUI() {
             </div></details>
             <div class="flex-container" style="gap:8px;flex-wrap:wrap;margin-top:12px;"><button id="rh_visual_prompt_save" class="menu_button" type="button">保存并从下一面生效</button></div>
             <div style="opacity:.66;font-size:11px;line-height:1.45;margin-top:7px;">为避免重新引入移动端设置页卡顿，三个输入框都不会在键入时写设置；只有点击上面的保存按钮才会持久化。</div>
+            <details id="rh_behavior_rules" style="margin-top:16px;min-width:0;">
+              <summary style="min-height:44px;cursor:pointer;">创作补充规则</summary>
+              <label for="rh_behavior_rule_mode" style="display:block;margin:8px 0;">注入方式</label>
+              <select id="rh_behavior_rule_mode" class="text_pole" style="width:100%;min-height:44px;">
+                <option value="always">每轮注入</option><option value="off">不注入</option><option value="adult-only">仅在抽到成人内容时注入</option>
+              </select>
+              <label for="rh_behavior_rule_text" style="display:block;margin:8px 0;">补充规则内容（可编辑或留空）</label>
+              <textarea id="rh_behavior_rule_text" class="text_pole" rows="8" maxlength="${BEHAVIOR_RULE_MAX_CHARS}" spellcheck="false" style="width:100%;max-width:100%;box-sizing:border-box;resize:vertical;line-height:1.6;"></textarea>
+              <div style="font-size:12px;line-height:1.6;">跟随与独立模式均适用。只发送当前这一份，不叠加默认文本；关闭或清空后不发送。仅成人模式按抽中条目的 adult 标记判断，不扫描整库。修改后请保存。</div>
+              <div class="flex-container" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
+                <button id="rh_behavior_rule_save" class="menu_button" type="button" style="min-height:44px;">保存</button>
+                <button id="rh_behavior_rule_clear" class="menu_button" type="button" style="min-height:44px;">清空内容</button>
+                <button id="rh_behavior_rule_reset" class="menu_button" type="button" style="min-height:44px;">恢复默认</button>
+              </div>
+              <div id="rh_behavior_rule_status" role="status" aria-live="polite" style="font-size:12px;line-height:1.6;"></div>
+            </details>
             <details id="rh_appearance_reference" style="margin-top:16px;min-width:0;">
               <summary style="cursor:pointer;font-weight:700;min-height:44px;line-height:44px;">参考一个外观 / 交互模板（可选）</summary>
               <p style="font-size:12px;line-height:1.6;">只借鉴布局、配色与交互结构，人物、正文和情节仍按当前聊天生成。不会执行或预览导入的 HTML，也不会请求其中的图片、字体等资源。</p>
@@ -843,6 +861,17 @@ export function initRabbitMirrorUI() {
           </div>
 
           <div id="rh_advanced_page_worldinfo" class="rh-advanced-page" data-title="独立 API" style="display:none;">
+            <details id="rh_early_body_options" style="margin-bottom:12px;min-width:0;">
+              <summary style="min-height:44px;cursor:pointer;">正文标签闭合后提前生成（可选）</summary>
+              <label class="checkbox_label" style="min-height:44px;"><input id="rh_early_body_enabled" type="checkbox"> 为当前聊天开启提前生成</label>
+              <label for="rh_early_body_tags" style="display:block;margin:8px 0;">正文标签名（最多 8 个，逗号分隔）</label>
+              <input id="rh_early_body_tags" class="text_pole" type="text" maxlength="520" placeholder="例如 story_scene" style="width:100%;min-height:44px;box-sizing:border-box;">
+              <button id="rh_early_body_scan" class="menu_button" type="button" style="min-height:44px;">扫描当前聊天可选标签</button>
+              <div id="rh_early_body_candidates" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+              <button id="rh_early_body_save" class="menu_button" type="button" style="min-height:44px;margin-top:8px;">保存当前聊天设置</button>
+              <div style="font-size:12px;line-height:1.6;margin-top:8px;">这里选的是要读取的正文，不是上面的过滤标签。所有选中标签完整闭合且内容可见后，可在状态栏等尾部仍输出时先请求兔子镜；仍最多一次请求，主回复结束后展示。未闭合、工具调用或无法确认时，仍等正文结束。切换聊天不会沿用此设置。</div>
+              <div id="rh_early_body_status" role="status" aria-live="polite" style="font-size:12px;line-height:1.6;"></div>
+            </details>
             <div style="padding:10px 11px;margin-bottom:12px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:12px;background:color-mix(in srgb,currentColor 5%,transparent);">
               <div style="font-weight:700;font-size:12px;margin-bottom:7px;">读取范围</div>
               <label>最近 <input id="rh_independent_context_layers" class="text_pole" type="number" min="1" max="200" step="1" inputmode="numeric" style="width:76px;"> 层可见聊天正文</label>
@@ -911,7 +940,7 @@ export function initRabbitMirrorUI() {
         status.textContent = '正在向酒馆请求更新当前兔子镜，请稍候。不会更新其他扩展，也不会删除本地数据。';
         reload.hidden = true;
         try {
-            const updater = await import('./extensionUpdater.js?rmv=1.5.35-stability1');
+            const updater = await import('./extensionUpdater.js?rmv=1.5.36-update1');
             const result = await updater.requestRabbitMirrorUpdate();
             if (!status.isConnected) return;
             status.textContent = result.status === 'current'
@@ -1059,6 +1088,68 @@ export function initRabbitMirrorUI() {
         if (open) setTimeout(() => $('#rh_independent_tag_filter_input').trigger('focus'), 0);
     };
     renderTagFilterSummary();
+    const earlyBodyChat = () => { try { return String(getCurrentChatKey(globalThis.SillyTavern?.getContext?.()?.chat || []) || ''); } catch { return ''; } };
+    let earlyBodyRenderedChat = '';
+    const renderEarlyBodySettings = () => {
+        const value = getSettings();
+        const currentChat = earlyBodyChat();
+        if (currentChat !== earlyBodyRenderedChat) {
+            $('#rh_early_body_candidates').empty();
+            earlyBodyRenderedChat = currentChat;
+        }
+        const sameChat = value.independentEarlyBodyChatKey === currentChat;
+        checked('#rh_early_body_enabled', sameChat && value.independentEarlyBodyEnabled === true);
+        $('#rh_early_body_tags').val(sameChat ? (value.independentEarlyBodyTags || []).join(', ') : '');
+        $('#rh_early_body_status').text(sameChat && value.independentEarlyBodyEnabled === true ? '当前聊天已开启；只影响下一次独立生成。' : '当前聊天未开启提前生成。');
+    };
+    renderEarlyBodySettings();
+    $('#rh_early_body_options').on('toggle', event => { if (event.currentTarget.open) renderEarlyBodySettings(); });
+    $('#rh_early_body_enabled').on('change', event => {
+        if (!event.currentTarget.checked && getSettings().independentEarlyBodyChatKey === earlyBodyChat()) {
+            updateSettings({ independentEarlyBodyEnabled: false });
+            refreshRabbitMirrorGenerationMode();
+            $('#rh_early_body_status').text('已关闭。普通正文结束后生成的流程保持不变。');
+        } else $('#rh_early_body_status').text('请选好正文标签，再保存以开启。');
+    });
+    $('#rh_early_body_save').on('click', () => {
+        const enabled = $('#rh_early_body_enabled').prop('checked') === true;
+        const input = String($('#rh_early_body_tags').val() || '').split(/[\s,，、;；]+/).filter(Boolean);
+        const tags = normalizeEarlyBodyTags(input);
+        const context = globalThis.SillyTavern?.getContext?.() || {};
+        const key = earlyBodyChat();
+        if (!Array.isArray(context.chat) || !context.chat.length || !key) { $('#rh_early_body_status').text('请先打开要设置的聊天。'); return; }
+        if (enabled && !tags.length) { $('#rh_early_body_status').text('请填写 1–8 个有效正文标签名；不能使用思考、脚本或兔子镜标签。'); return; }
+        if (enabled && tags.some(tag => (getSettings().independentContextExcludedTags || []).includes(tag))) { $('#rh_early_body_status').text('正文标签同时被设为过滤标签。请先取消过滤该标签，或选择真正的正文标签。'); return; }
+        updateSettings({ independentEarlyBodyEnabled: enabled, independentEarlyBodyTags: tags, independentEarlyBodyChatKey: key });
+        refreshRabbitMirrorGenerationMode();
+        $('#rh_early_body_status').text(enabled ? '已保存，仅在当前聊天的下一次独立生成生效。' : '已保存，提前生成功能关闭。');
+    });
+    $('#rh_early_body_scan').on('click', async event => {
+        const button = event.currentTarget, owner = earlyBodyChat();
+        if (button.disabled) return;
+        button.disabled = true;
+        $('#rh_early_body_status').text('正在扫描已加载的当前聊天，不会请求模型。');
+        try {
+            const result = await scanCurrentChatIndependentContextTags();
+            if (!button.isConnected || owner !== earlyBodyChat()) return;
+            const target = document.getElementById('rh_early_body_candidates'); target.replaceChildren();
+            const selected = new Set(normalizeEarlyBodyTags(String($('#rh_early_body_tags').val() || '').split(/[\s,，、;；]+/).filter(Boolean)));
+            for (const row of result?.tags || []) {
+                const name = normalizeEarlyBodyTags([row?.name])[0]; if (!name) continue;
+                const label = document.createElement('label'); label.className = 'checkbox_label'; label.style.minHeight = '44px';
+                const control = document.createElement('input'); control.type = 'checkbox'; control.checked = selected.has(name);
+                control.addEventListener('change', () => {
+                    const current = new Set(normalizeEarlyBodyTags(String($('#rh_early_body_tags').val() || '').split(/[\s,，、;；]+/).filter(Boolean)));
+                    if (control.checked && current.size >= 8 && !current.has(name)) { control.checked = false; return; }
+                    if (control.checked) current.add(name); else current.delete(name);
+                    $('#rh_early_body_tags').val([...current].join(', '));
+                });
+                label.append(control, document.createTextNode(name)); target.append(label);
+            }
+            $('#rh_early_body_status').text(target.childElementCount ? '扫描完成。勾选真正的正文标签后保存；不会自动勾选。' : '没有找到可用正文标签，可以手动填写标签名。');
+        } catch { if (button.isConnected) $('#rh_early_body_status').text('扫描未完成，请确认当前聊天后重试。'); }
+        finally { if (button.isConnected) button.disabled = false; }
+    });
     const renderIndependentConnectionStatus = () => {
         const currentSettings=getSettings();
         const currentId=String(currentSettings.independentConnectionProfileId||'').trim();
@@ -1124,6 +1215,31 @@ export function initRabbitMirrorUI() {
 
     let appearanceFileSequence = 0;
     let appearanceSaving = false;
+    $('#rh_behavior_rule_mode').val(settings.behaviorRuleMode || 'always');
+    $('#rh_behavior_rule_text').val(resolveBehaviorRuleText(settings));
+    $('#rh_behavior_rule_mode').on('change', () => {
+        const mode = String($('#rh_behavior_rule_mode').val());
+        updateSettings({ behaviorRuleMode: mode });
+        refreshRabbitMirrorGenerationMode();
+        $('#rh_behavior_rule_status').text(mode === 'off' ? '已关闭，从下一轮起不发送这一块；编辑内容仍保留。' : '注入方式已保存，从下一轮生效。未保存的文本修改不会发送。');
+    });
+    $('#rh_behavior_rule_save').on('click', () => {
+        updateSettings({ behaviorRuleText: String($('#rh_behavior_rule_text').val() ?? '') });
+        refreshRabbitMirrorGenerationMode();
+        $('#rh_behavior_rule_status').text('内容已保存，从下一轮生效；每份请求最多注入一次。');
+    });
+    $('#rh_behavior_rule_clear').on('click', () => {
+        $('#rh_behavior_rule_text').val('');
+        updateSettings({ behaviorRuleText: '' });
+        refreshRabbitMirrorGenerationMode();
+        $('#rh_behavior_rule_status').text('已清空并保存，不会自动补回默认内容。');
+    });
+    $('#rh_behavior_rule_reset').on('click', () => {
+        $('#rh_behavior_rule_text').val(DEFAULT_BEHAVIOR_RULE_TEXT);
+        updateSettings({ behaviorRuleText: null });
+        refreshRabbitMirrorGenerationMode();
+        $('#rh_behavior_rule_status').text('已恢复默认内容并保存；注入方式保持不变。');
+    });
     const appearanceUIOwner = document.getElementById('rh_appearance_reference');
     const appearanceRawInput = document.getElementById('rh_appearance_reference_input');
     const appearanceFileInput = document.getElementById('rh_appearance_reference_file');
@@ -1159,7 +1275,7 @@ export function initRabbitMirrorUI() {
         if (!revision) return;
         const sequence = appearanceFileSequence;
         try {
-            const module = await import('./appearanceReference.js?rmv=1.5.35-stability1');
+            const module = await import('./appearanceReference.js?rmv=1.5.36-update1');
             if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving) return;
             await module.loadAppearanceReferenceMaterial(revision);
             if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving || getSettings().appearanceReferenceRevision !== revision) return;
@@ -1210,7 +1326,7 @@ export function initRabbitMirrorUI() {
         const retainRevision = String(getSettings().appearanceReferenceRevision || '');
         let raw = String($('#rh_appearance_reference_input').val() || '');
         try {
-            const module = await import('./appearanceReference.js?rmv=1.5.35-stability1');
+            const module = await import('./appearanceReference.js?rmv=1.5.36-update1');
             if (!appearanceOwnerIsCurrent()) return;
             if (String(getSettings().appearanceReferenceRevision || '') !== retainRevision) {
                 appearanceStatus('参考关联已改变，本次保存已停止；未写入摘要，也未覆盖当前设置。请核对当前关联后再保存。');
@@ -1294,7 +1410,7 @@ export function initRabbitMirrorUI() {
         if (!quickStart.open || guideLoading || guideCleanup || guideDisposed) return;
         guideLoading = true;
         try {
-            const module = await import('./quickStart.js?rmv=1.5.35-stability1');
+            const module = await import('./quickStart.js?rmv=1.5.36-update1');
             if (guideDisposed || !quickStart.isConnected || !isCurrentRuntime()) return;
             guideCleanup = module.mountRabbitMirrorQuickStart({
                 root: document.getElementById('rabbit_mirror_theater_settings'),
@@ -1929,7 +2045,7 @@ export function initRabbitMirrorUI() {
         const button = $('#rh_external_worldbook_open');
         button.prop('disabled', true).text('正在加载…');
         try {
-            const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.35-stability1');
+            const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.36-update1');
             if (!isCurrentRuntime()) return;
             module.openExternalWorldBookImportWizard?.();
         } catch (error) {

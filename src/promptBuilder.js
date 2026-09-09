@@ -1,12 +1,14 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.17';
 import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.17';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.35-stability1';
-import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.35-stability1';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.35-stability1';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.35-stability1';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.5.36-update1';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.5.36-update1';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.36-update1';
+import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.36-update1';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.36-update1';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.36-update1';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.17';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.35-stability1';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.35-stability1';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.36-update1';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.36-update1';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -296,7 +298,8 @@ function recentRiskCorrection() {
 }
 
 
-function interactionFamilyCooldownSnapshot() {
+function interactionFamilyCooldownSnapshot(settings) {
+    if (settings?.avoidRepeat === false) return null;
     const recent = getRecentInteractionFamilies(5);
     if (!recent.length) return null;
     const counts = recent.reduce((map, family) => {
@@ -335,8 +338,8 @@ function interactionFamilyCooldownSnapshot() {
     };
 }
 
-function interactionFamilyCooldownRule() {
-    const snapshot = interactionFamilyCooldownSnapshot();
+function interactionFamilyCooldownRule(settings) {
+    const snapshot = interactionFamilyCooldownSnapshot(settings);
     if (!snapshot) return '';
     return String.raw`
 交互形态冷却【由近期实际 HTML/CSS 识别；本轮强制换家族】:
@@ -535,24 +538,6 @@ function compactPresentationExecutionContract(items) {
         const role = index === 0 ? '主形式' : '辅助形式';
         return summary ? `${role} ${identity}：${summary}` : `${role} ${identity}`;
     }).join('；');
-}
-
-function selectedAdultItems(combo) {
-    return [...(combo?.themes || []), ...(combo?.formats || [])].filter(item =>
-        Array.isArray(item?.tags) && item.tags.some(tag => String(tag || '').toLowerCase() === 'adult')
-    );
-}
-
-function adultFictionExecutionRule(combo, compact = false) {
-    if (!selectedAdultItems(combo).length) return '';
-    if (compact) {
-        return '成人条目内部锁：沿用当前虚构成年角色与正文已有关系边界，不降级成无关暧昧或拒答模板；成品不得显示年龄核验、免责声明或跳出角色说明。';
-    }
-    return String.raw`
-成人条目内部执行边界【仅本轮抽中 adult 条目时生效；不是可见文案】:
-  - 本轮是当前虚构角色扮演正文的番外；只沿用正文已经成立的成年角色、关系与情境边界，不补造未成年人或现实人物。
-  - 在上述边界已经成立时，必须忠实兑现抽中的成人主题／媒介及其内容强度，不得无故降级成普通暧昧、科普说明、空白占位或拒答式模板。
-  - 这些边界只供内部构造使用；最终兔子镜不得出现年龄核验、免责声明、安全说教或跳出角色的说明。`;
 }
 
 function presentationFinalAcceptanceLock(combo) {
@@ -804,7 +789,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const themes = mode === 'format_only' ? '当前助手正文' : compactLockItems(combo?.themes, 'theme');
     const formats = compactLockItems(combo?.formats, 'presentation');
     const formatContract = compactPresentationExecutionContract(combo?.formats);
-    const interaction = interactionFamilyCooldownSnapshot();
+    const interaction = interactionFamilyCooldownSnapshot(settings);
     const repeatedVisualDimensions = getRepeatedVisualFamilyDimensions(3, 2);
     const paletteCooldownLock = buildPaletteCooldownExecutionLock();
     const innerDetailsBlocked = getRecentRiskFlags(5).includes('inner_details_used');
@@ -826,7 +811,6 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
         `短检：${formatContract}。首个主体落实两项可见结构证据和真实 CSS；完成至少一条「对象→操作→可保持第二状态→反馈」交互，多节点媒介须有多入口或连续阶段，不用单次显隐敷衍。360px 下数量群组完整适配、正文不裁切。`,
         directiveText ? `点菜优先：${directiveText}` : '',
         activeBans.length ? `近因避让：${activeBans.join('；')}。` : '',
-        adultFictionExecutionRule(combo, true),
         visualPreferenceLock ? `最终视觉偏好裁决：${visualPreferenceLock}；近期避让只负责脱离重复维度，不得覆盖这条视觉偏好。` : '',
         '可读性：正文、按钮、标签与实际背景保持清晰对比；冷却不得损害可读性。',
         '执行：形式本体和交互都从本轮媒介内部生长，不用黑色系统面板或通用卡片兜底。直接输出唯一完整 <toto>...</toto>，闭合后结束。',
@@ -835,7 +819,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
 }
 
 function buildMultiIndependentExecutionLock(faceContexts, settings, directive) {
-    const interaction = interactionFamilyCooldownSnapshot();
+    const interaction = interactionFamilyCooldownSnapshot(settings);
     const repeatedVisualDimensions = getRepeatedVisualFamilyDimensions(3, 2);
     const paletteCooldownLock = buildPaletteCooldownExecutionLock();
     const innerDetailsBlocked = getRecentRiskFlags(5).includes('inner_details_used');
@@ -852,8 +836,7 @@ function buildMultiIndependentExecutionLock(faceContexts, settings, directive) {
         const themes = mode === 'format_only' ? '当前助手正文' : compactLockItems(face.combo?.themes, 'theme');
         const formats = compactLockItems(face.combo?.formats, 'presentation');
         const tarot = face.tarotRulesText ? '；具体塔罗牌必须使用白名单实体牌图' : '';
-        const adult = adultFictionExecutionRule(face.combo, true);
-        return `第 ${index + 1} 面：${samplingModeLabel(face.combo, settings)}；主题：${themes}；展现形式：${formats}。短检：${compactPresentationExecutionContract(face.combo?.formats)}；主体、空间层次、材质与完整交互均须落实${tarot}。${adult}`;
+        return `第 ${index + 1} 面：${samplingModeLabel(face.combo, settings)}；主题：${themes}；展现形式：${formats}。短检：${compactPresentationExecutionContract(face.combo?.formats)}；主体、空间层次、材质与完整交互均须落实${tarot}。`;
     });
     return [
         '<兔子镜近输出短锁 data-source="independent-api-near-output">',
@@ -968,14 +951,7 @@ ${selectedFormats}`);
     chunks.push(userDirectivePriorityRule(settings.userDirectivePriority ? directive : null));
     chunks.push(sharedMemoryMaterialRule(memoryMaterial));
     chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
-    // Independent generation already receives the compact adult boundary in its
-    // near-output execution lock. Avoid duplicating the same rule in both payloads.
-    if (String(generationType || 'normal') !== 'independent') {
-        if (multiface) {
-            const adultFaces = faceContexts.map((face, faceIndex) => selectedAdultItems(face.combo).length ? faceIndex : -1).filter(index => index >= 0);
-            if (adultFaces.length) chunks.push(`以下成人虚构边界仅作用于第 ${adultFaces.map(index => index + 1).join('、')} 面:\n${adultFictionExecutionRule(faceContexts[adultFaces[0]].combo, false)}`);
-        } else chunks.push(adultFictionExecutionRule(combo, false));
-    }
+    chunks.push(buildBehaviorRuleBlock(settings, multiface ? faceContexts.map(face => face.combo) : [combo]));
     if (settings?.visualPromptEditingEnabled) {
         chunks.push(presentationEmbodimentRule());
     } else {
@@ -992,7 +968,8 @@ ${selectedFormats}`);
         const visualFaces = faceContexts.map((face, index) => face.visualSceneryMode ? index : -1).filter(index => index >= 0);
         if (visualFaces.length) chunks.push(`Visual Scenery 局部覆盖：以下完整规则只作用于第 ${visualFaces.map(index => index + 1).join('、')} 面，其他面继续执行通用复杂交互核心。\n${visualScenerySceneFirstCore()}`);
     } else chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
-    chunks.push(interactionFamilyCooldownRule());
+    chunks.push(interactionFamilyCooldownRule(settings));
+    if (multiface) chunks.push(buildBatchInteractionDiversityRule(faceContexts.map(face => face.combo), settings));
     chunks.push(innerDetailsCooldownRule());
     chunks.push(buildPaletteCooldownRule());
     chunks.push(visualFamilyCooldownRule());
@@ -1078,6 +1055,7 @@ const PROMPT_SETTING_KEYS = Object.freeze([
     'presentationWorldviewLock', 'visualPromptEditingEnabled', 'visualPrompt',
     'visualExtraPrompt', 'visualAvoidPrompt', 'generationSource',
     'appearanceReferenceEnabled', 'appearanceReferenceRevision',
+    'behaviorRuleMode', 'behaviorRuleText',
     'followTagIsolationEnabled', 'independentContextExcludedTags',
     'memoryScanEnabled', 'memoryProviderIds', 'memoryMaxChars',
 ]);

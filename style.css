@@ -1144,6 +1144,17 @@ toto[data-rabbit-mirror="true"] summary {
   max-width:100%;
   overflow:auto;
 }
+@media (min-width:900px){
+  /* A phone-authored square grid must not grow to the entire desktop chat lane.
+   * Bound only each mirror's outer reading surface: no zoom, font override,
+   * grid reflow or new frame; authored smaller objects remain smaller. Keep the
+   * placement host full-sized so existing owner/viewport geometry stays valid. */
+  #chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"],
+  #chat toto[data-rabbit-mirror="true"] > details{
+    max-width:min(100%,720px) !important;
+    margin-inline:auto !important;
+  }
+}
 @media (max-width:899px){
   /* Only the first two layout levels of a face body receive intrinsic shrink
    * safety. This fixes centered card rows without flattening nested scenes,

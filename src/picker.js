@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.35-stability1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.35-stability1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.36-update1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.36-update1';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -7,6 +7,7 @@ import {
     getLastCombo,
     getRecentGenerationAttemptIds,
     getRecentIds,
+    getRecentInteractionFamilies,
     recordGenerationAttempt,
     recordFormatEligibleMissRound,
     setDirectiveScopedPick,
@@ -16,9 +17,10 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.5.35-stability1';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.35-stability1';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.35-stability1';
+} from './storage.js?rmv=1.5.36-update1';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.36-update1';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.36-update1';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.5.36-update1';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -27,7 +29,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.5.35-stability1';
+} from './externalWorldBook/externalPool.js?rmv=1.5.36-update1';
 
 function randomUnit() {
     try {
@@ -1171,6 +1173,16 @@ function liveBatchResult(plan, directive) {
     return faces;
 }
 
+function addBatchInteractionDiversity(combos, settings) {
+    // New multi-face plans only. Do not read history or consume entropy in the
+    // single-face/off/cache paths, and never infer a mechanism from raw content.
+    if (!settings?.avoidRepeat || combos.length < 2 || combos.length > 5) return;
+    const hints = planBatchInteractionDiversity(combos.length, {
+        enabled: true, recentFamilies: getRecentInteractionFamilies(5),
+    });
+    if (hints) combos.forEach((combo, index) => { combo.interactionDiversity = hints[index]; });
+}
+
 function pickLiveCombinationBatch(settings, planning, faceCount, planningReason = 'BATCH_PLAN_IDENTITY_INVALID') {
     if (!planning || planning.signatureTooLarge) throw multiFacePlanningError('多面抽取缺少有效的本次生成身份，或抽取设置签名过长；本次尚未发送请求。',
         planning?.signatureTooLarge ? 'BATCH_SETTINGS_TOO_LARGE' : planningReason);
@@ -1202,6 +1214,7 @@ function pickLiveCombinationBatch(settings, planning, faceCount, planningReason 
         for (const id of combo.formatIds) if (!fixedFormats.has(id)) usedFormatIds.add(id);
         results.push(selected);
     }
+    addBatchInteractionDiversity(results.map(result => result.payload.combo), settings);
     let planRejection = 'BATCH_PLAN_INVALID';
     const plan = createPendingComboBatchPlan(results.map(result => result.payload.combo), planning.identity, {
         eligibleFormatIds: [...new Set(results.flatMap(result => result.result.formatFairnessEligibleIds || []))],
@@ -1292,6 +1305,7 @@ export function pickCombinationBatch(settings, generationScopeKey = '', generati
         console.warn('[RabbitMirror] Pending combo batch storage failed; preserving the selected first face.');
         return finalizeBatchFallback(first, snapshot, scopeKey, identityKey, identity.chatKey);
     }
+    addBatchInteractionDiversity(faces.map(face => face.combo), settings);
     const completeFaces = faces.map((face, faceIndex) => ({ ...face, batchId, faceIndex }));
     cachedBatchPlan = { identityKey, batchId, faces: cloneBatchPlan(completeFaces) };
     return cloneBatchPlan(completeFaces);

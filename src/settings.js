@@ -8,6 +8,14 @@ export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
 export const VISUAL_AVOID_PROMPT_MAX_CHARS = 1000;
 export const WORLD_INFO_BOOK_NAME_MAX_CHARS = 512;
 export const INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT = 32;
+// Do not silently reduce a malformed early-body selection: that could start a
+// request before all tags the user selected have closed. Reserved names are also
+// rejected by the runtime parser; this startup normalizer stays dependency-free.
+export function normalizeIndependentEarlyBodyTags(value) {
+    if (!Array.isArray(value) || value.length > 8 || value.some(tag =>
+        typeof tag !== 'string' || !/^[a-z][a-z0-9_:-]{0,63}$/i.test(tag.trim()))) return [];
+    return [...new Set(value.map(tag => tag.trim().toLowerCase()))];
+}
 export const DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS = Object.freeze([
     'thinking',
     'updatevariable',
@@ -109,6 +117,11 @@ export const defaultSettings = Object.freeze({
     independentApiMaxTokens: 30000,
     independentContextMaxLayers: 20,
     independentContextExcludedTags: [...DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS],
+    behaviorRuleMode: 'always',
+    behaviorRuleText: null,
+    independentEarlyBodyEnabled: false,
+    independentEarlyBodyTags: [],
+    independentEarlyBodyChatKey: '',
     // Follow mode shares the host request with the main reply, so tag isolation is
     // instruction-only and must remain explicit opt-in to avoid permanent prompt cost.
     followTagIsolationEnabled: false,
@@ -202,6 +215,11 @@ export function getSettings() {
         settings.independentContextMaxLayers = Math.max(1, Math.min(200, Number.isFinite(contextLayers) ? Math.round(contextLayers) : 20));
     }
     settings.independentContextExcludedTags = normalizeIndependentContextExcludedTags(settings.independentContextExcludedTags);
+    settings.behaviorRuleMode = ['always', 'off', 'adult-only'].includes(settings.behaviorRuleMode) ? settings.behaviorRuleMode : 'always';
+    settings.behaviorRuleText = settings.behaviorRuleText == null ? null : String(settings.behaviorRuleText).replace(/\u0000/g, '').slice(0, 5000);
+    settings.independentEarlyBodyEnabled = settings.independentEarlyBodyEnabled === true;
+    settings.independentEarlyBodyTags = normalizeIndependentEarlyBodyTags(settings.independentEarlyBodyTags);
+    settings.independentEarlyBodyChatKey = String(settings.independentEarlyBodyChatKey || '').slice(0, 2048);
     settings.followTagIsolationEnabled = settings.followTagIsolationEnabled === true;
     settings.independentReadCharacterCardSummary = settings.independentReadCharacterCardSummary !== false;
     settings.independentReadPersonaSummary = settings.independentReadPersonaSummary !== false;
@@ -314,6 +332,11 @@ export function syncExternalReferenceVisibility(settings) {
 export function updateSettings(patch) {
     const settings = getSettings();
     const safePatch = patch && typeof patch === 'object' ? { ...patch } : {};
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'independentEarlyBodyEnabled')) safePatch.independentEarlyBodyEnabled = safePatch.independentEarlyBodyEnabled === true;
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'independentEarlyBodyTags')) safePatch.independentEarlyBodyTags = normalizeIndependentEarlyBodyTags(safePatch.independentEarlyBodyTags);
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'independentEarlyBodyChatKey')) safePatch.independentEarlyBodyChatKey = String(safePatch.independentEarlyBodyChatKey || '').slice(0, 2048);
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'behaviorRuleMode')) safePatch.behaviorRuleMode = ['always', 'off', 'adult-only'].includes(safePatch.behaviorRuleMode) ? safePatch.behaviorRuleMode : 'always';
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'behaviorRuleText')) safePatch.behaviorRuleText = safePatch.behaviorRuleText == null ? null : String(safePatch.behaviorRuleText).replace(/\u0000/g, '').slice(0, 5000);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentContextExcludedTags')) {
         safePatch.independentContextExcludedTags = normalizeIndependentContextExcludedTags(safePatch.independentContextExcludedTags);
     }

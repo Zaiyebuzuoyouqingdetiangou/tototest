@@ -331,6 +331,39 @@ export function upsertExternalPoolLibrary(library, entries = []) {
     return snapshot;
 }
 
+// Explicit bulk imports publish once, after the caller's durable transaction.
+// Keep the single-library API unchanged. Build against local maps first so a
+// malformed update cannot partly publish, reset an old snapshot or advance its
+// revision. Only eligible IDs survive; this module has no raw-content cache.
+export function upsertExternalPoolLibraries(updates = []) {
+    if (!Array.isArray(updates) || !updates.length) return snapshot;
+    const libraries = snapshotLibraryRecords();
+    const entriesByLibrary = snapshotEntryRecords();
+    let changed = false;
+    for (const update of updates) {
+        const libraryId = cleanId(update?.library?.libraryId, 1024);
+        if (!libraryId) continue;
+        const library = { libraryId, enabled: update.library.enabled === true };
+        const entries = Array.isArray(update.entries) ? update.entries : [];
+        const light = buildExternalPoolSnapshot([library], new Map([[libraryId, entries]]));
+        // Match sequential upserts even if a batch disables/removes eligibility
+        // and later re-enables the same ID: it re-enters at the end of the pool.
+        if (light.libraries.length) {
+            libraries.set(libraryId, library);
+            entriesByLibrary.set(libraryId, entries);
+        } else {
+            libraries.delete(libraryId);
+            entriesByLibrary.delete(libraryId);
+        }
+        changed = true;
+    }
+    if (!changed) return snapshot;
+    const next = buildExternalPoolSnapshot([...libraries.values()], entriesByLibrary);
+    snapshot = next;
+    snapshotRevision += 1;
+    return snapshot;
+}
+
 export function removeExternalPoolLibrary(libraryId) {
     const id = cleanId(libraryId, 1024);
     if (!id) return snapshot;

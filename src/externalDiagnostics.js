@@ -1,4 +1,4 @@
-const DIAG_VERSION = '1.5.35-externaldiag-transport1';
+const DIAG_VERSION = '1.5.36-externaldiag-transport1';
 const MAX_ENTRIES = 1800;
 const STALL_INTERVAL_MS = 1000;
 const STALL_THRESHOLD_MS = 250;
