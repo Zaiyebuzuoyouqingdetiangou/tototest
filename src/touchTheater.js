@@ -1,3 +1,5 @@
+import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.35-stability1';
+
 const TOUCH_THEATER_SELECTOR = '[data-rm-dai-sekkin-mode="true"], [data-rm-touch-theater="true"]';
 const TOUCH_ZONE_SELECTOR = 'label[data-rm-touch-zone]';
 const TOUCH_CLOSE_SELECTOR = '[data-rm-touch-close="true"]';
@@ -61,6 +63,7 @@ const APPROACH_THRESHOLD = 100;
 
 let touchTheaterListenerInstalled = false;
 let touchTheaterObserver = null;
+let touchTheaterManagedUnsubscribe = null;
 const recentTouchByTheater = new WeakMap();
 const approachStateByTheater = new WeakMap();
 let initializedTouchTheaters = new WeakSet();
@@ -629,8 +632,19 @@ function onTouchTheaterClick(event) {
 
 export function initTouchTheaterBridge() {
     if (touchTheaterListenerInstalled || typeof document === 'undefined') return;
-    normalizeExistingTouchTheaters();
-    initTouchTheaterObserver();
+    if (isRabbitMirrorManagedChatSurface()) {
+        const hydrate = context => {
+            if (!context.signal.aborted && context.element?.isConnected) normalizeTouchTheaterMutationNode(context.element);
+            // Normalization is synchronous, and per-theater state is WeakSet keyed.
+            // No mount-specific observer, timer or global listener is acquired.
+        };
+        touchTheaterManagedUnsubscribe = subscribeRabbitMirrorChatSurface({
+            id: 'rabbitmirror/touch-theater', didMount: hydrate, didCommitContent: hydrate,
+        });
+    } else {
+        normalizeExistingTouchTheaters();
+        initTouchTheaterObserver();
+    }
     document.addEventListener('click', onTouchTheaterClick, false);
     touchTheaterListenerInstalled = true;
 }
@@ -638,6 +652,7 @@ export function initTouchTheaterBridge() {
 export function destroyTouchTheaterBridge() {
     if (!touchTheaterListenerInstalled || typeof document === 'undefined') return;
     document.removeEventListener('click', onTouchTheaterClick, false);
+    touchTheaterManagedUnsubscribe?.(); touchTheaterManagedUnsubscribe = null;
     touchTheaterObserver?.disconnect?.();
     touchTheaterObserver = null;
     touchTheaterListenerInstalled = false;

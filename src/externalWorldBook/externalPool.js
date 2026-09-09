@@ -204,7 +204,7 @@ export function chooseExternalSource(settings, kind, randomUnit, builtinAvailabl
     return Number(randomUnit?.() ?? 0) < share;
 }
 
-function filteredLibraryPools(kind, hardExcludedIds = [], recentIds = [], avoidRepeat = true, preferredExcludedIds = []) {
+function filteredLibraryPools(kind, hardExcludedIds = [], recentIds = [], avoidRepeat = true, preferredExcludedIds = [], recentIdHits = {}) {
     const hard = new Set(Array.isArray(hardExcludedIds) ? hardExcludedIds : []);
     const recent = new Set(Array.isArray(recentIds) ? recentIds : []);
     let base = kindLibraries(kind).map(library => ({
@@ -225,14 +225,29 @@ function filteredLibraryPools(kind, hardExcludedIds = [], recentIds = [], avoidR
         libraryId: library.libraryId,
         ids: library.ids.filter(id => !recent.has(id)),
     })).filter(library => library.ids.length);
-    return fresh.length ? fresh : base;
+    if (fresh.length) return fresh;
+    // All eligible entries are in cooldown. Reuse is allowed, but do not erase
+    // their different hit counts. Only use existing bounded history; no raw
+    // worldbook reads, persistent fairness ledger, redraw or extra entropy.
+    const weighted = base.map(library => {
+        const weights = library.ids.map(id => {
+            const value = Number(Object.prototype.hasOwnProperty.call(recentIdHits, id) ? recentIdHits[id] : 1);
+            const hits = Number.isFinite(value) ? Math.min(1000, Math.max(1, value)) : 1;
+            return 1 / ((1 + hits) ** 2);
+        });
+        return { ...library, weights, meanWeight: weights.reduce((sum, weight) => sum + weight, 0) / weights.length };
+    });
+    // Exact legacy distribution and index boundaries when counts are tied or
+    // absent (including older history). Differing libraries must share the bias.
+    const firstWeight = weighted[0]?.weights[0];
+    return weighted.every(library => library.weights.every(weight => weight === firstWeight)) ? base : weighted;
 }
 
 function weightedLibraryPick(libraries, randomUnit) {
     if (!libraries.length) return null;
     const weighted = libraries.map(library => ({
         library,
-        weight: Math.sqrt(Math.max(1, library.ids.length)),
+        weight: Math.sqrt(Math.max(1, library.ids.length)) * (library.meanWeight ?? 1),
     }));
     const total = weighted.reduce((sum, item) => sum + item.weight, 0);
     let roll = Number(randomUnit?.() ?? 0) * total;
@@ -258,11 +273,20 @@ export function pickExternalItems(settings, kind, count, options = {}) {
 
     while (selected.length < target) {
         const dynamicHard = [...hardExcluded, ...selected.map(item => item.id)];
-        const libraries = filteredLibraryPools(kind, dynamicHard, recentIds, options.avoidRepeat !== false, options.preferredExcludedIds);
+        const libraries = filteredLibraryPools(kind, dynamicHard, recentIds, options.avoidRepeat !== false, options.preferredExcludedIds, options.recentIdHits || {});
         if (!libraries.length) break;
         const library = weightedLibraryPick(libraries, randomUnit);
         if (!library?.ids?.length) break;
-        const index = Math.min(library.ids.length - 1, Math.floor(Number(randomUnit?.() ?? 0) * library.ids.length));
+        const roll = Number(randomUnit?.() ?? 0);
+        let index = Math.min(library.ids.length - 1, Math.floor(roll * library.ids.length));
+        if (library.weights) {
+            let remaining = roll * library.weights.reduce((sum, weight) => sum + weight, 0);
+            index = library.ids.length - 1;
+            for (let i = 0; i < library.weights.length; i++) {
+                remaining -= library.weights[i];
+                if (remaining < 0) { index = i; break; }
+            }
+        }
         const item = externalPoolItem(library.ids[index], kind);
         if (!item) break;
         selected.push(item);

@@ -4,7 +4,7 @@ RabbitMirror ExternalDiag1 — 外部代码／宿主性能诊断测试版
 
 两套诊断严格分离：
 1. 兔子镜内部全链路诊断：仍在每个兔子镜的维修兔菜单中，检查生成、挂载、交互、维修与独立 API 持久化等内部链路。
-2. 外部代码／宿主性能诊断：位于兔子镜设置 → 工具与维护，仅观察 SillyTavern、其他扩展、浏览器主线程和 /api 网络。
+2. 外部代码／宿主性能诊断：位于兔子镜设置 → 工具与维护，观察 SillyTavern、其他扩展、浏览器主线程和 /api 网络；1.5.35 另外接收同一次独立 API 响应的脱敏传输摘要，不合并内部维修日志。
 
 ExternalDiag1 记录：
 - 非 RabbitMirror 的 JS/CSS 资源加载耗时与归属（SillyTavern core / other extension）
@@ -16,3 +16,11 @@ ExternalDiag1 记录：
 - 点击主 API/独立 API 维修兔后的 10 秒“外部阻塞窗口”
 
 ExternalDiag1 不读取兔子镜内部维修 start/complete/persist，不读取生成 Prompt，不保存聊天正文、API Key、请求/响应 body。
+
+1.5.35 传输摘要（原入口，开启诊断后记录）：
+- HTTP 状态、标准化 Content-Type、实际 SSE / NDJSON / JSON 解析方式。
+- 应用实际读到的响应字节数、最终 content 字符数、标准化 finish_reason。
+- 正常结束、无终止标记的 EOF（未确认）、读取失败、主动取消分别记录。
+- 字节数不是压缩前后的网络账单；Connection Manager 未公开的响应头或原始字节数显示未知。
+- 只记录有限的标量摘要，不保存内容、不克隆响应流、不重发 API、0 额外模型 Token。
+- 仅凭这些字段仍不能证明供应商内部限流或模型推理时长；请结合时间和结束类型判断。

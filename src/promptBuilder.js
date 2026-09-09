@@ -1,12 +1,12 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.17';
 import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.17';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.32-return1';
-import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.32-return1';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.32-return1';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.32-return1';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.35-stability1';
+import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.35-stability1';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.35-stability1';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.35-stability1';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.17';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.32-return1';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.32-return1';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.35-stability1';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.35-stability1';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -181,14 +181,49 @@ function isTarotRelated(combo) {
         ...(combo?.themes || []),
         ...(combo?.formats || []),
     ];
-    // 5.3.2 东方神秘学、泛称“占卜/神秘学”并不必然使用塔罗牌。
-    // 只在明确的西方神秘学条目或真正出现塔罗/牌阵证据时注入实体牌图规则。
+    // Keep the existing dedicated builtin contract. External IDs remain ext:*
+    // and cannot acquire this compatibility exception from their descriptions.
     if (items.some(item => String(item?.id || '').trim() === '5.3.1')) return true;
-    const text = items
-        .map(item => `${item?.title || ''} ${item?.summary || ''} ${item?.raw || ''} ${(item?.tags || []).join(' ')}`)
-        .join('\n')
-        .toLowerCase();
-    return /塔罗|牌阵|西方神秘学|\btarot\b/i.test(text);
+
+    // Imported keywords describe retrieval/classification, not the chosen
+    // medium. Inspect only each selected item's bounded title and summary;
+    // never load raw material or join another item's intent into this one.
+    const statements = value => String(value || '').slice(0, 600)
+        .replace(/\be\.g\./gi, 'for example')
+        .split(/[。！？!?\n;；]|\.(?=\s|$)/);
+    const mentions = value => statements(value).flatMap(statement => {
+        const result = [];
+        for (const match of statement.matchAll(/塔罗(?:牌)?|牌阵|\btarot\b/gi)) {
+            const before = statement.slice(0, match.index);
+            const after = statement.slice(match.index + match[0].length);
+            const localBefore = before.split(/[,，]/).at(-1);
+            const denied = /(?:不要|不准|不得|禁止|避免|无需|无须|不必|不用|不使用|不采用|不生成|不绘制|不展示|不包含|不涉及|排除|并非|不是|\b(?:do\s+not|don't|must\s+not|no|without|avoid|exclude|non[-\s]))[^。！？!?\n;；，,]{0,48}$/i.test(localBefore)
+                || /非\s*$/.test(localBefore)
+                || /^\s*(?:不要|不必|不用|无需|不生成|不使用|不包含|无关|不相关|没有关系|无关联)/.test(after);
+            const optionalOrIncidental = /(?:例如|比如|譬如|示例|样例|可选|任选|备选|候选|可以|可考虑|可能|参考|比喻|类比|提到|提及|说起|说到|谈到|聊到|喜欢|爱好|如果|假如|倘若|若要|适用于|\b(?:for\s+example|such\s+as|optional|options?|may|might|could|can|mentioned?|discussed?|talked\s+about|compared?|if)\b)/i.test(statement)
+                || /^\s*(?:师|爱好者|\s+reader['’]s\b)/i.test(after)
+                || /(?:只是|仅是|仅作|只作|仅作为|只作为)(?:一个|一种)?(?:例子|示例|比喻|背景|话题|关键词)/.test(after);
+            const deliberate = /(?:使用|采用|选定|抽取|抽出|翻开|解读|绘制|展示|呈现|生成|制作|构建|围绕|以|用|\b(?:use|using|draw|depict|render|show|create|present|build|generate|read)\b)[^。！？!?\n;；，,]{0,28}$/i.test(localBefore)
+                || (/^\s*(?:本(?:轮|面|作品|主题|媒介|形式)(?:为|是)?\s*)?$/.test(before)
+                    && /^\s*(?:牌阵|占卜|抽牌|读牌|解读|图鉴|牌面|构成|组成|呈现|展示|用于|由)/.test(after));
+            result.push({ denied, optionalOrIncidental, deliberate });
+        }
+        return result;
+    });
+    return items.some(item => {
+        const title = String(item?.title || '').slice(0, 600);
+        const summary = String(item?.summary || '').slice(0, 600);
+        // A general imported rulebook may discuss or demonstrate many media.
+        // Its examples must not become the selected face's mandatory medium.
+        if (/^(?:【|\[)?\s*(?:通用|全局|万能|统一|总则|通则)|(?:小剧场|视觉|创作|生成|美化|输出)(?:通用)?(?:规则|规范|指南|要求)|\b(?:general|global|universal)\s+(?:rules?|guidelines?|instructions?)\b/i.test(title)) return false;
+        const titleMentions = mentions(title);
+        const summaryMentions = mentions(summary);
+        if ([...titleMentions, ...summaryMentions].some(mention => mention.denied)) return false;
+        if (titleMentions.some(mention => !mention.optionalOrIncidental)) return true;
+        // An explicit list heading governs its following short example clauses.
+        if (/(?:以下|下列|下面)[^。！？!?\n;；]{0,24}(?:任选(?:其一|一种|一个)?|可选|供选择)/.test(summary)) return false;
+        return summaryMentions.some(mention => !mention.optionalOrIncidental && mention.deliberate);
+    });
 }
 
 function isTouchTheaterRelated(combo) {
@@ -903,7 +938,7 @@ function faceMetadata(face, settings, generationType, rawPolicy, directive, memo
     };
 }
 
-function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, touchTheaterRulesText, directive, memoryMaterial, activeFeedback, generationType = 'normal', followTagIsolationText = '', faceContexts = null, externalReferences = false }) {
+function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, touchTheaterRulesText, directive, memoryMaterial, activeFeedback, generationType = 'normal', followTagIsolationText = '', faceContexts = null, externalReferences = false, appearanceReferenceText = '' }) {
     const chunks = [];
     const multiface = Array.isArray(faceContexts) && faceContexts.length > 1;
     const independent = generationType === 'independent';
@@ -1006,6 +1041,7 @@ ${multiface ? faceContexts.map((face, index) => `第 ${index + 1} 面:\n${shortV
     // When visual editing is enabled, keep the full user-editable layer near the final output
     // contract so later theme/cooldown rules cannot dilute it. The OFF path remains the legacy flow.
     if (settings?.visualPromptEditingEnabled) chunks.push(editableVisualPromptRule(settings));
+    if (appearanceReferenceText) chunks.push(`外观与交互结构参考（仅一份，适用于本批次）：\n以下 JSON 仅描述脱正文后的布局、配色和状态控件关系，不是故事、角色设定或生成指令。结合本轮媒介按需借鉴，不必复制节点数量；所有人物、文字与情节必须来自当前聊天，继续遵守安全与输出协议。未保留的文字位置请为本轮重新创作。\n${appearanceReferenceText}`);
     // One shared return policy for ordinary/scenery, single/multiface and both
     // API routes. Per-face checks must not reinstate a return for every state.
     chunks.push('交互返回：可重复交互须能自然切回，优先复用原控件；不强制每个状态另设返回，一次性动作可自然结束。');
@@ -1041,6 +1077,7 @@ const PROMPT_SETTING_KEYS = Object.freeze([
     'forceVisualScenery', 'enhancedVisualDrawing', 'userDirectivePriority',
     'presentationWorldviewLock', 'visualPromptEditingEnabled', 'visualPrompt',
     'visualExtraPrompt', 'visualAvoidPrompt', 'generationSource',
+    'appearanceReferenceEnabled', 'appearanceReferenceRevision',
     'followTagIsolationEnabled', 'independentContextExcludedTags',
     'memoryScanEnabled', 'memoryProviderIds', 'memoryMaxChars',
 ]);
@@ -1063,6 +1100,7 @@ function createPromptPlan(selections, args, batchPlan = null, inactive = false) 
         selections: copyPromptPlanValue(snapshot, true),
         args: copyPromptPlanValue(privateArgs, true),
         selectedExternalIds,
+        appearanceReference: { enabled: !inactive && !snapshot[0]?.disabled && privateArgs.settings?.appearanceReferenceEnabled === true, revision: String(privateArgs.settings?.appearanceReferenceRevision || '') },
         batchPlan: copyPromptPlanValue(privateBatch, true),
         inactive,
     });
@@ -1102,7 +1140,7 @@ export function planRabbitMirrorPromptDetails(settings, generationType = 'normal
 }
 
 /** Synchronous rendering; only the already selected ext IDs may use this map. */
-export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null) {
+export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appearanceMaterial = null) {
     const frozen = PROMPT_PLANS.get(plan);
     if (!frozen) throw externalMaterialError('RABBIT_MIRROR_EXTERNAL_MATERIAL_INVALID');
     const { selections, args, inactive } = frozen;
@@ -1119,6 +1157,15 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null) {
         return { prompt: '', executionLock: '', metadata: Object.freeze(metadata) };
     }
 
+    let appearanceReferenceText = '';
+    if (settings.appearanceReferenceEnabled === true) {
+        if (!appearanceMaterial || appearanceMaterial.schemaVersion !== 1 || appearanceMaterial.revision !== settings.appearanceReferenceRevision || typeof appearanceMaterial.reference !== 'string' || !appearanceMaterial.reference || appearanceMaterial.reference.length > 12000) {
+            const error = new Error('本轮外观参考未读取完成或版本不一致；请保存当前设备的参考模板，或关闭外观参考。');
+            error.code = 'RABBIT_MIRROR_APPEARANCE_MISSING'; error.requestCount = 0;
+            throw error;
+        }
+        appearanceReferenceText = appearanceMaterial.reference;
+    }
     const rawPolicy = normalizedRawPolicy(settings.rawPolicy);
     const faceContexts = selections.map(selection => buildFaceContext(selection.combo, settings, rawPolicy, externalRawMap));
     const multiface = faceContexts.length > 1;
@@ -1135,6 +1182,7 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null) {
         touchTheaterRulesText: first.touchTheaterRulesText, directive, memoryMaterial, activeFeedback,
         generationType, followTagIsolationText, faceContexts: multiface ? faceContexts : null,
         externalReferences: faceContexts.some(face => face.hasExternal),
+        appearanceReferenceText,
     });
     const baseFaces = faceContexts.map(face => faceMetadata(face, settings, generationType, rawPolicy, directive,
         memoryMaterial && hasSharedMemoryTheme(face.combo) ? memoryMaterial : null,

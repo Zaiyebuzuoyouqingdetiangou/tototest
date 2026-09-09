@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.32-return1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.32-return1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.35-stability1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.35-stability1';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -16,9 +16,9 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.5.32-return1';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.32-return1';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.32-return1';
+} from './storage.js?rmv=1.5.35-stability1';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.35-stability1';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.35-stability1';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -27,7 +27,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.5.32-return1';
+} from './externalWorldBook/externalPool.js?rmv=1.5.35-stability1';
 
 function randomUnit() {
     try {
@@ -405,7 +405,7 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
     return shuffle(workingPool).slice(0, Math.max(1, Math.min(count, workingPool.length)));
 }
 
-function sourceAwareThemeSample({ settings, pool, count, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, externalHardExcludedIds = [] }) {
+function sourceAwareThemeSample({ settings, pool, count, recentIds, recentIdHits, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, externalHardExcludedIds = [] }) {
     if (!externalPoolActive(settings, 'theme')) {
         return weightedThemeSample(pool, count, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys);
     }
@@ -424,6 +424,7 @@ function sourceAwareThemeSample({ settings, pool, count, recentIds, recentGroups
         ? pickExternalItems(settings, 'theme', externalCount, {
             randomUnit,
             recentIds,
+            recentIdHits,
             hardExcludedIds: externalHardExcludedIds,
             preferredExcludedIds: hardExcludedIds,
             avoidRepeat,
@@ -440,6 +441,7 @@ function sourceAwareThemeSample({ settings, pool, count, recentIds, recentGroups
         externals = [...externals, ...pickExternalItems(settings, 'theme', deficit, {
             randomUnit,
             recentIds,
+            recentIdHits,
             hardExcludedIds: [...externalHardExcludedIds, ...externals.map(item => item.id)],
             preferredExcludedIds: hardExcludedIds,
             avoidRepeat,
@@ -457,7 +459,7 @@ function sourceAwareThemeSample({ settings, pool, count, recentIds, recentGroups
     return uniqueById(selected).slice(0, target);
 }
 
-function sourceAwareFormatSample({ settings, pool, count, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, eligibleMisses, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, groupCooldownEnabled, externalHardExcludedIds = [] }) {
+function sourceAwareFormatSample({ settings, pool, count, recentIds, recentIdHits, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, eligibleMisses, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, groupCooldownEnabled, externalHardExcludedIds = [] }) {
     if (!externalPoolActive(settings, 'format')) {
         return weightedSample(pool, count, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, eligibleMisses, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, groupCooldownEnabled);
     }
@@ -476,6 +478,7 @@ function sourceAwareFormatSample({ settings, pool, count, recentIds, recentGroup
         ? pickExternalItems(settings, 'format', externalCount, {
             randomUnit,
             recentIds,
+            recentIdHits,
             hardExcludedIds: externalHardExcludedIds,
             preferredExcludedIds: hardExcludedIds,
             avoidRepeat,
@@ -493,6 +496,7 @@ function sourceAwareFormatSample({ settings, pool, count, recentIds, recentGroup
         externals = [...externals, ...pickExternalItems(settings, 'format', deficit, {
             randomUnit,
             recentIds,
+            recentIdHits,
             hardExcludedIds: [...externalHardExcludedIds, ...externals.map(item => item.id)],
             preferredExcludedIds: hardExcludedIds,
             avoidRepeat,
@@ -821,6 +825,7 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
             pool: themePool,
             count: themeCount,
             recentIds: recent.themeIds,
+            recentIdHits: recent.themeIdHits,
             recentGroups: recent.themeGroups,
             avoidRepeat: settings.avoidRepeat,
             hardExcludedIds: hardRecent.themeIds,
@@ -862,6 +867,7 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
                 pool: formatPool,
                 count: formatCount,
                 recentIds: recent.formatIds,
+                recentIdHits: recent.formatIdHits,
                 recentGroups: formalRecent?.formatGroups || [],
                 avoidRepeat: settings.avoidRepeat,
                 hardExcludedIds: hardRecent.formatIds,

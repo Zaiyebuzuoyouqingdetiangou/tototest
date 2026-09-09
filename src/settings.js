@@ -146,6 +146,8 @@ export const defaultSettings = Object.freeze({
     visualPrompt: DEFAULT_VISUAL_PROMPT,
     visualExtraPrompt: '',
     visualAvoidPrompt: '',
+    appearanceReferenceEnabled: false,
+    appearanceReferenceRevision: '',
 
     hardStartup: true,
     hardChineseLock: true,
@@ -270,6 +272,8 @@ export function getSettings() {
         : 'builtin-only';
     settings.enhancedVisualDrawing = settings.enhancedVisualDrawing === true;
     settings.visualPromptEditingEnabled = !!settings.visualPromptEditingEnabled;
+    settings.appearanceReferenceEnabled = settings.appearanceReferenceEnabled === true;
+    settings.appearanceReferenceRevision = /^[a-z\d-]{8,80}$/i.test(String(settings.appearanceReferenceRevision || '')) ? String(settings.appearanceReferenceRevision) : '';
     const normalizeVisualSetting = (value, fallback, maxChars) => {
         const raw = typeof value === 'string' ? value : String(value ?? fallback);
         if (raw.length <= maxChars && raw.indexOf('\r') < 0) return raw;
@@ -330,6 +334,8 @@ export function updateSettings(patch) {
     if (Object.prototype.hasOwnProperty.call(safePatch, 'enhancedVisualDrawing')) {
         safePatch.enhancedVisualDrawing = safePatch.enhancedVisualDrawing === true;
     }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'appearanceReferenceEnabled')) safePatch.appearanceReferenceEnabled = safePatch.appearanceReferenceEnabled === true;
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'appearanceReferenceRevision')) safePatch.appearanceReferenceRevision = /^[a-z\d-]{8,80}$/i.test(String(safePatch.appearanceReferenceRevision || '')) ? String(safePatch.appearanceReferenceRevision) : '';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorFaceCount')) {
         const faceCount = safePatch.rabbitMirrorFaceCount;
         safePatch.rabbitMirrorFaceCount = Number.isInteger(faceCount) && faceCount >= 2 && faceCount <= 5 ? faceCount : 1;

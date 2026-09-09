@@ -1067,7 +1067,13 @@ export function markPendingBatchAttempt(planInput = null, options = {}) {
     const changes = [{ key: ACTIVE_BATCH_REGISTRY_KEY, before: registry.raw, after: registryAfter }];
     if (pityAfter !== (pityBefore || '{}')) changes.push({ key: FORMAT_ELIGIBLE_MISS_STORAGE_KEY, before: pityBefore, after: pityAfter });
     if (attemptAfter !== (attemptBefore || '{}')) changes.push({ key: ATTEMPT_STORAGE_KEY, before: attemptBefore, after: attemptAfter });
-    return writeOwnedTransaction(changes, options, true);
+    // Preserve exactly the same planned values and retention policy. Accounting
+    // can already be shrinking (e.g. shorter IDs replacing older attempt rows).
+    // Write that reduction before growing the reservation so a fitting final
+    // state does not need unnecessary temporary headroom. Owned rollback still
+    // runs in reverse order, removing our growth before restoring larger values.
+    const shrinks = change => typeof change.before === 'string' && change.after.length < change.before.length;
+    return writeOwnedTransaction([...changes.filter(shrinks), ...changes.filter(change => !shrinks(change))], options, true);
 }
 
 function normalizeFaceScan(value, faceIndex) {

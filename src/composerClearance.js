@@ -1,4 +1,5 @@
 // Reserve scrollable space, not a decorative frame. No chat text, polling or model calls.
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.35-stability1';
 let active = null;
 export function composerOverlap(chat, composer, viewportBottom) {
     if (!chat || !composer || composer.width <= 0 || composer.height <= 0
@@ -30,6 +31,7 @@ export function initRabbitMirrorComposerClearance() {
     destroyRabbitMirrorComposerClearance();
     const chat = document.getElementById('chat');
     if (!chat) return;
+    const managed = isRabbitMirrorManagedChatSurface();
     let frame = 0, stopped = false, spacer = null, lastHeight = 0;
     let observedForm = null, footerOwner = null, footerHeight = 0;
     const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(() => schedule()) : null;
@@ -37,7 +39,9 @@ export function initRabbitMirrorComposerClearance() {
     function measure() {
         frame = 0;
         if (stopped || !chat.isConnected) return;
-        const owner = chat.querySelector(':scope > .mes.last_mes:has(+ .rabbit-mirror-external-host[data-rm-source="independent"][data-rm-placement="external"]:not([hidden]))');
+        const mounted = managed ? getRabbitMirrorMountedMessages().filter(context => !context.signal.aborted && context.element.isConnected) : [];
+        const lastMountedOwner = managed ? mounted.find(context => context.element.matches('.last_mes'))?.element : null;
+        const owner = managed ? null : chat.querySelector(':scope > .mes.last_mes:has(+ .rabbit-mirror-external-host[data-rm-source="independent"][data-rm-placement="external"]:not([hidden]))');
         if (footerOwner !== owner) {
             footerOwner?.style.removeProperty('--rm-external-footer-clearance');
             footerOwner = owner; footerHeight = 0;
@@ -56,7 +60,9 @@ export function initRabbitMirrorComposerClearance() {
             if (form) resize?.observe(form);
         }
         // First matching shell only; never enumerate historical messages or their content.
-        const hasMirror = !!chat.querySelector('toto, [data-rabbit-mirror-external-source="true"]');
+        const hasMirror = managed
+            ? !!lastMountedOwner?.querySelector('toto, [data-rabbit-mirror-external-source="true"]')
+            : !!chat.querySelector('toto, [data-rabbit-mirror-external-source="true"]');
         const formStyle = form && getComputedStyle(form);
         const shown = form && formStyle.display !== 'none' && formStyle.visibility !== 'hidden';
         const bottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight;
@@ -77,15 +83,34 @@ export function initRabbitMirrorComposerClearance() {
             spacer.style.setProperty('--rm-composer-clearance', `${height}px`);
             lastHeight = height;
         }
-        if (chat.lastElementChild !== spacer) chat.append(spacer);
+        // TT owns all direct #chat children. Reserve space inside its live last
+        // message only; do not append siblings or alter its virtual spacers.
+        const spacerParent = managed ? lastMountedOwner : chat;
+        if (spacerParent?.lastElementChild !== spacer) spacerParent?.append(spacer);
         // Keep an already bottom-anchored reader at the bottom; never jump a history reader.
-        if (nearEnd && height > oldHeight) chat.scrollTop = chat.scrollHeight;
+        // Managed hosts own their own scroll anchoring and observe message size.
+        if (!managed && nearEnd && height > oldHeight) chat.scrollTop = chat.scrollHeight;
     }
     function schedule() {
         if (!stopped && !frame) frame = requestAnimationFrame(measure);
     }
-    const structure = typeof MutationObserver === 'function' ? new MutationObserver(records => {
+    const structure = !managed && typeof MutationObserver === 'function' ? new MutationObserver(records => {
         if (records.some(r => [...r.addedNodes, ...r.removedNodes].some(n => n !== spacer))) schedule();
+    }) : null;
+    const onManagedMount = context => {
+        schedule();
+        return () => {
+            if (spacer && context.element.contains(spacer)) {
+                spacer.remove(); spacer = null; lastHeight = 0;
+            }
+            schedule();
+        };
+    };
+    const unsubscribeManaged = managed ? subscribeRabbitMirrorChatSurface({
+        id: 'rabbitmirror/composer-clearance', didMount: onManagedMount,
+        // Content revisions do not own the owner-level spacer. Removing it on
+        // each content abort would fight host anchoring during streamed updates.
+        didCommitContent: () => { schedule(); },
     }) : null;
     structure?.observe(chat, { childList: true });
     resize?.observe(chat);
@@ -96,6 +121,7 @@ export function initRabbitMirrorComposerClearance() {
     document.addEventListener('focusout', schedule);
     active = { schedule, destroy() {
         stopped = true;
+        unsubscribeManaged?.();
         if (frame) cancelAnimationFrame(frame);
         structure?.disconnect(); resize?.disconnect(); spacer?.remove();
         footerOwner?.style.removeProperty('--rm-external-footer-clearance');

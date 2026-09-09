@@ -1,4 +1,4 @@
-const DIAG_VERSION = '1.4.9-externaldiag1-securityfix2';
+const DIAG_VERSION = '1.5.35-externaldiag-transport1';
 const MAX_ENTRIES = 1800;
 const STALL_INTERVAL_MS = 1000;
 const STALL_THRESHOLD_MS = 250;
@@ -29,6 +29,51 @@ let sendSequence = 0;
 let maintenanceSequence = 0;
 let maintenanceWindows = [];
 let initialized = false;
+let transportRows = [];
+
+// The request parser sends only a scalar transport summary. Revalidate the
+// event at this boundary; arbitrary detail fields and provider strings must
+// never enter external reports, even through a forged public event.
+export function sanitizeExternalTransportSummary(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const integer = value => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+    const tri = value => typeof value === 'boolean' ? value : null;
+    const status = integer(value.status);
+    const mime = String(value.contentType || '').split(';', 1)[0].trim().toLowerCase();
+    const finish = String(value.finishReason || 'unknown');
+    const format = String(value.parserFormat || 'unknown');
+    const termination = String(value.termination || 'unknown');
+    return {
+        status: status >= 100 && status <= 599 ? status : null,
+        contentType: /^(?:text\/(?:event-stream|plain|html)|application\/(?:json|x-ndjson|ndjson|octet-stream|problem\+json))$/.test(mime) ? mime : (mime ? 'other' : null),
+        parserFormat: /^(?:sse|ndjson|json|text|host-adapter|unknown)$/.test(format) ? format : 'unknown',
+        receivedBytes: integer(value.receivedBytes), receivedBytesExact: value.receivedBytesExact === true,
+        contentChars: integer(value.contentChars),
+        finishReason: /^(?:stop|length|max_tokens|max_output_tokens|end_turn|stop_sequence|tool_calls|function_call|content_filter|safety|recitation|other|unknown)$/.test(finish) ? finish : 'other',
+        terminalObserved: tri(value.terminalObserved), readerReachedEof: tri(value.readerReachedEof),
+        termination: /^(?:protocol-done|provider-finish|json-complete|eof-unconfirmed|local-abort|response-limit|stream-error|host-complete|fetch-error|not-dispatched)$/.test(termination) ? termination : 'unknown',
+        endedNormally: tri(value.endedNormally), prematureClose: tri(value.prematureClose),
+    };
+}
+
+function installTransportMetadataListener() {
+    if (typeof globalThis.addEventListener !== 'function') return;
+    const listener = event => {
+        if (!initialized) return;
+        const summary = sanitizeExternalTransportSummary(event?.detail?.transport);
+        if (!summary) return;
+        const stamp = Number(event?.detail?.ts);
+        const ts = Number.isFinite(stamp) && stamp > 0 ? stamp : Date.now();
+        // Internal postprocessing republishes the same request timestamp. Update
+        // its summary rather than pretend it was a new paid request.
+        const existing = transportRows.find(row => row.ts === ts);
+        if (existing) existing.summary = summary;
+        else transportRows.push({ ts, summary });
+        if (transportRows.length > 12) transportRows.splice(0, transportRows.length - 12);
+    };
+    globalThis.addEventListener('rabbitmirror:independent-api-diagnostic', listener);
+    cleanup.push(() => globalThis.removeEventListener?.('rabbitmirror:independent-api-diagnostic', listener));
+}
 
 function now() {
     try { return performance.now(); } catch { return Date.now(); }
@@ -581,7 +626,7 @@ function report() {
     const lines = [];
     lines.push(`RabbitMirror 外部代码／宿主性能诊断 ${DIAG_VERSION}`);
     lines.push(`生成时间: ${wallNow()}`);
-    lines.push('边界: 只诊断 SillyTavern、其他扩展、浏览器主线程与网络；不读取兔子镜内部生成/维修状态。');
+    lines.push('边界: 诊断 SillyTavern、其他扩展、浏览器主线程与网络；仅补充独立 API 的标量传输元数据，不读取兔子镜内部生成/维修状态。');
     lines.push('兔子镜内部维修问题请单独使用对应兔子镜里的「📋 生成全链路诊断」，两份报告不要合并。');
     lines.push('隐私: 不保存聊天正文、Prompt、API Key、角色正文、世界书正文、请求 body 或响应 body。');
     lines.push('');
@@ -626,6 +671,17 @@ function report() {
     else lines.push('暂无同源 /api 网络资源记录。');
 
     lines.push('');
+    lines.push('【独立 API 响应传输（仅元数据）】');
+    const yesNo = value => value === true ? '是' : value === false ? '否' : '未确认';
+    if (!transportRows.length) lines.push('开启本诊断后尚未收到独立 API 传输记录；不会为诊断额外发送请求。');
+    for (const row of transportRows) {
+        const item = sanitizeExternalTransportSummary(row.summary);
+        if (!item) continue;
+        lines.push(`- HTTP=${item.status ?? '不可用'}; Content-Type=${item.contentType ?? '不可用'}; 实际解析=${item.parserFormat}; 应用接收字节=${item.receivedBytes ?? '不可用'}${item.receivedBytes == null ? '' : item.receivedBytesExact ? '（精确）' : '（估算）'}; 最终 content 字符=${item.contentChars ?? '不可用'}; finish_reason=${item.finishReason}; 正常结束=${yesNo(item.endedNormally)}; 提前断流=${yesNo(item.prematureClose)}; 结束方式=${item.termination}`);
+    }
+    lines.push('字节数指应用收到的解压后响应体，不是压缩网络流量。宿主适配器未公开的 HTTP/格式/字节数据标为不可用；仅 EOF 且无结束标记不能断言提前断流。');
+
+    lines.push('');
     lines.push('【维修兔点击后的“外部阻塞窗口”】');
     if (maintenanceRows.length) {
         for (const row of maintenanceRows) {
@@ -653,6 +709,7 @@ function status() {
 }
 function reset(reason = 'manual') {
     entries = [];
+    transportRows = [];
     sequence = 0;
     startedAt = now();
     activeSend = null;
@@ -675,6 +732,7 @@ export function initRabbitMirrorExternalDiagnostics() {
     initialized = true;
     startedAt = now();
     entries = [];
+    transportRows = [];
     cleanup = [];
     maintenanceWindows = [];
     const api = {
@@ -689,6 +747,7 @@ export function initRabbitMirrorExternalDiagnostics() {
     };
     globalThis.__rabbitMirrorExternalDiag = api;
     globalThis.rabbitMirrorExternalDiagnosticReport = report;
+    installTransportMetadataListener();
     installResourceObserver();
     installPerformanceObservers();
     installLifecycleMarks();

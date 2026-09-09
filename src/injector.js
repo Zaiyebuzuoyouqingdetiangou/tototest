@@ -1,16 +1,16 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.32-return1';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.35-stability1';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.5.32-return1';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5.32-return1';
-import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.5.32-return1';
-import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.5.32-return1';
+} from './feedbackCat.js?rmv=1.5.35-stability1';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5.35-stability1';
+import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.5.35-stability1';
+import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.5.35-stability1';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -350,7 +350,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.32-return1').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.35-stability1').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -360,7 +360,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.5.32-return1').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.5.35-stability1').catch(error => {
             generationGuardPromise = null;
             throw error;
         });
@@ -466,7 +466,18 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     clearFeedbackCatExtensionPrompt();
     const generationScopeKey = createGenerationScopeKey(type);
     const externalEnabled = settings.externalWorldBookRandomEnabled === true && settings.externalWorldBookMixMode !== 'builtin-only';
-    const prefetchOwner = externalEnabled ? captureFollowPrefetchOwner(_chat, generationInvocationSequence) : null;
+    const appearanceEnabled = settings.appearanceReferenceEnabled === true;
+    const appearanceRequest = { enabled: appearanceEnabled, revision: String(settings.appearanceReferenceRevision || '') };
+    const materialEnabled = externalEnabled || appearanceEnabled;
+    const prefetchOwner = materialEnabled ? captureFollowPrefetchOwner(_chat, generationInvocationSequence) : null;
+    const assertAppearanceOwner = () => {
+        if (!appearanceEnabled) return;
+        const current = getSettings();
+        if (current.appearanceReferenceEnabled !== true || current.appearanceReferenceRevision !== appearanceRequest.revision) {
+            const error = new Error('外观参考设置在读取期间已改变；本轮未注入兔子镜。');
+            error.code = 'RABBIT_MIRROR_APPEARANCE_STALE'; error.requestCount = 0; throw error;
+        }
+    };
     const [{ buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan }, {
         attachRabbitMirrorGenerationSelection,
         beginRabbitMirrorGenerationAttempt,
@@ -486,42 +497,57 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     let promptDetails;
     let frozenPlan;
     let externalRawMap;
+    let appearanceMaterial;
     let externalStage = 'runtime';
     try {
-        if (externalEnabled) {
+        if (materialEnabled) {
             assertFollowPrefetchOwner(prefetchOwner, _chat);
-            const repository = await import('./externalWorldBook/store.js?rmv=1.5.32-return1');
-            assertFollowPrefetchOwner(prefetchOwner, _chat);
-            externalStage = 'index';
-            await repository.hydrateExternalPoolMetadata();
-            assertFollowPrefetchOwner(prefetchOwner, _chat);
-            if (repository.getExternalPoolHydrationStatus().enabledMetadataRebuildRequired.length) {
-                const error = new Error('外部库需要先重建抽取索引。');
-                error.code = 'RABBIT_MIRROR_EXTERNAL_METADATA_REBUILD_REQUIRED';
-                error.requestCount = 0;
-                throw error;
+            assertAppearanceOwner();
+            let repository;
+            if (externalEnabled) {
+                repository = await import('./externalWorldBook/store.js?rmv=1.5.35-stability1');
+                assertFollowPrefetchOwner(prefetchOwner, _chat);
+                externalStage = 'index';
+                await repository.hydrateExternalPoolMetadata();
+                assertFollowPrefetchOwner(prefetchOwner, _chat);
+                if (repository.getExternalPoolHydrationStatus().enabledMetadataRebuildRequired.length) {
+                    const error = new Error('外部库需要先重建抽取索引。');
+                    error.code = 'RABBIT_MIRROR_EXTERNAL_METADATA_REBUILD_REQUIRED';
+                    error.requestCount = 0;
+                    throw error;
+                }
             }
+            assertAppearanceOwner();
             beginRabbitMirrorGenerationAttempt(_chat, generationScopeKey);
             externalStage = 'selection';
-            frozenPlan = planRabbitMirrorPromptDetails(settings, type, null, generationScopeKey, generationContext);
+            frozenPlan = planRabbitMirrorPromptDetails({ ...settings, appearanceReferenceEnabled: appearanceEnabled, appearanceReferenceRevision: appearanceRequest.revision }, type, null, generationScopeKey, generationContext);
             if (frozenPlan.selectedExternalIds.length) {
                 externalStage = 'selected-read';
                 externalRawMap = await repository.getSelectedExternalEntries(frozenPlan.selectedExternalIds);
                 assertFollowPrefetchOwner(prefetchOwner, _chat);
             }
+            if (frozenPlan.appearanceReference.enabled) {
+                externalStage = 'appearance-read';
+                const appearance = await import('./appearanceReference.js?rmv=1.5.35-stability1');
+                assertFollowPrefetchOwner(prefetchOwner, _chat); assertAppearanceOwner();
+                appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(frozenPlan.appearanceReference.revision);
+                assertFollowPrefetchOwner(prefetchOwner, _chat); assertAppearanceOwner();
+            }
             externalStage = 'render';
-            promptDetails = renderRabbitMirrorPromptPlan(frozenPlan, externalRawMap);
+            promptDetails = renderRabbitMirrorPromptPlan(frozenPlan, externalRawMap, appearanceMaterial);
             assertFollowPrefetchOwner(prefetchOwner, _chat);
+            assertAppearanceOwner();
         } else {
             beginRabbitMirrorGenerationAttempt(_chat, generationScopeKey);
             promptDetails = buildRabbitMirrorPromptDetails(settings, type, null, generationScopeKey, generationContext);
         }
     } catch (error) {
-        if (!externalEnabled) throw error;
+        if (!materialEnabled) throw error;
         if (frozenPlan?.batchPlan) releasePendingComboBatch({ batchId: frozenPlan.batchPlan.batchId, identity: frozenPlan.batchPlan.identity });
         // A stale completion must not erase a newer interceptor's installed prompt.
         if (!prefetchOwner || prefetchOwner.sequence === generationInvocationSequence) {
-            const failure = describeExternalWorldBookPreflightFailure(error);
+            const failure = String(error?.code || '').startsWith('RABBIT_MIRROR_APPEARANCE_')
+                ? { code: error.code, message: error.message } : describeExternalWorldBookPreflightFailure(error);
             const mismatch = error?.code === 'RABBIT_MIRROR_EXTERNAL_PREFETCH_STALE' ? followPrefetchOwnerMismatch(prefetchOwner, _chat) : '';
             lastFollowExternalPreflightFailure = Object.freeze({ code: failure.code, stage: externalStage, ownerMismatch: mismatch, requestCount: 0, time: Date.now() });
             clearRabbitMirrorPrompt('external-material-preflight-rejected', type);
@@ -532,8 +558,9 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         return;
     } finally {
         externalRawMap?.clear?.();
+        appearanceMaterial = null;
     }
-    if (externalEnabled) lastFollowExternalPreflightFailure = null;
+    if (materialEnabled) lastFollowExternalPreflightFailure = null;
     attachRabbitMirrorGenerationSelection(promptDetails.metadata);
     const basePrompt = promptDetails.prompt;
     if (!basePrompt) {

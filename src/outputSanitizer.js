@@ -1,8 +1,9 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.32-return1';
-import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.32-return1';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.32-return1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.32-return1';
-import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.32-return1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.35-stability1';
+import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.35-stability1';
+import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.35-stability1';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.35-stability1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.35-stability1';
+import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.35-stability1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -12,14 +13,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.32-return1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.32-return1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.32-return1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.32-return1';
+} from './feedbackCat.js?rmv=1.5.35-stability1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.35-stability1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.35-stability1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.35-stability1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
 
 
-const RUNTIME_VERSION = '1.5.32';
+const RUNTIME_VERSION = '1.5.35';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -153,6 +154,8 @@ let outputHostSubscriptions = [];
 let recipeRecordedHandler = null;
 let recipeOutsideCloseCleanup = null;
 let maintenanceOutsideCloseCleanup = null;
+let feedbackOutsideCloseCleanup = null;
+const toolOutsideCloseOwners = new Map();
 
 // 0.32.68: 新增源码恢复链：在 TH/高亮插件生成代码壳后，直接用原始消息的清洗副本瞬时重绘当前显示层；不写回 mes/swipe/display_text；
 // 0.32.67: 一次性交互诊断升级为兔子镜总诊断，可检查交互、代码块、纯文字源码、显示源与触发链；急救逻辑保持不变；
@@ -12131,15 +12134,25 @@ export function armRabbitMirrorFirstUseInteraction(root) {
     if (firstUseInteractionBindings.has(root)) return;
     const details = root.matches?.('details') ? root : root.querySelector(':scope > details');
     if (!details) return;
-    const state = { scheduled: false, finished: false };
+    const state = { scheduled: false, finished: false, frame: 0, timer: 0 };
     firstUseInteractionBindings.set(root, state);
     const cleanup = () => {
+        if (state.frame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(state.frame);
+        if (state.timer) clearTimeout(state.timer);
+        state.frame = 0; state.timer = 0; state.scheduled = false;
         details.removeEventListener('toggle', schedule, false);
         root.removeEventListener('pointerdown', firstTap, true);
         root.removeEventListener('click', firstTap, true);
         root.removeEventListener('keydown', firstKey, true);
     };
+    state.dispose = () => {
+        state.finished = true;
+        cleanup();
+        firstUseInteractionBindings.delete(root);
+    };
     const initialize = () => {
+        if (state.timer) clearTimeout(state.timer);
+        state.timer = 0;
         state.scheduled = false;
         if (state.finished || !root.isConnected || !details.open) return;
         state.finished = true;
@@ -12158,8 +12171,11 @@ export function armRabbitMirrorFirstUseInteraction(root) {
     function schedule() {
         if (state.finished || state.scheduled || !details.open || !root.isConnected) return;
         state.scheduled = true;
-        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => setTimeout(initialize, 0));
-        else setTimeout(initialize, 0);
+        if (typeof requestAnimationFrame === 'function') state.frame = requestAnimationFrame(() => {
+            state.frame = 0;
+            if (!state.finished) state.timer = setTimeout(initialize, 0);
+        });
+        else state.timer = setTimeout(initialize, 0);
     }
     function firstTap(event) {
         const target = event.target?.nodeType === 1 ? event.target : event.target?.parentElement;
@@ -18574,11 +18590,13 @@ function triggerDiagnosticForMaintenanceRoot(root) {
 function closeMaintenanceRabbitMenu() {
     try { maintenanceOutsideCloseCleanup?.(); } catch {}
     maintenanceOutsideCloseCleanup = null;
+    toolOutsideCloseOwners.delete('maintenance');
     document.querySelectorAll?.(`[${MAINTENANCE_MENU_ATTR}]`)?.forEach(panel => panel.remove());
 }
 
 function bindMaintenanceOutsideClose(panel, button) {
     try { maintenanceOutsideCloseCleanup?.(); } catch {}
+    toolOutsideCloseOwners.set('maintenance', { button, close: closeMaintenanceRabbitMenu });
     let closeOnOutside = null;
     const timer = setTimeout(() => {
         if (!panel?.isConnected) return;
@@ -18605,6 +18623,9 @@ function feedbackCatEscapeHtml(value) {
 }
 
 function closeFeedbackCatMenu() {
+    try { feedbackOutsideCloseCleanup?.(); } catch {}
+    feedbackOutsideCloseCleanup = null;
+    toolOutsideCloseOwners.delete('feedback');
     document.querySelectorAll?.(`[${FEEDBACK_CAT_MENU_ATTR}]`)?.forEach(panel => panel.remove());
 }
 
@@ -18629,19 +18650,21 @@ function positionFeedbackCatPanel(panel, button, preferredWidth = 300) {
 }
 
 function bindFeedbackCatOutsideClose(panel, button) {
-    setTimeout(() => {
-        const closeOnOutside = event => {
-            if (!panel.isConnected) {
-                document.removeEventListener('pointerdown', closeOnOutside, true);
-                return;
-            }
-            if (!panel.contains(event.target) && event.target !== button) {
-                closeFeedbackCatMenu();
-                document.removeEventListener('pointerdown', closeOnOutside, true);
-            }
+    try { feedbackOutsideCloseCleanup?.(); } catch {}
+    toolOutsideCloseOwners.set('feedback', { button, close: closeFeedbackCatMenu });
+    let closeOnOutside = null;
+    const timer = setTimeout(() => {
+        if (!panel?.isConnected) return;
+        closeOnOutside = event => {
+            if (!panel.isConnected || (!panel.contains(event.target) && event.target !== button)) closeFeedbackCatMenu();
         };
         document.addEventListener('pointerdown', closeOnOutside, true);
     }, 0);
+    feedbackOutsideCloseCleanup = () => {
+        clearTimeout(timer);
+        if (closeOnOutside) document.removeEventListener('pointerdown', closeOnOutside, true);
+        closeOnOutside = null;
+    };
 }
 
 function bindRecipeOutsideClose(panel, button) {
@@ -18649,6 +18672,7 @@ function bindRecipeOutsideClose(panel, button) {
     // only on the *next* pointerdown; repeated keyboard/programmatic open-close cycles could leave
     // detached-panel listeners behind until another pointer event happened.
     try { recipeOutsideCloseCleanup?.(); } catch {}
+    toolOutsideCloseOwners.set('recipe', { button, close: closeRecipeMenu });
     let closeOnOutside = null;
     const timer = setTimeout(() => {
         if (!panel?.isConnected) return;
@@ -19001,6 +19025,7 @@ function handleFeedbackCatClick(event, root, button) {
 function closeRecipeMenu() {
     try { recipeOutsideCloseCleanup?.(); } catch {}
     recipeOutsideCloseCleanup = null;
+    toolOutsideCloseOwners.delete('recipe');
     document.querySelectorAll?.(`[${RECIPE_MENU_ATTR}]`)?.forEach(panel => panel.remove());
 }
 
@@ -23119,12 +23144,18 @@ function installMaintenanceRabbitsDeferredInChatDom() {
     const chatRoot = getChatRoot();
     if (!chatRoot) return;
     cancelStartupMaintenanceHistoryInstall();
+    if (isRabbitMirrorManagedChatSurface()) { installManagedRabbitMirrorTools(); return; }
     pruneMaintenanceAutoSafeOpenBindings();
+    // These events discover not-yet-visited history, not a reason to reinstall a
+    // live scene. Genuine host replacements are handled by the structural observer.
+    // Weak membership follows DOM lifetime and never retains virtualized history.
+    const visited = new WeakSet();
     const install = root => {
-        if (!root?.isConnected) return;
+        if (!root?.isConnected || visited.has(root)) return;
         installMaintenanceRabbitsInScope(root, {
             historyRestoreLight: true,
         });
+        visited.add(root);
     };
     const recent = [];
     for (let node = chatRoot.lastElementChild; node && recent.length < 6; node = node.previousElementSibling) {
@@ -25987,11 +26018,69 @@ function outputHostGenerationLooksActive() {
     } catch { return false; }
 }
 
+let managedRabbitMirrorToolsUnsubscribe = null;
+function installManagedRabbitMirrorTools() {
+    if (managedRabbitMirrorToolsUnsubscribe) return;
+    const install = (context, wholeMessage = false) => {
+        if (context.signal.aborted || !context.element?.isConnected) return;
+        const owner = context.element;
+        const timerChatKey = (() => { try { return String(getCurrentChatKey?.() || 'chat'); } catch { return 'chat'; } })();
+        const messageTimerKey = `${timerChatKey}:${context.mesid}`;
+        installToolEntryDelegation(getChatRoot());
+        installMaintenanceRabbitsInScope(owner, { historyRestoreLight: true });
+        const ownedScope = wholeMessage ? owner : context.content;
+        const roots = getRenderedRabbitMirrorInteractionRoots(ownedScope);
+        // Pending first-use handlers and root-keyed timers must not outlive the
+        // host content lease. Native listeners on detached generated nodes are
+        // collected with those nodes; never rebuild an unmounted message here.
+        return () => {
+            pendingObservedMessageRoots.delete(owner);
+            // Independent generation can append its owned face after didCommitContent.
+            // Include that bounded live owner too, not only the initial mount snapshot.
+            const releasedRoots = new Set([...roots, ...getRenderedRabbitMirrorInteractionRoots(ownedScope)]);
+            for (const entry of [...toolOutsideCloseOwners.values()]) {
+                if (ownedScope.contains(entry.button) || [...releasedRoots].some(root => root.contains(entry.button))) entry.close();
+            }
+            for (const root of releasedRoots) {
+                firstUseInteractionBindings.get(root)?.dispose?.();
+                const pending = maintenanceAutoSafePendingRoots.get(root);
+                if (pending?.timer) clearTimeout(pending.timer);
+                maintenanceAutoSafePendingRoots.delete(root);
+                const frame = maintenanceHighConfidenceTextRepairFrames.get(root);
+                if (frame) cancelAnimationFrame(frame);
+                maintenanceHighConfidenceTextRepairFrames.delete(root);
+            }
+            const messageTimer = maintenanceAutoSafeCurrentMessageTimers.get(messageTimerKey);
+            if (messageTimer) clearTimeout(messageTimer);
+            maintenanceAutoSafeCurrentMessageTimers.delete(messageTimerKey);
+            for (const recipe of followMaintenanceRepairRecipes.values()) {
+                if (releasedRoots.has(recipe.lastRoot)) recipe.lastRoot = null;
+            }
+            for (const run of [...maintenanceRepairRunRecords.values()]) {
+                if (ownedScope.contains(run.button) || [...releasedRoots].some(root => root.contains(run.button))) {
+                    cancelMaintenanceRepairRun(run, '宿主已释放当前镜面', { notify: false });
+                }
+            }
+        };
+    };
+    managedRabbitMirrorToolsUnsubscribe = subscribeRabbitMirrorChatSurface({
+        id: 'rabbitmirror/output-tools', didMount: context => install(context, true), didCommitContent: install,
+    });
+}
+
 function installChatMutationObserver() {
     if (!isCurrentRuntime() || typeof MutationObserver === 'undefined') return false;
     const chatRoot = getChatRoot();
     if (!chatRoot) return false;
     installToolEntryDelegation(chatRoot);
+    if (isRabbitMirrorManagedChatSurface()) {
+        chatInstallObserver?.disconnect?.();
+        chatInstallObserver = null;
+        observedChatInstallRoot = null;
+        cancelStartupMaintenanceHistoryInstall();
+        installManagedRabbitMirrorTools();
+        return true;
+    }
     if (chatInstallObserver && observedChatInstallRoot === chatRoot) return true;
     chatInstallObserver?.disconnect?.();
     observedChatInstallRoot = chatRoot;
@@ -26056,6 +26145,7 @@ function installChatRootReadyObserver() {
     if (typeof MutationObserver === 'undefined' || typeof document === 'undefined' || !document.body) return;
     chatRootReadyObserver?.disconnect?.();
     chatRootReadyObserver = null;
+    if (isRabbitMirrorManagedChatSurface()) { installManagedRabbitMirrorTools(); return; }
     if (installChatMutationObserver()) return;
     chatRootReadyObserver = new MutationObserver(() => {
         if (!installChatMutationObserver()) return;
@@ -26163,6 +26253,8 @@ export async function initOutputSanitizer() {
 
 
 export function destroyOutputSanitizer() {
+    managedRabbitMirrorToolsUnsubscribe?.();
+    managedRabbitMirrorToolsUnsubscribe = null;
     unsubscribeOutputHostEvents();
     if (recipeRecordedHandler) globalThis.removeEventListener?.(RECIPE_RECORDED_EVENT, recipeRecordedHandler);
     recipeRecordedHandler = null;

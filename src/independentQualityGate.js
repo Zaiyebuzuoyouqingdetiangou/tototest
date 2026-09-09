@@ -328,14 +328,17 @@ function clearlyLowContrastRatio(html = '') {
  * generic tab template; it never changes sampling or cooldown state.
  */
 export function evaluateIndependentPostSanitizeQuality(html = '', metadata = {}) {
+    // Appearance observations only: callers still enforce sanitization, body,
+    // protocol, ownership and size boundaries separately. A generated result
+    // must not become a failure card because of its layout or interaction style.
     const source = String(html || '');
     const flags = metadataRiskFlags(metadata);
     if (metadata?.tarotRules === true && !hasRequiredTarotEntityImage(source)) {
         flags.push('tarot_entity_image_required');
         return qualityResult(
-            false,
+            true,
             'tarot-image-missing',
-            '抽中的塔罗／西方神秘学成品没有保留官方实体牌图及中文 alt；本次结果不会保存。',
+            '未保留完整实体牌图；已保留安全净化后的内容。',
             flags,
         );
     }
@@ -352,9 +355,9 @@ export function evaluateIndependentPostSanitizeQuality(html = '', metadata = {})
 
     if (tabbedFamily && (flatVertical || weakSpatial) && !allowsNativeTabbedMedia(metadata)) {
         return qualityResult(
-            false,
+            true,
             'generic-tabbed-flat-layout',
-            '净化后的兔子镜退化为通用三按钮／标签切页与单向文字流；本次结果不会保存。',
+            '检测到通用标签切页；仅记录版式观察，保留成品。',
             flags,
         );
     }
@@ -363,9 +366,9 @@ export function evaluateIndependentPostSanitizeQuality(html = '', metadata = {})
     if (nodes >= 3 && isSingleReveal(source, profile, family)) {
         flags.push('multi_node_media', 'single_reveal');
         return qualityResult(
-            false,
+            true,
             'multi-node-single-reveal',
-            '净化后的多节点兔子镜只有一次显隐入口，无法继续探索不同节点；本次结果不会保存。',
+            '多节点内容只有一个显隐入口；已保留现有内容与交互。',
             flags,
         );
     }
@@ -374,9 +377,9 @@ export function evaluateIndependentPostSanitizeQuality(html = '', metadata = {})
     if (lowContrastRatio != null) {
         flags.push(`low_contrast:${lowContrastRatio.toFixed(2)}`);
         return qualityResult(
-            false,
+            true,
             'clearly-low-contrast',
-            '净化后的兔子镜存在明确不可读的前景／背景低对比；本次结果不会保存。',
+            '检测到可能的文字低对比；仅记录观察，保留成品。',
             flags,
         );
     }

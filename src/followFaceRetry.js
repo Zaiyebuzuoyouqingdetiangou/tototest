@@ -1,14 +1,14 @@
-import { getSettings } from './settings.js?rmv=1.5.32-return1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.32-return1';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.32-return1';
-import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.5.32-return1';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.32-return1';
-import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.5.32-return1';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.32-return1';
-import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.5.32-return1';
-import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.32-return1';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.5.32-return1';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.5.32-return1';
+import { getSettings } from './settings.js?rmv=1.5.35-stability1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.35-stability1';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.35-stability1';
+import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.5.35-stability1';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.35-stability1';
+import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.5.35-stability1';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.35-stability1';
+import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.5.35-stability1';
+import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.35-stability1';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.5.35-stability1';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.5.35-stability1';
 
 const active = new WeakSet();
 const fail = message => { const error=new Error(message);error.rabbitMirrorFollowRetry=true;throw error; };
@@ -48,6 +48,7 @@ export async function retryFollowFace(root, suppliedOwner, deps) {
         if(typeof generate!=='function'||ctx.mainApi!=='openai') fail('当前单面重试需要酒馆的 Chat Completion 主 API 后台接口；未发送请求。');
         const recipe=getRabbitMirrorRecipe({chatKey:owner.chatKey,messageIndex:index,swipeId:owner.swipeId,message,faceIndex});
         if(!recipe||recipe.faceIndex!==faceIndex||recipe.faces?.length!==proof.faceCount) fail('缺少这一面的原抽取记录；不能重新抽签代替，未发送请求。');
+        let appearanceOwner = null;
         const assertCurrent=()=>{
             const current=deps.getContext();
             if(current.chat!==ctx.chat||current.chat?.[index]!==message||getCurrentChatKey(current.chat)!==owner.chatKey
@@ -57,15 +58,23 @@ export async function retryFollowFace(root, suppliedOwner, deps) {
                 ||getSettings().enabled===false||getSettings().autoRabbitMirrorInjection===false
                 ||connectionIdentity(current)!==connection||current.generateRaw!==generate) fail('正文、连接或显示位置已变化；本次不写入结果。');
             if(deps.hostBusy()) fail('正文正在生成，请等待正文完成后再重试这一面。');
+            if(appearanceOwner?.enabled && (getSettings().appearanceReferenceEnabled !== true || getSettings().appearanceReferenceRevision !== appearanceOwner.revision)) fail('外观参考设置已变化；本轮不发送或写入重试结果。');
         };
         assertCurrent();active.add(message);acquired=true;
         const settings={...getSettings(),rabbitMirrorFaceCount:1};
+        appearanceOwner = { enabled: settings.appearanceReferenceEnabled === true, revision: String(settings.appearanceReferenceRevision || '') };
         const selected=recipe.faces[faceIndex];
         if([...(selected.themeIds||[]),...(selected.formatIds||[])].some(id=>String(id).startsWith('ext:'))){await hydrateExternalPoolMetadata();assertCurrent();}
         const plan=planRabbitMirrorPromptDetails(settings,'independent',null,`follow-retry:${index}:${faceIndex}`,{multifaceResay:{faceIndex,faces:recipe.faces}});
-        let materials=null,prompt;
-        try{if(plan.selectedExternalIds.length){materials=await getSelectedExternalEntries(plan.selectedExternalIds);assertCurrent();}prompt=renderRabbitMirrorPromptPlan(plan,materials);}
-        finally{materials?.clear?.();}
+        let materials=null,appearanceMaterial=null,prompt;
+        try {
+            if(plan.selectedExternalIds.length){materials=await getSelectedExternalEntries(plan.selectedExternalIds);assertCurrent();}
+            if(plan.appearanceReference.enabled){
+                const appearance=await import('./appearanceReference.js?rmv=1.5.35-stability1');assertCurrent();
+                appearanceMaterial=await appearance.loadAppearanceReferenceMaterial(plan.appearanceReference.revision);assertCurrent();
+            }
+            prompt=renderRabbitMirrorPromptPlan(plan,materials,appearanceMaterial);
+        } finally{materials?.clear?.();appearanceMaterial=null;}
         if(!prompt.prompt||!prompt.executionLock||prompt.metadata?.disabled) fail('这一面的规则无法完整还原；未发送请求。');
         const context=deps.context(ctx,index);
         if(!context.targetVisibleChars) fail('当前正文过滤后为空；未发送请求。');
@@ -108,6 +117,6 @@ export async function retryFollowFace(root, suppliedOwner, deps) {
         }
         globalThis.toastr?.success?.(`第 ${faceIndex+1} 面已重新生成；其他面未改动。`);
         return {ok:true,faceIndex};
-    }catch(error){const message=error?.rabbitMirrorFollowRetry?error.message:'这一面重试失败或安全检查未通过；原有各面保留，未自动补发。';globalThis.toastr?.error?.(message);return {ok:false,error:message};}
+    }catch(error){const message=error?.rabbitMirrorFollowRetry||String(error?.code||'').startsWith('RABBIT_MIRROR_APPEARANCE_')?error.message:'这一面重试失败或安全检查未通过；原有各面保留，未自动补发。';globalThis.toastr?.error?.(message);return {ok:false,error:message};}
     finally{if(acquired&&message)active.delete(message);}
 }
