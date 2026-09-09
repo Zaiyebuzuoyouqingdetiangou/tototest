@@ -50,3 +50,18 @@ export const INDEPENDENT_BEHAVIOR_PATCH = String.raw`
 4. 无必要时不追问；直接返回当前兔子镜所需成品，不附加“然后呢？”等额外对话。
 5. 如某一局部受模型或平台规则限制，只对该局部做最小必要调整；其余可执行内容继续完成，不扩大限制、不额外说教。
 `;
+
+// 感谢 @lannuomi 提供原文。以下只组装文本，不执行原文中的伪代码。
+// 旧版“不注入”注释随原文保留；当前注入与否由独立 API 编辑器的设置决定。
+export const INDEPENDENT_BEHAVIOR_EDITOR_DEFAULT = [
+    '// 感谢 @lannuomi 提供创作规则原文。',
+    '// 下方完整保留原始文件及历史注释；当前是否注入以编辑器设置为准。',
+    '',
+    '// 1.3.89 TEST',
+    '// Lannuomi reference text is preserved verbatim for project/reference purposes.',
+    '// It is intentionally NOT injected into any model prompt. Only',
+    '// INDEPENDENT_BEHAVIOR_PATCH below is used by src/independentApi.js.',
+    'export const LANNUOMI_REFERENCE_TEXT = String.raw`' + LANNUOMI_REFERENCE_TEXT + '`;',
+    '',
+    'export const INDEPENDENT_BEHAVIOR_PATCH = String.raw`' + INDEPENDENT_BEHAVIOR_PATCH + '`;',
+].join('\n');
