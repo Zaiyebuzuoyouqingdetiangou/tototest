@@ -65,7 +65,7 @@ const PREFLIGHT_MESSAGES = Object.freeze({
     MULTIFACE_PLAN_UNAVAILABLE: '本轮多面抽取计划无法建立。请检查可用条目数、面数和抽取设置；这不表示已保存的外部库损坏。',
     RABBIT_MIRROR_DISPATCH_LEASE_REJECTED: '准备期间本轮消息或生成归属已变化，本轮已停止。请等目标正文完成后手动重试；不必重新分类外部库。',
     RABBIT_MIRROR_EXTERNAL_PREFETCH_STALE: '读取期间聊天或本轮输入已变化。请等当前正文完成后重试；不必重新分类外部库。',
-    RABBIT_MIRROR_EXTERNAL_METADATA_REBUILD_REQUIRED: '旧外部库缺少抽签索引。请到“管理已保存内容”点击“重建抽签索引”。',
+    RABBIT_MIRROR_EXTERNAL_METADATA_REBUILD_REQUIRED: '旧外部库缺少抽签索引。请到“管理母本库”点击“重建抽签索引”。',
     RABBIT_MIRROR_EXTERNAL_MATERIAL_MISSING: '本轮抽中的条目没有读到。请检查已保存的外部库是否仍存在且已启用。',
     RABBIT_MIRROR_EXTERNAL_MATERIAL_INVALID: '本轮抽中的条目内容或分类与抽签记录不一致。请检查该本地库后重试。',
     WORLD_BOOK_NOT_FOUND: '本轮抽中的条目或本地库已不存在。请检查已保存内容后重试。',

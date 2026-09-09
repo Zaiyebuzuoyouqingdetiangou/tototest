@@ -1,7 +1,7 @@
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.37-update1';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.37-update1';
-import { getSettings } from './settings.js?rmv=1.5.37-update1';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.5.37-update1';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.38-update1';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.38-update1';
+import { getSettings } from './settings.js?rmv=1.5.38-update1';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.5.38-update1';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -11,18 +11,17 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.5.37-update1';
+} from './generationGuard.js?rmv=1.5.38-update1';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.5.37-update1';
+} from './multifaceProof.js?rmv=1.5.38-update1';
 import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.4.30.23';
-import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.37-update1';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.37-update1';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.5.37-update1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.37-update1';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.38-update1';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.5.38-update1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.38-update1';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -1286,7 +1285,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.37-update1').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.38-update1').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
@@ -1364,23 +1363,12 @@ function prepareFollowFaces(set, sanitizer) {
             error.preparedFaces = prepared;
             throw error;
         }
-        const scan = scanRabbitMirrorHtml(newRoot.outerHTML, null);
-        const metadata = sourceFace?.metadata || {};
-        const quality = evaluateIndependentPostSanitizeQuality(newRoot.outerHTML, {
-            ...metadata,
-            interactionFamily: scan?.interactionFamily || null,
-            riskFlags: Array.isArray(scan?.riskFlags) ? scan.riskFlags : [],
-            selectedFormats: followSelectedFormatDescriptors(metadata),
-        });
-        if (!quality.ok) {
-            const error = followMultifaceRejection(quality.code, faceIndex + 1, quality.message);
-            error.preparedFaces = prepared;
-            throw error;
-        }
+        // Complete safe faces are accepted regardless of visual complexity.
+        // The existing commit scan records appearance for cooldown, not refusal.
         } catch (error) {
             if (!error?.rabbitMirrorFollowRejection) throw error;
             if (prepared.at(-1)?.faceIndex === faceIndex) prepared.pop();
-            const code=String(error.code || 'multiface-quality');
+            const code=String(error.code || 'multiface-postprocess');
             const html=createMultifaceFailureSlot(faceIndex,code);
             const template=document.createElement('template'); template.innerHTML=html;
             const newRoot=templateSingleFollowRoot(template),newDetails=directDetailsChild(newRoot);

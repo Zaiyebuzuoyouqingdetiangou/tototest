@@ -1252,3 +1252,22 @@ html[data-rabbit-mirror-external-sampling-enabled="false"] [data-rabbit-mirror-r
 .rabbit-mirror-guide-return .rabbit-mirror-guide-caption { font-size:12px; overflow-wrap:anywhere; }
 .rabbit-mirror-guide-highlight { outline:2px solid var(--SmartThemeQuoteColor,currentColor); outline-offset:3px; border-radius:4px; }
 @media (max-width:380px) { #rh_quick_start .rabbit-mirror-quick-start-body { padding-right:2px; padding-left:2px; } }
+/* Library entry points stay readable in narrow host settings columns. */
+#rh_external_library_section .rh-library-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+#rh_external_library_section .rh-library-quick-actions > button {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 700;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+}

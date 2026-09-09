@@ -1,14 +1,13 @@
-import { getSettings } from './settings.js?rmv=1.5.37-update1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.37-update1';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.37-update1';
-import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.5.37-update1';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.37-update1';
-import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.5.37-update1';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.37-update1';
-import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.5.37-update1';
-import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.37-update1';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.5.37-update1';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.5.37-update1';
+import { getSettings } from './settings.js?rmv=1.5.38-update1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.38-update1';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.38-update1';
+import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.5.38-update1';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.38-update1';
+import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.5.38-update1';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.38-update1';
+import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.5.38-update1';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.5.38-update1';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.5.38-update1';
 
 const active = new WeakSet();
 const fail = message => { const error=new Error(message);error.rabbitMirrorFollowRetry=true;throw error; };
@@ -70,7 +69,7 @@ export async function retryFollowFace(root, suppliedOwner, deps) {
         try {
             if(plan.selectedExternalIds.length){materials=await getSelectedExternalEntries(plan.selectedExternalIds);assertCurrent();}
             if(plan.appearanceReference.enabled){
-                const appearance=await import('./appearanceReference.js?rmv=1.5.37-update1');assertCurrent();
+                const appearance=await import('./appearanceReference.js?rmv=1.5.38-update1');assertCurrent();
                 appearanceMaterial=await appearance.loadAppearanceReferenceMaterial(plan.appearanceReference.revision);assertCurrent();
             }
             prompt=renderRabbitMirrorPromptPlan(plan,materials,appearanceMaterial);
@@ -100,8 +99,7 @@ export async function retryFollowFace(root, suppliedOwner, deps) {
         const newDetails=deps.extractReadyDetails(parsed.faces[0].inner);
         if(!newDetails) fail('重试结果净化后不可用；原有各面保持不变。');
         const replacement=document.createElement('toto');replacement.setAttribute('data-rabbit-mirror','true');replacement.setAttribute('data-rm-face',String(faceIndex+1));replacement.append(newDetails);
-        const quality=evaluateIndependentPostSanitizeQuality(replacement.outerHTML,{...recipe,selectedFormats:deps.formatDescriptors(recipe)});
-        if(!quality.ok) fail(`重试结果未通过检查：${quality.code}；原有各面保持不变。`);
+        // Layout and interaction simplicity must not reject a safe replacement.
         assertCurrent();
         const updated=replaceFollowPartialResultFace(ctx.chat,index,owner,{expectedHtml:saved.html,faceIndex,html:replacement.outerHTML,appliedRules:getSettings()?.rabbitMirrorBannedWords||[]});
         if(!updated) fail('这一面保存未完成或批次已变化；原有显示保持不变。');

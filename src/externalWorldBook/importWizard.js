@@ -1,7 +1,7 @@
-import { readLocalExternalImportFile, readPlainTextWorldBook } from './fileReader.js?rmv=1.5.37-update1';
-import { getSettings, updateSettings } from '../settings.js?rmv=1.5.37-update1';
-import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.37-update1';
-import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.37-update1';
+import { readLocalExternalImportFile, readPlainTextWorldBook } from './fileReader.js?rmv=1.5.38-update1';
+import { getSettings, updateSettings } from '../settings.js?rmv=1.5.38-update1';
+import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.38-update1';
+import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.38-update1';
 import {
     EXTERNAL_WORLD_BOOK_SELECTION_MODE,
     createEmptySelection,
@@ -9,14 +9,14 @@ import {
     createWholeBookSelection,
     entryIdentity,
     toggleEntrySelection,
-} from './selectionState.js?rmv=1.5.37-update1';
+} from './selectionState.js?rmv=1.5.38-update1';
 import {
     EXTERNAL_WORLD_BOOK_CLASSIFICATION,
     applyExternalWorldBookBulkClassification,
     createExternalWorldBookClassificationDraft,
     externalWorldBookClassificationCounts,
     updateExternalWorldBookDraftItem,
-} from './classifier.js?rmv=1.5.37-update1';
+} from './classifier.js?rmv=1.5.38-update1';
 import {
     deleteExternalLibrary,
     listExternalLibraries,
@@ -26,7 +26,7 @@ import {
     hydrateExternalPoolMetadata,
     getExternalPoolHydrationStatus,
     rebuildExternalPoolMetadata,
-} from './store.js?rmv=1.5.37-update1';
+} from './store.js?rmv=1.5.38-update1';
 
 const MODAL_ID = 'rh_external_worldbook_import_modal';
 const PAGE_SIZE = 50;
@@ -88,6 +88,7 @@ function resetBookView() {
     state.fullText.checked = false;
     invalidateClassification();
     renderEntries();
+    state.entrySection.style.display = 'none';
 }
 
 function renderBookList() {
@@ -237,6 +238,7 @@ function showNormalizedBook(book) {
     state.fullText.checked = false;
     invalidateClassification();
     renderEntries();
+    state.entrySection.style.display = '';
 }
 
 async function loadHostBooks() {
@@ -400,7 +402,7 @@ async function saveClassificationReview() {
         if (state !== owner || !owner.overlay.isConnected) return saved;
         const counts = externalWorldBookClassificationCounts(state.classificationDraft);
         setStatus(`已保存到兔子镜本地库：主题 ${counts.theme}、展现形式 ${counts.format}、辅助 ${counts.auxiliary}、待确认 ${counts.pending}。新库默认停用，请按需启用。`, 'success');
-        await renderSavedLibraries();
+        state.showView('manage', { announce: false });
         return saved;
     } catch (error) {
         if (state === owner) setStatus(String(error?.message || error), 'error');
@@ -411,6 +413,7 @@ async function saveClassificationReview() {
 async function renderSavedLibraries() {
     if (!state?.savedLibrariesList) return;
     const owner = state;
+    const renderSequence = ++owner.savedLibrariesSequence;
     state.savedLibrariesList.replaceChildren();
     let libraries;
     let needsRebuild;
@@ -420,12 +423,12 @@ async function renderSavedLibraries() {
         needsRebuild = new Set(getExternalPoolHydrationStatus().metadataRebuildRequired);
     }
     catch (error) {
-        if (state !== owner || !owner.overlay.isConnected) return;
+        if (state !== owner || !owner.overlay.isConnected || renderSequence !== owner.savedLibrariesSequence) return;
         state.savedLibrariesPanel.style.display = '';
         state.savedLibrariesList.append(el('div', { text: String(error?.message || error), style: { color: '#fca5a5', fontSize: '11px', padding: '8px 2px' } }));
         return;
     }
-    if (state !== owner || !owner.overlay.isConnected) return;
+    if (state !== owner || !owner.overlay.isConnected || renderSequence !== owner.savedLibrariesSequence) return;
     state.savedLibrariesPanel.style.display = '';
     if (!libraries.length) {
         state.savedLibrariesList.append(el('div', { text: '还没有保存的外部世界书。', style: { opacity: '.65', fontSize: '11px', padding: '8px 2px' } }));
@@ -507,24 +510,17 @@ function createExternalRandomControls() {
         render();
     });
     mode.addEventListener('change', () => { updateSettings({ externalWorldBookMixMode: mode.value }); render(); });
-    box.append(label, modeLabel, mode, status, button('管理已保存内容', async () => {
-        const owner = state;
-        await renderSavedLibraries();
-        if (state === owner && owner?.overlay.isConnected) {
-            try { owner.savedLibrariesPanel.scrollIntoView({ block: 'start' }); } catch {}
-        }
-    }, { minHeight: '44px', marginTop: '8px', width: '100%' }));
+    box.append(label, modeLabel, mode, status);
     render();
     return box;
 }
 
 function createLibraryTransferControls() {
-    const panel = el('details', { style: { margin: '0 0 14px', minWidth: '0' } });
-    panel.append(el('summary', { text: '迁移全部外部库（换设备）', style: { cursor: 'pointer', minHeight: '44px', padding: '10px 0', fontWeight: '700' } }));
-    panel.append(el('p', { text: '在原设备一键导出全部已保存的外部库，再到另一设备导入这份迁移 JSON。包含库原文、分类和启用状态，请妥善保管；不含聊天、API Key 或酒馆设置。不会上传到服务器。', style: { fontSize: '12px', lineHeight: '1.6', margin: '4px 0 10px', overflowWrap: 'anywhere' } }));
-    panel.append(el('p', { text: '目标设备已有同编号的库一律保留并跳过，不覆盖或删除。新导入库保留备份中的启用状态；“外部母本参与抽签”总开关不变。单份最多 32 MiB、1000 本库、25000 条。', style: { fontSize: '12px', lineHeight: '1.6', margin: '4px 0 10px' } }));
+    const panel = el('section', { id: 'rh_external_transfer_panel', style: { margin: '12px 0 14px', minWidth: '0' } });
+    panel.append(el('h3', { text: '换设备：把已导入的母本库一起带走', style: { margin: '0 0 8px', fontSize: '16px' } }));
+    panel.append(el('p', { text: '旧设备导出一个文件 → 把文件发到新设备 → 在新设备导入。不用逐本重导，也不会自动上传到服务器。', style: { fontSize: '14px', lineHeight: '1.6', margin: '4px 0 12px', overflowWrap: 'anywhere' } }));
     const message = el('div', { id: 'rh_external_transfer_status', attrs: { role: 'status', 'aria-live': 'polite', tabindex: '-1' }, style: { fontSize: '12px', lineHeight: '1.5', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', marginTop: '8px' } });
-    const file = el('input', { id: 'rh_external_transfer_file', type: 'file', attrs: { accept: '.json,application/json', 'aria-describedby': message.id }, style: { width: '100%' } });
+    const file = el('input', { id: 'rh_external_transfer_file', type: 'file', className: 'text_pole', attrs: { accept: '.json,application/json', 'aria-describedby': message.id }, style: { width: '100%' } });
     let pending = null, busy = false, sequence = 0;
     const current = owner => state === owner && owner?.overlay.isConnected && panel.isConnected;
     const feedback = (text, error = false) => { message.textContent = text; if (error) { try { message.focus({ preventScroll: true }); } catch {} } };
@@ -533,7 +529,7 @@ function createLibraryTransferControls() {
     const prepareBackup = backup => {
         if (busy) return false;
         clearPending(); pending = backup;
-        panel.open = true;
+        state?.showView('transfer', { announce: false });
         feedback(`校验通过：${backup.libraries.length} 本库、${backup.libraries.reduce((sum, item) => sum + item.entries.length, 0)} 条。尚未保存，请点击“确认导入迁移文件”。`);
         lock(false);
         try { message.scrollIntoView({ block: 'center' }); } catch {}
@@ -543,7 +539,7 @@ function createLibraryTransferControls() {
         if (busy) return;
         const owner = state; lock(true); feedback('正在读取本设备已导入的库并生成迁移文件……');
         try {
-            const module = await import('./backup.js?rmv=1.5.37-update1');
+            const module = await import('./backup.js?rmv=1.5.38-update1');
             if (!current(owner)) return;
             const result = await module.exportExternalLibraryBackup();
             if (!current(owner)) return;
@@ -560,7 +556,7 @@ function createLibraryTransferControls() {
         if (!globalThis.confirm('导入这份备份里的外部库？目标已有同编号库会保留并跳过，其余库保留备份的分类和启用状态。不删除或覆盖旧库，不改变抽签总开关。')) return;
         const owner = state, backup = pending; lock(true); feedback('正在原子保存迁移数据；请暂时保留此页面……');
         try {
-            const module = await import('./backup.js?rmv=1.5.37-update1');
+            const module = await import('./backup.js?rmv=1.5.38-update1');
             if (!current(owner)) return;
             const result = await module.importExternalLibraryBackup(backup);
             if (!current(owner)) return;
@@ -578,7 +574,7 @@ function createLibraryTransferControls() {
         const selected = file.files?.[0]; if (!selected) return;
         const owner = state, ownSequence = ++sequence; lock(true); feedback('正在校验迁移文件，尚未写入……');
         try {
-            const module = await import('./backup.js?rmv=1.5.37-update1');
+            const module = await import('./backup.js?rmv=1.5.38-update1');
             if (!current(owner)) return;
             const backup = await module.readExternalLibraryBackupFile(selected);
             if (!current(owner) || sequence !== ownSequence) return;
@@ -587,7 +583,10 @@ function createLibraryTransferControls() {
         } catch (error) { if (current(owner) && sequence === ownSequence) { file.value = ''; feedback(String(error?.message || '迁移文件无法读取。'), true); } }
         finally { if (current(owner) && sequence === ownSequence) lock(false); }
     });
-    panel.append(exportButton, el('label', { text: '选择另一设备导出的迁移 JSON', attrs: { for: file.id }, style: { display: 'block', margin: '8px 0' } }), file, importButton, message);
+    panel.append(el('h4', { text: '① 旧设备：导出整库', style: { margin: '12px 0 8px', fontSize: '14px' } }), exportButton,
+        el('h4', { text: '② 新设备：导入刚才的文件', style: { margin: '16px 0 8px', fontSize: '14px' } }),
+        el('label', { text: '选择 RabbitMirror-external-libraries 开头的 JSON 文件', attrs: { for: file.id }, style: { display: 'block', margin: '8px 0', fontSize: '13px', overflowWrap: 'anywhere' } }), file, importButton, message);
+    panel.append(el('p', { text: '文件包含母本原文、分类和启用状态，请妥善保管；不含聊天、API Key 或酒馆设置。已有同编号库会保留并跳过，不删除或覆盖；抽签总开关不变。最多 32 MiB、1000 本、25000 条。', style: { fontSize: '12px', lineHeight: '1.6', margin: '12px 0 0', overflowWrap: 'anywhere' } }));
     return { panel, prepareBackup, clearPending, isBusy: () => busy, dispose: () => { sequence++; pending = null; file.value = ''; } };
 }
 
@@ -623,7 +622,7 @@ function bindImportViewport(overlay) {
     };
 }
 
-function createModal() {
+function createModal(initialView = 'plain') {
     state?.dismiss?.(false);
     document.getElementById(MODAL_ID)?.remove();
     const returnFocus = document.activeElement;
@@ -671,13 +670,14 @@ function createModal() {
 #${MODAL_ID} .rh-external-button:disabled, #${MODAL_ID} .rh-external-input:disabled { opacity: .55; cursor: default; }
 #${MODAL_ID} .rh-external-button:focus-visible, #${MODAL_ID} .rh-external-input:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 #${MODAL_ID} .rh-external-button:active:not(:disabled) { filter: brightness(.92); }
+#${MODAL_ID} .rh-external-button[aria-pressed="true"] { border-width: 2px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 @media (pointer: coarse) { #${MODAL_ID} .rh-external-input { font-size: 16px !important; } }
 ` }));
     const card = el('div', { className: 'rh-external-card', style: { width: 'min(820px,100%)', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--SmartThemeBlurTintColor,#202226)', color: 'var(--SmartThemeBodyColor,#ddd)', border: '1px solid color-mix(in srgb,currentColor 18%,transparent)', borderRadius: '18px', boxShadow: '0 22px 70px rgba(0,0,0,.42)' } });
     const header = el('div', { className: 'rh-external-header', style: { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 44px', gap: '8px', alignItems: 'center', padding: '11px 12px', borderBottom: '1px solid color-mix(in srgb,currentColor 12%,transparent)' } });
     const title = el('div');
-    title.append(el('div', { text: '外部世界书母本', style: { fontWeight: '700', fontSize: '15px' } }));
-    title.append(el('div', { text: '导入小剧场世界书，确认分类后按需参与抽签；不修改源世界书。', style: { opacity: '.8', fontSize: '12px', marginTop: '2px' } }));
+    title.append(el('div', { text: '母本库：导入与备份', style: { fontWeight: '700', fontSize: '16px' } }));
+    title.append(el('div', { text: '文字想法、TXT / MD / JSON 都能导入；换设备可一次搬走整库。', style: { fontSize: '12px', lineHeight: '1.5', marginTop: '2px' } }));
     let disposeViewport = () => {};
     const dismiss = (restoreFocus = true) => {
         clearTimeout(debounceId);
@@ -696,31 +696,56 @@ function createModal() {
     header.append(title, closeButton);
     const scroll = el('div', { className: 'rh-external-scroll', style: { padding: '12px', minHeight: '0', minWidth: '0', overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' } });
     scroll.append(el('p', { className: 'rh-external-import-notice', text: '不会进入兔子镜内置，感谢各位制作小剧场的老师，请征求作者同意后使用。', style: { margin: '0 0 12px', fontSize: '12px', lineHeight: '1.6', overflowWrap: 'anywhere' } }));
-    scroll.append(createExternalRandomControls());
     const transferControls = createLibraryTransferControls();
-    scroll.append(transferControls.panel);
-
-    const sourceButtons = el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '8px' } });
-    const hostPane = el('div', { style: { marginTop: '10px' } });
-    const filePane = el('div', { style: { marginTop: '10px', display: 'none' } });
-    const plainPane = el('div', { style: { marginTop: '10px', display: 'none' } });
-    const showPane = which => { hostPane.style.display = which === 'host' ? '' : 'none'; filePane.style.display = which === 'file' ? '' : 'none'; plainPane.style.display = which === 'plain' ? '' : 'none'; };
-    sourceButtons.append(
-        button('从酒馆已有世界书导入', () => { showPane('host'); loadHostBooks(); }, { minHeight: '44px', fontWeight: '700' }),
-        button('从本地文件导入', () => { showPane('file'); fileInput.click(); }, { minHeight: '44px' }),
-        button('粘贴小剧场文字', () => { showPane('plain'); plainInput.focus(); }, { minHeight: '44px' }),
-    );
+    const sourceButtons = el('nav', { attrs: { 'aria-label': '母本库操作' }, style: { display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '8px' } });
+    const hostPane = el('section', { id: 'rh_external_host_panel', style: { marginTop: '12px' } });
+    const filePane = el('section', { id: 'rh_external_file_panel', style: { marginTop: '12px', display: 'none' } });
+    const plainPane = el('section', { id: 'rh_external_plain_panel', style: { marginTop: '12px', display: 'none' } });
+    const managePane = el('section', { id: 'rh_external_manage_panel', style: { marginTop: '12px', display: 'none' } });
+    const entrySection = el('section', { id: 'rh_external_entry_panel', style: { display: 'none' } });
+    const sourceWorkflow = el('div');
+    const navButtons = new Map();
+    const showView = (which, { announce = true } = {}) => {
+        if (!navButtons.has(which)) which = 'plain';
+        overlay.dataset.activeView = which;
+        const isSource = ['host', 'file', 'plain'].includes(which);
+        hostPane.style.display = which === 'host' ? '' : 'none';
+        filePane.style.display = which === 'file' ? '' : 'none';
+        plainPane.style.display = which === 'plain' ? '' : 'none';
+        transferControls.panel.style.display = which === 'transfer' ? '' : 'none';
+        managePane.style.display = which === 'manage' ? '' : 'none';
+        sourceWorkflow.style.display = isSource ? '' : 'none';
+        for (const [view, control] of navButtons) control.setAttribute('aria-pressed', String(view === which));
+        if (which === 'host') loadHostBooks();
+        if (which === 'manage') renderSavedLibraries();
+        if (which === 'plain') { try { plainInput.focus({ preventScroll: true }); } catch {} }
+        if (announce && which !== 'host') setStatus(which === 'transfer' ? '旧设备导出 → 把文件发到新设备 → 新设备选文件并确认导入。' : which === 'manage' ? '启用需要的库，再打开“外部母本参与抽签”；未启用的库不会用于生成。' : '先读取内容 → 确认分类并保存 → 启用母本库。读取和切换页面不会保存。');
+    };
+    for (const [view, label, panelId] of [
+        ['plain', '粘贴文字', plainPane.id],
+        ['file', '导入文件（TXT / MD / JSON）', filePane.id],
+        ['transfer', '换设备：导出／导入整库', transferControls.panel.id],
+        ['manage', '管理母本库', managePane.id],
+        ['host', '从酒馆世界书导入', hostPane.id],
+    ]) {
+        const control = button(label, () => showView(view), { minHeight: '44px' });
+        control.setAttribute('aria-controls', panelId);
+        navButtons.set(view, control);
+        sourceButtons.append(control);
+    }
     scroll.append(sourceButtons);
 
     const bookSearch = el('input', { className: 'text_pole', type: 'search', placeholder: '搜索世界书名称', style: { width: '100%', marginTop: '8px', boxSizing: 'border-box' } });
     const bookList = el('div', { style: { maxHeight: '210px', overflowY: 'auto', marginTop: '6px', padding: '4px 2px', WebkitOverflowScrolling: 'touch' } });
     bookSearch.addEventListener('input', renderBookList);
-    hostPane.append(bookSearch, bookList);
+    hostPane.append(el('h3', { text: '从酒馆已有世界书导入', style: { fontSize: '16px', margin: '0 0 8px' } }), bookSearch, bookList);
 
-    const fileInput = el('input', { id: 'rh_external_local_file', type: 'file', attrs: { accept: '.json,.txt,.md,application/json,text/json,text/plain,text/markdown,application/octet-stream', multiple: 'multiple' }, style: { width: '100%', marginTop: '8px' } });
+    const fileInput = el('input', { id: 'rh_external_local_file', type: 'file', className: 'text_pole', attrs: { accept: '.json,.txt,.md,application/json,text/json,text/plain,text/markdown,application/octet-stream', multiple: 'multiple' }, style: { width: '100%', marginTop: '8px' } });
     const localBookList = el('div', { style: { maxHeight: '210px', overflowY: 'auto', marginTop: '6px', padding: '4px 2px', WebkitOverflowScrolling: 'touch' } });
     fileInput.addEventListener('change', () => loadLocalFiles(fileInput.files));
-    filePane.append(el('div', { text: '支持 JSON 世界书、TXT / MD 文字，以及兔子镜导出的整库迁移 JSON（自动识别并打开确认）。普通文件最多 8 MiB；一份文字最多 100 万字符；整库迁移最多 32 MiB。读取文件不会直接保存。', style: { opacity: '.8', fontSize: '12px', lineHeight: '1.5' } }), fileInput, localBookList);
+    filePane.append(el('h3', { text: '导入文件：不必先转成 JSON', style: { fontSize: '16px', margin: '0 0 8px' } }),
+        el('label', { text: '选择 TXT / MD 文字、JSON 世界书或整库备份（可多选）', attrs: { for: fileInput.id }, style: { display: 'block', fontSize: '14px', lineHeight: '1.5' } }), fileInput,
+        el('div', { text: 'TXT / MD 每个文件先作为一个条目，JSON 世界书保留原条目。整库备份会直接进入导入确认；读取文件不会直接保存。普通文件最多 8 MiB、文字最多 100 万字符，整库备份最多 32 MiB。', style: { fontSize: '12px', lineHeight: '1.6', marginTop: '8px' } }), localBookList);
     const plainTitle = el('input', { id: 'rh_external_plain_title', type: 'text', className: 'text_pole', attrs: { maxlength: '1000' }, value: '我的小剧场文字', style: { width: '100%' } });
     // Reject oversized input as a whole in the reader; native maxlength would
     // silently truncate a paste before validation could detect the missing tail.
@@ -736,9 +761,12 @@ function createModal() {
             plainInput.setAttribute('aria-invalid', 'true'); plainStatus.textContent = String(error?.message || '文字无法读取。'); plainInput.focus();
         }
     }, { minHeight: '44px', width: '100%' });
-    plainPane.append(el('label', { text: '本地库 / 条目名称', attrs: { for: plainTitle.id }, style: { display: 'block', margin: '8px 0' } }), plainTitle,
+    plainPane.append(el('h3', { text: '粘贴文字：直接写小剧场想法', style: { fontSize: '16px', margin: '0 0 8px' } }),
+        el('div', { text: '不用 JSON，不用写 HTML。粘贴玩法或文字后，下一步选它是“演什么”的主题，还是“怎么玩”的展现形式。', style: { fontSize: '13px', lineHeight: '1.6' } }),
+        el('label', { text: '给这份母本起个名字', attrs: { for: plainTitle.id }, style: { display: 'block', margin: '8px 0' } }), plainTitle,
         el('label', { text: '小剧场文字或玩法想法', attrs: { for: plainInput.id }, style: { display: 'block', margin: '8px 0' } }), plainInput, plainStatus, preparePlain);
-    scroll.append(hostPane, filePane, plainPane);
+    sourceWorkflow.append(hostPane, filePane, plainPane);
+    scroll.append(sourceWorkflow, transferControls.panel, managePane);
 
     const divider = el('div', { style: { borderTop: '1px solid color-mix(in srgb,currentColor 12%,transparent)', margin: '12px 0 9px' } });
     const entrySearch = el('input', { className: 'text_pole', type: 'search', placeholder: '搜索条目名称、关键词、正文或 uid', style: { width: '100%', boxSizing: 'border-box' } });
@@ -763,7 +791,8 @@ function createModal() {
     advanceActions.append(
         button('进入分类确认', startClassificationReview, { minHeight: '40px', fontWeight: '700' }),
     );
-    scroll.append(divider, entrySearch, fullTextLabel, entryMeta, selectionActions, selectionHint, entryList, pager, advanceActions);
+    entrySection.append(divider, entrySearch, fullTextLabel, entryMeta, selectionActions, selectionHint, entryList, pager, advanceActions);
+    sourceWorkflow.append(entrySection);
 
     const classificationPanel = el('div', { style: { display: 'none', borderTop: '1px solid color-mix(in srgb,currentColor 12%,transparent)', marginTop: '14px', paddingTop: '10px' } });
     classificationPanel.append(el('div', { text: '分类确认', style: { fontWeight: '700', fontSize: '13px' } }));
@@ -791,14 +820,14 @@ function createModal() {
     const classificationPager = el('div', { style: { display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '8px' } });
     const saveButton = button('确认分类并保存到本地', saveClassificationReview, { width: '100%', minHeight: '42px', marginTop: '8px', fontWeight: '700' });
     classificationPanel.append(classificationMeta, bulkActions, classificationFilter, classificationList, classificationPager, saveButton);
-    scroll.append(classificationPanel);
+    sourceWorkflow.append(classificationPanel);
 
     const savedLibrariesPanel = el('div', { style: { display: 'none', borderTop: '1px solid color-mix(in srgb,currentColor 12%,transparent)', marginTop: '14px', paddingTop: '10px' } });
     savedLibrariesPanel.append(el('div', { text: '已保存的外部世界书', style: { fontWeight: '700', fontSize: '13px' } }));
     savedLibrariesPanel.append(el('div', { text: '仅已启用库中确认的主题与展现形式参与抽签。启用本地库不会修改上方总开关。', style: { opacity: '.8', fontSize: '12px', lineHeight: '1.5', marginTop: '3px' } }));
     const savedLibrariesList = el('div', { style: { marginTop: '5px' } });
     savedLibrariesPanel.append(savedLibrariesList);
-    scroll.append(savedLibrariesPanel);
+    managePane.append(createExternalRandomControls(), savedLibrariesPanel);
 
     scroll.append(el('div', { text: '跟随与独立 API 均可使用；不会发送整本世界书，也不会按面额外请求。', style: { marginTop: '10px', opacity: '.8', fontSize: '12px', lineHeight: '1.5' } }));
 
@@ -815,12 +844,12 @@ function createModal() {
     disposeViewport = bindImportViewport(overlay);
 
     state = {
-        overlay, dismiss, status, hostBooks: [], localBooks: [], currentBook: null, transferControls, localFileSequence: 0,
+        overlay, dismiss, status, showView, entrySection, hostBooks: [], localBooks: [], currentBook: null, transferControls, localFileSequence: 0,
         filteredEntries: [], page: 0, selectedIds: new Set(), selectionMode: EXTERNAL_WORLD_BOOK_SELECTION_MODE.WHOLE,
         classificationDraft: [], classificationPage: 0,
         bookSearch, bookList, localBookList, entrySearch, fullText, entryMeta, entryList, pager,
         classificationPanel, classificationMeta, classificationFilter, classificationList, classificationPager,
-        savedLibrariesPanel, savedLibrariesList,
+        savedLibrariesPanel, savedLibrariesList, savedLibrariesSequence: 0,
     };
     if (typeof overlay.showModal === 'function') overlay.showModal();
     else {
@@ -831,10 +860,9 @@ function createModal() {
         overlay.setAttribute('open', '');
     }
     try { closeButton.focus({ preventScroll: true }); } catch {}
-    showPane('host');
-    loadHostBooks();
+    showView(initialView);
 }
 
-export function openExternalWorldBookImportWizard() {
-    createModal();
+export function openExternalWorldBookImportWizard(options = {}) {
+    createModal(options?.initialView);
 }
