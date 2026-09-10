@@ -1,6 +1,6 @@
 import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.39-ttdiag1';
 import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, ttSurfaceDiagnosticsHasReport, buildTtSurfaceReport } from './ttSurfaceDiagnostics.js?rmv=1.5.39-ttdiag1';
-import { isRabbitMirrorManagedChatSurface, rabbitMirrorChatSurfaceStatus } from './hostCompatibility.js?rmv=1.5.39-ttdiag1';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorHostCompatibilityStatus } from './hostCompatibility.js?rmv=1.5.39-ttdiag1';
 import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.39-ttdiag1';
 import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.39-ttdiag1';
 import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.5.39-ttdiag1';
