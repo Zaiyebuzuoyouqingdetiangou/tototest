@@ -1,7 +1,7 @@
 {
   "display_name": "兔子镜小剧场",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5.39-ttdiag1",
+  "js": "index.js?rmv=1.5.39-ttdiag2",
   "css": "style.css?rmv=1.5.39",
   "author": "Toto",
   "version": "1.5.39",
