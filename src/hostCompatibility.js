@@ -1,3 +1,4 @@
+import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.39-ttdiag1';
 // TT Project Contract v1, not an invented SillyTavern event or private engine API.
 // https://github.com/Darkatse/TauriTavern/blob/9693a4ec47cd4552f90878bccab453f176de0f18/docs/API/ChatSurface.md
 // Register this lightweight bridge during extension evaluation, before projection.
@@ -38,7 +39,13 @@ export function createRabbitMirrorHostCompatibility(hostGlobal = globalThis) {
         const callback = subscription[lease.kind];
         if (typeof callback !== 'function') return;
         lease.delivered.add(subscription.id);
+        // 仅诊断：关闭时 ttSurfaceNow() 返回 0，不会调用 performance.now()。
+        const ttStart = ttSurfaceNow();
         const dispose = toDisposer(callback(lease.context));
+        recordTtSurface('deliver', {
+            sub: subscription.id, phase: lease.kind, mesid: lease.context.mesid,
+            ms: ttStart ? performance.now() - ttStart : 0,
+        });
         // A handler can synchronously release its own mount or subscription.
         if (!lease.active || !subscriptions.has(subscription.id) || lease.context.signal.aborted) dispose?.();
         else if (dispose) lease.cleanups.set(subscription.id, dispose);
@@ -61,6 +68,7 @@ export function createRabbitMirrorHostCompatibility(hostGlobal = globalThis) {
         const lease = { kind, context, active: true, cleanups: new Map(), delivered: new Set(), dispose: null };
         const dispose = () => {
             if (!lease.active) return;
+            recordTtSurface('lease-dispose', { mesid: context.mesid, phase: kind });
             lease.active = false;
             context.signal.removeEventListener('abort', dispose);
             let firstError = null;

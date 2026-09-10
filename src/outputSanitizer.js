@@ -1,5 +1,6 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.38-update1';
-import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.38-update1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.39-ttdiag1';
+import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.39-ttdiag1';
+import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.39-ttdiag1';
 import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.38-update1';
 import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.38-update1';
 import { getCurrentChatKey } from './storage.js?rmv=1.5.38-update1';
@@ -25993,7 +25994,10 @@ function applyManagedOuterSummaryToggleIntents(owner, roots) {
             restored += 1;
         }
     }
-    if (restored) globalThis.__rabbitMirrorPerfDiag?.mark?.('tt.outerSummaryToggleRemountRestore', { restored });
+    if (restored) {
+        globalThis.__rabbitMirrorPerfDiag?.mark?.('tt.outerSummaryToggleRemountRestore', { restored });
+        recordTtSurface('intent-restore', { restored });
+    }
     return restored;
 }
 
@@ -26006,6 +26010,7 @@ function scheduleManagedOuterSummaryToggleFallback(summary) {
     if (managedOuterSummaryToggleFallbackPending.has(details)) return true;
 
     const before = !!details.open;
+    recordTtSurface('summary-activate', { seq: nextTtSurfaceClickSeq(), faceIndex: face.faceIndex, open: before });
     rememberManagedOuterSummaryToggleIntent(details, face, !before);
     managedOuterSummaryToggleFallbackPending.add(details);
     setTimeout(() => {
@@ -26021,6 +26026,7 @@ function scheduleManagedOuterSummaryToggleFallback(summary) {
             faceIndex: face.faceIndex,
             opened: !!details.open,
         });
+        recordTtSurface('fallback-toggle', { faceIndex: face.faceIndex, open: !!details.open });
     }, 0);
     return true;
 }
@@ -26170,7 +26176,9 @@ function installChatMutationObserver() {
         chatInstallObserver = null;
         observedChatInstallRoot = null;
         cancelStartupMaintenanceHistoryInstall();
+        const ttStart = ttSurfaceNow();
         installManagedRabbitMirrorTools();
+        recordTtSurface('install', { sub: 'output-tools', ms: ttStart ? performance.now() - ttStart : 0 });
         return true;
     }
     if (chatInstallObserver && observedChatInstallRoot === chatRoot) return true;

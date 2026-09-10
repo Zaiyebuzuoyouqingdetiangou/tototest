@@ -1,16 +1,18 @@
 import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.38-update1';
+import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, ttSurfaceDiagnosticsHasReport, buildTtSurfaceReport } from './ttSurfaceDiagnostics.js?rmv=1.5.39-ttdiag1';
+import { isRabbitMirrorManagedChatSurface, rabbitMirrorChatSurfaceStatus } from './hostCompatibility.js?rmv=1.5.39-ttdiag1';
 import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.38-update1';
 import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.38-update1';
-import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.5.38-update1';
+import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.5.39-ttdiag1';
 import { BEHAVIOR_RULE_MAX_CHARS, DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=1.5.38-update1';
 import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.38-update1';
 import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.38-update1';
 import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.38-update1';
 import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.38-update1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.38-ttsummary2';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.39-ttdiag1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
 import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.38-update1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.38-ttsummary2';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.39-ttdiag1';
 import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.38-update1';
 import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.38-update1';
 
@@ -741,6 +743,8 @@ export function initRabbitMirrorUI() {
               <button id="rh_external_diag_stop" class="menu_button" type="button">结束并生成报告</button>
               <button id="rh_external_diag_report" class="menu_button" type="button" style="font-weight:700;">查看当前／最后报告</button>
               <button id="rh_external_diag_copy" class="menu_button" type="button">复制外部报告</button>
+                <button id="rh_tt_diag_start" class="menu_button" type="button" style="display:none;">开始 TT 诊断（20 秒）</button>
+                <button id="rh_tt_diag_copy" class="menu_button" type="button" style="display:none;">复制 TT 诊断</button>
               <button id="rh_external_diag_reset" class="menu_button" type="button">清空外部记录</button>
             </div>
             <textarea id="rh_external_diag_output" class="text_pole" readonly spellcheck="false" style="display:none;width:100%;min-height:240px;resize:vertical;box-sizing:border-box;margin-top:8px;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;"></textarea>
@@ -2283,6 +2287,33 @@ export function initRabbitMirrorUI() {
         toastr?.success?.(api ? '已清空外部诊断记录，从现在重新记录' : '已清空最后保留的外部诊断报告');
     });
     renderExternalDiagnosticStatus();
+
+    // TT ChatSurface 仅诊断入口：只在 managed 宿主下显示与绑定。
+    // 云酒馆下两个按钮保持 display:none，且不注册任何监听。
+    if (isRabbitMirrorManagedChatSurface()) {
+        const syncTtDiagButtons = active => {
+            // 开始时改一次文案，stop 后恢复一次；期间不刷新、不倒数、不写其它 DOM。
+            $('#rh_tt_diag_start').text(active ? '诊断中…（20 秒后自动停止）' : '开始 TT 诊断（20 秒）').prop('disabled', active);
+            $('#rh_tt_diag_copy').prop('disabled', active || !ttSurfaceDiagnosticsHasReport());
+        };
+        $('#rh_tt_diag_start').show().on('click', () => {
+            if (isTtSurfaceDiagnosticsActive()) return;
+            startTtSurfaceDiagnostics({ onStateChange: syncTtDiagButtons });
+        });
+        $('#rh_tt_diag_copy').show().on('click', async () => {
+            const status = getRabbitMirrorHostCompatibilityStatus();
+            const text = buildTtSurfaceReport({
+                version: RUNTIME_VERSION,
+                managed: status?.managed,
+                protocolVersion: status?.protocolVersion,
+                registered: status?.registered,
+            });
+            if (!text) return;
+            try { await navigator.clipboard.writeText(text); toastr?.success?.('已复制 TT ChatSurface 诊断'); }
+            catch { toastr?.error?.('复制失败，请长按选择报告文本'); }
+        });
+        syncTtDiagButtons(false);
+    }
 
     $('#rh_reset').on('click', () => {
         resetSettings();

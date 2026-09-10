@@ -1,11 +1,12 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.38-update1';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, getRabbitMirrorExternalPlacementParent, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.38-update1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.39-ttdiag1';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, getRabbitMirrorExternalPlacementParent, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.39-ttdiag1';
+import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.39-ttdiag1';
 import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.38-update1';
 import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.38-update1';
 import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.38-update1';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.38-update1';
 import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.38-update1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.38-ttsummary2';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.39-ttdiag1';
 import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.38-update1';
 import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.38-update1';
 import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.38-update1';
@@ -10314,7 +10315,9 @@ function installObserverIfNeeded({skipHistoricalProbe=false}={}){
  disconnectObserver();
  if(isRabbitMirrorManagedChatSurface()){
   clearStartupHistoryLazySync();
+  const ttStart=ttSurfaceNow();
   installManagedIndependentMessages();
+  recordTtSurface('install',{sub:'independent-messages',ms:ttStart?performance.now()-ttStart:0});
   return;
  }
  const mode=runtimeMode();

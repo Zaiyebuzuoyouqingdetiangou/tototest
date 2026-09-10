@@ -1,5 +1,6 @@
+import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.39-ttdiag1';
 // Reserve scrollable space, not a decorative frame. No chat text, polling or model calls.
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.38-update1';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.39-ttdiag1';
 let active = null;
 export function composerOverlap(chat, composer, viewportBottom) {
     if (!chat || !composer || composer.width <= 0 || composer.height <= 0
@@ -8,7 +9,7 @@ export function composerOverlap(chat, composer, viewportBottom) {
     if (composer.top >= bottom || composer.bottom <= chat.top) return 0;
     return Math.ceil(Math.max(0, bottom - Math.max(chat.top, composer.top)) + 12);
 }
-export function scheduleRabbitMirrorComposerClearance() { active?.schedule(); }
+export function scheduleRabbitMirrorComposerClearance() { active?.schedule('external'); }
 function externalFooterClearance(message) {
     const rect = message.getBoundingClientRect();
     let protrusion = 0;
@@ -34,10 +35,11 @@ export function initRabbitMirrorComposerClearance() {
     const managed = isRabbitMirrorManagedChatSurface();
     let frame = 0, stopped = false, spacer = null, lastHeight = 0;
     let observedForm = null, footerOwner = null, footerHeight = 0;
-    const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(() => schedule()) : null;
+    const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => schedule(entries?.[0]?.target === chat ? 'resize-chat' : 'resize-form')) : null;
     const viewport = window.visualViewport;
     function measure() {
         frame = 0;
+        const ttStart = ttSurfaceNow();
         if (stopped || !chat.isConnected) return;
         const mounted = managed ? getRabbitMirrorMountedMessages().filter(context => !context.signal.aborted && context.element.isConnected) : [];
         const lastMountedOwner = managed ? mounted.find(context => context.element.matches('.last_mes'))?.element : null;
@@ -50,6 +52,7 @@ export function initRabbitMirrorComposerClearance() {
             const next = externalFooterClearance(owner);
             if (next !== footerHeight) {
                 owner.style.setProperty('--rm-external-footer-clearance', `${next}px`);
+                recordTtSurface('layout-write', { what: 'footer-var', changed: true, prev: footerHeight, next });
                 footerHeight = next;
             }
         }
@@ -68,7 +71,11 @@ export function initRabbitMirrorComposerClearance() {
         const bottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight;
         const height = hasMirror && shown ? composerOverlap(chat.getBoundingClientRect(), form.getBoundingClientRect(), bottom) : 0;
         if (!height) {
-            if (spacer) { spacer.remove(); spacer = null; }
+            if (spacer) {
+                recordTtSurface('layout-write', { what: 'spacer-remove', changed: lastHeight !== 0, prev: lastHeight });
+                spacer.remove(); spacer = null;
+            }
+            recordTtSurface('clearance-measure', { ms: ttStart ? performance.now() - ttStart : 0, managed, height: 0, changed: lastHeight !== 0 });
             lastHeight = 0;
             return;
         }
@@ -81,55 +88,69 @@ export function initRabbitMirrorComposerClearance() {
         }
         if (height !== lastHeight) {
             spacer.style.setProperty('--rm-composer-clearance', `${height}px`);
+            // changed 直接来自已算好的 height/lastHeight 比较，未额外读取任何几何。
+            recordTtSurface('layout-write', { what: 'clearance-var', changed: true, prev: lastHeight, next: height });
             lastHeight = height;
         }
         // TT owns all direct #chat children. Reserve space inside its live last
         // message only; do not append siblings or alter its virtual spacers.
         const spacerParent = managed ? lastMountedOwner : chat;
-        if (spacerParent?.lastElementChild !== spacer) spacerParent?.append(spacer);
+        if (spacerParent?.lastElementChild !== spacer) {
+            recordTtSurface('layout-write', { what: 'spacer-append', changed: true, managed, height });
+            spacerParent?.append(spacer);
+        }
+        recordTtSurface('clearance-measure', { ms: ttStart ? performance.now() - ttStart : 0, managed, height, changed: height !== oldHeight });
         // Keep an already bottom-anchored reader at the bottom; never jump a history reader.
         // Managed hosts own their own scroll anchoring and observe message size.
         if (!managed && nearEnd && height > oldHeight) chat.scrollTop = chat.scrollHeight;
     }
-    function schedule() {
+    function schedule(source) {
+        recordTtSurface('clearance-schedule', { source: typeof source === 'string' ? source : 'unknown' });
         if (!stopped && !frame) frame = requestAnimationFrame(measure);
     }
     const structure = !managed && typeof MutationObserver === 'function' ? new MutationObserver(records => {
-        if (records.some(r => [...r.addedNodes, ...r.removedNodes].some(n => n !== spacer))) schedule();
+        if (records.some(r => [...r.addedNodes, ...r.removedNodes].some(n => n !== spacer))) schedule('structure');
     }) : null;
     const onManagedMount = context => {
-        schedule();
+        schedule('managed-mount');
         return () => {
             if (spacer && context.element.contains(spacer)) {
                 spacer.remove(); spacer = null; lastHeight = 0;
             }
-            schedule();
+            schedule('managed-unmount');
         };
     };
     const unsubscribeManaged = managed ? subscribeRabbitMirrorChatSurface({
         id: 'rabbitmirror/composer-clearance', didMount: onManagedMount,
         // Content revisions do not own the owner-level spacer. Removing it on
         // each content abort would fight host anchoring during streamed updates.
-        didCommitContent: () => { schedule(); },
+        didCommitContent: () => { schedule('managed-commit'); },
     }) : null;
+    // 具名包装：事件 handler 直接传 schedule 会把 Event 当作 source，且
+    // removeEventListener 必须引用同一函数对象。包装只为标注来源，不改变时序。
+    const onWindowResize = () => schedule('window-resize');
+    const onViewportResize = () => schedule('viewport-resize');
+    const onViewportScroll = () => schedule('viewport-scroll');
+    const onFocusIn = () => schedule('focusin');
+    const onFocusOut = () => schedule('focusout');
     structure?.observe(chat, { childList: true });
     resize?.observe(chat);
-    window.addEventListener('resize', schedule, { passive: true });
-    viewport?.addEventListener('resize', schedule, { passive: true });
-    viewport?.addEventListener('scroll', schedule, { passive: true });
-    document.addEventListener('focusin', schedule);
-    document.addEventListener('focusout', schedule);
+    window.addEventListener('resize', onWindowResize, { passive: true });
+    viewport?.addEventListener('resize', onViewportResize, { passive: true });
+    viewport?.addEventListener('scroll', onViewportScroll, { passive: true });
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('focusout', onFocusOut);
     active = { schedule, destroy() {
         stopped = true;
         unsubscribeManaged?.();
         if (frame) cancelAnimationFrame(frame);
         structure?.disconnect(); resize?.disconnect(); spacer?.remove();
         footerOwner?.style.removeProperty('--rm-external-footer-clearance');
-        window.removeEventListener('resize', schedule);
-        viewport?.removeEventListener('resize', schedule);
-        viewport?.removeEventListener('scroll', schedule);
-        document.removeEventListener('focusin', schedule);
-        document.removeEventListener('focusout', schedule);
+        window.removeEventListener('resize', onWindowResize);
+        viewport?.removeEventListener('resize', onViewportResize);
+        viewport?.removeEventListener('scroll', onViewportScroll);
+        document.removeEventListener('focusin', onFocusIn);
+        document.removeEventListener('focusout', onFocusOut);
     } };
-    schedule();
+    schedule('init');
 }
