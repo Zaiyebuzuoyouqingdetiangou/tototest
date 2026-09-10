@@ -2,9 +2,9 @@ import {
     commitPendingComboBatch,
     getCurrentChatKey,
     releasePendingComboBatch,
-} from './storage.js?rmv=1.5.38-update1';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.38-update1';
-import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.5.38-update1';
+} from './storage.js?rmv=1.5.39-ttdiag1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.39-ttdiag1';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.5.39-ttdiag1';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';
