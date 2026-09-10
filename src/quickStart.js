@@ -25,10 +25,6 @@ export const QUICK_START_GROUPS = [
         setting('earlybody', '正文标签闭合就提前生成（可选）', '高级设置 → 独立 API：扫描勾选或填写当前聊天的正文标签并保存；不选思考标签，也不能同时过滤该标签。', '#rh_early_body_enabled', 'worldinfo'),
         setting('persona', '角色与 Persona', '可选带入精简的角色资料和用户设定。', '#rh_independent_include_character_summary', 'worldinfo'),
         setting('worldinfo', '当前激活世界书', '按需选取当前已激活的世界书参考。', '#rh_independent_read_global_world_info', 'worldinfo'),
-        setting('external-text', '粘贴文字，添加自己的小剧场', '填名称、贴文字 → 读取并确认分类：主题是“演什么”，展现形式是“怎么玩” → 保存。无需转成 JSON。', '#rh_external_plain_open'),
-        setting('external-file', '导入文件（TXT / MD / JSON）', '选择文字或世界书文件 → 读取 → 确认分类 → 保存；兔子镜整库备份会自动进入导入确认。', '#rh_external_file_open'),
-        setting('external-transfer', '换设备：导出／导入整库', '旧设备导出整库备份 → 把文件传到新设备 → 新设备导入备份 → 核对并确认保存。', '#rh_external_transfer_open'),
-        setting('external', '管理母本库与开启抽签', '新导入的库默认停用。保存后启用这个库，再打开“外部母本参与抽签”，后续生成才会按设置抽取。', '#rh_external_worldbook_open'),
         setting('memory', '共享记忆源（实验性）', '读取兼容扩展公开提供的记忆源，实际带入时可能增加上下文用量。', '#rh_memory_scan_enabled', 'memory'),
         setting('followtags', '跟随模式标签隔离', '通过提示要求忽略指定标签；不同于独立 API 的实际过滤。', '#rh_follow_tag_isolation', 'worldinfo'),
     ] },
@@ -139,15 +135,6 @@ export function mountRabbitMirrorQuickStart({ root, openAdvanced, closeAdvanced 
         for (const [name, panel] of panels) { panel.hidden = name !== mode; tabButtons.get(name).setAttribute('aria-selected', String(name === mode)); }
     }
     selectTab(root.querySelector('#rh_generation_independent')?.checked ? 'independent' : 'follow');
-    const libraryShortcuts = create('section'); libraryShortcuts.id = 'rh_guide_library_shortcuts';
-    libraryShortcuts.setAttribute('aria-labelledby', 'rh_guide_library_heading');
-    const libraryHeading = create('h4', 'rabbit-mirror-guide-name', '母本库：导入与备份（可选）'); libraryHeading.id = 'rh_guide_library_heading';
-    libraryShortcuts.append(libraryHeading, create('p', 'rabbit-mirror-guide-caption', '想加入自己的小剧场，或把已导入的库带到另一台设备？从这里定位入口；不导入也能直接使用兔子镜。'));
-    for (const id of ['external-text', 'external-file', 'external-transfer']) {
-        const item = entries.get(id); libraryShortcuts.append(row(item.id, item.name, item.description));
-    }
-    libraryShortcuts.append(create('p', 'rabbit-mirror-guide-caption', '保存后还需在“管理母本库”启用新库，并打开“外部母本参与抽签”。整库搬家不是自动云同步；同编号的已有库会跳过，不覆盖，抽签总开关也不会替你打开。'));
-    body.append(libraryShortcuts);
     const catalogue = create('details', 'rabbit-mirror-guide-catalogue'); catalogue.id = 'rh_guide_catalogue';
     catalogue.append(create('summary', '', '完整功能说明 · 按需查看'));
     for (const group of QUICK_START_GROUPS) {

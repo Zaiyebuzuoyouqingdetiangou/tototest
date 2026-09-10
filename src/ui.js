@@ -7,10 +7,10 @@ import { clearRecentIndependentTransportDiagnostics } from './transportDiagnosti
 import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.38-update1';
 import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.38-update1';
 import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.38-update1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.38-ttsummary1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.38-ttsummary2';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
 import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.38-update1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.38-ttsummary1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.38-ttsummary2';
 import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.38-update1';
 import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.38-update1';
 
@@ -620,22 +620,24 @@ export function initRabbitMirrorUI() {
         <summary><span>独立 API</span><span class="rabbit-mirror-section-note">连接 · 模型 · 显示</span></summary>
         <div class="rabbit-mirror-section-content">
           <div id="rh_independent_mode_status" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb,var(--SmartThemeBorderColor) 65%,transparent);opacity:.78;font-size:11px;line-height:1.45;">正在读取当前生成模式……</div>
-          <section id="rh_behavior_rules" aria-labelledby="rh_behavior_rule_heading" style="margin:12px 0;padding:14px;min-width:0;border:2px solid var(--SmartThemeQuoteColor,currentColor);border-radius:10px;background:color-mix(in srgb,var(--SmartThemeQuoteColor,currentColor) 7%,transparent);">
-            <h3 id="rh_behavior_rule_heading" style="font-size:16px;margin:0 0 8px;font-weight:700;">补充创作规则 · 独立 API</h3>
-            <label for="rh_behavior_rule_mode" style="display:block;font-weight:700;margin:8px 0;">注入方式</label>
-            <select id="rh_behavior_rule_mode" class="text_pole" style="width:100%;max-width:100%;box-sizing:border-box;min-height:44px;">
-              <option value="always">每轮注入</option><option value="off">不注入</option><option value="adult-only">仅在抽到成人内容时注入</option>
-            </select>
-            <label for="rh_behavior_rule_text" style="display:block;font-weight:700;margin:8px 0;">补充规则完整内容（可编辑或留空）</label>
-            <textarea id="rh_behavior_rule_text" class="text_pole" rows="10" maxlength="${BEHAVIOR_RULE_MAX_CHARS}" spellcheck="false" aria-describedby="rh_behavior_rule_help" style="width:100%;max-width:100%;min-height:200px;box-sizing:border-box;resize:vertical;font-size:14px;line-height:1.6;"></textarea>
-            <div id="rh_behavior_rule_help" style="font-size:12px;line-height:1.6;">仅作用于独立 API，不改变正文连接。</div>
-            <div class="flex-container" style="gap:8px;flex-wrap:wrap;margin:10px 0;">
-              <button id="rh_behavior_rule_save" class="menu_button" type="button" style="min-height:44px;font-weight:700;">保存创作规则</button>
-              <button id="rh_behavior_rule_clear" class="menu_button" type="button" style="min-height:44px;">清空内容</button>
-              <button id="rh_behavior_rule_reset" class="menu_button" type="button" style="min-height:44px;">恢复默认</button>
+          <details id="rh_behavior_rules" style="margin:12px 0;min-width:0;border:2px solid var(--SmartThemeQuoteColor,currentColor);border-radius:10px;background:color-mix(in srgb,var(--SmartThemeQuoteColor,currentColor) 7%,transparent);">
+            <summary id="rh_behavior_rule_heading" style="cursor:pointer;padding:13px 14px;font-size:16px;font-weight:700;">补充创作规则 · 独立 API</summary>
+            <div style="padding:0 14px 14px;">
+              <label for="rh_behavior_rule_mode" style="display:block;font-weight:700;margin:8px 0;">注入方式</label>
+              <select id="rh_behavior_rule_mode" class="text_pole" style="width:100%;max-width:100%;box-sizing:border-box;min-height:44px;">
+                <option value="always">每轮注入</option><option value="off">不注入</option><option value="adult-only">仅在抽到成人内容时注入</option>
+              </select>
+              <label for="rh_behavior_rule_text" style="display:block;font-weight:700;margin:8px 0;">补充规则完整内容（可编辑或留空）</label>
+              <textarea id="rh_behavior_rule_text" class="text_pole" rows="10" maxlength="${BEHAVIOR_RULE_MAX_CHARS}" spellcheck="false" aria-describedby="rh_behavior_rule_help" style="width:100%;max-width:100%;min-height:200px;box-sizing:border-box;resize:vertical;font-size:14px;line-height:1.6;"></textarea>
+              <div id="rh_behavior_rule_help" style="font-size:12px;line-height:1.6;">仅作用于独立 API，不改变正文连接。</div>
+              <div class="flex-container" style="gap:8px;flex-wrap:wrap;margin:10px 0;">
+                <button id="rh_behavior_rule_save" class="menu_button" type="button" style="min-height:44px;font-weight:700;">保存创作规则</button>
+                <button id="rh_behavior_rule_clear" class="menu_button" type="button" style="min-height:44px;">清空内容</button>
+                <button id="rh_behavior_rule_reset" class="menu_button" type="button" style="min-height:44px;">恢复默认</button>
+              </div>
+              <div id="rh_behavior_rule_status" role="status" aria-live="polite" style="font-size:13px;line-height:1.6;"></div>
             </div>
-            <div id="rh_behavior_rule_status" role="status" aria-live="polite" style="font-size:13px;line-height:1.6;"></div>
-          </section>
+          </details>
           <div id="rh_independent_api_fields" style="display:grid;gap:9px;">
             <div style="padding:10px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:10px;">
               <div style="font-weight:700;font-size:12px;margin-bottom:7px;">独立 API 生成方式</div>
@@ -685,11 +687,6 @@ export function initRabbitMirrorUI() {
             <div style="opacity:.66;font-size:11px;line-height:1.45;">一键配置时不保存 API Key；旧手动模式仍按原逻辑保存在当前 SillyTavern 扩展设置里。</div>
           </div>
         </div>
-      </details>
-
-      <details id="rh_external_library_section" class="rabbit-mirror-section">
-        <summary><span>母本库：导入与备份</span><span class="rabbit-mirror-section-note">文字 · 文件 · 换设备</span></summary>
-        <div id="rh_external_library_content" class="rabbit-mirror-section-content"></div>
       </details>
 
       <details class="rabbit-mirror-section rabbit-mirror-tools">
@@ -787,8 +784,13 @@ export function initRabbitMirrorUI() {
           </div>
 
           <div id="rh_advanced_page_external" class="rh-advanced-page" data-title="母本库：导入与备份" style="display:none;">
-            <p>文字导入、文件导入和整库备份现在集中在设置首页的「母本库：导入与备份」。</p>
-            <button id="rh_external_library_shortcut" class="menu_button" type="button" style="min-height:44px;white-space:normal;">前往母本库：导入与备份</button>
+            <div style="font-size:12px;line-height:1.6;margin-bottom:10px;">想加入自己的小剧场，或把已导入的库带到另一台设备？都从这里操作；不导入也能直接使用兔子镜。</div>
+            <div style="display:grid;gap:7px;margin-bottom:10px;font-size:12px;line-height:1.55;">
+              <div><b>粘贴文字：</b>填名称、贴文字 → 读取并确认分类。主题是“演什么”，展现形式是“怎么玩” → 保存，无需转成 JSON。</div>
+              <div><b>导入文件：</b>选择 TXT / MD / JSON 或世界书文件 → 读取 → 确认分类 → 保存；兔子镜整库备份会自动进入导入确认。</div>
+              <div><b>换设备：</b>旧设备导出整库备份 → 把文件传到新设备 → 新设备导入 → 核对并确认保存。</div>
+              <div><b>启用方式：</b>新导入的库默认停用。保存后请在“管理母本库”启用新库，并打开“外部母本参与抽签”。同编号的已有库会跳过、不覆盖，抽签总开关也不会自动替你打开。</div>
+            </div>
           </div>
           <div id="rh_advanced_page_replacement" class="rh-advanced-page" data-title="🚫 禁词与文字替换" style="display:none;"></div>
           <div id="rh_advanced_page_generation" class="rh-advanced-page" data-title="生成与抽取" style="display:none;">
@@ -1039,7 +1041,7 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_context_layers').val(settings.independentContextMaxLayers ?? 20);
     checked('#rh_follow_tag_isolation', settings.followTagIsolationEnabled === true);
     $('#rh_banned_words_save').parent().parent().appendTo('#rh_advanced_page_replacement');
-    $('#rh_external_library_actions').appendTo('#rh_external_library_content');
+    $('#rh_external_library_actions').appendTo('#rh_advanced_page_external');
     document.getElementById('rh_advanced_page_worldinfo').prepend(document.getElementById('rh_behavior_rules'));
     $('#rh_banned_words').val(formatRabbitMirrorReplacementLines(settings.rabbitMirrorBannedWords || []));
     $('#rh_banned_words_status').text(`已保存 ${(settings.rabbitMirrorBannedWords || []).length} / ${RABBIT_MIRROR_BANNED_WORD_MAX_COUNT} 个词`);
@@ -1391,13 +1393,6 @@ export function initRabbitMirrorUI() {
         setAdvancedOpen(true);
     });
     $('#rh_advanced_close').on('click', closeAdvancedModal);
-    $('#rh_external_library_shortcut').on('click', () => {
-        closeAdvancedModal();
-        const section = document.getElementById('rh_external_library_section');
-        section.open = true;
-        section.scrollIntoView({ block: 'center', behavior: 'auto' });
-        section.querySelector('summary')?.focus({ preventScroll: true });
-    });
     $('#rh_advanced_back_top').on('click', showAdvancedMenu);
     $('#rh_advanced_modal').on('click', function (event) {
         if (event.target === this) closeAdvancedModal();
@@ -1433,7 +1428,7 @@ export function initRabbitMirrorUI() {
         if (!quickStart.open || guideLoading || guideCleanup || guideDisposed) return;
         guideLoading = true;
         try {
-            const module = await import('./quickStart.js?rmv=1.5.38-update1');
+            const module = await import('./quickStart.js?rmv=1.5.38-ui2');
             if (guideDisposed || !quickStart.isConnected || !isCurrentRuntime()) return;
             guideCleanup = module.mountRabbitMirrorQuickStart({
                 root: document.getElementById('rabbit_mirror_theater_settings'),

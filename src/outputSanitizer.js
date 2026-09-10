@@ -14,7 +14,7 @@ import {
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
 } from './feedbackCat.js?rmv=1.5.38-update1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.38-ttsummary1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.38-ttsummary2';
 import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.38-update1';
 import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.38-update1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
@@ -25940,6 +25940,62 @@ function removeToolEntryDelegation() {
 }
 
 const managedOuterSummaryToggleFallbackPending = new WeakSet();
+const managedOuterSummaryToggleIntents = new Map();
+const MANAGED_OUTER_SUMMARY_INTENT_TTL_MS = 2500;
+const MANAGED_OUTER_SUMMARY_INTENT_MAX = 24;
+
+function managedOuterSummaryIntentKey(details, face = getRabbitMirrorFacePosition(details)) {
+    if (!details || !face) return '';
+    const owner = details.closest?.('.mes, [mesid]');
+    const mesid = String(owner?.getAttribute?.('mesid') ?? owner?.dataset?.mesid ?? '').trim();
+    if (!mesid) return '';
+    let chatKey = 'chat';
+    try { chatKey = String(getCurrentChatKey?.() || 'chat'); } catch {}
+    return `${chatKey}:${mesid}:${Number(face.faceIndex || 0)}`;
+}
+
+function trimManagedOuterSummaryToggleIntents(now = Date.now()) {
+    for (const [key, value] of managedOuterSummaryToggleIntents) {
+        if (!value || now - Number(value.ts || 0) > MANAGED_OUTER_SUMMARY_INTENT_TTL_MS) managedOuterSummaryToggleIntents.delete(key);
+    }
+    while (managedOuterSummaryToggleIntents.size > MANAGED_OUTER_SUMMARY_INTENT_MAX) {
+        const oldest = managedOuterSummaryToggleIntents.keys().next().value;
+        if (oldest === undefined) break;
+        managedOuterSummaryToggleIntents.delete(oldest);
+    }
+}
+
+function rememberManagedOuterSummaryToggleIntent(details, face, desiredOpen) {
+    const key = managedOuterSummaryIntentKey(details, face);
+    if (!key) return false;
+    const now = Date.now();
+    trimManagedOuterSummaryToggleIntents(now);
+    managedOuterSummaryToggleIntents.delete(key);
+    managedOuterSummaryToggleIntents.set(key, { open: !!desiredOpen, ts: now });
+    trimManagedOuterSummaryToggleIntents(now);
+    return true;
+}
+
+function applyManagedOuterSummaryToggleIntents(owner, roots) {
+    if (!isRabbitMirrorManagedChatSurface() || !owner?.isConnected) return 0;
+    const now = Date.now();
+    trimManagedOuterSummaryToggleIntents(now);
+    let restored = 0;
+    for (const root of roots || []) {
+        const face = getRabbitMirrorFacePosition(root);
+        const details = face?.details || (root?.matches?.('details') ? root : root?.querySelector?.(':scope > details') || null);
+        if (!details?.isConnected || !face) continue;
+        const key = managedOuterSummaryIntentKey(details, face);
+        const intent = key ? managedOuterSummaryToggleIntents.get(key) : null;
+        if (!intent || now - Number(intent.ts || 0) > MANAGED_OUTER_SUMMARY_INTENT_TTL_MS) continue;
+        if (!!details.open !== !!intent.open) {
+            details.open = !!intent.open;
+            restored += 1;
+        }
+    }
+    if (restored) globalThis.__rabbitMirrorPerfDiag?.mark?.('tt.outerSummaryToggleRemountRestore', { restored });
+    return restored;
+}
 
 function scheduleManagedOuterSummaryToggleFallback(summary) {
     if (!isRabbitMirrorManagedChatSurface() || !(summary instanceof Element)) return false;
@@ -25950,6 +26006,7 @@ function scheduleManagedOuterSummaryToggleFallback(summary) {
     if (managedOuterSummaryToggleFallbackPending.has(details)) return true;
 
     const before = !!details.open;
+    rememberManagedOuterSummaryToggleIntent(details, face, !before);
     managedOuterSummaryToggleFallbackPending.add(details);
     setTimeout(() => {
         managedOuterSummaryToggleFallbackPending.delete(details);
@@ -26061,6 +26118,10 @@ function installManagedRabbitMirrorTools() {
         installMaintenanceRabbitsInScope(owner, { historyRestoreLight: true });
         const ownedScope = wholeMessage ? owner : context.content;
         const roots = getRenderedRabbitMirrorInteractionRoots(ownedScope);
+        // A TT click can land immediately before ChatSurface replaces the disposable
+        // projection. Preserve only that short-lived user intent across the remount;
+        // never pin the message or interfere with the virtualizer.
+        applyManagedOuterSummaryToggleIntents(owner, roots);
         // Pending first-use handlers and root-keyed timers must not outlive the
         // host content lease. Native listeners on detached generated nodes are
         // collected with those nodes; never rebuild an unmounted message here.
@@ -26294,6 +26355,7 @@ export function destroyOutputSanitizer() {
     chatRootReadyObserver?.disconnect?.();
     chatRootReadyObserver = null;
     removeToolEntryDelegation();
+    managedOuterSummaryToggleIntents.clear();
     observedChatInstallRoot = null;
     if (chatInstallDebounceTimer) {
         clearTimeout(chatInstallDebounceTimer);
