@@ -67,11 +67,11 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.5.38-ttsummary2'),
-        import('./src/visualScanner.js?rmv=1.5.38-ttsummary2'),
-        import('./src/independentApi.js?rmv=1.5.38-ttsummary2'),
+        import('./src/outputSanitizer.js?rmv=1.5.38-ttsummary1'),
+        import('./src/visualScanner.js?rmv=1.5.38-ttsummary1'),
+        import('./src/independentApi.js?rmv=1.5.38-ttsummary1'),
         import('./src/touchTheater.js?rmv=1.5.38-update1'),
-        import('./src/ui.js?rmv=1.5.38-ttsummary2'),
+        import('./src/ui.js?rmv=1.5.38-ttsummary1'),
         import('./src/composerClearance.js?rmv=1.5.38-update1'),
     ]).then(async ([output, visual, independent, touch, ui, clearance]) => {
         if (runtimeCancelled) return null;
@@ -283,7 +283,7 @@ function loadMirrorVisualCompat() {
     if (!deferredRuntimeModules) return Promise.resolve(null);
     return Promise.all([
         loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.4.30.26', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
-        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.5.38-ttsummary2', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
+        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.5.38-ttsummary1', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
     ]);
 }
 
