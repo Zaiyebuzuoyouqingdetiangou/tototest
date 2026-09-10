@@ -16,7 +16,7 @@ import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchInde
 import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.39-ttdiag1';
 import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.39-ttdiag1';
 
-const SETTINGS_UI_VERSION = '1.8-ttentry1';
+const SETTINGS_UI_VERSION = '1.8-ttentry2';
 const RUNTIME_VERSION = '1.5.39';
 
 function isCurrentRuntime() {
