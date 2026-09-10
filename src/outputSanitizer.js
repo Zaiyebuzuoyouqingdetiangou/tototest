@@ -14,7 +14,7 @@ import {
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
 } from './feedbackCat.js?rmv=1.5.38-update1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.38-update1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.38-ttsummary1';
 import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.38-update1';
 import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.38-update1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
@@ -25939,6 +25939,35 @@ function removeToolEntryDelegation() {
     toolEntryDelegatedKeydownHandler = null;
 }
 
+const managedOuterSummaryToggleFallbackPending = new WeakSet();
+
+function scheduleManagedOuterSummaryToggleFallback(summary) {
+    if (!isRabbitMirrorManagedChatSurface() || !(summary instanceof Element)) return false;
+    const details = summary.parentElement;
+    if (!details?.matches?.('details') || !isRabbitMirrorDetails(details)) return false;
+    const face = getRabbitMirrorFacePosition(details);
+    if (!face || face.details !== details) return false;
+    if (managedOuterSummaryToggleFallbackPending.has(details)) return true;
+
+    const before = !!details.open;
+    managedOuterSummaryToggleFallbackPending.add(details);
+    setTimeout(() => {
+        managedOuterSummaryToggleFallbackPending.delete(details);
+        // TT ChatSurface owns a disposable projection. Never resurrect a detached
+        // message or force a remount here; only repair a click that reached the
+        // current live outer summary but whose native <details> default action was
+        // lost by the host WebView. If native toggle worked, this is a no-op.
+        if (!details.isConnected || summary.parentElement !== details) return;
+        if (!!details.open !== before) return;
+        details.open = !before;
+        globalThis.__rabbitMirrorPerfDiag?.mark?.('tt.outerSummaryToggleFallback', {
+            faceIndex: face.faceIndex,
+            opened: !!details.open,
+        });
+    }, 0);
+    return true;
+}
+
 function installToolEntryDelegation(chatRoot = getChatRoot()) {
     if (!isCurrentRuntime() || !chatRoot?.addEventListener) return false;
     if (toolEntryDelegationRoot === chatRoot && toolEntryDelegatedClickHandler) return true;
@@ -25985,6 +26014,8 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
         // No per-mirror listener, observer or polling loop is introduced.
         const clickedSummary = event.target?.closest?.('summary');
         if (clickedSummary && !event.target?.closest?.(`[${TOOL_ENTRY_HOST_ATTR}]`)) {
+            const innerAction = event.target?.closest?.('button, input, select, textarea, a[href], [role="button"], [contenteditable="true"]');
+            if (!innerAction || innerAction === clickedSummary) scheduleManagedOuterSummaryToggleFallback(clickedSummary);
             const summaryRoot = rabbitMirrorInteractionRootFromTarget(clickedSummary);
             const outerDetails = getRabbitMirrorFacePosition(summaryRoot)?.details
                 || (summaryRoot?.matches?.('details') ? summaryRoot : summaryRoot?.querySelector?.(':scope > details') || null);
