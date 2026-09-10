@@ -1,5 +1,5 @@
 import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.39-ttdiag1';
-import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, ttSurfaceDiagnosticsHasReport, buildTtSurfaceReport } from './ttSurfaceDiagnostics.js?rmv=1.5.39-ttdiag1';
+import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, buildTtSurfaceReport, recordTtSurface, registerTtSurfaceCleanup, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.39-ttdiag1';
 import { isRabbitMirrorManagedChatSurface, getRabbitMirrorHostCompatibilityStatus } from './hostCompatibility.js?rmv=1.5.39-ttdiag1';
 import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.39-ttdiag1';
 import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.39-ttdiag1';
@@ -16,7 +16,7 @@ import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchInde
 import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.39-ttdiag1';
 import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.39-ttdiag1';
 
-const SETTINGS_UI_VERSION = '1.8';
+const SETTINGS_UI_VERSION = '1.8-ttentry1';
 const RUNTIME_VERSION = '1.5.39';
 
 function isCurrentRuntime() {
@@ -477,6 +477,186 @@ function memoryTestMessage(result) {
     return parts.join('；');
 }
 
+let retainedTtDiagnosticReport = '';
+
+// Session-only capture. Never retain generated text or put diagnostic state on DOM nodes.
+function captureTtDiagnosticInputs(chatRoot, session) {
+    if (!chatRoot?.addEventListener) return;
+    let root = chatRoot;
+    let nodeIds = new WeakMap();
+    let nextNodeId = 0;
+    const pending = new Map();
+    const recent = new Map();
+    const bound = (map, key, value) => {
+        map.delete(key); map.set(key, value);
+        if (map.size > 24) map.delete(map.keys().next().value);
+    };
+    const nodeId = node => {
+        if (!nodeIds.has(node)) nodeIds.set(node, ++nextNodeId);
+        return nodeIds.get(node);
+    };
+    const handler = event => {
+        if (!isTtSurfaceDiagnosticsActive() || !root) return;
+        const target = event.target?.nodeType === 1 ? event.target : event.target?.parentElement;
+        const summary = target?.closest?.('summary');
+        const details = event.type === 'toggle' ? target : summary?.parentElement;
+        if (!details?.matches?.('details') || !root.contains(details)) return;
+        if (!details.closest('toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"], [data-rabbit-mirror-css-scope], [data-rabbit-mirror-external-source="true"], .rabbit-mirror-external-host')) return;
+        if (summary && target.closest('button, input, select, textarea, a[href], [contenteditable="true"], [data-rabbit-mirror-tool-entry-host]')) return;
+        const id = nodeId(details);
+        const pointer = Number.isFinite(event.pointerId) ? event.pointerId : -1;
+        let previous = pending.get(pointer);
+        let seq;
+        if (event.type === 'pointerdown') {
+            seq = nextTtSurfaceClickSeq();
+            bound(pending, pointer, { seq, node: id });
+            previous = null;
+        } else if (event.type === 'toggle') {
+            seq = recent.get(id) || 0;
+        } else {
+            seq = previous?.seq || recent.get(id) || nextTtSurfaceClickSeq();
+        }
+        if (event.type === 'click' || event.type === 'pointercancel') pending.delete(pointer);
+        if (seq) bound(recent, id, seq);
+        const messageId = Number(details.closest('.mes')?.getAttribute('mesid'));
+        session.inputEvents += 1;
+        // All arguments are scalars. A new DOM identity is recorded, never restored.
+        recordTtSurface(event.type, {
+            seq, node: id, mesid: Number.isInteger(messageId) ? messageId : -1,
+            open: !!details.open, connected: !!details.isConnected,
+            sameDetails: previous ? previous.node === id : undefined,
+            defaultPrevented: !!event.defaultPrevented,
+        });
+    };
+    const events = ['pointerdown', 'pointerup', 'pointercancel', 'click', 'toggle'];
+    registerTtSurfaceCleanup(() => {
+        for (const type of events) root?.removeEventListener(type, handler, true);
+        pending.clear(); recent.clear(); nodeIds = new WeakMap(); root = null;
+    });
+    for (const type of events) root.addEventListener(type, handler, { capture: true, passive: true });
+}
+
+function installTtDiagnosticEntry() {
+    try { globalThis.__rabbitMirrorTtDiagnosticUiCleanup?.(); } catch {}
+    globalThis.__rabbitMirrorTtDiagnosticUiCleanup = null;
+    if (!isRabbitMirrorManagedChatSurface()) return;
+    const start = $('#rh_tt_diag_start');
+    const copy = $('#rh_tt_diag_copy');
+    const statusText = $('#rh_tt_diag_status');
+    const output = $('#rh_tt_diag_output');
+    let disposed = false;
+    let session = null;
+    const notify = (kind, text) => { try { globalThis.toastr?.[kind]?.(text); } catch {} };
+    const setStatus = text => { if (!disposed) statusText.text(text).show(); };
+    const report = () => {
+        if (!session) return retainedTtDiagnosticReport;
+        const elapsed = Math.max(0, (session.endedAt ?? performance.now()) - session.startedAt);
+        const head = [
+            'TT 诊断入口：1.5.39-ttentry1',
+            `diagnostic-start +0ms | managed=${session.host.managed} | registered=${session.host.registered} | protocolVersion=${session.host.protocolVersion ?? '不可用'}`,
+            `chatRootFound=${session.chatRootFound} | pointerEvents=${session.pointerEvents} | 输入事件 ${session.inputEvents} 条`,
+            session.endedAt !== null ? `diagnostic-stop +${elapsed.toFixed(0)}ms | ${session.stopReason || '自动停止或达到条数上限'}` : '状态：正在采集',
+            session.host.errorCode ? `宿主状态：${session.host.errorCode}` : '',
+            '没有业务记录不代表没有卡顿；以下为空时，只能确认入口已运行。',
+        ].filter(Boolean).join('\n');
+        return head + '\n\n' + (session.engineStarted ? buildTtSurfaceReport({ version: RUNTIME_VERSION, ...session.host }) : '采集模块未成功启动。');
+    };
+    const renderStopped = () => {
+        if (!session) return;
+        session.endedAt = performance.now();
+        retainedTtDiagnosticReport = report();
+        if (disposed) return;
+        start.text('开始 TT 诊断（20 秒）').prop('disabled', false);
+        copy.prop('disabled', false);
+        setStatus('TT 诊断已结束，报告已显示，可复制；没有业务事件也会保留入口状态。');
+        output.val(retainedTtDiagnosticReport).show();
+        if (session.stopReason !== '入口启动异常') notify('success', 'TT 诊断已结束，报告已保留；请点击“复制 TT 诊断”。');
+    };
+    start.show().off('.rmTtDiag').on('click.rmTtDiag', () => {
+        if (disposed) return;
+        if (isTtSurfaceDiagnosticsActive()) {
+            if (session) session.stopReason = '手动结束';
+            stopTtSurfaceDiagnostics();
+            return;
+        }
+        try {
+            const state = getRabbitMirrorHostCompatibilityStatus();
+            const chatRoot = document.getElementById('chat');
+            session = {
+                startedAt: performance.now(), endedAt: null, inputEvents: 0, engineStarted: false,
+                chatRootFound: !!chatRoot, pointerEvents: typeof globalThis.PointerEvent === 'function',
+                host: { managed: state?.managed === true, registered: state?.registered === true,
+                    protocolVersion: Number.isFinite(state?.protocolVersion) ? state.protocolVersion : null,
+                    errorCode: String(state?.errorCode || '').slice(0, 48) },
+            };
+            retainedTtDiagnosticReport = '';
+            output.val('').hide();
+            startTtSurfaceDiagnostics({ onStateChange: active => {
+                if (active) {
+                    session.engineStarted = true;
+                    recordTtSurface('diagnostic-start', { managed: session.host.managed, registered: session.host.registered, protocolVersion: session.host.protocolVersion });
+                } else renderStopped();
+            } });
+            captureTtDiagnosticInputs(chatRoot, session);
+            start.text('结束 TT 诊断（20 秒自动停止）').prop('disabled', false);
+            copy.prop('disabled', false);
+            setStatus(chatRoot ? 'TT 诊断已开始。请收起设置，在 20 秒内滚动聊天并点击点不开的兔子镜；也可提前结束。' : 'TT 诊断已开始，但未找到聊天窗口；请进入聊天后重新采集。');
+            notify('info', 'TT 诊断已开始，请在 20 秒内复现滚动卡顿或点不开。');
+        } catch {
+            if (session) session.stopReason = '入口启动异常';
+            try { stopTtSurfaceDiagnostics(); } catch {}
+            if (session) { session.endedAt = performance.now(); retainedTtDiagnosticReport = report(); }
+            start.text('开始 TT 诊断（20 秒）').prop('disabled', false);
+            copy.prop('disabled', false);
+            output.val(retainedTtDiagnosticReport || 'TT 诊断入口启动失败，未进行采集。').show();
+            setStatus('TT 诊断启动失败，已显示入口报告；请复制反馈，不需要重新生成兔子镜。');
+            notify('error', 'TT 诊断未正常启动，请复制下方入口报告。');
+        }
+    });
+    copy.show().prop('disabled', false).off('.rmTtDiag').on('click.rmTtDiag', async () => {
+        if (disposed) return;
+        if (isTtSurfaceDiagnosticsActive()) {
+            if (session) session.stopReason = '复制前结束';
+            stopTtSurfaceDiagnostics();
+        }
+        const text = report();
+        if (!text) {
+            setStatus('还没有 TT 诊断报告，请先点击“开始 TT 诊断”并复现问题。');
+            notify('warning', '还没有 TT 诊断报告，请先开始诊断。');
+            return;
+        }
+        output.val(text).show();
+        try {
+            if (typeof navigator.clipboard?.writeText !== 'function') throw new Error('clipboard-unavailable');
+            await navigator.clipboard.writeText(text);
+            if (!disposed) notify('success', '已复制 TT ChatSurface 诊断');
+        } catch {
+            if (disposed) return;
+            const textarea = document.getElementById('rh_tt_diag_output');
+            let copied = false;
+            try {
+                textarea?.focus?.({ preventScroll: true }); textarea?.select?.();
+                textarea?.setSelectionRange?.(0, text.length);
+                copied = document.execCommand?.('copy') === true;
+            } catch {}
+            setStatus(copied ? 'TT 诊断已复制。' : '自动复制未成功：报告已显示，请长按下方文本全选复制。');
+            notify(copied ? 'success' : 'warning', copied ? '已复制 TT ChatSurface 诊断' : '自动复制未成功，请长按下方报告手动复制。');
+        }
+    });
+    start.text('开始 TT 诊断（20 秒）').prop('disabled', false);
+    setStatus(retainedTtDiagnosticReport ? '已保留上一次 TT 诊断报告，可以复制或重新采集。' : 'TT 诊断默认关闭。开启后采集 20 秒，不发模型请求。');
+    if (retainedTtDiagnosticReport) output.val(retainedTtDiagnosticReport).show();
+    const cleanup = () => {
+        if (disposed) return;
+        disposed = true;
+        if (session) session.stopReason = '设置界面卸载';
+        try { stopTtSurfaceDiagnostics(); } catch {}
+        start.off('.rmTtDiag'); copy.off('.rmTtDiag');
+        if (globalThis.__rabbitMirrorTtDiagnosticUiCleanup === cleanup) globalThis.__rabbitMirrorTtDiagnosticUiCleanup = null;
+    };
+    globalThis.__rabbitMirrorTtDiagnosticUiCleanup = cleanup;
+}
+
 export function initRabbitMirrorUI() {
     if (!isCurrentRuntime()) return;
     const finishUiInit = globalThis.__rabbitMirrorPerfDiag?.begin?.('ui.initCall', { retry: uiMountRetryCount }, 0);
@@ -544,6 +724,7 @@ export function initRabbitMirrorUI() {
         // Remove every stale/duplicate panel so the claimed runtime becomes the only UI owner.
         try { globalThis.__rabbitMirrorTagFilterScanUiCleanup?.(); } catch {}
         globalThis.__rabbitMirrorTagFilterScanUiCleanup = null;
+        try { globalThis.__rabbitMirrorTtDiagnosticUiCleanup?.(); } catch {}
         existing.remove();
         $('body > #rh_advanced_modal, body > #rh_world_info_prompt_modal, body > #rh_independent_tag_filter_modal').remove();
     }
@@ -747,6 +928,8 @@ export function initRabbitMirrorUI() {
                 <button id="rh_tt_diag_copy" class="menu_button" type="button" style="display:none;">复制 TT 诊断</button>
               <button id="rh_external_diag_reset" class="menu_button" type="button">清空外部记录</button>
             </div>
+            <div id="rh_tt_diag_status" role="status" style="display:none;margin-top:7px;opacity:.82;font-size:11px;line-height:1.45;"></div>
+            <textarea id="rh_tt_diag_output" class="text_pole" aria-label="TT 诊断报告" readonly spellcheck="false" style="display:none;width:100%;min-height:220px;max-height:50vh;resize:vertical;box-sizing:border-box;margin-top:8px;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;user-select:text;-webkit-user-select:text;"></textarea>
             <textarea id="rh_external_diag_output" class="text_pole" readonly spellcheck="false" style="display:none;width:100%;min-height:240px;resize:vertical;box-sizing:border-box;margin-top:8px;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;"></textarea>
           </div>
         </div>
@@ -2288,32 +2471,7 @@ export function initRabbitMirrorUI() {
     });
     renderExternalDiagnosticStatus();
 
-    // TT ChatSurface 仅诊断入口：只在 managed 宿主下显示与绑定。
-    // 云酒馆下两个按钮保持 display:none，且不注册任何监听。
-    if (isRabbitMirrorManagedChatSurface()) {
-        const syncTtDiagButtons = active => {
-            // 开始时改一次文案，stop 后恢复一次；期间不刷新、不倒数、不写其它 DOM。
-            $('#rh_tt_diag_start').text(active ? '诊断中…（20 秒后自动停止）' : '开始 TT 诊断（20 秒）').prop('disabled', active);
-            $('#rh_tt_diag_copy').prop('disabled', active || !ttSurfaceDiagnosticsHasReport());
-        };
-        $('#rh_tt_diag_start').show().on('click', () => {
-            if (isTtSurfaceDiagnosticsActive()) return;
-            startTtSurfaceDiagnostics({ onStateChange: syncTtDiagButtons });
-        });
-        $('#rh_tt_diag_copy').show().on('click', async () => {
-            const status = getRabbitMirrorHostCompatibilityStatus();
-            const text = buildTtSurfaceReport({
-                version: RUNTIME_VERSION,
-                managed: status?.managed,
-                protocolVersion: status?.protocolVersion,
-                registered: status?.registered,
-            });
-            if (!text) return;
-            try { await navigator.clipboard.writeText(text); toastr?.success?.('已复制 TT ChatSurface 诊断'); }
-            catch { toastr?.error?.('复制失败，请长按选择报告文本'); }
-        });
-        syncTtDiagButtons(false);
-    }
+    installTtDiagnosticEntry();
 
     $('#rh_reset').on('click', () => {
         resetSettings();
@@ -2326,6 +2484,7 @@ export function initRabbitMirrorUI() {
 export function destroyRabbitMirrorUI() {
     invalidateIndependentModelPull();
     beginIndependentConnectionOperation();
+    try { globalThis.__rabbitMirrorTtDiagnosticUiCleanup?.(); } catch {}
     try { globalThis.__rabbitMirrorQuickStartUiCleanup?.(); } catch {}
     globalThis.__rabbitMirrorQuickStartUiCleanup = null;
     try { globalThis.__rabbitMirrorTagFilterScanUiCleanup?.(); } catch {}
