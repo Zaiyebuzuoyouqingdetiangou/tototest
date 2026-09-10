@@ -71,7 +71,7 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
         import('./src/visualScanner.js?rmv=1.5.39-ttdiag1'),
         import('./src/independentApi.js?rmv=1.5.39-ttdiag1'),
         import('./src/touchTheater.js?rmv=1.5.39-ttdiag1'),
-        import('./src/ui.js?rmv=1.5.39-ttdiag2'),
+        import('./src/ui.js?rmv=1.5.39-ttentry1'),
         import('./src/composerClearance.js?rmv=1.5.39-ttdiag1'),
     ]).then(async ([output, visual, independent, touch, ui, clearance]) => {
         if (runtimeCancelled) return null;
