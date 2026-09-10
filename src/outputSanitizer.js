@@ -1,10 +1,10 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.39-tttouch1';
-import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.39-tttouch1';
-import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.39-tttouch1';
-import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.39-tttouch1';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.39-tttouch1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.39-tttouch1';
-import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.39-tttouch1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.40-tttouch2';
+import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.40-tttouch2';
+import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.40-tttouch2';
+import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.40-tttouch2';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.40-tttouch2';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.40-tttouch2';
+import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.40-tttouch2';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -14,14 +14,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.39-tttouch1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.39-tttouch1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.39-tttouch1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.39-tttouch1';
-import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.5.39-tttouch1';
+} from './feedbackCat.js?rmv=1.5.40-tttouch2';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.40-tttouch2';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.40-tttouch2';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.40-tttouch2';
+import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.5.40-tttouch2';
 
 
-const RUNTIME_VERSION = '1.5.39';
+const RUNTIME_VERSION = '1.5.40';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -25632,12 +25632,15 @@ let toolEntryDelegatedClickHandler = null;
 let toolEntryDelegatedPointerHandler = null;
 let toolEntryDelegatedKeydownHandler = null;
 let toolEntryDelegatedPointerUpHandler = null;
+let toolEntryDelegatedPointerMoveHandler = null;
 let toolEntryDelegatedPointerCancelHandler = null;
 let ttOuterSummaryTapState = null;
-const ttOuterSummaryDelayedClickSuppressions = new WeakMap();
+let ttOuterSummaryDelayedClickSuppressions = new WeakMap();
+let ttOuterSummaryMouseActivations = new WeakMap();
 const TT_OUTER_SUMMARY_TAP_MAX_MS = 700;
 const TT_OUTER_SUMMARY_TAP_MAX_MOVE_PX = 12;
 const TT_OUTER_SUMMARY_DELAYED_CLICK_TTL_MS = 2200;
+const TT_OUTER_SUMMARY_PENDING_POINTER_LIMIT = 64;
 
 const maintenanceInstallTimers = new Set();
 let startupMaintenanceInstallTimer = 0;
@@ -25941,6 +25944,9 @@ function removeToolEntryDelegation() {
     if (toolEntryDelegationRoot && toolEntryDelegatedPointerUpHandler) {
         toolEntryDelegationRoot.removeEventListener('pointerup', toolEntryDelegatedPointerUpHandler, true);
     }
+    if (toolEntryDelegationRoot && toolEntryDelegatedPointerMoveHandler) {
+        toolEntryDelegationRoot.removeEventListener('pointermove', toolEntryDelegatedPointerMoveHandler, true);
+    }
     if (toolEntryDelegationRoot && toolEntryDelegatedPointerCancelHandler) {
         toolEntryDelegationRoot.removeEventListener('pointercancel', toolEntryDelegatedPointerCancelHandler, true);
     }
@@ -25951,9 +25957,12 @@ function removeToolEntryDelegation() {
     toolEntryDelegatedClickHandler = null;
     toolEntryDelegatedPointerHandler = null;
     toolEntryDelegatedPointerUpHandler = null;
+    toolEntryDelegatedPointerMoveHandler = null;
     toolEntryDelegatedPointerCancelHandler = null;
     toolEntryDelegatedKeydownHandler = null;
     ttOuterSummaryTapState = null;
+    ttOuterSummaryDelayedClickSuppressions = new WeakMap();
+    ttOuterSummaryMouseActivations = new WeakMap();
 }
 
 function isTauriTavernRuntimeForOuterSummaryTap() {
@@ -25973,26 +25982,65 @@ function ttOuterSummaryTapTarget(target) {
     return { summary, details, face };
 }
 
-function rememberTtOuterSummaryDelayedClick(details) {
-    if (!details) return;
-    const now = performance.now();
-    const queue = (ttOuterSummaryDelayedClickSuppressions.get(details) || []).filter(expiry => expiry > now);
-    queue.push(now + TT_OUTER_SUMMARY_DELAYED_CLICK_TTL_MS);
-    ttOuterSummaryDelayedClickSuppressions.set(details, queue.slice(-3));
+function pendingTtOuterSummaryClicks(details, now) {
+    const pending = ttOuterSummaryDelayedClickSuppressions.get(details);
+    if (!pending) return null;
+    for (const [key, receipt] of pending) if (receipt.expires <= now) pending.delete(key);
+    if (!pending.size) { ttOuterSummaryDelayedClickSuppressions.delete(details); return null; }
+    return pending;
 }
 
-function consumeTtOuterSummaryDelayedClick(details) {
-    if (!details) return false;
+function rememberTtOuterSummaryDelayedClick(details, state) {
     const now = performance.now();
-    const queue = (ttOuterSummaryDelayedClickSuppressions.get(details) || []).filter(expiry => expiry > now);
-    if (!queue.length) {
-        ttOuterSummaryDelayedClickSuppressions.delete(details);
+    const pending = pendingTtOuterSummaryClicks(details, now) || new Map();
+    const key = `${state.pointerType}:${state.pointerId}:${state.x}:${state.y}`;
+    const previous = pending.get(key);
+    // Count identical reused pointer/position pairs, keeping different tap
+    // locations separate for legacy MouseEvents. The map
+    // has a fixed identity budget; refuse a new fast toggle if no receipt fits.
+    // Existing receipts are never evicted to make room for a later gesture.
+    if (!previous && pending.size >= TT_OUTER_SUMMARY_PENDING_POINTER_LIMIT) return false;
+    pending.set(key, {
+        pointerType: state.pointerType, pointerId: state.pointerId,
+        count: (previous?.count || 0) + 1,
+        expires: now + TT_OUTER_SUMMARY_DELAYED_CLICK_TTL_MS,
+        x: state.x, y: state.y,
+    });
+    ttOuterSummaryDelayedClickSuppressions.set(details, pending);
+    return true;
+}
+
+function consumeTtOuterSummaryDelayedClick(details, event) {
+    if (!details || !event.cancelable) return false;
+    const now = performance.now();
+    const pointerType = String(event.pointerType || '');
+    if (event.detail === 0 && pointerType !== 'touch' && pointerType !== 'pen') return false;
+    const mouseActivation = ttOuterSummaryMouseActivations.get(details);
+    const explicitTouch = event.sourceCapabilities?.firesTouchEvents === true;
+    const matchesMouse = mouseActivation?.expires > now
+        && Math.hypot(Number(event.clientX || 0) - mouseActivation.x, Number(event.clientY || 0) - mouseActivation.y)
+            <= TT_OUTER_SUMMARY_TAP_MAX_MOVE_PX;
+    if (pointerType === 'mouse' || (!pointerType && !explicitTouch && matchesMouse)) {
+        ttOuterSummaryMouseActivations.delete(details);
         return false;
     }
-    queue.shift();
-    if (queue.length) ttOuterSummaryDelayedClickSuppressions.set(details, queue);
-    else ttOuterSummaryDelayedClickSuppressions.delete(details);
-    return true;
+    if (pointerType && pointerType !== 'touch' && pointerType !== 'pen') return false;
+    if (!pointerType && event.sourceCapabilities?.firesTouchEvents === false) return false;
+    const pending = pendingTtOuterSummaryClicks(details, now);
+    if (!pending) return false;
+    const identifiedPointer = Number.isFinite(event.pointerId) && event.pointerId >= 0 && pointerType;
+    // Older WebViews expose a touch-derived MouseEvent without pointer ID.
+    // Keep its spatial pairing, but never ignore a modern click's distinct ID.
+    const key = [...pending].find(([, receipt]) => (!pointerType || receipt.pointerType === pointerType)
+        && (!identifiedPointer || receipt.pointerId === event.pointerId)
+        && Math.hypot(Number(event.clientX || 0) - receipt.x, Number(event.clientY || 0) - receipt.y)
+            <= TT_OUTER_SUMMARY_TAP_MAX_MOVE_PX)?.[0];
+    const receipt = pending.get(key);
+    if (!receipt) return false;
+    receipt.count -= 1;
+    if (!receipt.count) pending.delete(key);
+    if (!pending.size) ttOuterSummaryDelayedClickSuppressions.delete(details);
+    return identifiedPointer ? 'pointer' : explicitTouch ? 'legacy-touch' : 'legacy-spatial';
 }
 
 const managedOuterSummaryToggleFallbackPending = new WeakSet();
@@ -26097,10 +26145,20 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
         // handlers mutate state. Keyboard checkbox/radio activation is captured by the keydown
         // delegate below before its native toggle. Tool buttons are excluded by the capture helper.
         captureRabbitMirrorInteractionResetFromEventTarget(event.target);
-        const tapTarget = event.pointerType === 'mouse' ? null : ttOuterSummaryTapTarget(event.target);
-        if (tapTarget && event.isPrimary !== false) {
+        const isTouchOrPen = event.pointerType === 'touch' || event.pointerType === 'pen';
+        const tapTarget = ttOuterSummaryTapTarget(event.target);
+        if (tapTarget && event.pointerType === 'mouse' && event.button === 0 && event.isPrimary !== false) {
+            ttOuterSummaryMouseActivations.set(tapTarget.details, {
+                expires: performance.now() + TT_OUTER_SUMMARY_DELAYED_CLICK_TTL_MS,
+                x: Number(event.clientX || 0), y: Number(event.clientY || 0),
+            });
+        }
+        const interruptedPointer = ttOuterSummaryTapState && ttOuterSummaryTapState.pointerId !== event.pointerId;
+        if (!interruptedPointer && tapTarget && isTouchOrPen && event.isPrimary !== false && event.button === 0
+                && Number.isFinite(event.pointerId) && event.pointerId >= 0 && !event.defaultPrevented) {
             ttOuterSummaryTapState = {
                 pointerId: event.pointerId,
+                pointerType: event.pointerType,
                 summary: tapTarget.summary,
                 details: tapTarget.details,
                 faceIndex: tapTarget.face.faceIndex,
@@ -26108,17 +26166,24 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
                 y: Number(event.clientY || 0),
                 startedAt: performance.now(),
             };
-        } else if (ttOuterSummaryTapState?.pointerId === event.pointerId) {
+        } else {
             ttOuterSummaryTapState = null;
         }
         const button = event.target?.closest?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`);
         if (!button || !chatRoot.contains(button)) return;
         event.stopPropagation();
     };
+    toolEntryDelegatedPointerMoveHandler = event => {
+        const state = ttOuterSummaryTapState;
+        if (!state || state.pointerId !== event.pointerId) return;
+        if (Math.hypot(Number(event.clientX || 0) - state.x, Number(event.clientY || 0) - state.y)
+                > TT_OUTER_SUMMARY_TAP_MAX_MOVE_PX) ttOuterSummaryTapState = null;
+    };
     toolEntryDelegatedPointerUpHandler = event => {
         const state = ttOuterSummaryTapState;
         if (!state || state.pointerId !== event.pointerId) return;
         ttOuterSummaryTapState = null;
+        if (event.defaultPrevented || event.pointerType !== state.pointerType || event.button !== 0) return;
         const elapsed = performance.now() - state.startedAt;
         const dx = Number(event.clientX || 0) - state.x;
         const dy = Number(event.clientY || 0) - state.y;
@@ -26126,9 +26191,10 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
         if (!state.details?.isConnected || state.summary?.parentElement !== state.details) return;
         const currentTarget = ttOuterSummaryTapTarget(event.target);
         if (!currentTarget || currentTarget.details !== state.details || currentTarget.summary !== state.summary) return;
+        if (!rememberTtOuterSummaryDelayedClick(state.details, state)) return;
         state.details.open = !state.details.open;
-        rememberTtOuterSummaryDelayedClick(state.details);
-        recordTtSurface('tt-fast-toggle', { faceIndex: state.faceIndex, open: !!state.details.open, ms: elapsed });
+        recordTtSurface('tt-fast-toggle', { faceIndex: state.faceIndex, open: !!state.details.open, ms: elapsed,
+            pointerId: state.pointerId, pointerType: state.pointerType, eventTime: event.timeStamp });
     };
     toolEntryDelegatedPointerCancelHandler = event => {
         if (ttOuterSummaryTapState?.pointerId === event.pointerId) ttOuterSummaryTapState = null;
@@ -26168,10 +26234,12 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
             const clickedDetails = clickedSummary.parentElement;
             const suppressDelayedNativeToggle = (!innerAction || innerAction === clickedSummary)
                 && isTauriTavernRuntimeForOuterSummaryTap()
-                && consumeTtOuterSummaryDelayedClick(clickedDetails);
+                && consumeTtOuterSummaryDelayedClick(clickedDetails, event);
             if (suppressDelayedNativeToggle) {
                 event.preventDefault();
-                recordTtSurface('tt-delayed-click-suppressed', { open: !!clickedDetails?.open });
+                recordTtSurface('tt-delayed-click-suppressed', { open: !!clickedDetails?.open,
+                    pointerId: event.pointerId, pointerType: event.pointerType, eventTime: event.timeStamp,
+                    defaultPrevented: event.defaultPrevented, suppressed: true, match: suppressDelayedNativeToggle });
             } else if (!innerAction || innerAction === clickedSummary) {
                 scheduleManagedOuterSummaryToggleFallback(clickedSummary);
             }
@@ -26197,6 +26265,7 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
     };
     chatRoot.addEventListener('pointerdown', toolEntryDelegatedPointerHandler, true);
     chatRoot.addEventListener('pointerup', toolEntryDelegatedPointerUpHandler, true);
+    chatRoot.addEventListener('pointermove', toolEntryDelegatedPointerMoveHandler, { capture: true, passive: true });
     chatRoot.addEventListener('pointercancel', toolEntryDelegatedPointerCancelHandler, true);
     chatRoot.addEventListener('keydown', toolEntryDelegatedKeydownHandler, true);
     chatRoot.addEventListener('click', toolEntryDelegatedClickHandler, true);

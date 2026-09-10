@@ -153,29 +153,22 @@ export function buildTtSurfaceReport(context = {}) {
     }
 
     lines.push('', '【C 点击时序】');
-    const bySeq = new Map();
-    for (const entry of entries) {
-        const seq = Number(entry.seq || 0);
-        if (!seq) continue;
-        if (!bySeq.has(seq)) bySeq.set(seq, []);
-        bySeq.get(seq).push(entry);
+    lines.push('  按采集顺序列出本次全部输入/补丁记录（共享 1200 条总上限），+ms 从诊断开始计。');
+    lines.push('  phase=capture-before-default：捕获阶段、原生默认动作之前；open/defaultPrevented 是当时值，可能早于后续拦截，不能单独认定最终切换结果。');
+    lines.push('  seq 仅为诊断关联；迟到 click 请结合 pointerId、node 与快速展开/拦截记录，不按最近一组手势推断。');
+    const inputKinds = ['pointerdown', 'pointerup', 'pointercancel', 'click', 'toggle', 'summary-activate',
+        'tt-fast-toggle', 'tt-delayed-click-suppressed', 'fallback-toggle', 'intent-restore'];
+    let inputCount = 0;
+    for (const row of entries) {
+        if (!row.seq && !inputKinds.includes(row.kind)) continue;
+        inputCount += 1;
+        const extra = ['seq', 'pointerId', 'pointerType', 'detail', 'eventTime', 'phase', 'node', 'mesid',
+            'faceIndex', 'open', 'sameDetails', 'connected', 'defaultPrevented', 'suppressed', 'match', 'ms']
+            .filter(key => row[key] !== undefined)
+            .map(key => `${key}=${row[key]}`).join(',');
+        lines.push(`  +${row.t.toFixed(0)}ms ${row.kind}${extra ? `(${extra})` : ''}`);
     }
-    const seqs = [...bySeq.keys()].sort((a, b) => a - b).slice(-8);
-    if (!seqs.length) lines.push('  （本次未记录到点击）');
-    for (const seq of seqs) {
-        const rows = bySeq.get(seq);
-        const base = rows[0].t;
-        const trail = rows.map(row => {
-            const delta = row === rows[0] ? '' : `+${(row.t - base).toFixed(0)}ms `;
-            const extra = [
-                row.open !== undefined ? `open=${row.open}` : '',
-                row.sameDetails !== undefined ? `same=${row.sameDetails}` : '',
-                row.connected !== undefined ? `conn=${row.connected}` : '',
-            ].filter(Boolean).join(',');
-            return `${delta}${row.kind}${extra ? `(${extra})` : ''}`;
-        }).join(' → ');
-        lines.push(`  seq=${seq}  ${trail}`);
-    }
+    if (!inputCount) lines.push('  （本次未记录到点击）');
 
     lines.push('', '【D 布局写入】（仅复用既有数值，未额外触发 layout）');
     const writes = group(['layout-write']);
@@ -185,7 +178,7 @@ export function buildTtSurfaceReport(context = {}) {
     }
 
     lines.push('', '【E 兜底补丁触发】');
-    for (const kind of ['fallback-toggle', 'intent-restore']) {
+    for (const kind of ['tt-fast-toggle', 'tt-delayed-click-suppressed', 'fallback-toggle', 'intent-restore']) {
         lines.push(`  ${kind.padEnd(20)}${entries.filter(e => e.kind === kind).length} 次`);
     }
     return lines.filter(line => line !== undefined).join('\n');

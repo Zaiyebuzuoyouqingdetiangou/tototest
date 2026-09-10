@@ -1,4 +1,4 @@
-import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.39-tttouch1';
+import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.40-tttouch2';
 // TT Project Contract v1, not an invented SillyTavern event or private engine API.
 // https://github.com/Darkatse/TauriTavern/blob/9693a4ec47cd4552f90878bccab453f176de0f18/docs/API/ChatSurface.md
 // Register this lightweight bridge during extension evaluation, before projection.

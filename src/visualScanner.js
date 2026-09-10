@@ -1,7 +1,7 @@
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.39-tttouch1';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.39-tttouch1';
-import { getSettings } from './settings.js?rmv=1.5.39-tttouch1';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.5.39-tttouch1';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.40-tttouch2';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.40-tttouch2';
+import { getSettings } from './settings.js?rmv=1.5.40-tttouch2';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.5.40-tttouch2';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -11,17 +11,17 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.5.39-tttouch1';
+} from './generationGuard.js?rmv=1.5.40-tttouch2';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.5.39-tttouch1';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.5.39-tttouch1';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.39-tttouch1';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.5.39-tttouch1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.39-tttouch1';
+} from './multifaceProof.js?rmv=1.5.40-tttouch2';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.5.40-tttouch2';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.40-tttouch2';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.5.40-tttouch2';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.40-tttouch2';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -1285,7 +1285,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.39-tttouch1').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.40-tttouch2').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;

@@ -1,6 +1,6 @@
-import { detectWorldBookCapabilities, getHostRequestHeaders, requireHostHeaders } from './capabilities.js?rmv=1.5.39-ttdiag1';
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.5.39-ttdiag1';
-import { normalizeHostWorldBook } from './normalize.js?rmv=1.5.39-ttdiag1';
+import { detectWorldBookCapabilities, getHostRequestHeaders, requireHostHeaders } from './capabilities.js?rmv=1.5.40-tttouch2';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.5.40-tttouch2';
+import { normalizeHostWorldBook } from './normalize.js?rmv=1.5.40-tttouch2';
 
 const DEFAULT_TIMEOUT_MS = 10000;
 
