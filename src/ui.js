@@ -16,7 +16,7 @@ import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchInde
 import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.39-ttdiag1';
 import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.39-ttdiag1';
 
-const SETTINGS_UI_VERSION = '1.8-ttentry2';
+const SETTINGS_UI_VERSION = '1.8-ttentry3';
 const RUNTIME_VERSION = '1.5.39';
 
 function isCurrentRuntime() {
@@ -536,25 +536,101 @@ function captureTtDiagnosticInputs(chatRoot, session) {
     for (const type of events) root.addEventListener(type, handler, { capture: true, passive: true });
 }
 
+// Only these two TT controls use pointerup; a drag/cancel must never start diagnostics.
+function bindTtDiagnosticTap(button, activate, isAlive) {
+    let gesture = null;
+    let suppressClick = null;
+    const now = () => performance.now();
+    const isTouch = event => event.pointerType === 'touch' || event.pointerType === 'pen';
+    const usable = () => isAlive() && button.isConnected && !button.disabled;
+    const clearGesture = event => {
+        if (gesture && gesture.id === event.pointerId) {
+            suppressClick = { at: now(), id: gesture.id };
+            gesture = null;
+        }
+    };
+    const onDown = event => {
+        if (!isTouch(event) || !usable()) return;
+        if (event.isPrimary === false) {
+            if (gesture) suppressClick = { at: now(), id: gesture.id };
+            gesture = null;
+            return;
+        }
+        if (event.button !== 0) return;
+        suppressClick = null;
+        gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, at: now(), moved: false };
+    };
+    const onMove = event => {
+        if (!gesture || gesture.id !== event.pointerId) return;
+        if (Math.abs(event.clientX - gesture.x) > 12 || Math.abs(event.clientY - gesture.y) > 12) gesture.moved = true;
+    };
+    const onUp = event => {
+        if (!isTouch(event) || !gesture || gesture.id !== event.pointerId) return;
+        const tap = gesture;
+        gesture = null;
+        suppressClick = { at: now(), id: tap.id };
+        if (!usable() || event.isPrimary === false || tap.moved || now() - tap.at > 900
+            || Math.abs(event.clientX - tap.x) > 12 || Math.abs(event.clientY - tap.y) > 12) return;
+        // Do not synthesize click or cancel native scrolling. The later click is de-duplicated.
+        activate('pointerup');
+    };
+    const onClick = event => {
+        if (!usable()) return;
+        // detail=0 is keyboard/accessibility activation, not the compatibility click after a tap.
+        if (event.detail !== 0 && suppressClick && now() - suppressClick.at < 1000
+            && (!(event.pointerId > 0) || event.pointerId === suppressClick.id)) return;
+        suppressClick = null;
+        gesture = null;
+        activate('click');
+    };
+    const handlers = { pointerdown: onDown, pointermove: onMove, pointerup: onUp,
+        pointercancel: clearGesture, lostpointercapture: clearGesture, click: onClick };
+    for (const [type, handler] of Object.entries(handlers)) {
+        button.addEventListener(type, handler, { capture: true, passive: true });
+    }
+    return () => {
+        for (const [type, handler] of Object.entries(handlers)) button.removeEventListener(type, handler, true);
+        gesture = null;
+        suppressClick = null;
+    };
+}
+
 function installTtDiagnosticEntry() {
     try { globalThis.__rabbitMirrorTtDiagnosticUiCleanup?.(); } catch {}
     globalThis.__rabbitMirrorTtDiagnosticUiCleanup = null;
-    if (!isRabbitMirrorManagedChatSurface()) return;
-    const start = $('#rh_tt_diag_start');
-    const copy = $('#rh_tt_diag_copy');
-    const statusText = $('#rh_tt_diag_status');
-    const output = $('#rh_tt_diag_output');
+    const panel = document.getElementById('rabbit_mirror_theater_settings');
+    if (!panel) return;
+    const start = $(panel.querySelector('#rh_tt_diag_start'));
+    const copy = $(panel.querySelector('#rh_tt_diag_copy'));
+    const statusText = $(panel.querySelector('#rh_tt_diag_status'));
+    const output = $(panel.querySelector('#rh_tt_diag_output'));
+    if (!start.length || !copy.length || !statusText.length || !output.length) return;
+    const hostState = getRabbitMirrorHostCompatibilityStatus();
+    const isTt = !!globalThis.__TAURITAVERN__ || hostState?.host === 'tauritavern';
+    // The shared button CSS uses display:... !important; plain .hide() cannot beat it.
+    for (const button of [start[0], copy[0]]) {
+        button.hidden = !isTt;
+        button.style.setProperty('display', isTt ? 'inline-flex' : 'none', 'important');
+    }
+    if (!isTt) { statusText.hide(); output.hide(); return; }
     let disposed = false;
     let session = null;
+    const inputCleanups = [];
+    const isAlive = () => !disposed && isCurrentRuntime() && panel.isConnected
+        && document.getElementById('rabbit_mirror_theater_settings') === panel;
+    const hostNote = hostState?.managed === true && hostState?.registered === true
+        ? 'ChatSurface 已托管。'
+        : '当前未接入 managed ChatSurface；仍可采集触摸和入口状态，缺少挂载记录不能用于排除问题。';
     const notify = (kind, text) => { try { globalThis.toastr?.[kind]?.(text); } catch {} };
     const setStatus = text => { if (!disposed) statusText.text(text).show(); };
     const report = () => {
         if (!session) return retainedTtDiagnosticReport;
         const elapsed = Math.max(0, (session.endedAt ?? performance.now()) - session.startedAt);
         const head = [
-            'TT 诊断入口：1.5.39-ttentry1',
+            'TT 诊断入口：1.5.39-ttentry3',
             `diagnostic-start +0ms | managed=${session.host.managed} | registered=${session.host.registered} | protocolVersion=${session.host.protocolVersion ?? '不可用'}`,
-            `chatRootFound=${session.chatRootFound} | pointerEvents=${session.pointerEvents} | 输入事件 ${session.inputEvents} 条`,
+            `入口动作=${session.activation} | chatRootFound=${session.chatRootFound} | pointerEvents=${session.pointerEvents} | 输入事件 ${session.inputEvents} 条`,
+            session.host.managed && session.host.registered ? '' : '未接入 managed ChatSurface：挂载分发不可用或未启用；以下报告不代表没有卡顿。',
             session.endedAt !== null ? `diagnostic-stop +${elapsed.toFixed(0)}ms | ${session.stopReason || '自动停止或达到条数上限'}` : '状态：正在采集',
             session.host.errorCode ? `宿主状态：${session.host.errorCode}` : '',
             '没有业务记录不代表没有卡顿；以下为空时，只能确认入口已运行。',
@@ -572,8 +648,8 @@ function installTtDiagnosticEntry() {
         output.val(retainedTtDiagnosticReport).show();
         if (session.stopReason !== '入口启动异常') notify('success', 'TT 诊断已结束，报告已保留；请点击“复制 TT 诊断”。');
     };
-    start.show().off('.rmTtDiag').on('click.rmTtDiag', () => {
-        if (disposed) return;
+    const startDiagnostic = activation => {
+        if (!isAlive()) return;
         if (isTtSurfaceDiagnosticsActive()) {
             if (session) session.stopReason = '手动结束';
             stopTtSurfaceDiagnostics();
@@ -583,7 +659,7 @@ function installTtDiagnosticEntry() {
             const state = getRabbitMirrorHostCompatibilityStatus();
             const chatRoot = document.getElementById('chat');
             session = {
-                startedAt: performance.now(), endedAt: null, inputEvents: 0, engineStarted: false,
+                startedAt: performance.now(), endedAt: null, inputEvents: 0, engineStarted: false, activation,
                 chatRootFound: !!chatRoot, pointerEvents: typeof globalThis.PointerEvent === 'function',
                 host: { managed: state?.managed === true, registered: state?.registered === true,
                     protocolVersion: Number.isFinite(state?.protocolVersion) ? state.protocolVersion : null,
@@ -600,7 +676,7 @@ function installTtDiagnosticEntry() {
             captureTtDiagnosticInputs(chatRoot, session);
             start.text('结束 TT 诊断（20 秒自动停止）').prop('disabled', false);
             copy.prop('disabled', false);
-            setStatus(chatRoot ? 'TT 诊断已开始。请收起设置，在 20 秒内滚动聊天并点击点不开的兔子镜；也可提前结束。' : 'TT 诊断已开始，但未找到聊天窗口；请进入聊天后重新采集。');
+            setStatus(chatRoot ? `TT 诊断已开始（入口修复3）。请收起设置，在 20 秒内复现问题。${hostNote}` : 'TT 诊断已开始，但未找到聊天窗口；请进入聊天后重新采集。');
             notify('info', 'TT 诊断已开始，请在 20 秒内复现滚动卡顿或点不开。');
         } catch {
             if (session) session.stopReason = '入口启动异常';
@@ -612,9 +688,9 @@ function installTtDiagnosticEntry() {
             setStatus('TT 诊断启动失败，已显示入口报告；请复制反馈，不需要重新生成兔子镜。');
             notify('error', 'TT 诊断未正常启动，请复制下方入口报告。');
         }
-    });
-    copy.show().prop('disabled', false).off('.rmTtDiag').on('click.rmTtDiag', async () => {
-        if (disposed) return;
+    };
+    const copyDiagnostic = async () => {
+        if (!isAlive()) return;
         if (isTtSurfaceDiagnosticsActive()) {
             if (session) session.stopReason = '复制前结束';
             stopTtSurfaceDiagnostics();
@@ -629,10 +705,10 @@ function installTtDiagnosticEntry() {
         try {
             if (typeof navigator.clipboard?.writeText !== 'function') throw new Error('clipboard-unavailable');
             await navigator.clipboard.writeText(text);
-            if (!disposed) notify('success', '已复制 TT ChatSurface 诊断');
+            if (isAlive()) { setStatus('TT 诊断已复制。'); notify('success', '已复制 TT ChatSurface 诊断'); }
         } catch {
-            if (disposed) return;
-            const textarea = document.getElementById('rh_tt_diag_output');
+            if (!isAlive()) return;
+            const textarea = output[0];
             let copied = false;
             try {
                 textarea?.focus?.({ preventScroll: true }); textarea?.select?.();
@@ -642,15 +718,21 @@ function installTtDiagnosticEntry() {
             setStatus(copied ? 'TT 诊断已复制。' : '自动复制未成功：报告已显示，请长按下方文本全选复制。');
             notify(copied ? 'success' : 'warning', copied ? '已复制 TT ChatSurface 诊断' : '自动复制未成功，请长按下方报告手动复制。');
         }
-    });
+    };
+    start.off('.rmTtDiag'); copy.off('.rmTtDiag');
+    inputCleanups.push(bindTtDiagnosticTap(start[0], startDiagnostic, isAlive));
+    inputCleanups.push(bindTtDiagnosticTap(copy[0], copyDiagnostic, isAlive));
     start.text('开始 TT 诊断（20 秒）').prop('disabled', false);
-    setStatus(retainedTtDiagnosticReport ? '已保留上一次 TT 诊断报告，可以复制或重新采集。' : 'TT 诊断默认关闭。开启后采集 20 秒，不发模型请求。');
+    copy.prop('disabled', false);
+    setStatus(`TT 入口修复3 · 已就绪。${hostNote}`
+        + (retainedTtDiagnosticReport ? ' 已保留上次报告。' : ' 手动开启后采集 20 秒，不发模型请求。'));
     if (retainedTtDiagnosticReport) output.val(retainedTtDiagnosticReport).show();
     const cleanup = () => {
         if (disposed) return;
         disposed = true;
         if (session) session.stopReason = '设置界面卸载';
         try { stopTtSurfaceDiagnostics(); } catch {}
+        for (const dispose of inputCleanups.splice(0)) dispose();
         start.off('.rmTtDiag'); copy.off('.rmTtDiag');
         if (globalThis.__rabbitMirrorTtDiagnosticUiCleanup === cleanup) globalThis.__rabbitMirrorTtDiagnosticUiCleanup = null;
     };
@@ -924,8 +1006,8 @@ export function initRabbitMirrorUI() {
               <button id="rh_external_diag_stop" class="menu_button" type="button">结束并生成报告</button>
               <button id="rh_external_diag_report" class="menu_button" type="button" style="font-weight:700;">查看当前／最后报告</button>
               <button id="rh_external_diag_copy" class="menu_button" type="button">复制外部报告</button>
-                <button id="rh_tt_diag_start" class="menu_button" type="button" style="display:none;">开始 TT 诊断（20 秒）</button>
-                <button id="rh_tt_diag_copy" class="menu_button" type="button" style="display:none;">复制 TT 诊断</button>
+                <button id="rh_tt_diag_start" class="menu_button" type="button" hidden style="display:none!important;min-height:44px;">开始 TT 诊断（20 秒）</button>
+                <button id="rh_tt_diag_copy" class="menu_button" type="button" hidden style="display:none!important;min-height:44px;">复制 TT 诊断</button>
               <button id="rh_external_diag_reset" class="menu_button" type="button">清空外部记录</button>
             </div>
             <div id="rh_tt_diag_status" role="status" style="display:none;margin-top:7px;opacity:.82;font-size:11px;line-height:1.45;"></div>
