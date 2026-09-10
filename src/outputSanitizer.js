@@ -1,10 +1,10 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.39-ttdiag1';
-import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.39-ttdiag1';
-import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.39-ttdiag1';
-import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.39-ttdiag1';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.39-ttdiag1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.39-ttdiag1';
-import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.39-ttdiag1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.39-tttouch1';
+import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.39-tttouch1';
+import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.39-tttouch1';
+import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.39-tttouch1';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.39-tttouch1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.39-tttouch1';
+import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.39-tttouch1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -14,11 +14,11 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.39-ttdiag1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.39-ttdiag1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.39-ttdiag1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.39-ttdiag1';
-import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.5.39-ttdiag1';
+} from './feedbackCat.js?rmv=1.5.39-tttouch1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.39-tttouch1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.39-tttouch1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.39-tttouch1';
+import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.5.39-tttouch1';
 
 
 const RUNTIME_VERSION = '1.5.39';
@@ -25631,6 +25631,13 @@ let toolEntryDelegationRoot = null;
 let toolEntryDelegatedClickHandler = null;
 let toolEntryDelegatedPointerHandler = null;
 let toolEntryDelegatedKeydownHandler = null;
+let toolEntryDelegatedPointerUpHandler = null;
+let toolEntryDelegatedPointerCancelHandler = null;
+let ttOuterSummaryTapState = null;
+const ttOuterSummaryDelayedClickSuppressions = new WeakMap();
+const TT_OUTER_SUMMARY_TAP_MAX_MS = 700;
+const TT_OUTER_SUMMARY_TAP_MAX_MOVE_PX = 12;
+const TT_OUTER_SUMMARY_DELAYED_CLICK_TTL_MS = 2200;
 
 const maintenanceInstallTimers = new Set();
 let startupMaintenanceInstallTimer = 0;
@@ -25931,13 +25938,61 @@ function removeToolEntryDelegation() {
     if (toolEntryDelegationRoot && toolEntryDelegatedPointerHandler) {
         toolEntryDelegationRoot.removeEventListener('pointerdown', toolEntryDelegatedPointerHandler, true);
     }
+    if (toolEntryDelegationRoot && toolEntryDelegatedPointerUpHandler) {
+        toolEntryDelegationRoot.removeEventListener('pointerup', toolEntryDelegatedPointerUpHandler, true);
+    }
+    if (toolEntryDelegationRoot && toolEntryDelegatedPointerCancelHandler) {
+        toolEntryDelegationRoot.removeEventListener('pointercancel', toolEntryDelegatedPointerCancelHandler, true);
+    }
     if (toolEntryDelegationRoot && toolEntryDelegatedKeydownHandler) {
         toolEntryDelegationRoot.removeEventListener('keydown', toolEntryDelegatedKeydownHandler, true);
     }
     toolEntryDelegationRoot = null;
     toolEntryDelegatedClickHandler = null;
     toolEntryDelegatedPointerHandler = null;
+    toolEntryDelegatedPointerUpHandler = null;
+    toolEntryDelegatedPointerCancelHandler = null;
     toolEntryDelegatedKeydownHandler = null;
+    ttOuterSummaryTapState = null;
+}
+
+function isTauriTavernRuntimeForOuterSummaryTap() {
+    try { return !!globalThis.__TAURITAVERN__ && !isRabbitMirrorManagedChatSurface(); }
+    catch { return false; }
+}
+
+function ttOuterSummaryTapTarget(target) {
+    if (!isTauriTavernRuntimeForOuterSummaryTap() || !(target instanceof Element)) return null;
+    const summary = target.closest?.('summary');
+    const details = summary?.parentElement;
+    if (!summary || !details?.matches?.('details') || !isRabbitMirrorDetails(details)) return null;
+    const face = getRabbitMirrorFacePosition(details);
+    if (!face || face.details !== details) return null;
+    const innerAction = target.closest?.('button, input, select, textarea, a[href], [role="button"], [contenteditable="true"]');
+    if (innerAction && innerAction !== summary) return null;
+    return { summary, details, face };
+}
+
+function rememberTtOuterSummaryDelayedClick(details) {
+    if (!details) return;
+    const now = performance.now();
+    const queue = (ttOuterSummaryDelayedClickSuppressions.get(details) || []).filter(expiry => expiry > now);
+    queue.push(now + TT_OUTER_SUMMARY_DELAYED_CLICK_TTL_MS);
+    ttOuterSummaryDelayedClickSuppressions.set(details, queue.slice(-3));
+}
+
+function consumeTtOuterSummaryDelayedClick(details) {
+    if (!details) return false;
+    const now = performance.now();
+    const queue = (ttOuterSummaryDelayedClickSuppressions.get(details) || []).filter(expiry => expiry > now);
+    if (!queue.length) {
+        ttOuterSummaryDelayedClickSuppressions.delete(details);
+        return false;
+    }
+    queue.shift();
+    if (queue.length) ttOuterSummaryDelayedClickSuppressions.set(details, queue);
+    else ttOuterSummaryDelayedClickSuppressions.delete(details);
+    return true;
 }
 
 const managedOuterSummaryToggleFallbackPending = new WeakSet();
@@ -26042,9 +26097,41 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
         // handlers mutate state. Keyboard checkbox/radio activation is captured by the keydown
         // delegate below before its native toggle. Tool buttons are excluded by the capture helper.
         captureRabbitMirrorInteractionResetFromEventTarget(event.target);
+        const tapTarget = event.pointerType === 'mouse' ? null : ttOuterSummaryTapTarget(event.target);
+        if (tapTarget && event.isPrimary !== false) {
+            ttOuterSummaryTapState = {
+                pointerId: event.pointerId,
+                summary: tapTarget.summary,
+                details: tapTarget.details,
+                faceIndex: tapTarget.face.faceIndex,
+                x: Number(event.clientX || 0),
+                y: Number(event.clientY || 0),
+                startedAt: performance.now(),
+            };
+        } else if (ttOuterSummaryTapState?.pointerId === event.pointerId) {
+            ttOuterSummaryTapState = null;
+        }
         const button = event.target?.closest?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`);
         if (!button || !chatRoot.contains(button)) return;
         event.stopPropagation();
+    };
+    toolEntryDelegatedPointerUpHandler = event => {
+        const state = ttOuterSummaryTapState;
+        if (!state || state.pointerId !== event.pointerId) return;
+        ttOuterSummaryTapState = null;
+        const elapsed = performance.now() - state.startedAt;
+        const dx = Number(event.clientX || 0) - state.x;
+        const dy = Number(event.clientY || 0) - state.y;
+        if (elapsed > TT_OUTER_SUMMARY_TAP_MAX_MS || Math.hypot(dx, dy) > TT_OUTER_SUMMARY_TAP_MAX_MOVE_PX) return;
+        if (!state.details?.isConnected || state.summary?.parentElement !== state.details) return;
+        const currentTarget = ttOuterSummaryTapTarget(event.target);
+        if (!currentTarget || currentTarget.details !== state.details || currentTarget.summary !== state.summary) return;
+        state.details.open = !state.details.open;
+        rememberTtOuterSummaryDelayedClick(state.details);
+        recordTtSurface('tt-fast-toggle', { faceIndex: state.faceIndex, open: !!state.details.open, ms: elapsed });
+    };
+    toolEntryDelegatedPointerCancelHandler = event => {
+        if (ttOuterSummaryTapState?.pointerId === event.pointerId) ttOuterSummaryTapState = null;
     };
     toolEntryDelegatedKeydownHandler = event => {
         const activationKey = event.key === 'Enter' || event.key === ' ';
@@ -26078,7 +26165,16 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
         const clickedSummary = event.target?.closest?.('summary');
         if (clickedSummary && !event.target?.closest?.(`[${TOOL_ENTRY_HOST_ATTR}]`)) {
             const innerAction = event.target?.closest?.('button, input, select, textarea, a[href], [role="button"], [contenteditable="true"]');
-            if (!innerAction || innerAction === clickedSummary) scheduleManagedOuterSummaryToggleFallback(clickedSummary);
+            const clickedDetails = clickedSummary.parentElement;
+            const suppressDelayedNativeToggle = (!innerAction || innerAction === clickedSummary)
+                && isTauriTavernRuntimeForOuterSummaryTap()
+                && consumeTtOuterSummaryDelayedClick(clickedDetails);
+            if (suppressDelayedNativeToggle) {
+                event.preventDefault();
+                recordTtSurface('tt-delayed-click-suppressed', { open: !!clickedDetails?.open });
+            } else if (!innerAction || innerAction === clickedSummary) {
+                scheduleManagedOuterSummaryToggleFallback(clickedSummary);
+            }
             const summaryRoot = rabbitMirrorInteractionRootFromTarget(clickedSummary);
             const outerDetails = getRabbitMirrorFacePosition(summaryRoot)?.details
                 || (summaryRoot?.matches?.('details') ? summaryRoot : summaryRoot?.querySelector?.(':scope > details') || null);
@@ -26100,6 +26196,8 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
         handleFeedbackCatClick(event, root, button);
     };
     chatRoot.addEventListener('pointerdown', toolEntryDelegatedPointerHandler, true);
+    chatRoot.addEventListener('pointerup', toolEntryDelegatedPointerUpHandler, true);
+    chatRoot.addEventListener('pointercancel', toolEntryDelegatedPointerCancelHandler, true);
     chatRoot.addEventListener('keydown', toolEntryDelegatedKeydownHandler, true);
     chatRoot.addEventListener('click', toolEntryDelegatedClickHandler, true);
     return true;
