@@ -1,5 +1,22 @@
 
 
+#rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
+#rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
+#rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid label{min-width:0;cursor:pointer;}
+#rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid small{display:block;font-size:12px;overflow-wrap:anywhere;}
+#rabbit_mirror_theater_settings .rabbit-mirror-request-options{width:100%;min-width:0;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:9px;}
+#rabbit_mirror_theater_settings .rabbit-mirror-request-options>summary{padding:12px;min-height:44px;box-sizing:border-box;cursor:pointer;font-weight:700;line-height:1.5;}
+#rabbit_mirror_theater_settings .rabbit-mirror-request-options>summary span{font-weight:400;font-size:.9em;}
+#rabbit_mirror_theater_settings .rabbit-mirror-request-options-body{display:grid;gap:8px;padding:0 12px 12px;min-width:0;font-size:14px;line-height:1.55;}
+#rabbit_mirror_theater_settings .rabbit-mirror-request-options-body p{margin:0;overflow-wrap:anywhere;}
+#rabbit_mirror_theater_settings .rabbit-mirror-request-options-body .text_pole{width:100%;max-width:100%;min-width:0;box-sizing:border-box;font-size:16px;}
+#rabbit_mirror_theater_settings .rabbit-mirror-request-options-body select{min-height:44px;}
+#rabbit_mirror_theater_settings .rabbit-mirror-request-options-body textarea{resize:vertical;font-family:monospace;}
+#rabbit_mirror_theater_settings .rabbit-mirror-request-enable{display:flex;gap:8px;align-items:center;min-height:44px;}
+#rabbit_mirror_theater_settings .rabbit-mirror-request-options-actions{display:flex;flex-wrap:wrap;gap:8px;}
+#rabbit_mirror_theater_settings .rabbit-mirror-request-options-actions button{min-height:44px;margin:0;white-space:normal;}
+#rabbit_mirror_theater_settings .rabbit-mirror-request-options :focus-visible{outline:2px solid currentColor;outline-offset:2px;}
+#rabbit_mirror_theater_settings #rh_independent_advanced_error:not([hidden]){border-left:3px solid currentColor;padding:8px;font-weight:700;overflow-wrap:anywhere;}
 #chat [data-rabbit-mirror-independent-inline-anchor="true"]{
   display:block !important;
   width:100% !important;

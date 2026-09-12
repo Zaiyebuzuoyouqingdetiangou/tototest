@@ -1,26 +1,27 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.41-memory1';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, getRabbitMirrorExternalPlacementParent, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.41-memory1';
-import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.41-memory1';
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.41-memory1';
-import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.41-memory1';
-import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.41-memory1';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.41-memory1';
-import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.41-memory1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.41-memory1';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.41-memory1';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.41-memory1';
-import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.41-memory1';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.41-memory1';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.41-memory1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.41-memory1';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.41-memory1';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.41-memory1';
-import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.41-memory1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.41-memory1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.41-memory1';
-import { rememberIndependentTransportDiagnostic } from './transportDiagnostics.js?rmv=1.5.41-memory1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.45-exclude1';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, getRabbitMirrorExternalPlacementParent, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.45-exclude1';
+import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.45-exclude1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.45-exclude1';
+import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.45-exclude1';
+import { parseIndependentAdvancedOptions, buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions, independentAdvancedOptionsSignature } from './advancedRequestOptions.js?rmv=1.5.45-exclude1';
+import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.45-exclude1';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.45-exclude1';
+import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.45-exclude1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.45-exclude1';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.45-exclude1';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.45-exclude1';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.45-exclude1';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.45-exclude1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.45-exclude1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.45-exclude1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.45-exclude1';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.45-exclude1';
+import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.45-exclude1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.45-exclude1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.45-exclude1';
+import { rememberIndependentTransportDiagnostic } from './transportDiagnostics.js?rmv=1.5.45-exclude1';
 
-const RUNTIME_VERSION = '1.5.41';
+const RUNTIME_VERSION = '1.5.45';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -147,9 +148,17 @@ function markAutomaticFailureStop(slot='',sourceHash='',reason='',details={}){
  const key=automaticFailureKey(slot,sourceHash); if(!key) return null;
  const metadata=details&&typeof details==='object'?details:{};
  const baseSlot=String(metadata.baseSlot||baseSlotOf(slot));
+ const ownerParts=baseSlot.split(':');
+ const cutover=automaticGenerationCutovers.get(ownerParts.slice(0,-2).join(':'));
  const message=String(metadata.message||reason||'独立 API 生成失败。').replace(/\u0000/g,'').trim().slice(0,2400);
  const record={
   baseSlot,
+  slot:String(slot||''),
+  sourceHash:String(sourceHash||''),
+  // Identity-only references: no chat, message body, profile or cutover object.
+  // Equal timestamps must not merge a new chat lifecycle/authorization.
+  cutoverToken:cutover?.failureRecoveryToken,
+  authorization:cutover?.authorized?.get?.(Number(ownerParts.at(-2))),
   operationEpoch:Number.isSafeInteger(metadata.operationEpoch)&&metadata.operationEpoch>=1?metadata.operationEpoch:operationEpochForBase(baseSlot),
   ts:Date.now(),
   reason:String(reason||'generation-failed').slice(0,180),
@@ -640,7 +649,7 @@ function migrateLegacyDeletedRecords(){
 }
 function readApiProfileStore(){ try { const v=JSON.parse(localStorage.getItem(API_PROFILE_STORE_KEY)||'{}'); return v&&typeof v==='object'?v:{}; } catch { return {}; } }
 function writeApiProfileStore(v){ try { localStorage.setItem(API_PROFILE_STORE_KEY,JSON.stringify(v)); } catch {} }
-function apiProfileKey(st){ const connectionId=normalizeIndependentConnectionText(st?.independentConnectionProfileId,160); const transport=connectionId?`st:${connectionId}`:normalizeBase(st?.independentApiBaseUrl||''); return `${transport}|${String(st?.independentApiModel||'')}`; }
+function apiProfileKey(st){ const connectionId=normalizeIndependentConnectionText(st?.independentConnectionProfileId,160); const transport=connectionId?`st:${connectionId}`:normalizeBase(st?.independentApiBaseUrl||''); const advanced=st?.independentAdvancedEnabled===true?independentAdvancedOptionsSignature(st):''; return `${transport}|${String(st?.independentApiModel||'')}${advanced?`|advanced:${advanced}`:''}`; }
 function normalizedConfiguredTemperature(st){ const value=Number(st?.independentApiTemperature); return Number.isFinite(value)?Math.max(0,Math.min(2,value)):0.8; }
 function profileUsesTemperature(profile=''){ return !/no_temp|minimal/i.test(String(profile||'')); }
 function profileUsesSystemMessage(profile=''){ return !/user_only/i.test(String(profile||'')); }
@@ -2144,6 +2153,7 @@ function independentLocalPreflightFailure(error){
    'RABBIT_MIRROR_DISPATCH_LEASE_REJECTED',
    'RABBIT_MIRROR_BATCH_PLAN_REJECTED',
    'RABBIT_MIRROR_CONNECTION_PROFILE_REJECTED',
+   'RABBIT_MIRROR_ADVANCED_OPTIONS_REJECTED',
    'RABBIT_MIRROR_EXTERNAL_PREFLIGHT_REJECTED',
    'RABBIT_MIRROR_EXTERNAL_MATERIAL_MISSING',
    'RABBIT_MIRROR_EXTERNAL_MATERIAL_INVALID',
@@ -2200,9 +2210,12 @@ async function fetchIndependentUrl(url,options={}){
   }
   if(connectionRuntime && method==='POST' && /\/chat\/completions(?:\?|$)/i.test(String(url))){
    let remoteBody={}; try{ remoteBody=typeof options.body==='string'?JSON.parse(options.body):({...options.body}); }catch{}
+   const advancedCarrier=options.advancedOptions?buildIndependentAdvancedCarrier(options.advancedOptions,{source:connectionRuntime.apiMap?.source,apiFormat:connectionRuntime.profile?.['custom-api-format']}):null;
+   if(options.advancedOptions?.excludedParams?.length) remoteBody=applyIndependentAdvancedExclusions(remoteBody,options.advancedOptions);
+   options.assertAdvancedCurrent?.();
    return await fetchRabbitMirrorIndependentCompletion(ST_CUSTOM_GENERATE_ENDPOINT,{
     method:'POST',credentials:'same-origin',headers:requestHeaders,signal:options.signal,
-    body:JSON.stringify({...remoteBody,...connectionPayload,stream:remoteBody.stream!==false}),rabbitMirrorDispatchLease:options.dispatchLease,
+    body:JSON.stringify({...remoteBody,...connectionPayload,...advancedCarrier,stream:remoteBody.stream!==false}),rabbitMirrorDispatchLease:options.dispatchLease,
    });
   }
   if(method==='GET' && /\/models(?:\?|$)/i.test(String(url))){
@@ -2222,6 +2235,8 @@ async function fetchIndependentUrl(url,options={}){
   if(method==='POST' && /\/chat\/completions(?:\?|$)/i.test(String(url))){
    let remoteBody={};
    try{ remoteBody=typeof options.body==='string'?JSON.parse(options.body):({...options.body}); }catch{}
+   const advancedCarrier=options.advancedOptions?buildIndependentAdvancedCarrier(options.advancedOptions,{source:'custom'}):null;
+   if(options.advancedOptions?.excludedParams?.length) remoteBody=applyIndependentAdvancedExclusions(remoteBody,options.advancedOptions);
    const body={
     ...remoteBody,
     chat_completion_source:'custom',
@@ -2229,8 +2244,10 @@ async function fetchIndependentUrl(url,options={}){
     custom_include_headers,
     custom_include_body:'',
     custom_exclude_body:'',
+    ...advancedCarrier,
     stream:remoteBody.stream!==false,
    };
+   options.assertAdvancedCurrent?.();
    return await fetchRabbitMirrorIndependentCompletion(ST_CUSTOM_GENERATE_ENDPOINT,{
     method:'POST',
     credentials:'same-origin',
@@ -2905,7 +2922,7 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
  const service=runtime?.ctx?.ConnectionManagerRequestService;
  const profileId=normalizeIndependentConnectionText(runtime?.id,160);
  if(!profileId || typeof service?.sendRequest!=='function') throw independentConnectionProfilePreflightError('当前 SillyTavern 无法按兔子镜选定的 Connection Profile 发送请求；这不影响手动 OpenAI 兼容独立 API。若要使用 Connection Profile，请升级到 SillyTavern 1.18.0 或更高版本。','request-service-unavailable');
- const rawBody=profile?.body && typeof profile.body==='object' ? profile.body : {};
+ let rawBody=profile?.body && typeof profile.body==='object' ? profile.body : {};
  // The host falls back to its currently active secret when a Profile omits
  // secret-id. During early overlap this can silently use the main connection's
  // key for a different Profile. Check only saved identity metadata, never keys.
@@ -2925,7 +2942,10 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
   });
   if(!ownProxy) throw independentConnectionProfilePreflightError('提前生成未发送：兔子镜所选 Profile 与当前正文连接不同，且没有保存独立 Secret 引用或有效代理。宿主会回退到当前正文的密钥，无法确认凭据归属。请先在 Connection Manager 为兔子镜 Profile 绑定并保存自己的 Secret，再切回正文连接；兔子镜不会读取或复制密钥。','profile-secret-unbound');
  }
- const body=authorizeRabbitMirrorIndependentServiceRequest(rawBody,options.dispatchLease);
+ const advancedCarrier=options.advancedOptions?buildIndependentAdvancedCarrier(options.advancedOptions,{source:runtime?.apiMap?.source,apiFormat:runtime?.profile?.['custom-api-format']}):null;
+ if(options.advancedOptions?.excludedParams?.length) rawBody=applyIndependentAdvancedExclusions(rawBody,options.advancedOptions);
+ options.assertAdvancedCurrent?.();
+ const body=authorizeRabbitMirrorIndependentServiceRequest(advancedCarrier&&Object.keys(advancedCarrier).length?{...rawBody,...advancedCarrier}:rawBody,options.dispatchLease);
  const messages=Array.isArray(body?.messages)?body.messages:[];
  if(!messages.length) throw new Error('兔子镜独立 API 请求缺少有效的 system/user 消息。');
  const stream=body.stream!==false;
@@ -2939,6 +2959,8 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
  };
  if(Object.prototype.hasOwnProperty.call(body,'max_completion_tokens')) overrides.max_completion_tokens=body.max_completion_tokens;
  if(Object.prototype.hasOwnProperty.call(body,'temperature')) overrides.temperature=body.temperature;
+ if(advancedCarrier&&Object.prototype.hasOwnProperty.call(advancedCarrier,'custom_include_body')) overrides.custom_include_body=body.custom_include_body;
+ if(advancedCarrier&&Object.prototype.hasOwnProperty.call(advancedCarrier,'custom_exclude_body')) overrides.custom_exclude_body=body.custom_exclude_body;
  let serviceResult;
  serviceResult=await service.sendRequest(profileId,messages,maxTokens,{
   stream,
@@ -3129,7 +3151,7 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
  const rememberedProfile=getRememberedApiProfile(st);
  const stagedProfile=options.manualRetry ? getStagedApiProfile(st,true) : '';
  const profiles=independentRequestProfiles(st,systemPrompt,userPrompt,options);
- const profile=(stagedProfile && profiles.find(item=>item.name===stagedProfile)) || profiles[0];
+ let profile=(stagedProfile && profiles.find(item=>item.name===stagedProfile)) || profiles[0];
  if(!profile){
   const semanticError='独立 API 没有可用的请求参数模式。请重新保存副 API 设置后再试。';
   return {response:{ok:false,status:0},result:{raw:'',payload:null,text:'',streamed:false},profile:'',attempts,requestDiagnostic:null,semanticError};
@@ -3258,8 +3280,12 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
  };
  if(connectionId){
   try{
+   options.assertAdvancedCurrent?.();
+   const advancedSettings=options.advancedSettings||st;
+   const advancedOptions=advancedSettings.independentAdvancedEnabled===true?parseIndependentAdvancedOptions(advancedSettings):null;
+   if(advancedOptions?.excludedParams?.length) profile={...profile,body:applyIndependentAdvancedExclusions(profile.body,advancedOptions)};
    const runtime=await validatedIndependentConnectionProfile(connectionId);
-   const completed=await requestIndependentConnectionProfileCompletion(runtime,profile,{...options,maxTokens:Number(st.independentApiMaxTokens)||12000});
+   const completed=await requestIndependentConnectionProfileCompletion(runtime,profile,{...options,advancedOptions,maxTokens:Number(st.independentApiMaxTokens)||12000});
    r=completed.response; result=completed.result;
   }catch(error){
    if(options.signal?.aborted){publishLocalCancellation(error);throw error;}
@@ -3271,7 +3297,11 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
   }
  }else{
   try{
-   r=await fetchIndependentUrl(url,{method:'POST',headers:headers(st),body:JSON.stringify(profile.body),signal:options.signal,dispatchLease:options.dispatchLease});
+   options.assertAdvancedCurrent?.();
+   const advancedSettings=options.advancedSettings||st;
+   const advancedOptions=advancedSettings.independentAdvancedEnabled===true?parseIndependentAdvancedOptions(advancedSettings):null;
+   if(advancedOptions?.excludedParams?.length) profile={...profile,body:applyIndependentAdvancedExclusions(profile.body,advancedOptions)};
+   r=await fetchIndependentUrl(url,{method:'POST',headers:headers(st),body:JSON.stringify(profile.body),signal:options.signal,dispatchLease:options.dispatchLease,advancedOptions,assertAdvancedCurrent:options.assertAdvancedCurrent});
    options.onProgress?.('response-headers');
   }catch(error){
    if(options.signal?.aborted){publishLocalCancellation(error);throw error;}
@@ -3871,7 +3901,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('./appearanceReference.js?rmv=1.5.41-memory1');}
+  try{module=await import('./appearanceReference.js?rmv=1.5.45-exclude1');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;
@@ -3896,6 +3926,24 @@ function bindIndependentPromptBatch(owner,plan=null){
 async function callIndependentApi(ctx,index,msg,signal=null,requestOptions={}){
  const currentSettings=getSettings();
  const st=requestOptions.multifaceResay ? {...currentSettings,rabbitMirrorFaceCount:1} : currentSettings;
+ // Preserve exact settings across optional asynchronous worldbook/reference
+ // reads. No JSON parsing on the stream hot path, and no draft data in Prompt.
+ const advancedSettings=Object.freeze({independentAdvancedEnabled:currentSettings.independentAdvancedEnabled===true,
+  independentReasoningEffort:currentSettings.independentReasoningEffort??'',independentExtraParams:currentSettings.independentExtraParams??'',
+  // Keep a bounded copy, not the mutable array from shared extension settings.
+  // An oversized list still has 11 entries and is rejected by the parser.
+  independentExcludedParams:Array.isArray(currentSettings.independentExcludedParams)?Object.freeze(currentSettings.independentExcludedParams.slice(0,11))
+   :currentSettings.independentExcludedParams===undefined?Object.freeze([]):currentSettings.independentExcludedParams});
+ const assertAdvancedCurrent=()=>{
+  const current=getSettings();
+  if((current.independentAdvancedEnabled===true)!==advancedSettings.independentAdvancedEnabled
+   ||(advancedSettings.independentAdvancedEnabled&&((current.independentReasoningEffort??'')!==advancedSettings.independentReasoningEffort||(current.independentExtraParams??'')!==advancedSettings.independentExtraParams
+    ||(()=>{const now=current.independentExcludedParams===undefined?[]:current.independentExcludedParams;const before=advancedSettings.independentExcludedParams;
+     return !Array.isArray(now)||!Array.isArray(before)||now.length!==before.length||before.some((name,index)=>name!==now[index]);})()))){
+   const error=new Error('独立 API 高级参数在本轮准备期间发生变化；本轮未发送请求，请按当前设置手动重试。');
+   error.code='RABBIT_MIRROR_ADVANCED_OPTIONS_REJECTED';error.requestCount=0;throw error;
+  }
+ };
  const generationScopeKey=`independent:${Date.now().toString(36)}:${index}:${swipeId(msg)}`;
  const regularVisibleReader=createIndependentVisibleTextReader(index,st);
  const earlyBody=requestOptions.earlyBodyOwner||null;
@@ -4073,6 +4121,7 @@ ${independentUserTail}`;
  const dispatchLease=batchPlan||promptOwner ? {
   ...originalLease,
   consume(){
+   assertAdvancedCurrent();
    if(promptOwner) assertIndependentPromptOwner(promptOwner);
    if(signal?.aborted) return false;
    let batchReason='BATCH_PLAN_INVALID';
@@ -4083,7 +4132,7 @@ ${independentUserTail}`;
    return accepted;
   },
  } : originalLease;
- const {response:r,result,profile,attempts,requestDiagnostic,semanticError}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,manualRetry:requestOptions.manualRetry===true,diagnosticContext:requestSelectionDiagnostic,dispatchLease,onProgress:requestOptions.onProgress,earlyBodyOwner:requestOptions.earlyBodyOwner});
+ const {response:r,result,profile,attempts,requestDiagnostic,semanticError}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,manualRetry:requestOptions.manualRetry===true,diagnosticContext:requestSelectionDiagnostic,dispatchLease,onProgress:requestOptions.onProgress,earlyBodyOwner:requestOptions.earlyBodyOwner,advancedSettings,assertAdvancedCurrent});
  if(semanticError){
   const error=new Error(semanticError);
   error.rabbitMirrorRequestDiagnostic=requestDiagnostic;
@@ -5965,6 +6014,49 @@ function mountedIndependentReadyHostSharesStableOwner(host,ctx,index,msg){
   && String(dataset.rmOwnerMesid ?? dataset.rmExternalOwnerMessage ?? '')===String(Number(index))
   && String(dataset.rmOwnerSwipe ?? '')===String(swipeId(msg));
 }
+function passiveIndependentFailureForIdentity(ctx,index,msg,host=null){
+ // A translation/postprocessor can replace mes after the failed request has
+ // settled. Recover its error by the already-owned operation, never by granting
+ // the replacement body a new generation authorization or completion record.
+ if(!isRabbitMirrorEligibleAssistantMessage(msg)) return null;
+ const baseSlot=messageBaseSlotKey(ctx,index,msg);
+ const cutover=automaticGenerationCutovers.get(chatKey(ctx));
+ if(!cutover || cutover.activeHostGeneration || activeIndependentFlightForBase(baseSlot)) return null;
+ if(host){
+  const data=host.dataset||{};
+  if(!host.isConnected || data.rmSource!=='independent' || data.rmState!=='error'
+   || String(data.rmOwnerChat||'')!==chatKey(ctx)
+   || String(data.rmOwnerMesid ?? data.rmExternalOwnerMessage ?? '')!==String(Number(index))
+   || String(data.rmOwnerSwipe ?? '')!==String(swipeId(msg))) return null;
+ }
+ const epoch=operationEpochForBase(baseSlot);
+ let failure=null;
+ // The existing transient failure map is capped at 320. This scan runs only on
+ // missing/error UI, not READY content, and adds no store, history read or timer.
+ for(const value of automaticFailureStops.values()){
+  if(value?.baseSlot===baseSlot && value.operationEpoch===epoch && value.slot && value.sourceHash) failure=value;
+ }
+ if(!failure || !failure.cutoverToken || failure.cutoverToken!==cutover.failureRecoveryToken) return null;
+ if(host && (String(host.dataset.rmKey||'')!==failure.slot || String(host.dataset.rmSourceHash||'')!==failure.sourceHash)) return null;
+ const authorization=cutover.authorized?.get?.(Number(index));
+ if(authorization!==failure.authorization
+  || hasExplicitSourceReplacementEvidence(ctx,index,msg,host)) return null;
+ return failure;
+}
+function restorePassiveIndependentFailure(ctx,index,msg,host,failure){
+ // Called synchronously only after passiveIndependentFailureForIdentity proves
+ // ownership. An already-clean error needs neither a second scan nor rearming
+ // tools/layout; syncMessages performs the existing placement below.
+ if(!failure) return null;
+ const el=messageElement(Number(index)); if(!el) return null;
+ const restored=host || ensureExternalUi(el,failure.slot,failure.message,'error','independent',failure.sourceHash);
+ if(!restored) return null;
+ // Keep the original request identity/diagnosis. Only the explicit retry action
+ // may resolve this proven terminal error to the current translated body.
+ if(restored.hidden) restored.hidden=false;
+ if(restored.dataset?.rmAwaitingFreshSource || restored.dataset?.rmFreshSourceStatus) clearExternalHostFreshSourceState(restored);
+ return restored;
+}
 function hasExplicitSourceReplacementEvidence(ctx,index,msg,readyHost=null){
  const cutover=automaticGenerationCutovers.get(chatKey(ctx));
  const normalized=Number(index);
@@ -6156,6 +6248,10 @@ function renderExternalErrorBody(details,text=''){
  retry.setAttribute('data-rm-external-error-retry','true');
  retry.addEventListener('click',event=>{
   event.preventDefault(); event.stopPropagation();
+  // A queued compatibility click may outlive this error body. It is not a
+  // second retry intent after the first click has entered loading or READY.
+  const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
+  if(!retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
   if(!resayIndependentMirror(details,{})) globalThis.toastr?.warning?.('没有找到这条回复对应的副 API 兔子镜。');
  },true);
  const cat=document.createElement('button');
@@ -8325,7 +8421,7 @@ function parseMessageIndexFromOwnerKey(key=''){
  if(numeric(parts.at(-2)) && numeric(parts.at(-1))) return {index:Number(parts.at(-2)),swipe:Number(parts.at(-1)),sourceHash:''};
  return null;
 }
-function resolveIndependentActionIdentity(root,owner={}){
+function resolveIndependentActionIdentity(root,owner={}, {allowPassiveErrorRetry=false}={}){
  const ctx=getContext(); const meta=actionOwnerMetadata(root,owner); let host=independentHostForRoot(root);
  if(!host){
   host=allExternalHosts().find(candidate=>candidate.dataset.rmSource==='independent'
@@ -8353,8 +8449,12 @@ function resolveIndependentActionIdentity(root,owner={}){
  if(Number.isInteger(ownerSwipe) && ownerSwipe!==currentSwipe) return null;
  const ownerSourceHash=String(parsedOwnerKey?.sourceHash || meta.sourceHash || host?.dataset?.rmSourceHash || '').trim();
  const currentSourceHash=messageSourceFingerprint(msg);
- if(ownerSourceHash && ownerSourceHash!==currentSourceHash) return null;
- if(meta.key && meta.key!==currentKey){
+ const terminalFailure=allowPassiveErrorRetry && host?.dataset?.rmState==='error' && ownerSourceHash && ownerSourceHash!==currentSourceHash
+  ? passiveIndependentFailureForIdentity(ctx,index,msg,host) : null;
+ const passiveErrorRetry=!!terminalFailure && ownerSourceHash===terminalFailure.sourceHash
+  && (!meta.key || meta.key===terminalFailure.slot);
+ if(ownerSourceHash && ownerSourceHash!==currentSourceHash && !passiveErrorRetry) return null;
+ if(meta.key && meta.key!==currentKey && !passiveErrorRetry){
   const baseSuffix=`:${index}:${currentSwipe}`;
   const fullSuffix=`${baseSuffix}:${currentSourceHash}`;
   if(!meta.key.endsWith(baseSuffix) && !meta.key.endsWith(fullSuffix)) return null;
@@ -8424,7 +8524,7 @@ function showIndependentHistory(root,owner={}){
 }
 function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('./followFaceRetry.js?rmv=1.5.41-memory1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('./followFaceRetry.js?rmv=1.5.45-exclude1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -8435,7 +8535,7 @@ function resayIndependentMirror(root,owner={}){
   })).catch(()=>globalThis.toastr?.error?.('主 API 单面重试模块未加载，未发送请求。'));
   return true;
  }
- const identity=resolveIndependentActionIdentity(root,owner);
+ const identity=resolveIndependentActionIdentity(root,owner,{allowPassiveErrorRetry:true});
  if(!identity) return false;
  const saved=findSavedRecord(readStore(),identity.slot,identity.legacySlots||[]); if(saved?.html) appendHistoryEntry(identity.slot,saved);
  const diagnostic=saved?.apiRequest&&typeof saved.apiRequest==='object'?saved.apiRequest:{};
@@ -9128,7 +9228,7 @@ function ensureAutomaticGenerationCutover(ctx=getContext()){
  if(automaticGenerationCutovers.has(ownerChat)) return automaticGenerationCutovers.get(ownerChat);
  // Default deny. Historical messages appended after CHAT_CHANGED are not "new"
  // merely because their index is larger than an early/partial loading boundary.
- const cutover={authorized:new Map(),activeHostGeneration:null,createdAt:Date.now()};
+ const cutover={authorized:new Map(),activeHostGeneration:null,createdAt:Date.now(),failureRecoveryToken:{}};
  automaticGenerationCutovers.set(ownerChat,cutover);
  return cutover;
 }
@@ -9142,6 +9242,7 @@ let earlyBodyProbeSequence=0;
 // owner diagnostic, settings extension, or persisted result.
 const earlyBodyCredentials=new WeakMap();
 function earlyBodyConfigSignature(settings=getSettings()){
+ const advanced=settings.independentAdvancedEnabled===true?independentAdvancedOptionsSignature(settings):'';
  return JSON.stringify([settings.enabled!==false,settings.autoRabbitMirrorInjection!==false,
   settings.generationSource,settings.mode,settings.independentEarlyBodyEnabled===true,
   String(settings.independentEarlyBodyChatKey||''),settings.independentEarlyBodyTags||[],
@@ -9154,7 +9255,7 @@ function earlyBodyConfigSignature(settings=getSettings()){
    'favoriteThemeIds','favoriteFormatIds','favoriteThemeMultipliers','favoriteFormatMultipliers','presentationWorldviewLock','richFormatBias',
    'externalWorldBookRandomEnabled','externalWorldBookMixMode','enhancedVisualDrawing','visualPromptEditingEnabled','visualPrompt','visualExtraPrompt','visualAvoidPrompt',
    'appearanceReferenceEnabled','appearanceReferenceRevision','behaviorRuleMode','behaviorRuleText','forceVisualScenery','rabbitMirrorBannedWords']
-   .map(key=>settings[key])]);
+   .map(key=>settings[key]),...(advanced?[advanced]:[])]);
 }
 function earlyBodyEnabled(ctx=getContext(),settings=getSettings()){
  return settings.enabled!==false && settings.autoRabbitMirrorInjection!==false
@@ -9271,7 +9372,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 }
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('./earlyBodyTags.js?rmv=1.5.41-memory1')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('./earlyBodyTags.js?rmv=1.5.45-exclude1')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -9911,7 +10012,13 @@ function syncMessages(indices=null){
          // them. Actual replacement happens only when a new generation starts.
          saved=null;
        }
-        if(!saved?.html && !keep && activeBaseFlight){
+        const passiveFailure=!saved?.html && !persistedSuppressed && !activeBaseFlight
+          && (!keep || keep.dataset?.rmState==='error')
+          ? passiveIndependentFailureForIdentity(ctx,i,m,keep) : null;
+        const passiveFailureHost=passiveFailure ? restorePassiveIndependentFailure(ctx,i,m,keep,passiveFailure) : null;
+        if(passiveFailureHost){
+          keep=passiveFailureHost;
+        } else if(!saved?.html && !keep && activeBaseFlight){
           // A second host reply may replace the earlier message DOM while its
           // already-paid independent request is still unresolved. Reattach only
           // that exact owner shell; do not schedule or dispatch another request.
@@ -9930,7 +10037,7 @@ function syncMessages(indices=null){
         }
        const hostSourceHash=String(keep?.dataset?.rmSourceHash||'');
        const mountedReadyIdentityStale=!!(readyDetailsFromHost(keep) && !mountedReadyMatchesObserved && !mountedReadyPassiveSourceDrift);
-       let hostIsStale=!!(keep && !mountedReadyPassiveSourceDrift && (mountedReadyIdentityStale || (hostSourceHash && hostSourceHash!==sourceHash)));
+       let hostIsStale=!!(keep && !passiveFailureHost && !mountedReadyPassiveSourceDrift && (mountedReadyIdentityStale || (hostSourceHash && hostSourceHash!==sourceHash)));
        const keepIsReplyPlaceholder=!!(keep && (keep.dataset.rmReplyGenerationPlaceholder==='true' || (keep.dataset.rmState==='loading' && keep.querySelector?.(':scope > details.rabbit-mirror-external-placeholder'))));
         if(keepIsReplyPlaceholder && !saved?.html && automaticGenerationSuppressed && !activeBaseFlight){
           keep.remove();
@@ -10378,6 +10485,17 @@ function resolveHostEventMessageIndex(payload,ctx=getContext(),{fallbackLastAssi
  const last=lastAssistantMessage(ctx)?.i;
  return Number.isInteger(last)&&last>=0?last:null;
 }
+function syncUpdatedIndependentMessage(payload){
+ // MESSAGE_UPDATED is a repaint/postprocessing signal, never a generation
+ // intent. Require its explicit id: Number(null/empty) must not select mesid 0.
+ if(runtimeMode()!=='independent') return;
+ const raw=payload && typeof payload==='object' && !Array.isArray(payload)
+  ? payload.messageId ?? payload.message_id ?? payload.mesid ?? payload.index ?? payload.id : payload;
+ if(typeof raw==='string' ? !/^\d+$/.test(raw.trim()) : typeof raw!=='number' || !Number.isSafeInteger(raw)) return;
+ if(!Number.isSafeInteger(Number(raw)) || Number(raw)<0) return;
+ const id=resolveHostEventMessageIndex(raw,getContext(),{fallbackLastAssistant:false});
+ if(Number.isInteger(id)&&id>=0) queueMessageSync([id]);
+}
 async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence){
  unsubscribeHostEvents();
  const mode=runtimeMode(); if(mode==='off'||mode==='inline') return;
@@ -10396,6 +10514,10 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
    const worldInfoActivatedEvents=[et.WORLD_INFO_ACTIVATED].filter(Boolean);
    const renderOnlyEvents=[et.MESSAGE_RECEIVED].filter(Boolean);
    const finalRenderEvents=[et.CHARACTER_MESSAGE_RENDERED].filter(Boolean);
+    if(et.MESSAGE_UPDATED){
+     es?.on?.(et.MESSAGE_UPDATED,syncUpdatedIndependentMessage);
+     hostSubscriptions.push({es,event:et.MESSAGE_UPDATED,handler:syncUpdatedIndependentMessage});
+    }
    for(const event of new Set(fullSyncEvents)){
       const handler=()=>{
         hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); cancelAllIndependentFlights('chat-changed'); clearIndependentRejectedFacePreviews(); messageSourceRevisions.clear(); activeGlobalWorldInfoCapture=null;
@@ -10553,7 +10675,9 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
  }catch(e){ console.warn('[RabbitMirror] independent host events unavailable',e); }
 }
 function independentRequestConfigSignature(st=getSettings()){
- return [st?.generationSource,normalizeIndependentConnectionText(st?.independentConnectionProfileId,160)||normalizeBase(st?.independentApiBaseUrl||''),String(st?.independentApiModel||''),Number(st?.independentApiTemperature)||0,Number(st?.independentApiMaxTokens)||12000].join('|');
+ const base=[st?.generationSource,normalizeIndependentConnectionText(st?.independentConnectionProfileId,160)||normalizeBase(st?.independentApiBaseUrl||''),String(st?.independentApiModel||''),Number(st?.independentApiTemperature)||0,Number(st?.independentApiMaxTokens)||12000].join('|');
+ const advanced=st?.independentAdvancedEnabled===true?independentAdvancedOptionsSignature(st):'';
+ return advanced?`${base}|advanced:${advanced}`:base;
 }
 function captureMountedIndependentPlaceholderIndices(){
  const ctx=getContext(); const currentChat=chatKey(ctx); const indices=new Set();

@@ -120,6 +120,10 @@ export const defaultSettings = Object.freeze({
     independentApiModel: '',
     independentApiTemperature: 0.8,
     independentApiMaxTokens: 30000,
+    independentAdvancedEnabled: false,
+    independentReasoningEffort: '',
+    independentExtraParams: '',
+    independentExcludedParams: [],
     independentContextMaxLayers: 20,
     independentContextExcludedTags: [...DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS],
     behaviorRuleMode: 'always',
@@ -217,6 +221,9 @@ export function getSettings() {
         settings.independentApiTemperature = Math.max(0, Math.min(2, Number.isFinite(temperature) ? temperature : 0.8));
     }
     settings.independentApiMaxTokens = Math.max(512, Math.min(32000, Number(settings.independentApiMaxTokens) || 30000));
+    // Keep this startup path scalar-only. Invalid stored JSON is not silently
+    // truncated or repaired; opt-in request preflight validates it before send.
+    settings.independentAdvancedEnabled = settings.independentAdvancedEnabled === true;
     {
         const contextLayers = Number(settings.independentContextMaxLayers);
         settings.independentContextMaxLayers = Math.max(1, Math.min(200, Number.isFinite(contextLayers) ? Math.round(contextLayers) : 20));

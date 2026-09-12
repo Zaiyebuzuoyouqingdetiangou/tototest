@@ -1,23 +1,24 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.41-memory1';
-import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, buildTtSurfaceReport, recordTtSurface, registerTtSurfaceCleanup, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.41-memory1';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorHostCompatibilityStatus } from './hostCompatibility.js?rmv=1.5.41-memory1';
-import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.41-memory1';
-import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.41-memory1';
-import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.5.41-memory1';
-import { BEHAVIOR_RULE_MAX_CHARS, DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=1.5.41-memory1';
-import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.41-memory1';
-import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.41-memory1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.41-memory1';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.41-memory1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.41-memory1';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.5.41-memory1';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.41-memory1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.41-memory1';
-import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.41-memory1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.41-memory1';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.45-exclude1';
+import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, buildTtSurfaceReport, recordTtSurface, registerTtSurfaceCleanup, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.45-exclude1';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorHostCompatibilityStatus } from './hostCompatibility.js?rmv=1.5.45-exclude1';
+import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.45-exclude1';
+import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.45-exclude1';
+import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.5.45-exclude1';
+import { BEHAVIOR_RULE_MAX_CHARS, DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=1.5.45-exclude1';
+import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.45-exclude1';
+import { parseIndependentAdvancedOptions } from './advancedRequestOptions.js?rmv=1.5.45-exclude1';
+import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.45-exclude1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.45-exclude1';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.45-exclude1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.45-exclude1';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.5.45-exclude1';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.45-exclude1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.45-exclude1';
+import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.45-exclude1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.45-exclude1';
 
-const SETTINGS_UI_VERSION = '1.8-ttentry3';
-const RUNTIME_VERSION = '1.5.41';
+const SETTINGS_UI_VERSION = '1.10-parameter-exclusion';
+const RUNTIME_VERSION = '1.5.45';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -506,7 +507,7 @@ async function refreshMemoryWorldBookDirectory() {
     memoryWorldBookDirectoryBusy = true;
     renderMemoryWorldBookBinding();
     try {
-        const { listMemoryWorldBooks, normalizeMemoryWorldBookId } = await import('./memoryWorldBook.js?rmv=1.5.41-memory1');
+        const { listMemoryWorldBooks, normalizeMemoryWorldBookId } = await import('./memoryWorldBook.js?rmv=1.5.45-exclude1');
         if (!isAlive()) return;
         const books = await listMemoryWorldBooks();
         if (!isAlive()) return;
@@ -703,7 +704,7 @@ function installTtDiagnosticEntry() {
         if (!session) return retainedTtDiagnosticReport;
         const elapsed = Math.max(0, (session.endedAt ?? performance.now()) - session.startedAt);
         const head = [
-            'TT 诊断入口：1.5.41-ttentry3',
+            'TT 诊断入口：1.5.45-ttentry3',
             `diagnostic-start +0ms | managed=${session.host.managed} | registered=${session.host.registered} | protocolVersion=${session.host.protocolVersion ?? '不可用'}`,
             `入口动作=${session.activation} | chatRootFound=${session.chatRootFound} | pointerEvents=${session.pointerEvents} | 输入事件 ${session.inputEvents} 条`,
             session.host.managed && session.host.registered ? '' : '未接入 managed ChatSurface：挂载分发不可用或未启用；以下报告不代表没有卡顿。',
@@ -905,7 +906,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.41</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.45</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -1025,6 +1026,51 @@ export function initRabbitMirrorUI() {
             <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;padding:9px 10px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:9px;">
               <label>温度 <input id="rh_independent_temperature" class="text_pole" type="number" min="0" max="2" step="0.1" style="width:82px;"></label>
               <label>整批最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
+            </div>
+            <div class="rabbit-mirror-independent-advanced-row">
+              <details id="rh_independent_request_advanced" class="rabbit-mirror-request-options">
+                <summary>高级生成参数 <span>排除参数 · 推理强度</span></summary>
+                <div class="rabbit-mirror-request-options-body">
+                  <label class="rabbit-mirror-request-enable"><input id="rh_independent_advanced_enabled" type="checkbox"> 启用高级生成参数</label>
+                  <p id="rh_independent_advanced_help">仅作用于兔子镜独立 API。默认关闭，不改变原请求；关闭时可保存草稿，但不会发送。参数是否被模型支持，取决于你的接口。</p>
+                  <label for="rh_independent_reasoning_effort">推理强度（reasoning_effort）</label>
+                  <select id="rh_independent_reasoning_effort" class="text_pole" aria-describedby="rh_independent_advanced_help">
+                    <option value="">默认：不覆盖</option><option value="none">关闭推理 · none</option>
+                    <option value="minimal">最低 · minimal</option><option value="low">低 · low</option>
+                    <option value="medium">中 · medium</option><option value="high">高 · high</option>
+                    <option value="xhigh">极高 · xhigh</option><option value="max">最大 · max</option>
+                  </select>
+                  <fieldset id="rh_independent_excluded_params" aria-describedby="rh_independent_excluded_help">
+                    <legend>排除参数（勾选 = 不发送）</legend>
+                    <p id="rh_independent_excluded_help">从请求中移除这些字段，不是设为 0。取消勾选恢复原请求逻辑，不改正文连接的设置；推理强度单独保留。</p>
+                    <div class="rabbit-mirror-exclusion-grid">
+                      ${[
+                          ['temperature', '温度'], ['frequency_penalty', '频率惩罚'],
+                          ['presence_penalty', '存在惩罚'], ['top_p', 'Top P'],
+                          ['top_k', 'Top K'], ['seed', '种子'], ['min_p', 'Min P'],
+                          ['top_a', 'Top A'], ['typical_p', 'Typical P'], ['repetition_penalty', '重复惩罚'],
+                      ].map(([field, label]) => `<label class="rabbit-mirror-request-enable"><input type="checkbox" name="rh_independent_excluded_param" value="${field}" data-rh-exclude-param="${field}"><span>${label}<small>${field}</small></span></label>`).join('')}
+                    </div>
+                    <div class="rabbit-mirror-request-options-actions">
+                      <button id="rh_independent_exclude_common" class="menu_button" type="button">选中常用四项</button>
+                      <button id="rh_independent_exclude_none" class="menu_button" type="button">取消所有排除</button>
+                    </div>
+                    <p>常用四项：温度、频率惩罚、存在惩罚、Top P。选好后点击下方“保存高级参数”。排除优先于下方合法 JSON 中的同名参数，保留编辑框内容。</p>
+                  </fieldset>
+                  <label for="rh_independent_extra_params">附加生成参数（JSON 对象，可留空）</label>
+                  <textarea id="rh_independent_extra_params" class="text_pole" rows="5" maxlength="8192" autocapitalize="off" autocomplete="off" spellcheck="false" aria-describedby="rh_independent_extra_help rh_independent_advanced_error" placeholder='例如：{"top_p": 0.9, "seed": 42}'></textarea>
+                  <div id="rh_independent_advanced_error" role="alert" aria-live="polite" hidden></div>
+                  <p id="rh_independent_extra_help">支持 reasoning_effort、top_p、min_p、top_a、typical_p、top_k、frequency_penalty、presence_penalty、repetition_penalty、seed、verbosity。只接受这些生成参数，不接受对象／数组、模型、消息、密钥或网络设置；JSON 中的推理强度不能与上方选择冲突。</p>
+                  <p>参数范围：top_p / min_p / top_a / typical_p 为 0–1；top_k 为 0–1000000 的整数；frequency_penalty / presence_penalty 为 −2–2；repetition_penalty 大于 0 且不超过 10；seed 为安全整数；verbosity 为 low / medium / high。你的模型可能只支持其中一部分。</p>
+                  <p>当前支持手动 OpenAI 兼容接口，以及自定义 Chat Completions 类型的连接 Profile。其它连接或协议不支持这条直传路径时，将在发送前提示；不会自动切换连接或重试。TT 的宿主权限仍可能限制透传。</p>
+                  <div class="rabbit-mirror-request-options-actions">
+                    <button id="rh_independent_advanced_save" class="menu_button" type="button">保存高级参数</button>
+                    <button id="rh_independent_extra_clear" class="menu_button" type="button">清空附加参数</button>
+                    <button id="rh_independent_advanced_reset" class="menu_button" type="button">恢复默认</button>
+                  </div>
+                  <div id="rh_independent_advanced_status" role="status" aria-live="polite"></div>
+                </div>
+              </details>
             </div>
             <div class="rabbit-mirror-independent-advanced-row">
               <div class="rabbit-mirror-independent-advanced-copy"><b>读取内容与隐私</b><span>聊天层数、角色卡 / Persona、世界书与正文标签过滤</span></div>
@@ -1317,7 +1363,7 @@ export function initRabbitMirrorUI() {
         status.textContent = '正在向酒馆请求更新当前兔子镜，请稍候。不会更新其他扩展，也不会删除本地数据。';
         reload.hidden = true;
         try {
-            const updater = await import('./extensionUpdater.js?rmv=1.5.41-memory1');
+            const updater = await import('./extensionUpdater.js?rmv=1.5.45-exclude1');
             const result = await updater.requestRabbitMirrorUpdate();
             if (!status.isConnected) return;
             status.textContent = result.status === 'current'
@@ -1399,6 +1445,16 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_key').val(settings.independentApiKey || '');
     $('#rh_independent_temperature').val(settings.independentApiTemperature ?? 0.8);
     $('#rh_independent_max_tokens').val(settings.independentApiMaxTokens ?? 30000);
+    checked('#rh_independent_advanced_enabled', settings.independentAdvancedEnabled === true);
+    $('#rh_independent_reasoning_effort').val(settings.independentReasoningEffort || '');
+    $('#rh_independent_extra_params').val(typeof settings.independentExtraParams === 'string' ? settings.independentExtraParams : '');
+    const setExcludedSelection = fields => {
+        const selected = new Set(Array.isArray(fields) ? fields : []);
+        document.querySelectorAll('#rh_independent_excluded_params [data-rh-exclude-param]').forEach(input => {
+            input.checked = selected.has(input.getAttribute('data-rh-exclude-param'));
+        });
+    };
+    setExcludedSelection(settings.independentExcludedParams);
     $('#rh_independent_context_layers').val(settings.independentContextMaxLayers ?? 20);
     checked('#rh_follow_tag_isolation', settings.followTagIsolationEnabled === true);
     $('#rh_banned_words_save').parent().parent().appendTo('#rh_advanced_page_replacement');
@@ -1655,7 +1711,7 @@ export function initRabbitMirrorUI() {
         if (!revision) return;
         const sequence = appearanceFileSequence;
         try {
-            const module = await import('./appearanceReference.js?rmv=1.5.41-memory1');
+            const module = await import('./appearanceReference.js?rmv=1.5.45-exclude1');
             if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving) return;
             await module.loadAppearanceReferenceMaterial(revision);
             if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving || getSettings().appearanceReferenceRevision !== revision) return;
@@ -1706,7 +1762,7 @@ export function initRabbitMirrorUI() {
         const retainRevision = String(getSettings().appearanceReferenceRevision || '');
         let raw = String($('#rh_appearance_reference_input').val() || '');
         try {
-            const module = await import('./appearanceReference.js?rmv=1.5.41-memory1');
+            const module = await import('./appearanceReference.js?rmv=1.5.45-exclude1');
             if (!appearanceOwnerIsCurrent()) return;
             if (String(getSettings().appearanceReferenceRevision || '') !== retainRevision) {
                 appearanceStatus('参考关联已改变，本次保存已停止；未写入摘要，也未覆盖当前设置。请核对当前关联后再保存。');
@@ -1790,7 +1846,7 @@ export function initRabbitMirrorUI() {
         if (!quickStart.open || guideLoading || guideCleanup || guideDisposed) return;
         guideLoading = true;
         try {
-            const module = await import('./quickStart.js?rmv=1.5.41-memory1');
+            const module = await import('./quickStart.js?rmv=1.5.45-exclude1');
             if (guideDisposed || !quickStart.isConnected || !isCurrentRuntime()) return;
             guideCleanup = module.mountRabbitMirrorQuickStart({
                 root: document.getElementById('rabbit_mirror_theater_settings'),
@@ -2038,6 +2094,91 @@ export function initRabbitMirrorUI() {
             independentContextMaxLayers: Number.isFinite(contextLayers) && contextLayers > 0 ? contextLayers : 20,
         });
     };
+    const advancedDraft = () => ({
+        independentAdvancedEnabled: $('#rh_independent_advanced_enabled').prop('checked') === true,
+        independentReasoningEffort: String($('#rh_independent_reasoning_effort').val() || ''),
+        independentExtraParams: String($('#rh_independent_extra_params').val() || ''),
+        independentExcludedParams: Array.from(document.querySelectorAll('#rh_independent_excluded_params input:checked'), input => input.value),
+    });
+    const showAdvancedError = message => {
+        const error = document.getElementById('rh_independent_advanced_error');
+        error.textContent = message;
+        error.hidden = !message;
+        document.getElementById('rh_independent_extra_params').setAttribute('aria-invalid', message ? 'true' : 'false');
+    };
+    const validateAdvancedDraft = () => {
+        const draft = advancedDraft();
+        try {
+            if (draft.independentExtraParams.length > 8192) throw new Error('附加参数最多 8192 个字符；请缩短后再保存。');
+            const parsed = parseIndependentAdvancedOptions(draft);
+            showAdvancedError('');
+            return { draft, parsed };
+        } catch (error) {
+            showAdvancedError(String(error?.message || '高级参数无效；请检查 JSON 对象与参数值。'));
+            $('#rh_independent_advanced_status').text('未保存；仍使用上次已保存的设置。');
+            return null;
+        }
+    };
+    const renderAdvancedSavedStatus = () => {
+        const current = getSettings();
+        if (!current.independentAdvancedEnabled) {
+            $('#rh_independent_advanced_status').text('已关闭：不追加也不排除参数，保持原请求。');
+            return;
+        }
+        try {
+            const parsed = parseIndependentAdvancedOptions(current);
+            const count = Object.keys(parsed.body || {}).length;
+            const exclusions = parsed.excludedParams?.length || 0;
+            $('#rh_independent_advanced_status').text(count || exclusions ? `已保存：追加 ${count} 项，排除 ${exclusions} 项；下一次独立生成生效。` : '已启用，尚未设置覆盖或排除项；保持原请求。');
+        } catch (error) {
+            showAdvancedError(String(error?.message || '已保存的高级参数无效。'));
+            $('#rh_independent_advanced_status').text('已保存的配置需修正；请求前会拦截，不会自动重试。');
+        }
+    };
+    const saveAdvancedDraft = () => {
+        const valid = validateAdvancedDraft();
+        if (!valid) return false;
+        updateSettings(valid.draft);
+        renderAdvancedSavedStatus();
+        return true;
+    };
+    $('#rh_independent_advanced_save').on('click', () => {
+        if (!saveAdvancedDraft()) document.getElementById('rh_independent_extra_params')?.focus();
+    });
+    $('#rh_independent_advanced_enabled').on('change', () => {
+        if (!saveAdvancedDraft()) checked('#rh_independent_advanced_enabled', getSettings().independentAdvancedEnabled === true);
+    });
+    $('#rh_independent_reasoning_effort, #rh_independent_extra_params').on('input change', () => {
+        showAdvancedError('');
+        $('#rh_independent_advanced_status').text('有未保存的修改；点击“保存高级参数”生效。');
+    }).on('blur', validateAdvancedDraft);
+    $('#rh_independent_excluded_params input').on('change', () => {
+        showAdvancedError('');
+        $('#rh_independent_advanced_status').text('排除选择尚未保存；点击“保存高级参数”生效。');
+    });
+    $('#rh_independent_exclude_common').on('click', () => {
+        setExcludedSelection(['temperature', 'frequency_penalty', 'presence_penalty', 'top_p']);
+        showAdvancedError('');
+        $('#rh_independent_advanced_status').text('已选中常用四项；点击“保存高级参数”生效。');
+    });
+    $('#rh_independent_exclude_none').on('click', () => {
+        setExcludedSelection([]);
+        showAdvancedError('');
+        $('#rh_independent_advanced_status').text('已取消排除选择；点击“保存高级参数”生效。');
+    });
+    $('#rh_independent_extra_clear').on('click', () => {
+        $('#rh_independent_extra_params').val('');
+        showAdvancedError('');
+        $('#rh_independent_advanced_status').text('已清空编辑框；点击“保存高级参数”生效。');
+    });
+    $('#rh_independent_advanced_reset').on('click', () => {
+        checked('#rh_independent_advanced_enabled', false);
+        $('#rh_independent_reasoning_effort').val('');
+        $('#rh_independent_extra_params').val('');
+        setExcludedSelection([]);
+        saveAdvancedDraft();
+    });
+    renderAdvancedSavedStatus();
     // Do not serialize the whole extension settings object on every mobile input event.
     // Safari may emit repeated input/autofill events as the drawer opens, which made the UI stutter.
     $('#rh_independent_base, #rh_independent_key, #rh_independent_model').on('change blur', saveIndependentFields);
@@ -2446,7 +2587,7 @@ export function initRabbitMirrorUI() {
             for (const key of Object.keys(libraryEntryViews)) document.getElementById(key).disabled = true;
             button.textContent = '正在加载…';
             try {
-                const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.41-memory1');
+                const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.45-exclude1');
                 if (!isCurrentRuntime() || !button.isConnected) return;
                 module.openExternalWorldBookImportWizard?.({ initialView });
             } catch (error) {

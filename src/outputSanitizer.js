@@ -1,10 +1,10 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.41-memory1';
-import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.41-memory1';
-import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.41-memory1';
-import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.41-memory1';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.41-memory1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.41-memory1';
-import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.41-memory1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.45-exclude1';
+import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.45-exclude1';
+import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.45-exclude1';
+import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.45-exclude1';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.45-exclude1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.45-exclude1';
+import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.45-exclude1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -14,14 +14,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.41-memory1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.41-memory1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.41-memory1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.41-memory1';
-import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.5.41-memory1';
+} from './feedbackCat.js?rmv=1.5.45-exclude1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.45-exclude1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.45-exclude1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.45-exclude1';
+import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.5.45-exclude1';
 
 
-const RUNTIME_VERSION = '1.5.41';
+const RUNTIME_VERSION = '1.5.45';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -26110,6 +26110,7 @@ function rememberTtOuterSummaryDelayedClick(details, state) {
     pending.set(key, {
         pointerType: state.pointerType, pointerId: state.pointerId,
         count: (previous?.count || 0) + 1,
+        mouseCompatibleCount: (previous?.mouseCompatibleCount || 0) + 1,
         expires: now + TT_OUTER_SUMMARY_DELAYED_CLICK_TTL_MS,
         x: state.x, y: state.y,
     });
@@ -26122,32 +26123,44 @@ function consumeTtOuterSummaryDelayedClick(details, event) {
     const now = performance.now();
     const pointerType = String(event.pointerType || '');
     if (event.detail === 0 && pointerType !== 'touch' && pointerType !== 'pen') return false;
+    const identifiedPointer = Number.isFinite(event.pointerId) && event.pointerId >= 0 && !!pointerType;
+    const mouseCompatiblePointer = pointerType === 'mouse' && identifiedPointer;
     const mouseActivation = ttOuterSummaryMouseActivations.get(details);
     const explicitTouch = event.sourceCapabilities?.firesTouchEvents === true;
     const matchesMouse = mouseActivation?.expires > now
         && Math.hypot(Number(event.clientX || 0) - mouseActivation.x, Number(event.clientY || 0) - mouseActivation.y)
             <= TT_OUTER_SUMMARY_TAP_MAX_MOVE_PX;
-    if (pointerType === 'mouse' || (!pointerType && !explicitTouch && matchesMouse)) {
+    // Some TT WebViews relabel the delayed touch click as mouse, but keep its
+    // pointer ID. A real mouse down takes precedence, including ID reuse; a
+    // different physical mouse ID must not claim this touch-derived click.
+    if ((pointerType === 'mouse' && (!identifiedPointer
+            || (mouseActivation?.expires > now && mouseActivation.pointerId === event.pointerId)))
+            || (!pointerType && !explicitTouch && matchesMouse)) {
         ttOuterSummaryMouseActivations.delete(details);
         return false;
     }
-    if (pointerType && pointerType !== 'touch' && pointerType !== 'pen') return false;
+    if (pointerType && pointerType !== 'touch' && pointerType !== 'pen' && !mouseCompatiblePointer) return false;
     if (!pointerType && event.sourceCapabilities?.firesTouchEvents === false) return false;
     const pending = pendingTtOuterSummaryClicks(details, now);
     if (!pending) return false;
-    const identifiedPointer = Number.isFinite(event.pointerId) && event.pointerId >= 0 && pointerType;
     // Older WebViews expose a touch-derived MouseEvent without pointer ID.
     // Keep its spatial pairing, but never ignore a modern click's distinct ID.
-    const key = [...pending].find(([, receipt]) => (!pointerType || receipt.pointerType === pointerType)
+    // Mouse compatibility additionally requires its own still-eligible receipt;
+    // timing or position alone can never suppress an identified mouse click.
+    const key = [...pending].find(([, receipt]) => (!pointerType || receipt.pointerType === pointerType
+            || (mouseCompatiblePointer && receipt.mouseCompatibleCount > 0))
         && (!identifiedPointer || receipt.pointerId === event.pointerId)
         && Math.hypot(Number(event.clientX || 0) - receipt.x, Number(event.clientY || 0) - receipt.y)
             <= TT_OUTER_SUMMARY_TAP_MAX_MOVE_PX)?.[0];
     const receipt = pending.get(key);
     if (!receipt) return false;
     receipt.count -= 1;
+    if (mouseCompatiblePointer) receipt.mouseCompatibleCount -= 1;
+    receipt.mouseCompatibleCount = Math.min(receipt.mouseCompatibleCount, receipt.count);
     if (!receipt.count) pending.delete(key);
     if (!pending.size) ttOuterSummaryDelayedClickSuppressions.delete(details);
-    return identifiedPointer ? 'pointer' : explicitTouch ? 'legacy-touch' : 'legacy-spatial';
+    return mouseCompatiblePointer ? 'pointer-mouse-compatible'
+        : identifiedPointer ? 'pointer' : explicitTouch ? 'legacy-touch' : 'legacy-spatial';
 }
 
 const managedOuterSummaryToggleFallbackPending = new WeakSet();
@@ -26255,10 +26268,20 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
         const isTouchOrPen = event.pointerType === 'touch' || event.pointerType === 'pen';
         const tapTarget = ttOuterSummaryTapTarget(event.target);
         if (tapTarget && event.pointerType === 'mouse' && event.button === 0 && event.isPrimary !== false) {
+            const now = performance.now();
             ttOuterSummaryMouseActivations.set(tapTarget.details, {
-                expires: performance.now() + TT_OUTER_SUMMARY_DELAYED_CLICK_TTL_MS,
+                pointerId: event.pointerId,
+                expires: now + TT_OUTER_SUMMARY_DELAYED_CLICK_TTL_MS,
                 x: Number(event.clientX || 0), y: Number(event.clientY || 0),
             });
+            // Do not reinterpret a genuine same-ID mouse activation as an old
+            // touch click, even after its mouse marker has been consumed. Keep
+            // the original touch receipts; a later new touch earns only one
+            // new compatible receipt, rather than reviving these old ones.
+            const pending = pendingTtOuterSummaryClicks(tapTarget.details, now);
+            for (const receipt of pending?.values() || []) {
+                if (receipt.pointerId === event.pointerId) receipt.mouseCompatibleCount = 0;
+            }
         }
         const interruptedPointer = ttOuterSummaryTapState && ttOuterSummaryTapState.pointerId !== event.pointerId;
         if (!interruptedPointer && tapTarget && isTouchOrPen && event.isPrimary !== false && event.button === 0
