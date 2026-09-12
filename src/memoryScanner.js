@@ -330,34 +330,40 @@ function normalizedDedupKey(text) {
     return String(text || '').toLowerCase().replace(/\s+/g, '').slice(0, 1200);
 }
 
-export function readSelectedMemoryForPrompt(settings, maxChars = 2200) {
+export function readSelectedMemoryForPrompt(settings, maxChars = 2200, additionalMaterials = []) {
     if (!settings?.memoryScanEnabled) return null;
     const selected = Array.isArray(settings.memoryProviderIds) ? settings.memoryProviderIds : [];
-    if (!selected.length) return null;
+    if (!selected.length && !additionalMaterials.length) return null;
 
     const chunks = [];
     const seen = new Set();
     const errors = [];
     const sources = [];
+    const append = (result, providerId) => {
+        const text = String(result?.text || '').trim();
+        if (!text) return;
+        const key = normalizedDedupKey(text);
+        if (seen.has(key)) return;
+        seen.add(key);
+        sources.push(result.providerName || providerId);
+        const coverageNote = result.coverage?.reason === 'worldbook-material-limit'
+            ? '\n[来源提示：本次仅按字符上限选取部分世界书资料，不代表完整世界书。]'
+            : result.coverage?.complete === false
+                ? `\n[来源提示：该记忆存在缺口，缺失楼层数 ${Array.isArray(result.coverage?.missingAiFloors) ? result.coverage.missingAiFloors.length : '未知'}]`
+                : '';
+        chunks.push(`【来源：${result.providerName || providerId}】\n${text}${coverageNote}`);
+    };
 
     for (const rawProviderId of selected.slice(0, 6)) {
         const providerId = resolveProviderId(rawProviderId);
         try {
             const result = readMemoryProvider(providerId);
-            const text = String(result.text || '').trim();
-            if (!text) continue;
-            const key = normalizedDedupKey(text);
-            if (seen.has(key)) continue;
-            seen.add(key);
-            sources.push(result.providerName || providerId);
-            const coverageNote = result.coverage?.complete === false
-                ? `\n[来源提示：该记忆存在缺口，缺失楼层数 ${Array.isArray(result.coverage?.missingAiFloors) ? result.coverage.missingAiFloors.length : '未知'}]`
-                : '';
-            chunks.push(`【来源：${result.providerName || providerId}】\n${text}${coverageNote}`);
+            append(result, providerId);
         } catch (error) {
             errors.push(`${providerId}: ${error?.message || error}`);
         }
     }
+    for (const result of additionalMaterials.slice(0, 1)) append(result, result?.providerId || '已绑定世界书');
 
     if (!chunks.length) return errors.length ? { text: '', sources: [], errors } : null;
     return {
@@ -365,4 +371,51 @@ export function readSelectedMemoryForPrompt(settings, maxChars = 2200) {
         sources,
         errors,
     };
+}
+
+/** The async material phase runs after selection, never during scan/plan/preview. */
+export async function prepareSelectedMemoryForPrompt(settings, options = {}) {
+    if (!settings?.memoryScanEnabled || options.hasSharedMemoryTheme !== true) return null;
+    const independent = String(options.generationType || 'normal') === 'independent';
+    const maxChars = Math.max(600, Math.min(6000, Math.floor(Number(options.maxChars ?? settings.memoryMaxChars) || 2200)));
+    const additional = [];
+    let worldBookError = '';
+    if (settings.memoryWorldBookEnabled === true && typeof settings.memoryWorldBookId === 'string' && settings.memoryWorldBookId.trim()) {
+        try {
+            const { readBoundMemoryWorldBook } = await import('./memoryWorldBook.js?rmv=1.5.41-memory1');
+            const result = await readBoundMemoryWorldBook(settings, maxChars, options.worldBookOptions);
+            if (result) additional.push(result);
+        } catch (error) {
+            worldBookError = `记忆世界书: ${error?.message || String(error)}`;
+        }
+    }
+    // The new, explicitly bound worldbook is available in both generation modes.
+    // Do not silently broaden the pre-existing plugin API access of independent mode.
+    const materialSettings = independent ? { ...settings, memoryProviderIds: [] } : settings;
+    const material = readSelectedMemoryForPrompt(materialSettings, maxChars, additional);
+    if (!worldBookError) return material;
+    return {
+        ...(material || { text: '', sources: [], errors: [] }),
+        errors: [...(material?.errors || []), worldBookError],
+    };
+}
+
+export function memoryRequestSettingsKey(settings, generationType = 'normal') {
+    return JSON.stringify([
+        settings?.memoryScanEnabled === true,
+        settings?.memoryWorldBookEnabled === true,
+        String(settings?.memoryWorldBookId || ''),
+        Number(settings?.memoryMaxChars) || 2200,
+        generationType === 'independent' ? [] : (Array.isArray(settings?.memoryProviderIds) ? settings.memoryProviderIds : []),
+        settings?.enabled !== false, settings?.autoRabbitMirrorInjection !== false,
+        String(settings?.generationSource || 'follow'), String(settings?.mode || ''),
+    ]);
+}
+
+export function assertMemoryRequestSettings(settings, expected, generationType = 'normal') {
+    if (memoryRequestSettingsKey(settings, generationType) === expected) return;
+    const error = new Error('共同回忆资料设置在读取期间已变化；本轮未发送或注入兔子镜，请按当前设置重试。');
+    error.code = 'RABBIT_MIRROR_MEMORY_STALE';
+    error.requestCount = 0;
+    throw error;
 }

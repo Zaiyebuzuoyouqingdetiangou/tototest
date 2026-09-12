@@ -1,7 +1,7 @@
-import { EXTERNAL_WORLD_BOOK_CLASSIFICATION } from './classifier.js?rmv=1.5.40-tttouch2';
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.5.40-tttouch2';
-import { entryIdentity } from './selectionState.js?rmv=1.5.40-tttouch2';
-import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, getExternalPoolRevision, getExternalPoolSnapshot, removeExternalPoolLibrary, setExternalPoolMetadataSnapshot, upsertExternalPoolLibrary, validExternalPoolMetadata } from './externalPool.js?rmv=1.5.40-tttouch2';
+import { EXTERNAL_WORLD_BOOK_CLASSIFICATION } from './classifier.js?rmv=1.5.41-memory1';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.5.41-memory1';
+import { entryIdentity } from './selectionState.js?rmv=1.5.41-memory1';
+import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, getExternalPoolRevision, getExternalPoolSnapshot, removeExternalPoolLibrary, setExternalPoolMetadataSnapshot, upsertExternalPoolLibrary, validExternalPoolMetadata } from './externalPool.js?rmv=1.5.41-memory1';
 
 export const EXTERNAL_WORLD_BOOK_DB_NAME = 'rabbitmirror_external_worldbooks';
 export const EXTERNAL_WORLD_BOOK_DB_VERSION = 2;
@@ -296,6 +296,109 @@ export async function getExternalLibraryEntries(libraryId, options = {}) {
         else rows = (await requestPromise(store.getAll())).filter(row => row?.libraryId === libraryId);
         await transactionPromise(transaction);
         return Array.isArray(rows) ? rows : [];
+    } finally {
+        try { db.close(); } catch {}
+    }
+}
+
+function externalEntryChoice(row) {
+    return {
+        externalId: String(row.externalId || ''),
+        title: String(row.localTitle || row.sourceTitle || '未命名条目').slice(0, 1000),
+        classification: String(row.classification || ''),
+        enabled: row.enabled === true,
+        selectable: row.userConfirmed === true && ['theme', 'format'].includes(row.classification),
+    };
+}
+
+// Explicit management action only. Read one library through its index, retain
+// at most one page of light choices, and never return/cache rawContent in UI.
+export async function listExternalLibraryEntryChoices(libraryId, options = {}) {
+    if (typeof libraryId !== 'string' || !libraryId.trim() || libraryId !== libraryId.trim() || libraryId.length > 1024) {
+        throw new ExternalWorldBookError(EXTERNAL_WORLD_BOOK_ERROR_CODES.ENTRY_STATE_CONFLICT, '没有有效的母本库编号；不会扫描其它库。');
+    }
+    const pageSize = Math.max(1, Math.min(50, Math.floor(Number(options.pageSize) || 50)));
+    const offset = Math.max(0, Math.min(25000, Math.floor(Number(options.offset) || 0)));
+    const query = String(options.query || '').trim().slice(0, 200).toLocaleLowerCase('zh-Hans-CN');
+    const db = await openExternalLibraryDatabase(options);
+    try {
+        const transaction = db.transaction([STORE_ENTRIES], 'readonly');
+        const done = transactionPromise(transaction);
+        done.catch(() => {});
+        const result = await new Promise((resolve, reject) => {
+            const request = transaction.objectStore(STORE_ENTRIES).index(INDEX_ENTRIES_BY_LIBRARY).openCursor(libraryId);
+            const choices = [];
+            let matched = 0;
+            request.onerror = () => reject(request.error || new Error('Entry choices read failed'));
+            request.onsuccess = () => {
+                const cursor = request.result;
+                if (!cursor) { resolve({ choices, hasNext: false, offset }); return; }
+                const row = cursor.value;
+                if (row?.libraryId === libraryId) {
+                    const choice = externalEntryChoice(row);
+                    if (!query || choice.title.toLocaleLowerCase('zh-Hans-CN').includes(query)) {
+                        if (matched++ >= offset) choices.push(choice);
+                        if (choices.length > pageSize) { choices.pop(); resolve({ choices, hasNext: true, offset }); return; }
+                    }
+                }
+                cursor.continue();
+            };
+        });
+        await done;
+        return result;
+    } catch (error) {
+        throw wrapStorageError(error, '无法读取这本库的条目列表；已保存内容未修改。');
+    } finally {
+        try { db.close(); } catch {}
+    }
+}
+
+export async function setExternalLibraryEntryEnabled(libraryId, externalId, enabled, options = {}) {
+    const db = await openExternalLibraryDatabase(options);
+    let transaction;
+    let done;
+    try {
+        transaction = db.transaction([STORE_LIBRARIES, STORE_ENTRIES, STORE_POOL_METADATA], 'readwrite');
+        done = transactionPromise(transaction);
+        done.catch(() => {});
+        const libraries = transaction.objectStore(STORE_LIBRARIES);
+        const entries = transaction.objectStore(STORE_ENTRIES);
+        const metadataStore = transaction.objectStore(STORE_POOL_METADATA);
+        const [library, row, metadata] = await Promise.all([
+            requestPromise(libraries.get(libraryId)),
+            requestPromise(entries.index(INDEX_ENTRIES_BY_EXTERNAL_ID).get(externalId)),
+            requestPromise(metadataStore.get(libraryId)),
+        ]);
+        if (!library || !row || row.libraryId !== libraryId || row.externalId !== externalId) {
+            throw new ExternalWorldBookError(EXTERNAL_WORLD_BOOK_ERROR_CODES.NOT_FOUND, '条目已不存在或不属于这本库；未修改任何内容。');
+        }
+        if (!validExternalPoolMetadata(metadata, libraryId)) throw metadataRebuildError(libraryId);
+        if (!externalEntryChoice(row).selectable || !externalId.startsWith(`ext:${libraryId}:${row.classification}:`)) {
+            throw new ExternalWorldBookError(EXTERNAL_WORLD_BOOK_ERROR_CODES.ENTRY_STATE_CONFLICT, '只有已确认的主题和展现形式可以勾选参与抽签；条目原文未修改。');
+        }
+        const now = Date.now();
+        const next = { ...row, enabled: enabled === true, updatedAt: now };
+        const field = row.classification === 'theme' ? 'themeIds' : 'formatIds';
+        const ids = metadata[field].filter(id => id !== externalId);
+        if (next.enabled) ids.push(externalId);
+        const nextMetadata = { ...metadata, enabled: library.enabled === true, [field]: ids };
+        const nextLibrary = { ...library, updatedAt: now };
+        entries.put(next);
+        metadataStore.put(nextMetadata);
+        libraries.put(nextLibrary);
+        await done;
+        // Publish only after the durable transaction. No raw rows are retained
+        // in the existing pool, and another library's choices remain untouched.
+        upsertExternalPoolLibrary(nextLibrary, [
+            ...nextMetadata.themeIds.map(id => ({ externalId: id, classification: 'theme', enabled: true, userConfirmed: true })),
+            ...nextMetadata.formatIds.map(id => ({ externalId: id, classification: 'format', enabled: true, userConfirmed: true })),
+        ]);
+        invalidateMetadataHydration();
+        return externalEntryChoice(next);
+    } catch (error) {
+        try { transaction?.abort(); } catch {}
+        if (done) await done.catch(() => {});
+        throw wrapStorageError(error, '条目勾选未保存，请重试；原有内容与选择保持不变。');
     } finally {
         try { db.close(); } catch {}
     }

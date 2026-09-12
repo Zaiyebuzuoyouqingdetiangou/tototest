@@ -8,6 +8,11 @@ export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
 export const VISUAL_AVOID_PROMPT_MAX_CHARS = 1000;
 export const WORLD_INFO_BOOK_NAME_MAX_CHARS = 512;
 export const INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT = 32;
+// Keep startup normalization scalar-only; loading host world-book readers is a user action.
+function normalizeMemoryWorldBookSettingId(value) {
+    return typeof value === 'string' && value.length <= 1000 && !/[\u0000\r\n]/.test(value)
+        ? value.trim() : '';
+}
 // Do not silently reduce a malformed early-body selection: that could start a
 // request before all tags the user selected have closed. Reserved names are also
 // rejected by the runtime parser; this startup normalizer stays dependency-free.
@@ -168,6 +173,8 @@ export const defaultSettings = Object.freeze({
     creativeExpansionMode: true,
     forceVisualScenery: false,
     memoryScanEnabled: false,
+    memoryWorldBookEnabled: false,
+    memoryWorldBookId: '',
     memoryProviderIds: [],
     memoryMaxChars: 2200,
     themesMin: 1,
@@ -216,7 +223,7 @@ export function getSettings() {
     }
     settings.independentContextExcludedTags = normalizeIndependentContextExcludedTags(settings.independentContextExcludedTags);
     settings.behaviorRuleMode = ['always', 'off', 'adult-only'].includes(settings.behaviorRuleMode) ? settings.behaviorRuleMode : 'always';
-    settings.behaviorRuleText = settings.behaviorRuleText == null ? null : String(settings.behaviorRuleText).replace(/\u0000/g, '').slice(0, 5000);
+    settings.behaviorRuleText = settings.behaviorRuleText == null ? null : String(settings.behaviorRuleText).replace(/\u0000/g, '').slice(0, 20000);
     settings.independentEarlyBodyEnabled = settings.independentEarlyBodyEnabled === true;
     settings.independentEarlyBodyTags = normalizeIndependentEarlyBodyTags(settings.independentEarlyBodyTags);
     settings.independentEarlyBodyChatKey = String(settings.independentEarlyBodyChatKey || '').slice(0, 2048);
@@ -313,6 +320,8 @@ export function getSettings() {
     });
     settings.memoryProviderIds = [...new Set(settings.memoryProviderIds.filter(Boolean))].slice(0, 12);
     settings.memoryScanEnabled = !!settings.memoryScanEnabled;
+    settings.memoryWorldBookEnabled = settings.memoryWorldBookEnabled === true;
+    settings.memoryWorldBookId = normalizeMemoryWorldBookSettingId(settings.memoryWorldBookId);
     settings.memoryMaxChars = Math.max(600, Math.min(6000, Number(settings.memoryMaxChars) || defaultSettings.memoryMaxChars));
     settings.richFormatBias = false;
     settings.depth = Number(settings.depth) || 0;
@@ -332,11 +341,13 @@ export function syncExternalReferenceVisibility(settings) {
 export function updateSettings(patch) {
     const settings = getSettings();
     const safePatch = patch && typeof patch === 'object' ? { ...patch } : {};
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'memoryWorldBookEnabled')) safePatch.memoryWorldBookEnabled = safePatch.memoryWorldBookEnabled === true;
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'memoryWorldBookId')) safePatch.memoryWorldBookId = normalizeMemoryWorldBookSettingId(safePatch.memoryWorldBookId);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentEarlyBodyEnabled')) safePatch.independentEarlyBodyEnabled = safePatch.independentEarlyBodyEnabled === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentEarlyBodyTags')) safePatch.independentEarlyBodyTags = normalizeIndependentEarlyBodyTags(safePatch.independentEarlyBodyTags);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentEarlyBodyChatKey')) safePatch.independentEarlyBodyChatKey = String(safePatch.independentEarlyBodyChatKey || '').slice(0, 2048);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'behaviorRuleMode')) safePatch.behaviorRuleMode = ['always', 'off', 'adult-only'].includes(safePatch.behaviorRuleMode) ? safePatch.behaviorRuleMode : 'always';
-    if (Object.prototype.hasOwnProperty.call(safePatch, 'behaviorRuleText')) safePatch.behaviorRuleText = safePatch.behaviorRuleText == null ? null : String(safePatch.behaviorRuleText).replace(/\u0000/g, '').slice(0, 5000);
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'behaviorRuleText')) safePatch.behaviorRuleText = safePatch.behaviorRuleText == null ? null : String(safePatch.behaviorRuleText).replace(/\u0000/g, '').slice(0, 20000);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentContextExcludedTags')) {
         safePatch.independentContextExcludedTags = normalizeIndependentContextExcludedTags(safePatch.independentContextExcludedTags);
     }

@@ -1,14 +1,15 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.5.40-tttouch2';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.5.40-tttouch2';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.5.40-tttouch2';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.5.40-tttouch2';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.40-tttouch2';
-import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.40-tttouch2';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.40-tttouch2';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.40-tttouch2';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.5.40-tttouch2';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.40-tttouch2';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.40-tttouch2';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.5.41-memory1';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.5.41-memory1';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.5.41-memory1';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.5.41-memory1';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.41-memory1';
+import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.41-memory1';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.41-memory1';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.41-memory1';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.5.41-memory1';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.5.41-memory1';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.41-memory1';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.41-memory1';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -1057,7 +1058,7 @@ const PROMPT_SETTING_KEYS = Object.freeze([
     'appearanceReferenceEnabled', 'appearanceReferenceRevision',
     'behaviorRuleMode', 'behaviorRuleText',
     'followTagIsolationEnabled', 'independentContextExcludedTags',
-    'memoryScanEnabled', 'memoryProviderIds', 'memoryMaxChars',
+    'memoryScanEnabled', 'memoryProviderIds', 'memoryMaxChars', 'memoryWorldBookEnabled', 'memoryWorldBookId',
 ]);
 
 function copyPromptPlanValue(value, withoutRaw = false) {
@@ -1079,6 +1080,9 @@ function createPromptPlan(selections, args, batchPlan = null, inactive = false) 
         args: copyPromptPlanValue(privateArgs, true),
         selectedExternalIds,
         appearanceReference: { enabled: !inactive && !snapshot[0]?.disabled && privateArgs.settings?.appearanceReferenceEnabled === true, revision: String(privateArgs.settings?.appearanceReferenceRevision || '') },
+        memoryWorldBook: { enabled: !inactive && !snapshot[0]?.disabled && privateArgs.settings?.memoryScanEnabled === true
+            && privateArgs.settings?.memoryWorldBookEnabled === true && !!String(privateArgs.settings?.memoryWorldBookId || '').trim()
+            && snapshot.some(selection => hasSharedMemoryTheme(selection.combo)) },
         batchPlan: copyPromptPlanValue(privateBatch, true),
         inactive,
     });
@@ -1118,7 +1122,7 @@ export function planRabbitMirrorPromptDetails(settings, generationType = 'normal
 }
 
 /** Synchronous rendering; only the already selected ext IDs may use this map. */
-export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appearanceMaterial = null) {
+export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appearanceMaterial = null, preparedMemoryMaterial = undefined) {
     const frozen = PROMPT_PLANS.get(plan);
     if (!frozen) throw externalMaterialError('RABBIT_MIRROR_EXTERNAL_MATERIAL_INVALID');
     const { selections, args, inactive } = frozen;
@@ -1148,10 +1152,13 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
     const faceContexts = selections.map(selection => buildFaceContext(selection.combo, settings, rawPolicy, externalRawMap));
     const multiface = faceContexts.length > 1;
     const first = faceContexts[0];
-    // Main mode reads selected memory at most once for the whole request. Independent mode never reads it.
-    const memoryMaterial = String(generationType || 'normal') !== 'independent' &&
-        faceContexts.some(face => hasSharedMemoryTheme(face.combo))
-        ? readSelectedMemoryForPrompt(settings, settings.memoryMaxChars || 2200) : null;
+    // Async worldbook material is already read once for this exact frozen plan.
+    // Undefined retains the legacy synchronous public-provider path in main mode;
+    // explicit null prevents a second read. Independent never reads old APIs here.
+    const memoryMaterial = settings.memoryScanEnabled === true && faceContexts.some(face => hasSharedMemoryTheme(face.combo))
+        ? preparedMemoryMaterial !== undefined ? preparedMemoryMaterial
+            : String(generationType || 'normal') !== 'independent' ? readSelectedMemoryForPrompt(settings, settings.memoryMaxChars || 2200) : null
+        : null;
     const followTagIsolationTags = followTagIsolationNames(settings, generationType);
     const followTagIsolationText = followTagIsolationRule(followTagIsolationTags);
     const prompt = buildPrompt({

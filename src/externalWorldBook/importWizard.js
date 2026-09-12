@@ -1,7 +1,7 @@
-import { readLocalExternalImportFile, readPlainTextWorldBook } from './fileReader.js?rmv=1.5.40-tttouch2';
-import { getSettings, updateSettings } from '../settings.js?rmv=1.5.40-tttouch2';
-import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.40-tttouch2';
-import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.40-tttouch2';
+import { readLocalExternalImportFile, readPlainTextWorldBook } from './fileReader.js?rmv=1.5.41-memory1';
+import { getSettings, updateSettings } from '../settings.js?rmv=1.5.41-memory1';
+import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.41-memory1';
+import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.41-memory1';
 import {
     EXTERNAL_WORLD_BOOK_SELECTION_MODE,
     createEmptySelection,
@@ -9,24 +9,26 @@ import {
     createWholeBookSelection,
     entryIdentity,
     toggleEntrySelection,
-} from './selectionState.js?rmv=1.5.40-tttouch2';
+} from './selectionState.js?rmv=1.5.41-memory1';
 import {
     EXTERNAL_WORLD_BOOK_CLASSIFICATION,
     applyExternalWorldBookBulkClassification,
     createExternalWorldBookClassificationDraft,
     externalWorldBookClassificationCounts,
     updateExternalWorldBookDraftItem,
-} from './classifier.js?rmv=1.5.40-tttouch2';
+} from './classifier.js?rmv=1.5.41-memory1';
 import {
     deleteExternalLibrary,
     listExternalLibraries,
     prepareExternalLibrarySnapshot,
     saveExternalLibrarySnapshot,
     setExternalLibraryEnabled,
+    listExternalLibraryEntryChoices,
+    setExternalLibraryEntryEnabled,
     hydrateExternalPoolMetadata,
     getExternalPoolHydrationStatus,
     rebuildExternalPoolMetadata,
-} from './store.js?rmv=1.5.40-tttouch2';
+} from './store.js?rmv=1.5.41-memory1';
 
 const MODAL_ID = 'rh_external_worldbook_import_modal';
 const PAGE_SIZE = 50;
@@ -444,6 +446,7 @@ async function renderSavedLibraries() {
         row.append(el('div', { text: `抽签索引：${needsRebuild.has(library.libraryId) ? '需重建（已保存内容仍在）' : '可用'}`, style: { fontSize: '12px', lineHeight: '1.5', marginTop: '6px' } }));
         const actions = el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '7px' } });
         actions.append(
+            button('勾选参与抽签的条目', () => openSavedEntryChoices(library), { minHeight: '44px' }),
             button(library.enabled ? '停用' : needsRebuild.has(library.libraryId) ? '重建索引并启用' : '启用', async event => {
                 const control = event.currentTarget;
                 control.disabled = true;
@@ -460,6 +463,12 @@ async function renderSavedLibraries() {
                 if (typeof globalThis.confirm === 'function' && !globalThis.confirm(`删除兔子镜本地保存的「${library.displayName}」？`)) return;
                 try {
                     await deleteExternalLibrary(library.libraryId);
+                    if (state === owner && owner.savedEntryLibrary?.libraryId === library.libraryId) {
+                        owner.savedEntryLibrary = null;
+                        owner.savedEntrySequence++;
+                        owner.savedEntriesPanel.replaceChildren();
+                        owner.savedEntriesPanel.hidden = true;
+                    }
                     await renderSavedLibraries();
                     setStatus(`已删除兔子镜本地保存的「${library.displayName}」。`);
                 } catch (error) { setStatus(String(error?.message || error), 'error'); }
@@ -481,6 +490,89 @@ async function renderSavedLibraries() {
         }
         row.append(actions);
         state.savedLibrariesList.append(row);
+    }
+}
+
+async function openSavedEntryChoices(library) {
+    if (!state?.savedEntriesPanel) return;
+    const owner = state;
+    owner.savedEntryLibrary = { libraryId: library.libraryId, displayName: library.displayName };
+    owner.savedEntryPage = 0;
+    owner.savedEntryQuery = '';
+    await renderSavedEntryChoices();
+    if (state === owner && owner.overlay.isConnected && owner.savedEntryLibrary?.libraryId === library.libraryId) {
+        try { owner.savedEntriesPanel.scrollIntoView({ block: 'start' }); owner.savedEntriesPanel.focus({ preventScroll: true }); } catch {}
+    }
+}
+
+async function renderSavedEntryChoices() {
+    const owner = state;
+    if (!owner?.savedEntryLibrary || !owner.savedEntriesPanel) return;
+    const library = owner.savedEntryLibrary;
+    const sequence = ++owner.savedEntrySequence;
+    const page = owner.savedEntryPage;
+    const panel = owner.savedEntriesPanel;
+    const current = () => state === owner && owner.overlay.isConnected && sequence === owner.savedEntrySequence;
+    panel.hidden = false;
+    panel.replaceChildren();
+    panel.append(el('h3', { text: `${library.displayName}：选择参与抽签的条目`, style: { fontSize: '15px', margin: '0 0 8px', overflowWrap: 'anywhere' } }));
+    panel.append(el('p', { text: '勾选后立即保存；取消勾选只是不再参与之后的新抽签，不删除原文。换角色卡时可回来手动调整，选择不会随角色自动切换。仍需启用这本库及“外部母本参与抽签”总开关。', style: { fontSize: '13px', lineHeight: '1.6', margin: '0 0 8px' } }));
+    const message = el('div', { text: '正在读取这一页条目…', attrs: { role: 'status', 'aria-live': 'polite' }, style: { fontSize: '13px', lineHeight: '1.5', margin: '8px 0' } });
+    const searchLabel = el('label', { text: '按条目标题查找', style: { display: 'block', fontSize: '13px' } });
+    const search = el('input', { type: 'search', value: owner.savedEntryQuery, className: 'text_pole', style: { width: '100%', minHeight: '44px', boxSizing: 'border-box' } });
+    searchLabel.append(search);
+    const filter = () => { owner.savedEntryQuery = search.value.trim().slice(0, 200); owner.savedEntryPage = 0; renderSavedEntryChoices(); };
+    const actions = el('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap', margin: '8px 0' } });
+    actions.append(button('查找条目', filter, { minHeight: '44px' }), button('收起条目选择', () => {
+        owner.savedEntrySequence++;
+        owner.savedEntryLibrary = null;
+        panel.replaceChildren();
+        panel.hidden = true;
+    }, { minHeight: '44px' }));
+    search.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); filter(); } });
+    panel.append(searchLabel, actions, message);
+    try {
+        const result = await listExternalLibraryEntryChoices(library.libraryId, { offset: page * PAGE_SIZE, pageSize: PAGE_SIZE, query: owner.savedEntryQuery });
+        if (!current()) return;
+        message.textContent = result.choices.length ? `第 ${page + 1} 页，本页 ${result.choices.length} 条。勾选状态已从本设备保存记录读取。` : '没有符合条件的条目。';
+        for (const choice of result.choices) {
+            const label = el('label', { style: { display: 'flex', alignItems: 'center', gap: '10px', minHeight: '44px', padding: '7px 0', borderBottom: '1px solid color-mix(in srgb,currentColor 12%,transparent)', overflowWrap: 'anywhere' } });
+            const checkbox = el('input', { type: 'checkbox', attrs: { 'data-rh-external-entry-id': choice.externalId }, style: { flex: '0 0 auto' } });
+            checkbox.checked = choice.enabled && choice.selectable;
+            checkbox.disabled = !choice.selectable;
+            const text = el('span', { text: `${choice.title}（${CLASSIFICATION_LABELS[choice.classification] || '未确认'}${choice.selectable ? '' : '，不参与独立抽签'}）`, style: { minWidth: '0', fontSize: '14px' } });
+            label.append(checkbox, text);
+            checkbox.addEventListener('change', async () => {
+                const before = choice.enabled;
+                const desired = checkbox.checked;
+                checkbox.disabled = true;
+                checkbox.setAttribute('aria-busy', 'true');
+                message.textContent = `正在保存「${choice.title}」…`;
+                try {
+                    const saved = await setExternalLibraryEntryEnabled(library.libraryId, choice.externalId, desired);
+                    if (!current()) return;
+                    choice.enabled = saved.enabled;
+                    checkbox.checked = saved.enabled;
+                    message.textContent = `已保存：${saved.enabled ? '勾选' : '取消勾选'}「${choice.title}」。原文未删除；之后的新抽签使用新选择。`;
+                } catch (error) {
+                    if (!current()) return;
+                    checkbox.checked = before;
+                    message.textContent = String(error?.message || '保存失败，已恢复原勾选；请重试。');
+                } finally {
+                    if (current()) { checkbox.disabled = false; checkbox.removeAttribute('aria-busy'); }
+                }
+            });
+            panel.append(label);
+        }
+        const pager = el('div', { style: { display: 'flex', gap: '8px', marginTop: '10px' } });
+        const previous = button('上一页条目', () => { owner.savedEntryPage = page - 1; renderSavedEntryChoices(); }, { minHeight: '44px' });
+        const next = button('下一页条目', () => { owner.savedEntryPage = page + 1; renderSavedEntryChoices(); }, { minHeight: '44px' });
+        previous.disabled = page === 0;
+        next.disabled = !result.hasNext;
+        pager.append(previous, next);
+        panel.append(pager);
+    } catch (error) {
+        if (current()) message.textContent = String(error?.message || '读取失败，请重新打开条目选择。');
     }
 }
 
@@ -539,7 +631,7 @@ function createLibraryTransferControls() {
         if (busy) return;
         const owner = state; lock(true); feedback('正在读取本设备已导入的库并生成迁移文件……');
         try {
-            const module = await import('./backup.js?rmv=1.5.40-tttouch2');
+            const module = await import('./backup.js?rmv=1.5.41-memory1');
             if (!current(owner)) return;
             const result = await module.exportExternalLibraryBackup();
             if (!current(owner)) return;
@@ -556,7 +648,7 @@ function createLibraryTransferControls() {
         if (!globalThis.confirm('导入这份备份里的外部库？目标已有同编号库会保留并跳过，其余库保留备份的分类和启用状态。不删除或覆盖旧库，不改变抽签总开关。')) return;
         const owner = state, backup = pending; lock(true); feedback('正在原子保存迁移数据；请暂时保留此页面……');
         try {
-            const module = await import('./backup.js?rmv=1.5.40-tttouch2');
+            const module = await import('./backup.js?rmv=1.5.41-memory1');
             if (!current(owner)) return;
             const result = await module.importExternalLibraryBackup(backup);
             if (!current(owner)) return;
@@ -574,7 +666,7 @@ function createLibraryTransferControls() {
         const selected = file.files?.[0]; if (!selected) return;
         const owner = state, ownSequence = ++sequence; lock(true); feedback('正在校验迁移文件，尚未写入……');
         try {
-            const module = await import('./backup.js?rmv=1.5.40-tttouch2');
+            const module = await import('./backup.js?rmv=1.5.41-memory1');
             if (!current(owner)) return;
             const backup = await module.readExternalLibraryBackupFile(selected);
             if (!current(owner) || sequence !== ownSequence) return;
@@ -824,10 +916,12 @@ function createModal(initialView = 'plain') {
 
     const savedLibrariesPanel = el('div', { style: { display: 'none', borderTop: '1px solid color-mix(in srgb,currentColor 12%,transparent)', marginTop: '14px', paddingTop: '10px' } });
     savedLibrariesPanel.append(el('div', { text: '已保存的外部世界书', style: { fontWeight: '700', fontSize: '13px' } }));
-    savedLibrariesPanel.append(el('div', { text: '仅已启用库中确认的主题与展现形式参与抽签。启用本地库不会修改上方总开关。', style: { opacity: '.8', fontSize: '12px', lineHeight: '1.5', marginTop: '3px' } }));
+    savedLibrariesPanel.append(el('div', { text: '启用需要的库，再点“勾选参与抽签的条目”选择具体内容。取消勾选不会删除原文；启用本地库不会修改上方总开关。', style: { opacity: '.8', fontSize: '12px', lineHeight: '1.5', marginTop: '3px' } }));
     const savedLibrariesList = el('div', { style: { marginTop: '5px' } });
     savedLibrariesPanel.append(savedLibrariesList);
-    managePane.append(createExternalRandomControls(), savedLibrariesPanel);
+    const savedEntriesPanel = el('section', { id: 'rh_external_saved_entry_choices', attrs: { tabindex: '-1', 'aria-label': '已导入条目的抽签选择' }, style: { marginTop: '14px', paddingTop: '12px', borderTop: '1px solid color-mix(in srgb,currentColor 18%,transparent)' } });
+    savedEntriesPanel.hidden = true;
+    managePane.append(createExternalRandomControls(), savedLibrariesPanel, savedEntriesPanel);
 
     scroll.append(el('div', { text: '跟随与独立 API 均可使用；不会发送整本世界书，也不会按面额外请求。', style: { marginTop: '10px', opacity: '.8', fontSize: '12px', lineHeight: '1.5' } }));
 
@@ -850,6 +944,7 @@ function createModal(initialView = 'plain') {
         bookSearch, bookList, localBookList, entrySearch, fullText, entryMeta, entryList, pager,
         classificationPanel, classificationMeta, classificationFilter, classificationList, classificationPager,
         savedLibrariesPanel, savedLibrariesList, savedLibrariesSequence: 0,
+        savedEntriesPanel, savedEntryLibrary: null, savedEntrySequence: 0, savedEntryPage: 0, savedEntryQuery: '',
     };
     if (typeof overlay.showModal === 'function') overlay.showModal();
     else {

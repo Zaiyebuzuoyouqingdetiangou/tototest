@@ -26,6 +26,7 @@ export const QUICK_START_GROUPS = [
         setting('persona', '角色与 Persona', '可选带入精简的角色资料和用户设定。', '#rh_independent_include_character_summary', 'worldinfo'),
         setting('worldinfo', '当前激活世界书', '按需选取当前已激活的世界书参考。', '#rh_independent_read_global_world_info', 'worldinfo'),
         setting('memory', '共享记忆源（实验性）', '读取兼容扩展公开提供的记忆源，实际带入时可能增加上下文用量。', '#rh_memory_scan_enabled', 'memory'),
+        setting('memorybook', '绑定记忆世界书', '开启额外资料来源后，刷新目录并选择记忆世界书；跟随和独立 API 都只在抽中共同回忆时读取。', '#rh_memory_worldbook_enabled', 'memory'),
         setting('followtags', '跟随模式标签隔离', '通过提示要求忽略指定标签；不同于独立 API 的实际过滤。', '#rh_follow_tag_isolation', 'worldinfo'),
     ] },
     { name: '偏好与文字', items: [
@@ -40,6 +41,7 @@ export const QUICK_START_GROUPS = [
         mirror('resay', '重说', '重新请求独立 API 生成，会消耗所配置 API 的额度。', '该独立镜面 → 挨打猫 → 重说'),
         mirror('history', '兔子镜历史', '查看已有独立生成记录；不是跨设备同步入口。', '该独立镜面 → 挨打猫 → 兔子镜历史'),
         mirror('repair', '维修兔', '在具体镜面里检查并尝试本地修复，不请求模型。', '该镜面标题 → 维修兔'),
+        mirror('copyhtml', '复制本面 HTML', '单独保存这一面的代码和样式；不含诊断，依赖插件脚本的交互不会随之导出。', '该镜面标题 → 维修兔 → 复制本面 HTML（含样式）'),
         mirror('inspect', '只巡检不修改', '检查该镜面的问题，保留当前成品。', '该镜面 → 维修兔 → 只巡检不修改'),
         mirror('resetinteraction', '重置交互 / 撤销维修', '有对应快照时，恢复交互初态或撤销维修。', '该镜面 → 维修兔 → 重置交互 / 撤销维修'),
         setting('patrol', '自动安全巡检（实验性）', '按需启用自动检查，复杂问题仍需手动处理。', '#rh_maintenance_auto_safe', 'repair'),

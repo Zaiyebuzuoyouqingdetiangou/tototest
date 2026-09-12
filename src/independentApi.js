@@ -1,26 +1,26 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.40-tttouch2';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, getRabbitMirrorExternalPlacementParent, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.40-tttouch2';
-import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.40-tttouch2';
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.40-tttouch2';
-import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.40-tttouch2';
-import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.40-tttouch2';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.40-tttouch2';
-import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.40-tttouch2';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.40-tttouch2';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.40-tttouch2';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.40-tttouch2';
-import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.40-tttouch2';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.40-tttouch2';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.40-tttouch2';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.40-tttouch2';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.40-tttouch2';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.40-tttouch2';
-import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.40-tttouch2';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.40-tttouch2';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.40-tttouch2';
-import { rememberIndependentTransportDiagnostic } from './transportDiagnostics.js?rmv=1.5.40-tttouch2';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.41-memory1';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, getRabbitMirrorExternalPlacementParent, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.41-memory1';
+import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.41-memory1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.41-memory1';
+import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.41-memory1';
+import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.41-memory1';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.41-memory1';
+import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.41-memory1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.41-memory1';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.41-memory1';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.41-memory1';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.41-memory1';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.41-memory1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.41-memory1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.41-memory1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.41-memory1';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.41-memory1';
+import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.41-memory1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.41-memory1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.41-memory1';
+import { rememberIndependentTransportDiagnostic } from './transportDiagnostics.js?rmv=1.5.41-memory1';
 
-const RUNTIME_VERSION = '1.5.40';
+const RUNTIME_VERSION = '1.5.41';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -2148,6 +2148,7 @@ function independentLocalPreflightFailure(error){
    'RABBIT_MIRROR_EXTERNAL_MATERIAL_MISSING',
    'RABBIT_MIRROR_EXTERNAL_MATERIAL_INVALID',
    'RABBIT_MIRROR_APPEARANCE_STALE',
+   'RABBIT_MIRROR_MEMORY_STALE',
    'RABBIT_MIRROR_APPEARANCE_MISSING',
    'RABBIT_MIRROR_APPEARANCE_INVALID',
    'RABBIT_MIRROR_APPEARANCE_STORAGE_UNAVAILABLE',
@@ -3792,9 +3793,10 @@ function independentPromptOwnerPreflightError(){
 function independentExternalPromptPreflightError(cause,owner){
  const known=independentLocalPreflightFailure(cause);
  const appearanceFailure=known&&/^RABBIT_MIRROR_APPEARANCE_/.test(known.code);
+ const memoryFailure=known?.code==='RABBIT_MIRROR_MEMORY_STALE';
  const needsRebuild=cause?.code==='WORLD_BOOK_ENTRY_STATE_CONFLICT'&&cause?.details?.reason==='metadata-rebuild-required';
  const explanation=describeExternalWorldBookPreflightFailure(known||cause);
- const error=new Error(appearanceFailure
+ const error=new Error(memoryFailure ? `${known.message} 本轮不会自动重试。` : appearanceFailure
   ? `${known.code==='RABBIT_MIRROR_APPEARANCE_MISSING'?'当前设备缺少已关联的外观参考。请到高级设置 → 个性化视觉提示词，展开外观参考，核对后点“解除旧参考关联”再保存；也可关闭该功能。':'外观参考尚未就绪或已改变，请在视觉页重新保存参考或关闭该功能后再试。'}诊断码：${known.code}。本轮未发送请求，不会自动重试。`
   : needsRebuild
   ? '已启用的旧外部库尚无轻量抽取索引，请在外部库管理中重建索引或重新导入；本轮未发送请求，不会扫描整库或改抽内置条目。'
@@ -3842,6 +3844,7 @@ function captureIndependentPromptOwner(ctx,index,msg,signal,requestOptions,gener
 }
 function assertIndependentPromptOwner(owner){
  if(owner.earlyBody) assertEarlyBodyOwner(owner.earlyBody);
+ if(owner.memoryRequestSettingsKey) assertMemoryRequestSettings(getSettings(),owner.memoryRequestSettingsKey,'independent');
  const reference=owner.appearanceReference;
  if(reference){
   const current=getSettings();
@@ -3868,7 +3871,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('./appearanceReference.js?rmv=1.5.40-tttouch2');}
+  try{module=await import('./appearanceReference.js?rmv=1.5.41-memory1');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;
@@ -3921,14 +3924,16 @@ async function callIndependentApi(ctx,index,msg,signal=null,requestOptions={}){
  };
  const externalEnabled=st.externalWorldBookRandomEnabled===true&&String(st.externalWorldBookMixMode||'builtin-only')!=='builtin-only';
  const appearanceEnabled=st.appearanceReferenceEnabled===true;
+ const memoryWorldBookEnabled=st.memoryScanEnabled===true&&st.memoryWorldBookEnabled===true&&!!String(st.memoryWorldBookId||'').trim();
  const resayFace=requestOptions.multifaceResay?.faces?.[requestOptions.multifaceResay?.faceIndex];
  const externalResay=[...(Array.isArray(resayFace?.themeIds)?resayFace.themeIds:[]),...(Array.isArray(resayFace?.formatIds)?resayFace.formatIds:[])].some(id=>typeof id==='string'&&id.startsWith('ext:'));
  let details; let promptOwner=null;
- if(externalEnabled||externalResay||appearanceEnabled||earlyBody){
+ if(externalEnabled||externalResay||appearanceEnabled||memoryWorldBookEnabled||earlyBody){
   promptOwner=captureIndependentPromptOwner(ctx,index,msg,signal,requestOptions,generationScopeKey);
   // Settings are mutable objects. Freeze this opt-in before *any* asynchronous
   // hydration, and keep it distinct from a disabled generation plan.
   promptOwner.appearanceReference=Object.freeze({enabled:appearanceEnabled,revision:String(st.appearanceReferenceRevision||'')});
+  if(memoryWorldBookEnabled) promptOwner.memoryRequestSettingsKey=memoryRequestSettingsKey(st,'independent');
   try{
   if((externalEnabled||externalResay)&&getExternalPoolHydrationStatus().hydrated!==true){
    assertIndependentPromptOwner(promptOwner);
@@ -3943,7 +3948,7 @@ async function callIndependentApi(ctx,index,msg,signal=null,requestOptions={}){
   const plan=planRabbitMirrorPromptDetails(st,'independent',null,generationScopeKey,generationContext);
   const reference=plan.appearanceReference||{enabled:appearanceEnabled,revision:String(st.appearanceReferenceRevision||'')};
   bindIndependentPromptBatch(promptOwner,plan.batchPlan||null);
-  let materials=null;let appearanceMaterial=null;
+  let materials=null;let appearanceMaterial=null;let memoryMaterial;
   try{
    if(plan.selectedExternalIds.length){
     assertIndependentPromptOwner(promptOwner);
@@ -3951,9 +3956,14 @@ async function callIndependentApi(ctx,index,msg,signal=null,requestOptions={}){
     finally{ promptOwner.awaited=true; assertIndependentPromptOwner(promptOwner); }
    }
    if(reference.enabled) appearanceMaterial=await loadIndependentAppearanceReference(promptOwner);
-   details=renderRabbitMirrorPromptPlan(plan,materials,appearanceMaterial);
+   if(plan.memoryWorldBook?.enabled){
+    assertIndependentPromptOwner(promptOwner);
+    try{memoryMaterial=await prepareSelectedMemoryForPrompt(plan.args.settings,{generationType:'independent',hasSharedMemoryTheme:true});}
+    finally{promptOwner.awaited=true;assertIndependentPromptOwner(promptOwner);}
+   }
+   details=renderRabbitMirrorPromptPlan(plan,materials,appearanceMaterial,memoryMaterial);
    bindIndependentPromptBatch(promptOwner,details.batchPlan||null);
-  }finally{ materials?.clear?.(); materials=null;appearanceMaterial=null; }
+  }finally{ materials?.clear?.(); materials=null;appearanceMaterial=null;memoryMaterial=null; }
   }catch(error){
    // The caller has not received onBatchPlan yet. Release only this frozen
    // identity; a stale chat/plan must never clear another in-flight batch.
@@ -8414,7 +8424,7 @@ function showIndependentHistory(root,owner={}){
 }
 function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('./followFaceRetry.js?rmv=1.5.40-tttouch2').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('./followFaceRetry.js?rmv=1.5.41-memory1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -9261,7 +9271,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 }
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('./earlyBodyTags.js?rmv=1.5.40-tttouch2')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('./earlyBodyTags.js?rmv=1.5.41-memory1')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;

@@ -1,7 +1,7 @@
-import { getSettings, updateSettings } from './settings.js?rmv=1.5.40-tttouch2';
-import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.5.40-tttouch2';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.40-tttouch2';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.40-tttouch2';
+import { getSettings, updateSettings } from './settings.js?rmv=1.5.41-memory1';
+import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.5.41-memory1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.41-memory1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.41-memory1';
 
 export const BLACKLIST_CHANGED_EVENT = 'rabbitmirror:blacklist-changed';
 export const RECIPE_RECORDED_EVENT = 'rabbitmirror:recipe-recorded';

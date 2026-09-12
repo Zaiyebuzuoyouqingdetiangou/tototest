@@ -1,23 +1,23 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.40-tttouch2';
-import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, buildTtSurfaceReport, recordTtSurface, registerTtSurfaceCleanup, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.40-tttouch2';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorHostCompatibilityStatus } from './hostCompatibility.js?rmv=1.5.40-tttouch2';
-import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.40-tttouch2';
-import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.40-tttouch2';
-import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.5.40-tttouch2';
-import { BEHAVIOR_RULE_MAX_CHARS, DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=1.5.40-tttouch2';
-import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.40-tttouch2';
-import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.40-tttouch2';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.40-tttouch2';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.40-tttouch2';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.40-tttouch2';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.5.40-tttouch2';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.40-tttouch2';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.40-tttouch2';
-import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.40-tttouch2';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.40-tttouch2';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.41-memory1';
+import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, buildTtSurfaceReport, recordTtSurface, registerTtSurfaceCleanup, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.41-memory1';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorHostCompatibilityStatus } from './hostCompatibility.js?rmv=1.5.41-memory1';
+import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.41-memory1';
+import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.41-memory1';
+import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.5.41-memory1';
+import { BEHAVIOR_RULE_MAX_CHARS, DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=1.5.41-memory1';
+import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.41-memory1';
+import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.41-memory1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.41-memory1';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.41-memory1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.41-memory1';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.5.41-memory1';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.41-memory1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.41-memory1';
+import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.41-memory1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.41-memory1';
 
 const SETTINGS_UI_VERSION = '1.8-ttentry3';
-const RUNTIME_VERSION = '1.5.40';
+const RUNTIME_VERSION = '1.5.41';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -31,6 +31,10 @@ let worldInfoBookCurrentVisible = false;
 let worldInfoBookCurrentDirty = true;
 let retainedExternalDiagnosticReport = '';
 let retainedExternalDiagnosticStatus = null;
+let memoryWorldBookDirectory = [];
+let memoryWorldBookDirectoryLoaded = false;
+let memoryWorldBookDirectoryBusy = false;
+let memoryWorldBookDirectorySequence = 0;
 const WORLD_INFO_BOOK_RENDER_DEBOUNCE_MS = 140;
 
 function scheduleUiMountRetry() {
@@ -464,6 +468,67 @@ function renderMemoryScanResults(results) {
     container.html(`${contextBlock}${readableBlock}${pendingBlock}`);
 }
 
+function renderMemoryWorldBookBinding(message = '') {
+    const select = document.getElementById('rh_memory_worldbook_id');
+    if (!select) return;
+    const settings = getSettings();
+    const bound = settings.memoryWorldBookId;
+    const options = [{ fileId: '', displayName: '未绑定记忆世界书' }, ...memoryWorldBookDirectory];
+    if (bound && !memoryWorldBookDirectory.some(book => book.fileId === bound)) {
+        options.push({ fileId: bound, displayName: `${bound}（${memoryWorldBookDirectoryLoaded ? '当前目录中未找到，原绑定保留' : '已保存，尚未刷新目录'}）` });
+    }
+    select.replaceChildren(...options.map(book => {
+        const option = document.createElement('option');
+        option.value = book.fileId;
+        option.textContent = book.displayName;
+        return option;
+    }));
+    select.value = bound;
+    checked('#rh_memory_worldbook_enabled', settings.memoryWorldBookEnabled);
+    $('#rh_memory_worldbook_refresh').prop('disabled', memoryWorldBookDirectoryBusy)
+        .text(memoryWorldBookDirectoryBusy ? '正在读取世界书目录…' : '刷新世界书目录');
+    $('#rh_memory_worldbook_clear').prop('disabled', !bound);
+    $('#rh_memory_worldbook_status').attr('aria-busy', String(memoryWorldBookDirectoryBusy)).text(message || (
+        memoryWorldBookDirectoryBusy ? '正在读取书名目录，不读取条目正文…'
+            : !settings.memoryScanEnabled ? '额外资料总开关已关闭；绑定与勾选保留，不额外读取记忆资料。'
+                : !settings.memoryWorldBookEnabled ? '记忆世界书来源已关闭；已保存的绑定保留。'
+                    : !bound ? '尚未绑定。请刷新目录后选择一本记忆世界书。'
+                        : '绑定已保存；仅在抽中 I.1 共同回忆时按需读取，不会每轮读取。'
+    ));
+}
+
+async function refreshMemoryWorldBookDirectory() {
+    const select = document.getElementById('rh_memory_worldbook_id');
+    if (!select || memoryWorldBookDirectoryBusy) return;
+    const sequence = ++memoryWorldBookDirectorySequence;
+    const isAlive = () => sequence === memoryWorldBookDirectorySequence && select.isConnected
+        && document.getElementById('rh_memory_worldbook_id') === select && isCurrentRuntime();
+    memoryWorldBookDirectoryBusy = true;
+    renderMemoryWorldBookBinding();
+    try {
+        const { listMemoryWorldBooks, normalizeMemoryWorldBookId } = await import('./memoryWorldBook.js?rmv=1.5.41-memory1');
+        if (!isAlive()) return;
+        const books = await listMemoryWorldBooks();
+        if (!isAlive()) return;
+        const seen = new Set();
+        memoryWorldBookDirectory = books.flatMap(book => {
+            const fileId = normalizeMemoryWorldBookId(book?.fileId);
+            if (!fileId || seen.has(fileId)) return [];
+            seen.add(fileId);
+            return [{ fileId, displayName: String(book.displayName || fileId) }];
+        });
+        memoryWorldBookDirectoryLoaded = true;
+        memoryWorldBookDirectoryBusy = false;
+        renderMemoryWorldBookBinding(memoryWorldBookDirectory.length
+            ? `已读取 ${memoryWorldBookDirectory.length} 本世界书的名称，可在下方选择绑定；未读取条目正文。`
+            : '目录为空；没有更改原绑定。可确认酒馆世界书列表后再次刷新。');
+    } catch {
+        if (!isAlive()) return;
+        memoryWorldBookDirectoryBusy = false;
+        renderMemoryWorldBookBinding('世界书目录读取失败，原绑定与列表已保留。请确认酒馆连接后点击“刷新世界书目录”重试。');
+    }
+}
+
 function memoryTestMessage(result) {
     if (!result?.ok) return `读取失败：${result?.error || '未知错误'}`;
     const parts = [
@@ -600,6 +665,14 @@ function bindTtDiagnosticTap(button, activate, isAlive) {
     };
 }
 
+function ttDiagnosticHostNote(state) {
+    if (state?.managed === true && state?.registered === true) return 'ChatSurface 已托管。';
+    if (state?.registrationFailure === 'late-projection') return 'TT 在聊天投影后才加载兔子镜，已错过注册窗口；需要宿主提供前置加载，关闭/重开虚化或反复点击不能补注册。';
+    if (state?.registrationFailure === 'duplicate-participant') return 'TT 检测到重复的兔子镜注册；请仅启用一份正式版或测试版兔子镜后重启。';
+    if (state?.registrationFailure === 'host-rejected') return 'TT 拒绝了 ChatSurface 注册，具体原因未公开；不能据此认定已接入或已修复。';
+    return '当前未接入 managed ChatSurface；仍可采集触摸和入口状态，缺少挂载记录不能用于排除问题。';
+}
+
 function installTtDiagnosticEntry() {
     try { globalThis.__rabbitMirrorTtDiagnosticUiCleanup?.(); } catch {}
     globalThis.__rabbitMirrorTtDiagnosticUiCleanup = null;
@@ -623,21 +696,20 @@ function installTtDiagnosticEntry() {
     const inputCleanups = [];
     const isAlive = () => !disposed && isCurrentRuntime() && panel.isConnected
         && document.getElementById('rabbit_mirror_theater_settings') === panel;
-    const hostNote = hostState?.managed === true && hostState?.registered === true
-        ? 'ChatSurface 已托管。'
-        : '当前未接入 managed ChatSurface；仍可采集触摸和入口状态，缺少挂载记录不能用于排除问题。';
+    const hostNote = ttDiagnosticHostNote(hostState);
     const notify = (kind, text) => { try { globalThis.toastr?.[kind]?.(text); } catch {} };
     const setStatus = text => { if (!disposed) statusText.text(text).show(); };
     const report = () => {
         if (!session) return retainedTtDiagnosticReport;
         const elapsed = Math.max(0, (session.endedAt ?? performance.now()) - session.startedAt);
         const head = [
-            'TT 诊断入口：1.5.40-ttentry3',
+            'TT 诊断入口：1.5.41-ttentry3',
             `diagnostic-start +0ms | managed=${session.host.managed} | registered=${session.host.registered} | protocolVersion=${session.host.protocolVersion ?? '不可用'}`,
             `入口动作=${session.activation} | chatRootFound=${session.chatRootFound} | pointerEvents=${session.pointerEvents} | 输入事件 ${session.inputEvents} 条`,
             session.host.managed && session.host.registered ? '' : '未接入 managed ChatSurface：挂载分发不可用或未启用；以下报告不代表没有卡顿。',
             session.endedAt !== null ? `diagnostic-stop +${elapsed.toFixed(0)}ms | ${session.stopReason || '自动停止或达到条数上限'}` : '状态：正在采集',
             session.host.errorCode ? `宿主状态：${session.host.errorCode}` : '',
+            session.host.registrationFailure ? `注册原因：${session.host.registrationFailure} | ${ttDiagnosticHostNote(session.host)}` : '',
             '没有业务记录不代表没有卡顿；以下为空时，只能确认入口已运行。',
         ].filter(Boolean).join('\n');
         return head + '\n\n' + (session.engineStarted ? buildTtSurfaceReport({ version: RUNTIME_VERSION, ...session.host }) : '采集模块未成功启动。');
@@ -668,7 +740,8 @@ function installTtDiagnosticEntry() {
                 chatRootFound: !!chatRoot, pointerEvents: typeof globalThis.PointerEvent === 'function',
                 host: { managed: state?.managed === true, registered: state?.registered === true,
                     protocolVersion: Number.isFinite(state?.protocolVersion) ? state.protocolVersion : null,
-                    errorCode: String(state?.errorCode || '').slice(0, 48) },
+                    errorCode: String(state?.errorCode || '').slice(0, 48),
+                    registrationFailure: ['late-projection', 'duplicate-participant', 'host-rejected'].includes(state?.registrationFailure) ? state.registrationFailure : '' },
             };
             retainedTtDiagnosticReport = '';
             output.val('').hide();
@@ -681,7 +754,7 @@ function installTtDiagnosticEntry() {
             captureTtDiagnosticInputs(chatRoot, session);
             start.text('结束 TT 诊断（20 秒自动停止）').prop('disabled', false);
             copy.prop('disabled', false);
-            setStatus(chatRoot ? `TT 诊断已开始（入口修复3）。请收起设置，在 20 秒内复现问题。${hostNote}` : 'TT 诊断已开始，但未找到聊天窗口；请进入聊天后重新采集。');
+            setStatus(chatRoot ? `TT 诊断已开始（入口修复3）。请收起设置，在 20 秒内复现问题。${ttDiagnosticHostNote(session.host)}` : 'TT 诊断已开始，但未找到聊天窗口；请进入聊天后重新采集。');
             notify('info', 'TT 诊断已开始，请在 20 秒内复现滚动卡顿或点不开。');
         } catch {
             if (session) session.stopReason = '入口启动异常';
@@ -816,6 +889,10 @@ export function initRabbitMirrorUI() {
         $('body > #rh_advanced_modal, body > #rh_world_info_prompt_modal, body > #rh_independent_tag_filter_modal').remove();
     }
 
+    // All paths below mount a new UI owner, including rebuilds without destroy.
+    // Invalidate old responses here; they must not unlock a later request.
+    memoryWorldBookDirectorySequence += 1;
+    memoryWorldBookDirectoryBusy = false;
     const settingsMount = $('#extensions_settings2');
     if (!settingsMount.length) {
         scheduleUiMountRetry();
@@ -828,7 +905,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.40</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.41</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -1050,7 +1127,7 @@ export function initRabbitMirrorUI() {
           <div id="rh_advanced_menu" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:9px;">
             <button class="menu_button rh-advanced-choice" type="button" data-page="generation" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🎛️ 生成与抽取</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">抽取模式、参考内容、世界观锁与冷却</span></button>
             <button class="menu_button rh-advanced-choice" type="button" data-page="visual" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🎨 个性化视觉提示词</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">额外视觉偏好、避雷与通用视觉规则</span></button>
-            <button class="menu_button rh-advanced-choice" type="button" data-page="memory" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🧠 共同回忆资料来源</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">扫描并选择可读取的记忆资料接口</span></button>
+            <button class="menu_button rh-advanced-choice" type="button" data-page="memory" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🧠 共同回忆资料来源</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">记忆插件接口／绑定记忆世界书</span></button>
             <button class="menu_button rh-advanced-choice" type="button" data-page="worldinfo" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🔌 独立 API</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">补充创作规则、读取范围、世界书与正文标签</span></button>
             <button class="menu_button rh-advanced-choice" type="button" data-page="repair" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🐈‍⬛🐇 挨打猫与维修兔</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">美化反馈、维修兔与自动巡逻</span></button>
             <button class="menu_button rh-advanced-choice" type="button" data-page="external" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">📚 母本库：导入与备份</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">粘贴文字、导入文件、换设备</span></button>
@@ -1148,6 +1225,16 @@ export function initRabbitMirrorUI() {
             <button id="rh_memory_scan_now" class="menu_button" type="button">扫描可用资料来源</button>
             <div style="margin-top:6px;opacity:.68;font-size:11px;line-height:1.45;">扫描公开、正规的记忆插件接口 API。</div>
             <div id="rh_memory_scan_results" style="margin-top:8px;"></div>
+            <section aria-labelledby="rh_memory_worldbook_heading" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--SmartThemeBorderColor);min-width:0;">
+              <h4 id="rh_memory_worldbook_heading" style="margin:0 0 8px;">绑定记忆世界书</h4>
+              <label class="checkbox_label" style="min-height:44px;"><input id="rh_memory_worldbook_enabled" type="checkbox"> 将绑定的世界书作为共同回忆资料</label>
+              <div class="rabbit-mirror-subnote" style="font-size:12px;line-height:1.5;margin:6px 0;">由上方总开关控制。仅抽中 I.1 共同回忆时读取；关闭来源不清除绑定。这里只保存书名，不把世界书正文存入设置。</div>
+              <button id="rh_memory_worldbook_refresh" class="menu_button" type="button" style="min-height:44px;max-width:100%;">刷新世界书目录</button>
+              <label for="rh_memory_worldbook_id" style="display:block;margin:8px 0 4px;">选择记忆世界书（自动保存）</label>
+              <select id="rh_memory_worldbook_id" class="text_pole" style="display:block;width:100%;max-width:100%;min-width:0;min-height:44px;box-sizing:border-box;"></select>
+              <button id="rh_memory_worldbook_clear" class="menu_button" type="button" style="min-height:44px;margin-top:8px;">清空绑定</button>
+              <div id="rh_memory_worldbook_status" role="status" aria-live="polite" style="font-size:12px;line-height:1.5;margin-top:8px;overflow-wrap:anywhere;"></div>
+            </section>
           </div>
 
           <div id="rh_advanced_page_worldinfo" class="rh-advanced-page" data-title="独立 API" style="display:none;">
@@ -1230,7 +1317,7 @@ export function initRabbitMirrorUI() {
         status.textContent = '正在向酒馆请求更新当前兔子镜，请稍候。不会更新其他扩展，也不会删除本地数据。';
         reload.hidden = true;
         try {
-            const updater = await import('./extensionUpdater.js?rmv=1.5.40-tttouch2');
+            const updater = await import('./extensionUpdater.js?rmv=1.5.41-memory1');
             const result = await updater.requestRabbitMirrorUpdate();
             if (!status.isConnected) return;
             status.textContent = result.status === 'current'
@@ -1493,6 +1580,7 @@ export function initRabbitMirrorUI() {
     checked('#rh_avoid_repeat', settings.avoidRepeat);
     checked('#rh_blacklist_enabled', settings.blacklistEnabled !== false);
     checked('#rh_memory_scan_enabled', settings.memoryScanEnabled);
+    renderMemoryWorldBookBinding();
     checked('#rh_enhanced_visual_drawing', settings.enhancedVisualDrawing === true);
     checked('#rh_multiface_enabled', settings.rabbitMirrorFaceCount > 1);
     $('#rh_multiface_count').val(String(settings.rabbitMirrorFaceCount > 1 ? settings.rabbitMirrorFaceCount : 2));
@@ -1567,7 +1655,7 @@ export function initRabbitMirrorUI() {
         if (!revision) return;
         const sequence = appearanceFileSequence;
         try {
-            const module = await import('./appearanceReference.js?rmv=1.5.40-tttouch2');
+            const module = await import('./appearanceReference.js?rmv=1.5.41-memory1');
             if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving) return;
             await module.loadAppearanceReferenceMaterial(revision);
             if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving || getSettings().appearanceReferenceRevision !== revision) return;
@@ -1618,7 +1706,7 @@ export function initRabbitMirrorUI() {
         const retainRevision = String(getSettings().appearanceReferenceRevision || '');
         let raw = String($('#rh_appearance_reference_input').val() || '');
         try {
-            const module = await import('./appearanceReference.js?rmv=1.5.40-tttouch2');
+            const module = await import('./appearanceReference.js?rmv=1.5.41-memory1');
             if (!appearanceOwnerIsCurrent()) return;
             if (String(getSettings().appearanceReferenceRevision || '') !== retainRevision) {
                 appearanceStatus('参考关联已改变，本次保存已停止；未写入摘要，也未覆盖当前设置。请核对当前关联后再保存。');
@@ -1702,7 +1790,7 @@ export function initRabbitMirrorUI() {
         if (!quickStart.open || guideLoading || guideCleanup || guideDisposed) return;
         guideLoading = true;
         try {
-            const module = await import('./quickStart.js?rmv=1.5.40-tttouch2');
+            const module = await import('./quickStart.js?rmv=1.5.41-memory1');
             if (guideDisposed || !quickStart.isConnected || !isCurrentRuntime()) return;
             guideCleanup = module.mountRabbitMirrorQuickStart({
                 root: document.getElementById('rabbit_mirror_theater_settings'),
@@ -2235,6 +2323,7 @@ export function initRabbitMirrorUI() {
 
     $('#rh_memory_scan_enabled').on('change', e => {
         updateSettings({ memoryScanEnabled: e.target.checked });
+        renderMemoryWorldBookBinding();
         toastr?.[e.target.checked ? 'info' : 'success']?.(e.target.checked
             ? '已开启共同回忆额外资料读取：只有抽中 I.1 时才会读取已勾选来源。'
             : '已关闭额外资料读取；扫描结果和勾选记录会保留。');
@@ -2245,6 +2334,19 @@ export function initRabbitMirrorUI() {
         const readableCount = results.filter(item => item.readable).length;
         const pendingCount = results.length - readableCount;
         toastr?.info?.(`扫描完成：${readableCount} 个可读取${pendingCount ? `，${pendingCount} 个其他候选已收起` : ''}。`);
+    });
+    $('#rh_memory_worldbook_refresh').on('click', refreshMemoryWorldBookDirectory);
+    $('#rh_memory_worldbook_enabled').on('change', e => {
+        updateSettings({ memoryWorldBookEnabled: e.target.checked });
+        renderMemoryWorldBookBinding();
+    });
+    $('#rh_memory_worldbook_id').on('change', e => {
+        updateSettings({ memoryWorldBookId: e.target.value });
+        renderMemoryWorldBookBinding();
+    });
+    $('#rh_memory_worldbook_clear').on('click', () => {
+        updateSettings({ memoryWorldBookId: '' });
+        renderMemoryWorldBookBinding('绑定已清空，不会读取记忆世界书；其他已勾选记忆插件来源保持不变。');
     });
     $('#rh_memory_scan_results').on('change', '.rh-memory-provider-check', function () {
         const id = String($(this).data('provider-id') || '');
@@ -2344,7 +2446,7 @@ export function initRabbitMirrorUI() {
             for (const key of Object.keys(libraryEntryViews)) document.getElementById(key).disabled = true;
             button.textContent = '正在加载…';
             try {
-                const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.40-tttouch2');
+                const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.41-memory1');
                 if (!isCurrentRuntime() || !button.isConnected) return;
                 module.openExternalWorldBookImportWizard?.({ initialView });
             } catch (error) {
@@ -2569,6 +2671,10 @@ export function initRabbitMirrorUI() {
 }
 
 export function destroyRabbitMirrorUI() {
+    memoryWorldBookDirectorySequence += 1;
+    memoryWorldBookDirectory = [];
+    memoryWorldBookDirectoryLoaded = false;
+    memoryWorldBookDirectoryBusy = false;
     invalidateIndependentModelPull();
     beginIndependentConnectionOperation();
     try { globalThis.__rabbitMirrorTtDiagnosticUiCleanup?.(); } catch {}

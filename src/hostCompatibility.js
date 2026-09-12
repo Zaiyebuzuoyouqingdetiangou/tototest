@@ -1,10 +1,20 @@
-import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.40-tttouch2';
+import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.41-memory1';
 // TT Project Contract v1, not an invented SillyTavern event or private engine API.
 // https://github.com/Darkatse/TauriTavern/blob/9693a4ec47cd4552f90878bccab453f176de0f18/docs/API/ChatSurface.md
 // Register this lightweight bridge during extension evaluation, before projection.
 // Heavy consumers may subscribe later; only currently mounted host leases are replayed.
 const PARTICIPANT_ID = 'rabbitmirror/message-runtime';
 const SURFACES = new Set(['fullscreen-window', 'backdrop', 'free-window', 'viewport-host']);
+
+// Only retain a fixed diagnostic code, never the host exception/body. TT v1
+// freezes registration at the first projection; reattempting or launching a
+// legacy observer after that point would violate managed DOM ownership.
+function registrationFailureReason(error) {
+    const message = typeof error?.message === 'string' ? error.message : '';
+    if (message.includes('must register before the first projection')) return 'late-projection';
+    if (message.includes('participant already registered')) return 'duplicate-participant';
+    return 'host-rejected';
+}
 
 function toDisposer(value) {
     if (value === undefined || value === null) return null;
@@ -120,8 +130,9 @@ export function createRabbitMirrorHostCompatibility(hostGlobal = globalThis) {
                 didCommitContent: context => openLease('didCommitContent', context),
             });
             status = Object.freeze({ ...status, registered: true });
-        } catch {
-            status = Object.freeze({ ...status, errorCode: 'CHAT_SURFACE_REGISTRATION_FAILED' });
+        } catch (error) {
+            status = Object.freeze({ ...status, errorCode: 'CHAT_SURFACE_REGISTRATION_FAILED',
+                registrationFailure: registrationFailureReason(error) });
         }
         return status;
     }
